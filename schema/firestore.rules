@@ -1,0 +1,122 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions pour l'authentification et les rôles
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function getUserRole() {
+      return getUserData().role;
+    }
+
+    function isGrandResponsable() {
+      return isAuthenticated() && getUserRole() == 'GRAND_RESPONSABLE';
+    }
+
+    function isRespSection() {
+      return isAuthenticated() && getUserRole() == 'RESP_SECTION';
+    }
+
+    function isManager() {
+      return isGrandResponsable() || isRespSection();
+    }
+
+    // Helper: Section de l'utilisateur notateur
+    function getUserSectionId() {
+      return getUserData().section_id;
+    }
+
+    // 1. Collection USERS
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.auth.uid == userId
+        && request.resource.data.trust_score == 100.0
+        && request.resource.data.is_stagiaire_badge == (request.resource.data.role == 'STAGIAIRE');
+      allow update: if isGrandResponsable() || (request.auth.uid == userId && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'trust_score']));
+      allow delete: if isGrandResponsable();
+    }
+
+    // 2. Collection SECTIONS
+    match /sections/{sectionId} {
+      allow read: if isAuthenticated();
+      allow write: if isGrandResponsable();
+    }
+
+    // 3. Collection SERVICES_CULTES
+    match /services_cultes/{culteId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isManager()
+        && request.resource.data.num_culte in [1, 2, 3]
+        && request.resource.data.statut in ['A_VENIR', 'EN_COURS', 'CLOTURE'];
+      allow delete: if isGrandResponsable();
+    }
+
+    // 4. Collection DEBRIEFINGS
+    match /debriefings/{debriefingId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated()
+        && request.resource.data.user_id == request.auth.uid;
+      allow update, delete: if isGrandResponsable() || (isAuthenticated() && resource.data.user_id == request.auth.uid);
+    }
+
+    // 5. Collection RESOLUTIONS
+    match /resolutions/{resolutionId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isManager()
+        && request.resource.data.avancement >= 0
+        && request.resource.data.avancement <= 100
+        && request.resource.data.statut in ['EN_COURS', 'REALISE'];
+      allow delete: if isGrandResponsable();
+    }
+
+    // 6. Collection NOTES_SECTION (Sécurité renforcée)
+    match /notes_section/{noteId} {
+      // RÈGLE 2: CONFIDENTIALITÉ DES NOTES
+      // Membres/Stagiaires : Ne lisent QUE is_confidentiel == false
+      // Responsables/Admins : Lisent l'intégralité (confidentiel + non confidentiel)
+      allow read: if isAuthenticated() && (
+        resource.data.is_confidentiel == false || isManager()
+      );
+
+      // RÈGLE 1: INTERDICTION STRICTE DE S'AUTO-NOTER (Self-Rating Protection)
+      // RÈGLE 4: PONDÉRATION INFALSIFIABLE (Attribuée strictement selon le rôle authentifié)
+      allow create: if isAuthenticated()
+        && request.resource.data.notateur_id == request.auth.uid
+        && request.resource.data.section_cible_id != getUserSectionId() // Self-Rating Protection
+        && request.resource.data.note_valeur >= 1.0
+        && request.resource.data.note_valeur <= 5.0
+        && (
+          (getUserRole() == 'GRAND_RESPONSABLE' && request.resource.data.poids_note == 5 && request.resource.data.is_confidentiel == true) ||
+          (getUserRole() == 'RESP_SECTION' && request.resource.data.poids_note == 3 && request.resource.data.is_confidentiel == true) ||
+          (getUserRole() in ['MEMBRE', 'STAGIAIRE'] && request.resource.data.poids_note == 1 && request.resource.data.is_confidentiel == false)
+        );
+
+      allow update, delete: if isGrandResponsable();
+    }
+
+    // 7. Collection BILAN_FEED & VEDETTES_HALL_OF_FAME
+    // RÈGLE 3: ÉPHÉMÉRITÉ 24H DU FEED ET TRANSITION HALL OF FAME
+    match /bilan_feed/{feedId} {
+      // Fil d'Actualité général (uniquement valide_par_admin == true ET non expiré)
+      allow read: if isAuthenticated() && (
+        (resource.data.valide_par_admin == true && request.time < resource.data.expiration_timestamp)
+        || isGrandResponsable()
+      );
+      allow create: if isManager()
+        && request.resource.data.expiration_timestamp == request.resource.data.publication_timestamp + duration.value(24, 'h');
+      allow update, delete: if isGrandResponsable();
+    }
+
+    match /vedettes_hall_of_fame/{archiveId} {
+      // Les publications expirées (> 24h) validées restent lisibles dans le Hall of Fame
+      allow read: if isAuthenticated() && resource.data.valide_par_admin == true;
+      allow write: if isGrandResponsable();
+    }
+  }
+}

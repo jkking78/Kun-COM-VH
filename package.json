@@ -1,0 +1,20 @@
+{
+  "name": "kun-com-vh",
+  "version": "1.0.0",
+  "description": "Application Web & PWA de gestion du Département Communication Église",
+  "main": "public/index.html",
+  "scripts": {
+    "start": "python3 -m http.server 3000 --directory public",
+    "build": "python3 -c \"import os, shutil; os.makedirs('dist', exist_ok=True); shutil.copytree('public', 'dist', dirs_exist_ok=True); print('✅ Build statique Web généré dans /dist')\"",
+    "test": "python3 schema/verify_schema.py && python3 schema/test_security_rules.py"
+  },
+  "keywords": [
+    "pwa",
+    "web",
+    "church",
+    "communication",
+    "react-native-web"
+  ],
+  "author": "Antigravity Senior Developer",
+  "license": "MIT"
+}

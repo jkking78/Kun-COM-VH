@@ -1,0 +1,338 @@
+import { StyleSheet, Dimensions, Platform } from 'react-native';
+
+const { width } = Dimensions.get('window');
+
+export const COLORS = {
+  background: '#F2F2F7',
+  cardBg: '#FFFFFF',
+  textPrimary: '#1C1C1E',
+  textSecondary: '#8E8E93',
+  appleBlue: '#007AFF',
+  appleBlueLight: '#E5F1FF',
+  greenSuccess: '#34C759',
+  greenBg: '#E8F9ED',
+  goldBadge: '#FFD700',
+  goldBadgeBg: '#FFF9E6',
+  purpleAction: '#5856D6',
+  purpleBg: '#F0EFFF',
+  orangeBadge: '#FF9500',
+  orangeBg: '#FFF4E5',
+  borderLight: '#E5E5EA',
+  inactiveTab: '#999999',
+  shadowColor: '#000000'
+};
+
+export const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+
+  // 1. HEADER
+  header: {
+    paddingTop: Platform.OS === 'ios' ? 50 : 20,
+    paddingHorizontal: 20,
+    paddingBottom: 15,
+    backgroundColor: COLORS.cardBg,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.borderLight,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    elevation: 3,
+  },
+  headerSubtitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: COLORS.appleBlue,
+    textTransform: 'uppercase',
+    letterSpacing: 1.2,
+    marginBottom: 2,
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
+    letterSpacing: -0.5,
+  },
+
+  // SCROLL CONTENT
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 100,
+  },
+
+  // 2. CARTE PROFIL ET STAGIAIRE BADGE
+  profileCard: {
+    backgroundColor: COLORS.cardBg,
+    borderRadius: 22,
+    padding: 20,
+    marginBottom: 16,
+    alignItems: 'center',
+    shadowColor: COLORS.shadowColor,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+  },
+  avatarContainer: {
+    width: 84,
+    height: 84,
+    borderRadius: 42,
+    backgroundColor: COLORS.appleBlueLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+    borderWidth: 3,
+    borderColor: COLORS.appleBlue,
+  },
+  avatarText: {
+    fontSize: 34,
+    fontWeight: '800',
+    color: COLORS.appleBlue,
+  },
+  userName: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
+  },
+  userRole: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.textSecondary,
+    marginTop: 2,
+    marginBottom: 8,
+  },
+
+  // Badge Stagiaire Conditionnel
+  stagiaireBadge: {
+    backgroundColor: COLORS.orangeBg,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: COLORS.orangeBadge,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  stagiaireBadgeText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: COLORS.orangeBadge,
+    marginLeft: 4,
+  },
+
+  // 3. JAUGE CIRCULAIRE TRUST SCORE
+  trustCard: {
+    backgroundColor: COLORS.cardBg,
+    borderRadius: 22,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: COLORS.shadowColor,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+  },
+  trustCardTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: COLORS.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  gaugeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    marginBottom: 16,
+  },
+  circleGauge: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    borderWidth: 8,
+    borderColor: COLORS.greenSuccess,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.greenBg,
+  },
+  gaugeScoreText: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: COLORS.greenSuccess,
+  },
+  gaugeLabelText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: COLORS.greenSuccess,
+  },
+  statsColumn: {
+    gap: 12,
+  },
+  statBox: {
+    backgroundColor: COLORS.background,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 14,
+  },
+  statValue: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
+  },
+  statLabel: {
+    fontSize: 11,
+    color: COLORS.textSecondary,
+    fontWeight: '600',
+  },
+
+  // 4. SECTION BADGES ET COMPÉTENCES
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
+    marginBottom: 12,
+    marginTop: 6,
+  },
+  badgesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 20,
+  },
+  badgeItem: {
+    backgroundColor: COLORS.cardBg,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+    shadowColor: COLORS.shadowColor,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  badgeIcon: {
+    fontSize: 18,
+    marginRight: 8,
+  },
+  badgeText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.textPrimary,
+  },
+
+  // 5. BOUTONS D'ACTION ET CONFIGURATION
+  actionsContainer: {
+    gap: 12,
+    marginBottom: 30,
+  },
+  btnActionPrimary: {
+    backgroundColor: COLORS.appleBlue,
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    borderRadius: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: COLORS.appleBlue,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  btnActionPrimaryText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    marginLeft: 8,
+  },
+  btnActionSecondary: {
+    backgroundColor: COLORS.purpleBg,
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    borderRadius: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(88,86,214,0.3)',
+  },
+  btnActionSecondaryText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: COLORS.purpleAction,
+    marginLeft: 8,
+  },
+
+  // BOTTOM TAB BAR iOS
+  bottomTabBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: Platform.OS === 'ios' ? 84 : 65,
+    backgroundColor: 'rgba(255, 255, 255, 0.94)',
+    borderTopWidth: 1,
+    borderTopColor: COLORS.borderLight,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    paddingBottom: Platform.OS === 'ios' ? 20 : 5,
+    shadowColor: COLORS.shadowColor,
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  tabItem: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+  },
+  tabIcon: {
+    fontSize: 20,
+    marginBottom: 2,
+  },
+  tabLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: COLORS.inactiveTab,
+  },
+  tabLabelActive: {
+    color: COLORS.appleBlue,
+    fontWeight: '700',
+  },
+  publishButton: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: COLORS.appleBlue,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: -24,
+    shadowColor: COLORS.appleBlue,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  publishButtonText: {
+    fontSize: 24,
+    color: '#FFFFFF',
+    fontWeight: '400',
+    marginTop: -2,
+  }
+});
