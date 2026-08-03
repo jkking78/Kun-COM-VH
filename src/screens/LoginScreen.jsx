@@ -8,18 +8,24 @@ import {
   StatusBar
 } from 'react-native';
 import { styles } from './authStyles';
+import Toast from '../components/Toast';
 
 export default function LoginScreen({ onLoginSuccess, onNavigateToSignup }) {
   const [email, setEmail] = useState('eric.kouame@eglise.org');
   const [password, setPassword] = useState('password123');
 
+  const [toast, setToast] = useState({ visible: false, message: '', type: 'success' });
+
+  const showToast = (message, type = 'success') => {
+    setToast({ visible: true, message, type });
+  };
+
   const handleLogin = () => {
     if (!email || !password) {
-      alert("Veuillez remplir tous les champs.");
+      showToast("Veuillez remplir tous les champs.", "error");
       return;
     }
 
-    // Démonstration d'utilisateur connecté
     const mockUser = {
       id: 'usr-cadrage-1',
       nom: 'Kouamé',
@@ -27,7 +33,7 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToSignup }) {
       email: email,
       sectionId: 'cadrage',
       sectionNom: 'Cadrage',
-      role: 'RESP_SECTION', // ou MEMBRE par défaut
+      role: 'RESP_SECTION',
       trustScore: 98.5,
       isStagiaireBadge: false
     };
@@ -38,6 +44,7 @@ export default function LoginScreen({ onLoginSuccess, onNavigateToSignup }) {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
+      <Toast visible={toast.visible} message={toast.message} type={toast.type} onDismiss={() => setToast({ ...toast, visible: false })} />
 
       <View style={styles.innerBox}>
         <View style={styles.logoHeader}>

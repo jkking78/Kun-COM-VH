@@ -9,6 +9,7 @@ import {
   StatusBar
 } from 'react-native';
 import { styles } from './authStyles';
+import Toast from '../components/Toast';
 
 const SECTIONS = [
   { id: 'web', nom: 'Web' },
@@ -27,9 +28,15 @@ export default function SignupScreen({ onSignupSuccess, onNavigateToLogin }) {
   const [password, setPassword] = useState('');
   const [selectedSection, setSelectedSection] = useState('cadrage');
 
+  const [toast, setToast] = useState({ visible: false, message: '', type: 'success' });
+
+  const showToast = (message, type = 'success') => {
+    setToast({ visible: true, message, type });
+  };
+
   const handleSignup = () => {
     if (!nom || !prenom || !email || !password) {
-      alert("Veuillez remplir tous les champs.");
+      showToast("Veuillez remplir tous les champs.", "error");
       return;
     }
 
@@ -40,18 +47,19 @@ export default function SignupScreen({ onSignupSuccess, onNavigateToLogin }) {
       email: email,
       sectionId: selectedSection,
       sectionNom: SECTIONS.find(s => s.id === selectedSection)?.nom || 'Communication',
-      role: 'MEMBRE', // Assigné par défaut
+      role: 'MEMBRE',
       trustScore: 100.0,
       isStagiaireBadge: true
     };
 
-    alert(`Compte créé avec succès ! Bienvenue ${prenom} dans la section ${newMember.sectionNom}.`);
+    // Redirection immédiate vers le Feed principal avec déclenchement du Toast
     onSignupSuccess(newMember);
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
+      <Toast visible={toast.visible} message={toast.message} type={toast.type} onDismiss={() => setToast({ ...toast, visible: false })} />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{paddingVertical: 30}}>
         <View style={styles.innerBox}>

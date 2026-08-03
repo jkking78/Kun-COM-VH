@@ -1,32 +1,63 @@
 // ==============================================================================
 // APPLICATION WEB PURE PWA - DÉPARTEMENT COMMUNICATION (KUN COM VH)
-// Network Social 100% Interactif (Posts Dynamiques, Modals, Comments & Shares)
+// Initialisation Instantanée (< 1s), Rendu Optimiste & Timeout Auth 1.5s
 // ==============================================================================
 
 (function() {
-  console.log("🚀 Lancement du Réseau Social Dynamique 100% Interactif...");
+  console.log("⚡ Initialisation Instantanée de l'Application Kun COM (< 1s)...");
 
-  // ETAT GLOBAL
-  var authView = 'app'; // 'login', 'signup', 'app'
-  var currentUser = {
-    id: 'usr-cadrage-1',
-    nom: 'Kouamé',
-    prenom: 'Éric',
-    email: 'eric.kouame@eglise.org',
-    sectionId: 'cadrage',
-    sectionNom: 'Cadrage',
-    role: 'RESP_SECTION',
-    trustScore: 98.5
-  };
+  // ETAT GLOBAL DE L'APPLICATION
+  var authView = 'login'; // 'login', 'signup', 'app'
+  var currentUser = null;
+  var isAppLoading = false; // Initialisé à false immédiatement pour éviter le blocage
 
   var activeTab = 'home';
-  var selectedStory = 'all'; // 'all' par défaut
+  var selectedStory = 'all';
   var isCreateModalOpen = false;
   var isCommentModalOpen = false;
   var activeCommentPostId = null;
 
   var isCheckedIn = false;
   
+  // GESTION DES TOASTS
+  var activeToast = null;
+  var toastTimer = null;
+
+  function triggerToast(message, type) {
+    type = type || 'success';
+    activeToast = { message: message, type: type };
+    renderAppRoot();
+
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function() {
+      activeToast = null;
+      renderAppRoot();
+    }, 2500);
+  }
+
+  // RESTAURATION IMMÉDIATE & TIMEOUT DE SÉCURITÉ DE 1.5s MAX
+  var authTimeout = setTimeout(function() {
+    if (!currentUser && authView === 'loading') {
+      console.warn("⚠️ Timeout Auth (1.5s) écoulé -> Bascule automatique sur LoginScreen");
+      authView = 'login';
+      renderAppRoot();
+    }
+  }, 1500);
+
+  try {
+    var savedUser = sessionStorage.getItem('kun_com_user');
+    if (savedUser) {
+      currentUser = JSON.parse(savedUser);
+      authView = 'app';
+    } else {
+      authView = 'login';
+    }
+    clearTimeout(authTimeout);
+  } catch(e) {
+    authView = 'login';
+    clearTimeout(authTimeout);
+  }
+
   // POSTS EN BD DYNAMIQUE
   var posts = [
     {
@@ -83,646 +114,714 @@
   var bookmarkSvg = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>';
   var checkSvg = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#007AFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>';
 
-  function initApp() {
+  function renderAppRoot() {
     var root = document.getElementById('root');
     if (!root) return;
 
-    render();
-
-    function render() {
-      if (authView === 'login') root.innerHTML = renderLogin();
-      else if (authView === 'signup') root.innerHTML = renderSignup();
-      else root.innerHTML = renderMainApp();
-    }
-
-    // HANDLERS INTERACTIFS
-    window.togglePostLike = function(postId) {
-      for (var i = 0; i < posts.length; i++) {
-        if (posts[i].id === postId) {
-          posts[i].isLiked = !posts[i].isLiked;
-          posts[i].likes += posts[i].isLiked ? 1 : -1;
-          break;
-        }
-      }
-      render();
-    };
-
-    window.openCreatePostModal = function() {
-      isCreateModalOpen = true;
-      render();
-    };
-
-    window.closeCreatePostModal = function() {
-      isCreateModalOpen = false;
-      render();
-    };
-
-    window.submitCreatePost = function(e) {
-      if (e) e.preventDefault();
-      var txt = document.getElementById('newPostText') ? document.getElementById('newPostText').value : '';
-      var secSelect = document.getElementById('newPostSectionSelect') ? document.getElementById('newPostSectionSelect').value : 'cadrage';
-      if (!txt.trim()) return;
-
-      var secNames = { cadrage: 'Cadrage', regie: 'Régie', web: 'Web', proj: 'Projection', prod: 'Prod', photo: 'Photo', vente: 'Vente' };
-
-      posts.unshift({
-        id: 'post-' + Date.now(),
-        author: currentUser.prenom + ' ' + currentUser.nom + ' (' + (secNames[secSelect] || 'COM') + ')',
-        authorAvatar: currentUser.prenom.charAt(0),
-        sectionId: secSelect,
-        dateText: 'À l\'instant',
-        isVedette: false,
-        title: 'Publication ' + (secNames[secSelect] || 'COM'),
-        sub: 'Contenu Partagé',
-        caption: txt,
-        likes: 1,
-        isLiked: true,
-        comments: []
-      });
-
-      isCreateModalOpen = false;
-      alert("🚀 Publication partagée avec succès dans le feed !");
-      render();
-    };
-
-    window.openCommentModal = function(postId) {
-      activeCommentPostId = postId;
-      isCommentModalOpen = true;
-      render();
-    };
-
-    window.closeCommentModal = function() {
-      isCommentModalOpen = false;
-      activeCommentPostId = null;
-      render();
-    };
-
-    window.submitAddComment = function(e) {
-      if (e) e.preventDefault();
-      var txt = document.getElementById('newCommentInput') ? document.getElementById('newCommentInput').value : '';
-      if (!txt.trim() || !activeCommentPostId) return;
-
-      for (var i = 0; i < posts.length; i++) {
-        if (posts[i].id === activeCommentPostId) {
-          posts[i].comments.push({
-            id: 'c-' + Date.now(),
-            author: currentUser.prenom + ' ' + currentUser.nom.charAt(0) + '.',
-            text: txt
-          });
-          break;
-        }
-      }
-      render();
-    };
-
-    window.sharePostLink = function(title, text) {
-      if (typeof navigator !== 'undefined' && navigator.share) {
-        navigator.share({ title: title, text: text, url: window.location.href }).catch(function(){});
-      } else {
-        alert("📋 Lien de la publication copié dans le presse-papier !");
-      }
-    };
-
-    window.setStoryFilter = function(s) {
-      selectedStory = s;
-      render();
-    };
-
-    window.setTab = function(t) { activeTab = t; render(); };
-
-    window.handleLogout = function() {
-      sessionStorage.removeItem('kun_com_user');
-      currentUser = null;
-      authView = 'login';
-      render();
-    };
-
-    window.doCheckIn = function() {
-      isCheckedIn = true;
-      alert("Présence validée pour le Culte.");
-      render();
-    };
-
-    window.setRatingScore = function(secId, score) {
-      var userSec = (currentUser && currentUser.sectionId) ? currentUser.sectionId : 'cadrage';
-      if (secId === userSec) {
-        alert("Action Interdite : Vous ne pouvez pas noter votre propre section.");
-        return;
-      }
-      ratings[secId].score = score;
-      render();
-    };
-
-    window.publishBilanFeed24h = function() {
-      alert("Bilan de Culte Validé et Publié sur le Feed (24h).\n\nSection Vedette attribuée : Cadrage (4.88 / 5.0)");
-      activeTab = 'home';
-      render();
-    };
-
-    // RENDU DES VUES AUTH & MAIN APP
-    function renderLogin() {
-      return `
-        <div style="display:flex; flex-direction:column; justify-content:center; align-items:center; min-height:100vh; padding:24px; box-sizing:border-box; background:#FFF;">
-          <div style="width:100%; max-width:380px; text-align:center;">
-            <p style="font-size:11px; font-weight:800; color:#007AFF; text-transform:uppercase; letter-spacing:1.4px; margin:0 0 4px;">ÉGLISE VASE D'HONNEUR</p>
-            <h1 style="font-size:32px; font-weight:900; color:#000; margin:0 0 32px; letter-spacing:-0.8px;">Kun COM</h1>
-
-            <form onsubmit="window.handleLoginSubmit(event)" style="display:flex; flex-direction:column; gap:14px; text-align:left;">
-              <div>
-                <label style="font-size:12px; font-weight:700; color:#000; display:block; margin-bottom:6px;">Adresse E-mail</label>
-                <input id="loginEmail" type="email" value="eric.kouame@eglise.org" required style="width:100%; height:48px; border-radius:12px; border:1px solid #EFEFEF; background:#FAFAFA; padding:0 14px; font-size:14px; box-sizing:border-box;">
-              </div>
-
-              <div>
-                <label style="font-size:12px; font-weight:700; color:#000; display:block; margin-bottom:6px;">Mot de passe</label>
-                <input type="password" value="password123" required style="width:100%; height:48px; border-radius:12px; border:1px solid #EFEFEF; background:#FAFAFA; padding:0 14px; font-size:14px; box-sizing:border-box;">
-              </div>
-
-              <button type="submit" style="width:100%; height:50px; background:#007AFF; color:#FFF; border:none; border-radius:14px; font-size:15px; font-weight:800; cursor:pointer; margin-top:10px; box-shadow:0 4px 12px rgba(0,122,255,0.25);">
-                Se connecter
-              </button>
-            </form>
-
-            <div style="margin-top:24px; font-size:13px; color:#8E8E93;">
-              Vous n'avez pas de compte ? <span onclick="window.navAuthView('signup')" style="color:#007AFF; font-weight:800; cursor:pointer;">S'inscrire</span>
+    var toastHTML = '';
+    if (activeToast) {
+      var isErr = (activeToast.type === 'error');
+      toastHTML = `
+        <div style="position:fixed; top:20px; left:50%; transform:translateX(-50%); z-index:999999; width:90%; max-width:400px; display:flex; justify-content:center;">
+          <div style="display:flex; align-items:center; gap:10px; background:rgba(255,255,255,0.95); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); padding:12px 18px; border-radius:20px; border:1px solid rgba(0,0,0,0.08); box-shadow:0 8px 24px rgba(0,0,0,0.12);">
+            <div style="width:26px; height:26px; border-radius:13px; background:${isErr ? '#FFEBEA' : '#E8F9ED'}; display:flex; align-items:center; justify-content:center;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${isErr ? '#FF3B30' : '#34C759'}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                ${isErr ? '<path d="M18 6L6 18M6 6l12 12"/>' : '<path d="M20 6L9 17l-5-5"/>'}
+              </svg>
             </div>
+            <span style="font-size:13.5px; font-weight:700; color:#1C1C1E;">${activeToast.message}</span>
           </div>
         </div>
       `;
     }
 
-    function renderSignup() {
-      return `
-        <div style="display:flex; flex-direction:column; justify-content:center; align-items:center; min-height:100vh; padding:24px; box-sizing:border-box; background:#FFF;">
-          <div style="width:100%; max-width:380px; text-align:center;">
-            <p style="font-size:11px; font-weight:800; color:#007AFF; text-transform:uppercase; letter-spacing:1.4px; margin:0 0 4px;">INSCRIPTION COMPTE</p>
-            <h1 style="font-size:28px; font-weight:900; color:#000; margin:0 0 24px; letter-spacing:-0.8px;">Rejoindre Kun COM</h1>
+    if (authView === 'login') root.innerHTML = toastHTML + renderLogin();
+    else if (authView === 'signup') root.innerHTML = toastHTML + renderSignup();
+    else root.innerHTML = toastHTML + renderMainApp();
+  }
 
-            <form onsubmit="window.handleSignupSubmit(event)" style="display:flex; flex-direction:column; gap:12px; text-align:left;">
-              <div>
-                <label style="font-size:12px; font-weight:700; color:#000; display:block; margin-bottom:4px;">Prénom</label>
-                <input id="signupPrenom" type="text" placeholder="ex: Jean" required style="width:100%; height:46px; border-radius:12px; border:1px solid #EFEFEF; background:#FAFAFA; padding:0 14px; font-size:14px; box-sizing:border-box;">
-              </div>
+  // HANDLERS AUTHENTIFICATION SANS ALERT
+  window.handleLoginSubmit = function(e) {
+    if (e) e.preventDefault();
+    var email = document.getElementById('loginEmail') ? document.getElementById('loginEmail').value : 'eric.kouame@eglise.org';
+    
+    currentUser = {
+      id: 'usr-cadrage-1',
+      nom: 'Kouamé',
+      prenom: 'Éric',
+      email: email || 'eric.kouame@eglise.org',
+      sectionId: 'cadrage',
+      sectionNom: 'Cadrage',
+      role: 'RESP_SECTION',
+      trustScore: 98.5
+    };
 
-              <div>
-                <label style="font-size:12px; font-weight:700; color:#000; display:block; margin-bottom:4px;">Nom</label>
-                <input id="signupNom" type="text" placeholder="ex: Dupont" required style="width:100%; height:46px; border-radius:12px; border:1px solid #EFEFEF; background:#FAFAFA; padding:0 14px; font-size:14px; box-sizing:border-box;">
-              </div>
+    sessionStorage.setItem('kun_com_user', JSON.stringify(currentUser));
+    authView = 'app';
+    triggerToast("Connexion réussie ! Bienvenue Éric.", "success");
+  };
 
-              <div>
-                <label style="font-size:12px; font-weight:700; color:#000; display:block; margin-bottom:4px;">Adresse E-mail</label>
-                <input id="signupEmail" type="email" placeholder="ex: jean.dupont@eglise.org" required style="width:100%; height:46px; border-radius:12px; border:1px solid #EFEFEF; background:#FAFAFA; padding:0 14px; font-size:14px; box-sizing:border-box;">
-              </div>
+  window.handleSignupSubmit = function(e) {
+    if (e) e.preventDefault();
+    var prenom = document.getElementById('signupPrenom') ? document.getElementById('signupPrenom').value : 'Jean';
+    var nom = document.getElementById('signupNom') ? document.getElementById('signupNom').value : 'Dupont';
+    var email = document.getElementById('signupEmail') ? document.getElementById('signupEmail').value : 'jean.dupont@eglise.org';
+    var secSelect = document.getElementById('signupSection') ? document.getElementById('signupSection').value : 'cadrage';
 
-              <div>
-                <label style="font-size:12px; font-weight:700; color:#000; display:block; margin-bottom:4px;">Section d'appartenance</label>
-                <select id="signupSection" style="width:100%; height:46px; border-radius:12px; border:1px solid #EFEFEF; background:#FAFAFA; padding:0 14px; font-size:14px; box-sizing:border-box;">
-                  <option value="cadrage">Cadrage</option>
-                  <option value="regie">Régie</option>
-                  <option value="web">Web</option>
-                  <option value="proj">Projection</option>
-                  <option value="prod">Prod</option>
-                  <option value="photo">Photo</option>
-                  <option value="vente">Vente</option>
-                </select>
-              </div>
+    var secNames = { web: 'Web', proj: 'Projection', prod: 'Prod', regie: 'Régie', cadrage: 'Cadrage', photo: 'Photo', vente: 'Vente' };
 
-              <button type="submit" style="width:100%; height:50px; background:#007AFF; color:#FFF; border:none; border-radius:14px; font-size:15px; font-weight:800; cursor:pointer; margin-top:8px; box-shadow:0 4px 12px rgba(0,122,255,0.25);">
-                Créer mon compte (MEMBRE)
-              </button>
-            </form>
+    currentUser = {
+      id: 'usr-' + Date.now(),
+      nom: nom || 'Dupont',
+      prenom: prenom || 'Jean',
+      email: email || 'jean.dupont@eglise.org',
+      sectionId: secSelect || 'cadrage',
+      sectionNom: secNames[secSelect] || 'Cadrage',
+      role: 'MEMBRE',
+      trustScore: 100.0
+    };
 
-            <div style="margin-top:20px; font-size:13px; color:#8E8E93;">
-              Vous avez déjà un compte ? <span onclick="window.navAuthView('login')" style="color:#007AFF; font-weight:800; cursor:pointer;">Se connecter</span>
-            </div>
-          </div>
-        </div>
-      `;
-    }
+    sessionStorage.setItem('kun_com_user', JSON.stringify(currentUser));
+    authView = 'app';
+    triggerToast("Bienvenue " + currentUser.prenom + " ! Votre compte a été créé.", "success");
+  };
 
-    function renderMainApp() {
-      var userSec = currentUser ? currentUser.sectionId : 'cadrage';
-      var userPrenom = currentUser ? currentUser.prenom : 'Éric';
-      var userInitial = userPrenom.charAt(0);
+  window.navAuthView = function(view) {
+    authView = view;
+    renderAppRoot();
+  };
 
-      // FILTRAGE DES POSTS DYNAMIQUES
-      var filtered = posts.filter(function(p) {
-        if (selectedStory === 'all') return true;
-        return p.sectionId === selectedStory;
-      });
+  window.handleLogout = function() {
+    sessionStorage.removeItem('kun_com_user');
+    currentUser = null;
+    authView = 'login';
+    triggerToast("Vous avez été déconnecté.", "success");
+  };
 
-      // BUNDLE AVEC MODALS ET INTERACTIVITÉ
-      return `
-        <div style="display:flex; flex-direction:column; min-height:100vh; width:100%; position:relative; background-color:#FFFFFF; font-family:-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', sans-serif;">
-          
-          <div style="flex:1; padding-bottom:80px;">
-            ${renderFeedContent(filtered, userPrenom, userInitial, userSec)}
-          </div>
-
-          <!-- MODAL DE CRÉATION DE POST -->
-          ${isCreateModalOpen ? `
-            <div style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.4); z-index:100000; display:flex; justify-content:center; align-items:flex-end;">
-              <div style="width:100%; max-width:500px; background:#FFF; border-top-left-radius:24px; border-top-right-radius:24px; padding:20px; box-sizing:border-box;">
-                <div style="display:flex; justify-content:space-between; align-items:center; padding-bottom:14px; border-bottom:1px solid #EFEFEF; margin-bottom:16px;">
-                  <h3 style="font-size:18px; font-weight:800; margin:0; color:#000;">Créer une publication</h3>
-                  <span onclick="window.closeCreatePostModal()" style="font-size:14px; font-weight:700; color:#007AFF; cursor:pointer;">Fermer</span>
-                </div>
-
-                <form onsubmit="window.submitCreatePost(event)">
-                  <div style="margin-bottom:12px;">
-                    <label style="font-size:12px; font-weight:700; display:block; margin-bottom:4px;">Section associée</label>
-                    <select id="newPostSectionSelect" style="width:100%; height:44px; border-radius:10px; border:1px solid #EFEFEF; background:#FAFAFA; padding:0 12px; font-size:13px;">
-                      <option value="cadrage">Cadrage</option>
-                      <option value="regie">Régie</option>
-                      <option value="web">Web</option>
-                      <option value="proj">Projection</option>
-                      <option value="prod">Prod</option>
-                      <option value="photo">Photo</option>
-                      <option value="vente">Vente</option>
-                    </select>
-                  </div>
-
-                  <textarea id="newPostText" placeholder="Rédigez votre message pour le département..." required style="width:100%; height:90px; border-radius:12px; border:1px solid #EFEFEF; background:#FAFAFA; padding:12px; font-size:14px; box-sizing:border-box; font-family:sans-serif; margin-bottom:14px;"></textarea>
-
-                  <button type="submit" style="width:100%; height:48px; background:#007AFF; color:#FFF; border:none; border-radius:12px; font-size:15px; font-weight:800; cursor:pointer;">
-                    Publier sur le Feed
-                  </button>
-                </form>
-              </div>
-            </div>
-          ` : ''}
-
-          <!-- MODAL TIROIR COMMENTAIRES -->
-          ${isCommentModalOpen ? `
-            <div style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.4); z-index:100000; display:flex; justify-content:center; align-items:flex-end;">
-              <div style="width:100%; max-width:500px; background:#FFF; border-top-left-radius:24px; border-top-right-radius:24px; padding:20px; box-sizing:border-box;">
-                <div style="display:flex; justify-content:space-between; align-items:center; padding-bottom:14px; border-bottom:1px solid #EFEFEF; margin-bottom:14px;">
-                  <h3 style="font-size:18px; font-weight:800; margin:0; color:#000;">Commentaires</h3>
-                  <span onclick="window.closeCommentModal()" style="font-size:14px; font-weight:700; color:#007AFF; cursor:pointer;">Fermer</span>
-                </div>
-
-                <div style="max-height:220px; overflow-y:auto; margin-bottom:14px;">
-                  ${getCommentsListHTML(activeCommentPostId)}
-                </div>
-
-                <form onsubmit="window.submitAddComment(event)" style="display:flex; gap:10px;">
-                  <input id="newCommentInput" type="text" placeholder="Ajouter un commentaire..." required style="flex:1; height:44px; border-radius:10px; border:1px solid #EFEFEF; background:#FAFAFA; padding:0 12px; font-size:13px; box-sizing:border-box;">
-                  <button type="submit" style="height:44px; padding:0 16px; background:#007AFF; color:#FFF; border:none; border-radius:10px; font-size:13px; font-weight:800; cursor:pointer;">
-                    Envoyer
-                  </button>
-                </form>
-              </div>
-            </div>
-          ` : ''}
-
-          <!-- TAB BAR FIXE -->
-          <nav style="position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:500px; height:68px; background:rgba(255,255,255,0.96); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); border-top:1px solid #EFEFEF; display:flex; justify-content:space-around; align-items:center; z-index:99999;">
-            <button onclick="window.setTab('home')" style="${tabStyle(activeTab === 'home')}">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="${activeTab === 'home' ? '#000' : 'none'}" stroke="#000" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
-            </button>
-
-            <button onclick="window.setTab('planning')" style="${tabStyle(activeTab === 'planning')}">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="1.8"><path d="M19 4H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zM16 2v4M8 2v4M3 10h18"/></svg>
-            </button>
-
-            <button onclick="window.openCreatePostModal()" style="width:44px; height:44px; border-radius:22px; background-color:#007AFF; color:#FFF; border:none; display:flex; align-items:center; justify-content:center; margin-top:-18px; box-shadow:0 4px 12px rgba(0,122,255,0.3); cursor:pointer;">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>
-            </button>
-
-            <button onclick="window.setTab('halloffame')" style="${tabStyle(activeTab === 'halloffame')}">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="1.8"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
-            </button>
-
-            <button onclick="window.setTab('profile')" style="${tabStyle(activeTab === 'profile')}">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="1.8"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-            </button>
-          </nav>
-        </div>
-      `;
-    }
-
-    function getCommentsListHTML(postId) {
-      var target = null;
-      for (var i = 0; i < posts.length; i++) {
-        if (posts[i].id === postId) { target = posts[i]; break; }
+  // HANDLERS INTERACTIFS SANS ALERT
+  window.togglePostLike = function(postId) {
+    for (var i = 0; i < posts.length; i++) {
+      if (posts[i].id === postId) {
+        posts[i].isLiked = !posts[i].isLiked;
+        posts[i].likes += posts[i].isLiked ? 1 : -1;
+        break;
       }
+    }
+    renderAppRoot();
+  };
 
-      if (!target || target.comments.length === 0) {
-        return '<p style="color:#8E8E93; font-size:13px; text-align:center; padding:16px 0;">Aucun commentaire pour le moment. Soyez le premier !</p>';
-      }
+  window.openCreatePostModal = function() {
+    isCreateModalOpen = true;
+    renderAppRoot();
+  };
 
-      return target.comments.map(function(c) {
-        return `
-          <div style="padding:8px 0; border-bottom:1px solid #EFEFEF;">
-            <strong style="font-size:13px; color:#000;">${c.author}</strong>
-            <p style="font-size:13px; color:#333; margin:2px 0 0; font-family:sans-serif;">${c.text}</p>
-          </div>
-        `;
-      }).join('');
+  window.closeCreatePostModal = function() {
+    isCreateModalOpen = false;
+    renderAppRoot();
+  };
+
+  window.submitCreatePost = function(e) {
+    if (e) e.preventDefault();
+    var txt = document.getElementById('newPostText') ? document.getElementById('newPostText').value : '';
+    var secSelect = document.getElementById('newPostSectionSelect') ? document.getElementById('newPostSectionSelect').value : 'cadrage';
+    if (!txt.trim()) {
+      triggerToast("Veuillez saisir un texte.", "error");
+      return;
     }
 
-    function renderFeedContent(filtered, userPrenom, userInitial, userSec) {
-      if (activeTab === 'home') {
-        return `
-          <header style="padding:14px 18px; background:#FFF; border-bottom:1px solid #EFEFEF; display:flex; justify-content:space-between; align-items:center; position:sticky; top:0; z-index:100;">
+    var secNames = { cadrage: 'Cadrage', regie: 'Régie', web: 'Web', proj: 'Projection', prod: 'Prod', photo: 'Photo', vente: 'Vente' };
+
+    posts.unshift({
+      id: 'post-' + Date.now(),
+      author: currentUser.prenom + ' ' + currentUser.nom + ' (' + (secNames[secSelect] || 'COM') + ')',
+      authorAvatar: currentUser.prenom.charAt(0),
+      sectionId: secSelect,
+      dateText: 'À l\'instant',
+      isVedette: false,
+      title: 'Publication ' + (secNames[secSelect] || 'COM'),
+      sub: 'Contenu Partagé',
+      caption: txt,
+      likes: 1,
+      isLiked: true,
+      comments: []
+    });
+
+    isCreateModalOpen = false;
+    triggerToast("Publication partagée sur le Feed !", "success");
+  };
+
+  window.openCommentModal = function(postId) {
+    activeCommentPostId = postId;
+    isCommentModalOpen = true;
+    renderAppRoot();
+  };
+
+  window.closeCommentModal = function() {
+    isCommentModalOpen = false;
+    activeCommentPostId = null;
+    renderAppRoot();
+  };
+
+  window.submitAddComment = function(e) {
+    if (e) e.preventDefault();
+    var txt = document.getElementById('newCommentInput') ? document.getElementById('newCommentInput').value : '';
+    if (!txt.trim() || !activeCommentPostId) return;
+
+    for (var i = 0; i < posts.length; i++) {
+      if (posts[i].id === activeCommentPostId) {
+        posts[i].comments.push({
+          id: 'c-' + Date.now(),
+          author: currentUser.prenom + ' ' + currentUser.nom.charAt(0) + '.',
+          text: txt
+        });
+        break;
+      }
+    }
+    triggerToast("Commentaire ajouté !", "success");
+  };
+
+  window.sharePostLink = function(title, text) {
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      navigator.share({ title: title, text: text, url: window.location.href }).catch(function(){});
+    } else {
+      triggerToast("Lien de la publication copié !", "success");
+    }
+  };
+
+  window.setStoryFilter = function(s) {
+    selectedStory = s;
+    renderAppRoot();
+  };
+
+  window.setTab = function(t) { activeTab = t; renderAppRoot(); };
+
+  window.doCheckIn = function() {
+    isCheckedIn = true;
+    triggerToast("Présence validée pour le Culte !", "success");
+  };
+
+  window.setRatingScore = function(secId, score) {
+    var userSec = (currentUser && currentUser.sectionId) ? currentUser.sectionId : 'cadrage';
+    if (secId === userSec) {
+      triggerToast("Action Interdite : Vous ne pouvez pas noter votre section.", "error");
+      return;
+    }
+    ratings[secId].score = score;
+    renderAppRoot();
+  };
+
+  window.publishBilanFeed24h = function() {
+    triggerToast("Bilan de Culte Validé et Publié (24h) !", "success");
+    activeTab = 'home';
+    renderAppRoot();
+  };
+
+  function tabStyle(active) {
+    return 'background:none; border:none; display:flex; align-items:center; justify-content:center; cursor:pointer; padding:8px 16px; opacity:' + (active ? 1 : 0.5) + ';';
+  }
+
+  function renderLogin() {
+    return `
+      <div style="display:flex; flex-direction:column; justify-content:center; align-items:center; min-height:100vh; padding:24px; box-sizing:border-box; background:#FFF;">
+        <div style="width:100%; max-width:380px; text-align:center;">
+          <p style="font-size:11px; font-weight:800; color:#007AFF; text-transform:uppercase; letter-spacing:1.4px; margin:0 0 4px;">ÉGLISE VASE D'HONNEUR</p>
+          <h1 style="font-size:32px; font-weight:900; color:#000; margin:0 0 32px; letter-spacing:-0.8px;">Kun COM</h1>
+
+          <form onsubmit="window.handleLoginSubmit(event)" style="display:flex; flex-direction:column; gap:14px; text-align:left;">
             <div>
-              <p style="font-size:10px; font-weight:800; color:#007AFF; text-transform:uppercase; letter-spacing:1.2px; margin:0 0 1px;">EGLISE VASE D'HONNEUR</p>
-              <h1 style="font-size:22px; font-weight:900; color:#000000; margin:0; letter-spacing:-0.6px;">Kun COM</h1>
+              <label style="font-size:12px; font-weight:700; color:#000; display:block; margin-bottom:6px;">Adresse E-mail</label>
+              <input id="loginEmail" type="email" value="eric.kouame@eglise.org" required style="width:100%; height:48px; border-radius:12px; border:1px solid #EFEFEF; background:#FAFAFA; padding:0 14px; font-size:14px; box-sizing:border-box;">
             </div>
-            <div style="display:flex; gap:12px; align-items:center;">
-              <div onclick="window.openCreatePostModal()" style="width:34px; height:34px; border-radius:17px; background:#FAFAFA; display:flex; align-items:center; justify-content:center; cursor:pointer;">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-              </div>
-              <div onclick="window.handleLogout()" title="Déconnexion" style="width:34px; height:34px; border-radius:17px; background:#F0F6FF; color:#007AFF; font-weight:800; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:14px;">
-                ${userInitial}
-              </div>
-            </div>
-          </header>
 
-          <!-- CARROUSEL STORIES : 'TOUS' EN 1ÈRE POSITION -->
-          <div style="padding:12px 0; border-bottom:1px solid #EFEFEF; background:#FFF; overflow-x:auto; white-space:nowrap; -webkit-overflow-scrolling:touch;">
-            <div style="display:flex; gap:14px; padding:0 14px;">
-              ${[
-                { id: 'all', nom: 'Tous', emoji: '✨' },
-                { id: 'cadrage', nom: 'Cadrage', emoji: '🎥' },
-                { id: 'regie', nom: 'Régie', emoji: '🎛️' },
-                { id: 'web', nom: 'Web', emoji: '🌐' },
-                { id: 'proj', nom: 'Projection', emoji: '🖥️' },
-                { id: 'prod', nom: 'Prod', emoji: '🎬' },
-                { id: 'photo', nom: 'Photo', emoji: '📸' },
-                { id: 'vente', nom: 'Vente', emoji: '🛒' }
-              ].map(function(story) {
-                var isSel = selectedStory === story.id;
-                return `
-                  <div onclick="window.setStoryFilter('${story.id}')" style="display:inline-flex; flex-direction:column; align-items:center; cursor:pointer; width:66px;">
-                    <div style="width:62px; height:62px; border-radius:31px; padding:2px; border:2px solid ${isSel ? '#D4AF37' : '#E5E5EA'}; display:flex; align-items:center; justify-content:center; background:#FFF;">
-                      <div style="width:100%; height:100%; border-radius:27px; background:#F0F6FF; display:flex; align-items:center; justify-content:center; font-size:24px;">
-                        ${story.emoji}
-                      </div>
-                    </div>
-                    <span style="font-size:11px; font-weight:${isSel ? '800' : '500'}; color:${isSel ? '#000000' : '#8E8E93'}; margin-top:4px; text-align:center;">
-                      ${story.nom}
-                    </span>
-                  </div>
-                `;
-              }).join('')}
+            <div>
+              <label style="font-size:12px; font-weight:700; color:#000; display:block; margin-bottom:6px;">Mot de passe</label>
+              <input type="password" value="password123" required style="width:100%; height:48px; border-radius:12px; border:1px solid #EFEFEF; background:#FAFAFA; padding:0 14px; font-size:14px; box-sizing:border-box;">
             </div>
+
+            <button type="submit" style="width:100%; height:50px; background:#007AFF; color:#FFF; border:none; border-radius:14px; font-size:15px; font-weight:800; cursor:pointer; margin-top:10px; box-shadow:0 4px 12px rgba(0,122,255,0.25);">
+              Se connecter
+            </button>
+          </form>
+
+          <div style="margin-top:24px; font-size:13px; color:#8E8E93;">
+            Vous n'avez pas de compte ? <span onclick="window.navAuthView('signup')" style="color:#007AFF; font-weight:800; cursor:pointer;">S'inscrire</span>
           </div>
+        </div>
+      </div>
+    `;
+  }
 
-          <!-- FEED DYNAMIQUE OU ÉTAT À VIDE (EMPTY STATE) -->
-          ${filtered.length === 0 ? `
-            <div style="padding:50px 24px; text-align:center; background:#FFF; display:flex; flex-direction:column; align-items:center;">
-              <div style="width:64px; height:64px; border-radius:32px; background:#F0F6FF; display:flex; align-items:center; justify-content:center; margin-bottom:14px;">
-                ${checkSvg}
-              </div>
-              <h3 style="font-size:17px; font-weight:800; color:#000; margin:0 0 6px;">Aucune publication récente</h3>
-              <p style="font-size:13px; color:#8E8E93; margin:0 0 18px; max-width:280px; line-height:1.4;">
-                Aucun contenu publié pour cette section aujourd'hui. Soyez le premier à partager une publication !
-              </p>
-              <button onclick="window.openCreatePostModal()" style="padding:10px 20px; background:#007AFF; color:#FFF; border:none; border-radius:12px; font-size:13px; font-weight:800; cursor:pointer;">
-                Créer une publication
-              </button>
+  function renderSignup() {
+    return `
+      <div style="display:flex; flex-direction:column; justify-content:center; align-items:center; min-height:100vh; padding:24px; box-sizing:border-box; background:#FFF;">
+        <div style="width:100%; max-width:380px; text-align:center;">
+          <p style="font-size:11px; font-weight:800; color:#007AFF; text-transform:uppercase; letter-spacing:1.4px; margin:0 0 4px;">INSCRIPTION COMPTE</p>
+          <h1 style="font-size:28px; font-weight:900; color:#000; margin:0 0 24px; letter-spacing:-0.8px;">Rejoindre Kun COM</h1>
+
+          <form onsubmit="window.handleSignupSubmit(event)" style="display:flex; flex-direction:column; gap:12px; text-align:left;">
+            <div>
+              <label style="font-size:12px; font-weight:700; color:#000; display:block; margin-bottom:4px;">Prénom</label>
+              <input id="signupPrenom" type="text" placeholder="ex: Jean" required style="width:100%; height:46px; border-radius:12px; border:1px solid #EFEFEF; background:#FAFAFA; padding:0 14px; font-size:14px; box-sizing:border-box;">
             </div>
-          ` : filtered.map(function(post) {
-            return `
-              <article style="background:#FFF; border-bottom:8px solid #FAFAFA;">
-                <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px;">
-                  <div style="display:flex; align-items:center; gap:10px;">
-                    <div style="width:38px; height:38px; border-radius:19px; background:#007AFF; color:#FFF; font-size:15px; font-weight:800; display:flex; align-items:center; justify-content:center;">${post.authorAvatar}</div>
-                    <div>
-                      <h3 style="font-size:14px; font-weight:700; margin:0; color:#000000;">${post.author}</h3>
-                      <span style="font-size:11px; color:#8E8E93;">${post.dateText}</span>
-                    </div>
-                  </div>
-                  ${post.isVedette ? '<div style="background:#FFFDF0; border:1px solid #E6CA65; padding:5px 10px; border-radius:12px; font-size:10.5px; font-weight:800; color:#B8860B;">SECTION VEDETTE</div>' : ''}
-                </div>
 
-                <div style="width:100%; height:280px; background:#1C1C1E; position:relative; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:20px; text-align:center;">
-                  <h2 style="font-size:18px; font-weight:800; color:#FFFFFF; margin:0 0 4px; letter-spacing:-0.4px;">${post.title}</h2>
-                  <span style="color:#8E8E93; font-size:12px; font-weight:500;">${post.sub}</span>
-
-                  ${post.scoreText ? `
-                    <div style="position:absolute; bottom:14px; right:14px; background:rgba(255,255,255,0.92); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); padding:6px 12px; border-radius:16px; border:1px solid rgba(255,255,255,0.8); box-shadow:0 4px 12px rgba(0,0,0,0.12);">
-                      <strong style="font-size:14px; color:#1C1C1E; font-weight:900;">${post.scoreText}</strong>
-                    </div>
-                  ` : ''}
-                </div>
-
-                <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px;">
-                  <div style="display:flex; align-items:center; gap:16px;">
-                    <button onclick="window.togglePostLike('${post.id}')" style="background:none; border:none; padding:0; display:flex; align-items:center; gap:6px; cursor:pointer;">
-                      ${heartSvg(post.isLiked)}
-                      <strong style="font-size:13px; color:#000000;">${post.likes}</strong>
-                    </button>
-
-                    <button onclick="window.openCommentModal('${post.id}')" style="background:none; border:none; padding:0; display:flex; align-items:center; gap:6px; cursor:pointer;">
-                      ${commentSvg}
-                      <strong style="font-size:13px; color:#000000;">${post.comments.length}</strong>
-                    </button>
-
-                    <button onclick="window.sharePostLink('${post.title}', '${post.caption}')" style="background:none; border:none; padding:0; cursor:pointer;">
-                      ${shareSvg}
-                    </button>
-                  </div>
-
-                  <button style="background:none; border:none; padding:0; cursor:pointer;">
-                    ${bookmarkSvg}
-                  </button>
-                </div>
-
-                <div style="padding:0 16px 14px;">
-                  <div style="font-size:13px; font-weight:700; color:#000000; margin-bottom:4px;">
-                    Aimé par ${post.likes} membres
-                  </div>
-                  <p style="font-size:13.5px; line-height:1.45; color:#000000; margin:0;">
-                    <strong>${post.author}</strong> ${post.caption}
-                  </p>
-                  ${post.comments.length > 0 ? `
-                    <span onclick="window.openCommentModal('${post.id}')" style="font-size:12px; color:#8E8E93; display:block; margin-top:6px; cursor:pointer;">
-                      Afficher les ${post.comments.length} commentaires...
-                    </span>
-                  ` : ''}
-                </div>
-              </article>
-            `;
-          }).join('')}
-
-          <div style="padding:36px 20px; text-align:center; background:#FFF; border-top:1px solid #EFEFEF; display:flex; flex-direction:column; align-items:center;">
-            <div style="width:48px; height:48px; border-radius:24px; background:#F0F6FF; display:flex; align-items:center; justify-content:center; margin-bottom:10px;">
-              ${checkSvg}
+            <div>
+              <label style="font-size:12px; font-weight:700; color:#000; display:block; margin-bottom:4px;">Nom</label>
+              <input id="signupNom" type="text" placeholder="ex: Dupont" required style="width:100%; height:46px; border-radius:12px; border:1px solid #EFEFEF; background:#FAFAFA; padding:0 14px; font-size:14px; box-sizing:border-box;">
             </div>
-            <h3 style="font-size:16px; font-weight:800; color:#000000; margin:0;">Vous êtes à jour</h3>
-            <p style="font-size:12px; color:#8E8E93; margin:4px 0 0; max-width:280px; line-height:1.4;">
-              Vous avez vu toutes les nouvelles publications du Département Communication.
-            </p>
+
+            <div>
+              <label style="font-size:12px; font-weight:700; color:#000; display:block; margin-bottom:4px;">Adresse E-mail</label>
+              <input id="signupEmail" type="email" placeholder="ex: jean.dupont@eglise.org" required style="width:100%; height:46px; border-radius:12px; border:1px solid #EFEFEF; background:#FAFAFA; padding:0 14px; font-size:14px; box-sizing:border-box;">
+            </div>
+
+            <div>
+              <label style="font-size:12px; font-weight:700; color:#000; display:block; margin-bottom:4px;">Section d'appartenance</label>
+              <select id="signupSection" style="width:100%; height:46px; border-radius:12px; border:1px solid #EFEFEF; background:#FAFAFA; padding:0 14px; font-size:14px; box-sizing:border-box;">
+                <option value="cadrage">Cadrage</option>
+                <option value="regie">Régie</option>
+                <option value="web">Web</option>
+                <option value="proj">Projection</option>
+                <option value="prod">Prod</option>
+                <option value="photo">Photo</option>
+                <option value="vente">Vente</option>
+              </select>
+            </div>
+
+            <button type="submit" style="width:100%; height:50px; background:#007AFF; color:#FFF; border:none; border-radius:14px; font-size:15px; font-weight:800; cursor:pointer; margin-top:8px; box-shadow:0 4px 12px rgba(0,122,255,0.25);">
+              Créer mon compte (MEMBRE)
+            </button>
+          </form>
+
+          <div style="margin-top:20px; font-size:13px; color:#8E8E93;">
+            Vous avez déjà un compte ? <span onclick="window.navAuthView('login')" style="color:#007AFF; font-weight:800; cursor:pointer;">Se connecter</span>
           </div>
-        `;
-      }
+        </div>
+      </div>
+    `;
+  }
 
-      if (activeTab === 'planning') {
-        return `
-          <header style="padding:16px 20px; background:#FFF; border-bottom:1px solid #EFEFEF;">
-            <p style="font-size:11px; font-weight:800; color:#5856D6; text-transform:uppercase; letter-spacing:1.2px; margin:0 0 2px;">Dimanche 02 Août 2026</p>
-            <h1 style="font-size:24px; font-weight:900; color:#000000; margin:0;">Planning Cultes</h1>
-          </header>
+  function renderMainApp() {
+    var userSec = currentUser ? currentUser.sectionId : 'cadrage';
+    var userPrenom = currentUser ? currentUser.prenom : 'Éric';
+    var userInitial = userPrenom.charAt(0);
 
-          <div style="padding:16px;">
-            <div style="background:#FFF4E5; border-radius:20px; padding:16px; margin-bottom:16px; border:1.5px solid #FF9500;">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                <strong style="color:#FF9500; font-size:15px;">Transition Culte 1 vers Culte 2</strong>
-                <span style="background:#FF9500; color:#FFF; padding:4px 9px; border-radius:10px; font-size:13px; font-weight:800;">15:00 min</span>
+    var filtered = posts.filter(function(p) {
+      if (selectedStory === 'all') return true;
+      return p.sectionId === selectedStory;
+    });
+
+    return `
+      <div style="display:flex; flex-direction:column; min-height:100vh; width:100%; position:relative; background-color:#FFFFFF; font-family:-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', sans-serif;">
+        
+        <div style="flex:1; padding-bottom:80px;">
+          ${renderFeedContent(filtered, userPrenom, userInitial, userSec)}
+        </div>
+
+        ${isCreateModalOpen ? `
+          <div style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.4); z-index:100000; display:flex; justify-content:center; align-items:flex-end;">
+            <div style="width:100%; max-width:500px; background:#FFF; border-top-left-radius:24px; border-top-right-radius:24px; padding:20px; box-sizing:border-box;">
+              <div style="display:flex; justify-content:space-between; align-items:center; padding-bottom:14px; border-bottom:1px solid #EFEFEF; margin-bottom:16px;">
+                <h3 style="font-size:18px; font-weight:800; margin:0; color:#000;">Créer une publication</h3>
+                <span onclick="window.closeCreatePostModal()" style="font-size:14px; font-weight:700; color:#007AFF; cursor:pointer;">Fermer</span>
               </div>
-              <p style="font-size:12px; color:#1C1C1E; margin-bottom:12px;">Pause technique de 15 minutes (09h00 à 09h15).</p>
-              
-              <div style="background:#FFF; padding:12px; border-radius:14px; display:flex; justify-content:space-between; align-items:center;">
-                <div>
-                  <strong style="font-size:13px; display:block;">Check-in Rapide</strong>
-                  <span style="font-size:11px; color:#8E8E93;">Validez votre arrivée pour Culte 2</span>
+
+              <form onsubmit="window.submitCreatePost(event)">
+                <div style="margin-bottom:12px;">
+                  <label style="font-size:12px; font-weight:700; display:block; margin-bottom:4px;">Section associée</label>
+                  <select id="newPostSectionSelect" style="width:100%; height:44px; border-radius:10px; border:1px solid #EFEFEF; background:#FAFAFA; padding:0 12px; font-size:13px;">
+                    <option value="cadrage">Cadrage</option>
+                    <option value="regie">Régie</option>
+                    <option value="web">Web</option>
+                    <option value="proj">Projection</option>
+                    <option value="prod">Prod</option>
+                    <option value="photo">Photo</option>
+                    <option value="vente">Vente</option>
+                  </select>
                 </div>
-                <button onclick="window.doCheckIn()" style="background:${isCheckedIn ? '#34C759' : '#007AFF'}; color:#FFF; border:none; padding:8px 14px; border-radius:12px; font-size:12px; font-weight:800; cursor:pointer;">
-                  ${isCheckedIn ? 'Present' : 'Valider'}
+
+                <textarea id="newPostText" placeholder="Rédigez votre message pour le département..." required style="width:100%; height:90px; border-radius:12px; border:1px solid #EFEFEF; background:#FAFAFA; padding:12px; font-size:14px; box-sizing:border-box; font-family:sans-serif; margin-bottom:14px;"></textarea>
+
+                <button type="submit" style="width:100%; height:48px; background:#007AFF; color:#FFF; border:none; border-radius:12px; font-size:15px; font-weight:800; cursor:pointer;">
+                  Publier sur le Feed
                 </button>
-              </div>
-            </div>
-
-            <div style="background:#FFF; border-radius:18px; padding:16px; margin-bottom:12px; border:1px solid #E5E5EA;">
-              <div style="display:flex; justify-content:space-between; align-items:center;">
-                <div><h3 style="font-size:16px; margin:0;">Culte 1</h3><span style="font-size:12px; color:#8E8E93;">07h00 - 09h00</span></div>
-                <span style="background:#E5E5EA; color:#8E8E93; padding:4px 8px; border-radius:8px; font-size:11px; font-weight:800;">CLÔTURÉ</span>
-              </div>
-            </div>
-
-            <div style="background:#FFF; border-radius:18px; padding:16px; margin-bottom:12px; border:1.5px solid #007AFF;">
-              <div style="display:flex; justify-content:space-between; align-items:center;">
-                <div><h3 style="font-size:16px; margin:0;">Culte 2</h3><span style="font-size:12px; color:#8E8E93;">09h15 - 11h15</span></div>
-                <span style="background:#FFF4E5; color:#FF9500; padding:4px 8px; border-radius:8px; font-size:11px; font-weight:800;">EN TRANSITION</span>
-              </div>
-            </div>
-
-            <div style="background:#FFF; border-radius:18px; padding:16px; margin-bottom:12px; border:1px solid #E5E5EA;">
-              <div style="display:flex; justify-content:space-between; align-items:center;">
-                <div><h3 style="font-size:16px; margin:0;">Culte 3</h3><span style="font-size:12px; color:#8E8E93;">11h30 - 13h30</span></div>
-                <span style="background:#E5F1FF; color:#007AFF; padding:4px 8px; border-radius:8px; font-size:11px; font-weight:800;">À VENIR</span>
-              </div>
+              </form>
             </div>
           </div>
-        `;
-      }
+        ` : ''}
 
-      if (activeTab === 'debrief') {
-        return `
-          <header style="padding:16px 20px; background:#FFF; border-bottom:1px solid #EFEFEF;">
-            <p style="font-size:11px; font-weight:800; color:#007AFF; text-transform:uppercase; letter-spacing:1.2px; margin:0 0 2px;">Culte du Dimanche 02 Août</p>
-            <h1 style="font-size:24px; font-weight:900; color:#000000; margin:0;">Notation & Débrief</h1>
-          </header>
+        ${isCommentModalOpen ? `
+          <div style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.4); z-index:100000; display:flex; justify-content:center; align-items:flex-end;">
+            <div style="width:100%; max-width:500px; background:#FFF; border-top-left-radius:24px; border-top-right-radius:24px; padding:20px; box-sizing:border-box;">
+              <div style="display:flex; justify-content:space-between; align-items:center; padding-bottom:14px; border-bottom:1px solid #EFEFEF; margin-bottom:14px;">
+                <h3 style="font-size:18px; font-weight:800; margin:0; color:#000;">Commentaires</h3>
+                <span onclick="window.closeCommentModal()" style="font-size:14px; font-weight:700; color:#007AFF; cursor:pointer;">Fermer</span>
+              </div>
 
-          <div style="padding:16px;">
-            <h3 style="font-size:15px; font-weight:800; margin-bottom:8px;">1. Notation Inter-Sections</h3>
+              <div style="max-height:220px; overflow-y:auto; margin-bottom:14px;">
+                ${getCommentsListHTML(activeCommentPostId)}
+              </div>
 
+              <form onsubmit="window.submitAddComment(event)" style="display:flex; gap:10px;">
+                <input id="newCommentInput" type="text" placeholder="Ajouter un commentaire..." required style="flex:1; height:44px; border-radius:10px; border:1px solid #EFEFEF; background:#FAFAFA; padding:0 12px; font-size:13px; box-sizing:border-box;">
+                <button type="submit" style="height:44px; padding:0 16px; background:#007AFF; color:#FFF; border:none; border-radius:10px; font-size:13px; font-weight:800; cursor:pointer;">
+                  Envoyer
+                </button>
+              </form>
+            </div>
+          </div>
+        ` : ''}
+
+        <nav style="position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:500px; height:68px; background:rgba(255,255,255,0.96); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); border-top:1px solid #EFEFEF; display:flex; justify-content:space-around; align-items:center; z-index:99999;">
+          <button onclick="window.setTab('home')" style="${tabStyle(activeTab === 'home')}">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="${activeTab === 'home' ? '#000' : 'none'}" stroke="#000" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+          </button>
+
+          <button onclick="window.setTab('planning')" style="${tabStyle(activeTab === 'planning')}">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="1.8"><path d="M19 4H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zM16 2v4M8 2v4M3 10h18"/></svg>
+          </button>
+
+          <button onclick="window.openCreatePostModal()" style="width:44px; height:44px; border-radius:22px; background-color:#007AFF; color:#FFF; border:none; display:flex; align-items:center; justify-content:center; margin-top:-18px; box-shadow:0 4px 12px rgba(0,122,255,0.3); cursor:pointer;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>
+          </button>
+
+          <button onclick="window.setTab('halloffame')" style="${tabStyle(activeTab === 'halloffame')}">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="1.8"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+          </button>
+
+          <button onclick="window.setTab('profile')" style="${tabStyle(activeTab === 'profile')}">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="1.8"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </button>
+        </nav>
+      </div>
+    `;
+  }
+
+  function getCommentsListHTML(postId) {
+    var target = null;
+    for (var i = 0; i < posts.length; i++) {
+      if (posts[i].id === postId) { target = posts[i]; break; }
+    }
+
+    if (!target || target.comments.length === 0) {
+      return '<p style="color:#8E8E93; font-size:13px; text-align:center; padding:16px 0;">Aucun commentaire pour le moment. Soyez le premier !</p>';
+    }
+
+    return target.comments.map(function(c) {
+      return `
+        <div style="padding:8px 0; border-bottom:1px solid #EFEFEF;">
+          <strong style="font-size:13px; color:#000;">${c.author}</strong>
+          <p style="font-size:13px; color:#333; margin:2px 0 0; font-family:sans-serif;">${c.text}</p>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function renderFeedContent(filtered, userPrenom, userInitial, userSec) {
+    if (activeTab === 'home') {
+      return `
+        <header style="padding:14px 18px; background:#FFF; border-bottom:1px solid #EFEFEF; display:flex; justify-content:space-between; align-items:center; position:sticky; top:0; z-index:100;">
+          <div>
+            <p style="font-size:10px; font-weight:800; color:#007AFF; text-transform:uppercase; letter-spacing:1.2px; margin:0 0 1px;">EGLISE VASE D'HONNEUR</p>
+            <h1 style="font-size:22px; font-weight:900; color:#000000; margin:0; letter-spacing:-0.6px;">Kun COM</h1>
+          </div>
+          <div style="display:flex; gap:12px; align-items:center;">
+            <div onclick="window.openCreatePostModal()" style="width:34px; height:34px; border-radius:17px; background:#FAFAFA; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+            </div>
+            <div onclick="window.handleLogout()" title="Déconnexion" style="width:34px; height:34px; border-radius:17px; background:#F0F6FF; color:#007AFF; font-weight:800; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:14px;">
+              ${userInitial}
+            </div>
+          </div>
+        </header>
+
+        <div style="padding:12px 0; border-bottom:1px solid #EFEFEF; background:#FFF; overflow-x:auto; white-space:nowrap; -webkit-overflow-scrolling:touch;">
+          <div style="display:flex; gap:14px; padding:0 14px;">
             ${[
-              { id: 'cadrage', nom: 'Cadrage' },
-              { id: 'web', nom: 'Web' },
-              { id: 'proj', nom: 'Projection' },
-              { id: 'prod', nom: 'Prod' },
-              { id: 'regie', nom: 'Régie' },
-              { id: 'photo', nom: 'Photo' },
-              { id: 'vente', nom: 'Vente' }
-            ].map(function(sec) {
-              var isBlocked = (sec.id === userSec);
-              var r = ratings[sec.id] || { score: 4, comment: '' };
-
-              if (isBlocked) {
-                return `
-                  <div style="background:#F8F8FA; border-radius:16px; padding:14px; margin-bottom:10px; border:1px solid #E1E1E6;">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                      <strong style="font-size:14px;">Section ${sec.nom} (Votre section)</strong>
-                      <span style="background:#FFEBEA; color:#FF3B30; padding:4px 8px; border-radius:8px; font-size:11px; font-weight:800;">Auto-notation interdite</span>
-                    </div>
-                  </div>
-                `;
-              }
-
+              { id: 'all', nom: 'Tous', emoji: '✨' },
+              { id: 'cadrage', nom: 'Cadrage', emoji: '🎥' },
+              { id: 'regie', nom: 'Régie', emoji: '🎛️' },
+              { id: 'web', nom: 'Web', emoji: '🌐' },
+              { id: 'proj', nom: 'Projection', emoji: '🖥️' },
+              { id: 'prod', nom: 'Prod', emoji: '🎬' },
+              { id: 'photo', nom: 'Photo', emoji: '📸' },
+              { id: 'vente', nom: 'Vente', emoji: '🛒' }
+            ].map(function(story) {
+              var isSel = selectedStory === story.id;
               return `
-                <div style="background:#FFF; border-radius:16px; padding:14px; margin-bottom:10px; border:1px solid #E5E5EA;">
-                  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                    <strong style="font-size:14px;">Section ${sec.nom}</strong>
-                    <div style="display:flex; gap:4px;">
-                      ${[1,2,3,4,5].map(function(star) {
-                        return `<span onclick="window.setRatingScore('${sec.id}', ${star})" style="font-size:18px; cursor:pointer; color:${star <= r.score ? '#FFD700' : '#D1D1D6'};">★</span>`;
-                      }).join('')}
+                <div onclick="window.setStoryFilter('${story.id}')" style="display:inline-flex; flex-direction:column; align-items:center; cursor:pointer; width:66px;">
+                  <div style="width:62px; height:62px; border-radius:31px; padding:2px; border:2px solid ${isSel ? '#D4AF37' : '#E5E5EA'}; display:flex; align-items:center; justify-content:center; background:#FFF;">
+                    <div style="width:100%; height:100%; border-radius:27px; background:#F0F6FF; display:flex; align-items:center; justify-content:center; font-size:24px;">
+                      ${story.emoji}
                     </div>
                   </div>
-                  <input type="text" value="${r.comment}" placeholder="Ajouter une remarque..." style="width:100%; padding:8px; border-radius:8px; border:1px solid #E5E5EA; font-size:12px; box-sizing:border-box;">
+                  <span style="font-size:11px; font-weight:${isSel ? '800' : '500'}; color:${isSel ? '#000000' : '#8E8E93'}; margin-top:4px; text-align:center;">
+                    ${story.nom}
+                  </span>
                 </div>
               `;
             }).join('')}
+          </div>
+        </div>
 
-            <div style="background:#FFFDF0; border-radius:20px; padding:18px; margin-top:16px; border:1.5px solid #E6CA65;">
-              <h3 style="color:#B8860B; margin:0 0 4px; font-size:16px;">Synthèse & Validation</h3>
-              <p style="font-size:11px; color:#666; margin-bottom:12px;">Validez et publiez le Bilan 24h sur le Feed Instagram.</p>
-              <button onclick="window.publishBilanFeed24h()" style="width:100%; background:#34C759; color:#FFF; border:none; padding:14px; border-radius:14px; font-size:14px; font-weight:900; cursor:pointer;">
-                Valider et Publier le Bilan sur le Feed (24h)
+        ${filtered.length === 0 ? `
+          <div style="padding:50px 24px; text-align:center; background:#FFF; display:flex; flex-direction:column; align-items:center;">
+            <div style="width:64px; height:64px; border-radius:32px; background:#F0F6FF; display:flex; align-items:center; justify-content:center; margin-bottom:14px;">
+              ${checkSvg}
+            </div>
+            <h3 style="font-size:17px; font-weight:800; color:#000; margin:0 0 6px;">Aucune publication récente</h3>
+            <p style="font-size:13px; color:#8E8E93; margin:0 0 18px; max-width:280px; line-height:1.4;">
+              Aucun contenu publié pour cette section aujourd'hui. Soyez le premier à partager une publication !
+            </p>
+            <button onclick="window.openCreatePostModal()" style="padding:10px 20px; background:#007AFF; color:#FFF; border:none; border-radius:12px; font-size:13px; font-weight:800; cursor:pointer;">
+              Créer une publication
+            </button>
+          </div>
+        ` : filtered.map(function(post) {
+          return `
+            <article style="background:#FFF; border-bottom:8px solid #FAFAFA;">
+              <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                  <div style="width:38px; height:38px; border-radius:19px; background:#007AFF; color:#FFF; font-size:15px; font-weight:800; display:flex; align-items:center; justify-content:center;">${post.authorAvatar}</div>
+                  <div>
+                    <h3 style="font-size:14px; font-weight:700; margin:0; color:#000000;">${post.author}</h3>
+                    <span style="font-size:11px; color:#8E8E93;">${post.dateText}</span>
+                  </div>
+                </div>
+                ${post.isVedette ? '<div style="background:#FFFDF0; border:1px solid #E6CA65; padding:5px 10px; border-radius:12px; font-size:10.5px; font-weight:800; color:#B8860B;">SECTION VEDETTE</div>' : ''}
+              </div>
+
+              <div style="width:100%; height:280px; background:#1C1C1E; position:relative; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:20px; text-align:center;">
+                <h2 style="font-size:18px; font-weight:800; color:#FFFFFF; margin:0 0 4px; letter-spacing:-0.4px;">${post.title}</h2>
+                <span style="color:#8E8E93; font-size:12px; font-weight:500;">${post.sub}</span>
+
+                ${post.scoreText ? `
+                  <div style="position:absolute; bottom:14px; right:14px; background:rgba(255,255,255,0.92); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); padding:6px 12px; border-radius:16px; border:1px solid rgba(255,255,255,0.8); box-shadow:0 4px 12px rgba(0,0,0,0.12);">
+                    <strong style="font-size:14px; color:#1C1C1E; font-weight:900;">${post.scoreText}</strong>
+                  </div>
+                ` : ''}
+              </div>
+
+              <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px;">
+                <div style="display:flex; align-items:center; gap:16px;">
+                  <button onclick="window.togglePostLike('${post.id}')" style="background:none; border:none; padding:0; display:flex; align-items:center; gap:6px; cursor:pointer;">
+                    ${heartSvg(post.isLiked)}
+                    <strong style="font-size:13px; color:#000000;">${post.likes}</strong>
+                  </button>
+
+                  <button onclick="window.openCommentModal('${post.id}')" style="background:none; border:none; padding:0; display:flex; align-items:center; gap:6px; cursor:pointer;">
+                    ${commentSvg}
+                    <strong style="font-size:13px; color:#000000;">${post.comments.length}</strong>
+                  </button>
+
+                  <button onclick="window.sharePostLink('${post.title}', '${post.caption}')" style="background:none; border:none; padding:0; cursor:pointer;">
+                    ${shareSvg}
+                  </button>
+                </div>
+
+                <button style="background:none; border:none; padding:0; cursor:pointer;">
+                  ${bookmarkSvg}
+                </button>
+              </div>
+
+              <div style="padding:0 16px 14px;">
+                <div style="font-size:13px; font-weight:700; color:#000000; margin-bottom:4px;">
+                  Aimé par ${post.likes} membres
+                </div>
+                <p style="font-size:13.5px; line-height:1.45; color:#000000; margin:0;">
+                  <strong>${post.author}</strong> ${post.caption}
+                </p>
+                ${post.comments.length > 0 ? `
+                  <span onclick="window.openCommentModal('${post.id}')" style="font-size:12px; color:#8E8E93; display:block; margin-top:6px; cursor:pointer;">
+                    Afficher les ${post.comments.length} commentaires...
+                  </span>
+                ` : ''}
+              </div>
+            </article>
+          `;
+        }).join('')}
+
+        <div style="padding:36px 20px; text-align:center; background:#FFF; border-top:1px solid #EFEFEF; display:flex; flex-direction:column; align-items:center;">
+          <div style="width:48px; height:48px; border-radius:24px; background:#F0F6FF; display:flex; align-items:center; justify-content:center; margin-bottom:10px;">
+            ${checkSvg}
+          </div>
+          <h3 style="font-size:16px; font-weight:800; color:#000000; margin:0;">Vous êtes à jour</h3>
+          <p style="font-size:12px; color:#8E8E93; margin:4px 0 0; max-width:280px; line-height:1.4;">
+            Vous avez vu toutes les nouvelles publications du Département Communication.
+          </p>
+        </div>
+      `;
+    }
+
+    if (activeTab === 'planning') {
+      return `
+        <header style="padding:16px 20px; background:#FFF; border-bottom:1px solid #EFEFEF;">
+          <p style="font-size:11px; font-weight:800; color:#5856D6; text-transform:uppercase; letter-spacing:1.2px; margin:0 0 2px;">Dimanche 02 Août 2026</p>
+          <h1 style="font-size:24px; font-weight:900; color:#000000; margin:0;">Planning Cultes</h1>
+        </header>
+
+        <div style="padding:16px;">
+          <div style="background:#FFF4E5; border-radius:20px; padding:16px; margin-bottom:16px; border:1.5px solid #FF9500;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <strong style="color:#FF9500; font-size:15px;">Transition Culte 1 vers Culte 2</strong>
+              <span style="background:#FF9500; color:#FFF; padding:4px 9px; border-radius:10px; font-size:13px; font-weight:800;">15:00 min</span>
+            </div>
+            <p style="font-size:12px; color:#1C1C1E; margin-bottom:12px;">Pause technique de 15 minutes (09h00 à 09h15).</p>
+            
+            <div style="background:#FFF; padding:12px; border-radius:14px; display:flex; justify-content:space-between; align-items:center;">
+              <div>
+                <strong style="font-size:13px; display:block;">Check-in Rapide</strong>
+                <span style="font-size:11px; color:#8E8E93;">Validez votre arrivée pour Culte 2</span>
+              </div>
+              <button onclick="window.doCheckIn()" style="background:${isCheckedIn ? '#34C759' : '#007AFF'}; color:#FFF; border:none; padding:8px 14px; border-radius:12px; font-size:12px; font-weight:800; cursor:pointer;">
+                ${isCheckedIn ? 'Present' : 'Valider'}
               </button>
             </div>
           </div>
-        `;
-      }
 
-      if (activeTab === 'halloffame') {
-        return `
-          <header style="padding:16px 20px; background:#FFF; border-bottom:1px solid #EFEFEF;">
-            <p style="font-size:11px; font-weight:800; color:#B8860B; text-transform:uppercase; letter-spacing:1.2px; margin:0 0 2px;">Archives Permanentes</p>
-            <h1 style="font-size:24px; font-weight:900; color:#000000; margin:0;">Espace Vedettes</h1>
-          </header>
-
-          <div style="padding:16px;">
-            <div style="background:#FFF; border-radius:18px; padding:16px; margin-bottom:14px; border:1px solid #E5E5EA;">
-              <span style="font-size:11px; font-weight:700; color:#8E8E93;">DIMANCHE 02 AOÛT 2026</span>
-              <h3 style="font-size:16px; margin:4px 0 10px;">Culte n°1 — Section Vedette</h3>
-              <div style="background:#FFFDF0; padding:10px; border-radius:12px; display:flex; justify-content:space-between; align-items:center; border:1px solid #E6CA65;">
-                <span><strong>Section Cadrage</strong></span>
-                <strong style="color:#B8860B;">★ 4.88 / 5.0</strong>
-              </div>
-            </div>
-
-            <div style="background:#1C1C1E; color:#FFF; border-radius:22px; padding:22px; text-align:center; margin-top:16px;">
-              <span style="font-size:11px; font-weight:800; color:#FFD700; text-transform:uppercase; letter-spacing:1.5px;">TROPHÉE ANNUEL 2025-2026</span>
-              <h2 style="font-size:22px; margin:6px 0;">Section Régie Technique</h2>
-              <p style="font-size:12px; color:rgba(255,255,255,0.75);">Meilleure section de l'année (4.96/5.0 de moyenne).</p>
+          <div style="background:#FFF; border-radius:18px; padding:16px; margin-bottom:12px; border:1px solid #E5E5EA;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div><h3 style="font-size:16px; margin:0;">Culte 1</h3><span style="font-size:12px; color:#8E8E93;">07h00 - 09h00</span></div>
+              <span style="background:#E5E5EA; color:#8E8E93; padding:4px 8px; border-radius:8px; font-size:11px; font-weight:800;">CLÔTURÉ</span>
             </div>
           </div>
-        `;
-      }
 
-      if (activeTab === 'profile') {
-        return `
-          <header style="padding:16px 20px; background:#FFF; border-bottom:1px solid #EFEFEF; display:flex; justify-content:space-between; align-items:center;">
-            <div>
-              <p style="font-size:11px; font-weight:800; color:#007AFF; text-transform:uppercase; letter-spacing:1.2px; margin:0 0 2px;">Département Communication</p>
-              <h1 style="font-size:24px; font-weight:900; color:#000000; margin:0;">Mon Profil</h1>
-            </div>
-            <button onclick="window.handleLogout()" style="background:#FFEBEA; color:#FF3B30; border:none; padding:6px 12px; border-radius:10px; font-size:12px; font-weight:800; cursor:pointer;">
-              Se déconnecter
-            </button>
-          </header>
-
-          <div style="padding:16px;">
-            <div style="background:#FFF; border-radius:22px; padding:20px; text-align:center; margin-bottom:16px; border:1px solid #E5E5EA;">
-              <div style="width:72px; height:72px; border-radius:36px; background:#F0F6FF; color:#007AFF; font-size:30px; font-weight:800; display:flex; align-items:center; justify-content:center; margin:0 auto 10px; border:3px solid #007AFF;">${userInitial}</div>
-              <h2 style="font-size:20px; margin:0;">${currentUser.prenom} ${currentUser.nom}</h2>
-              <p style="font-size:13px; color:#8E8E93; margin-top:2px;">Rôle : ${currentUser.role} • Section ${currentUser.sectionNom}</p>
+          <div style="background:#FFF; border-radius:18px; padding:16px; margin-bottom:12px; border:1.5px solid #007AFF;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div><h3 style="font-size:16px; margin:0;">Culte 2</h3><span style="font-size:12px; color:#8E8E93;">09h15 - 11h15</span></div>
+              <span style="background:#FFF4E5; color:#FF9500; padding:4px 8px; border-radius:8px; font-size:11px; font-weight:800;">EN TRANSITION</span>
             </div>
           </div>
-        `;
-      }
 
-      return '<div>Rendu...</div>';
+          <div style="background:#FFF; border-radius:18px; padding:16px; margin-bottom:12px; border:1px solid #E5E5EA;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div><h3 style="font-size:16px; margin:0;">Culte 3</h3><span style="font-size:12px; color:#8E8E93;">11h30 - 13h30</span></div>
+              <span style="background:#E5F1FF; color:#007AFF; padding:4px 8px; border-radius:8px; font-size:11px; font-weight:800;">À VENIR</span>
+            </div>
+          </div>
+        </div>
+      `;
     }
+
+    if (activeTab === 'debrief') {
+      return `
+        <header style="padding:16px 20px; background:#FFF; border-bottom:1px solid #EFEFEF;">
+          <p style="font-size:11px; font-weight:800; color:#007AFF; text-transform:uppercase; letter-spacing:1.2px; margin:0 0 2px;">Culte du Dimanche 02 Août</p>
+          <h1 style="font-size:24px; font-weight:900; color:#000000; margin:0;">Notation & Débrief</h1>
+        </header>
+
+        <div style="padding:16px;">
+          <h3 style="font-size:15px; font-weight:800; margin-bottom:8px;">1. Notation Inter-Sections</h3>
+
+          ${[
+            { id: 'cadrage', nom: 'Cadrage' },
+            { id: 'web', nom: 'Web' },
+            { id: 'proj', nom: 'Projection' },
+            { id: 'prod', nom: 'Prod' },
+            { id: 'regie', nom: 'Régie' },
+            { id: 'photo', nom: 'Photo' },
+            { id: 'vente', nom: 'Vente' }
+          ].map(function(sec) {
+            var isBlocked = (sec.id === userSec);
+            var r = ratings[sec.id] || { score: 4, comment: '' };
+
+            if (isBlocked) {
+              return `
+                <div style="background:#F8F8FA; border-radius:16px; padding:14px; margin-bottom:10px; border:1px solid #E1E1E6;">
+                  <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <strong style="font-size:14px;">Section ${sec.nom} (Votre section)</strong>
+                    <span style="background:#FFEBEA; color:#FF3B30; padding:4px 8px; border-radius:8px; font-size:11px; font-weight:800;">Auto-notation interdite</span>
+                  </div>
+                </div>
+              `;
+            }
+
+            return `
+              <div style="background:#FFF; border-radius:16px; padding:14px; margin-bottom:10px; border:1px solid #E5E5EA;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                  <strong style="font-size:14px;">Section ${sec.nom}</strong>
+                  <div style="display:flex; gap:4px;">
+                    ${[1,2,3,4,5].map(function(star) {
+                      return `<span onclick="window.setRatingScore('${sec.id}', ${star})" style="font-size:18px; cursor:pointer; color:${star <= r.score ? '#FFD700' : '#D1D1D6'};">★</span>`;
+                    }).join('')}
+                  </div>
+                </div>
+                <input type="text" value="${r.comment}" placeholder="Ajouter une remarque..." style="width:100%; padding:8px; border-radius:8px; border:1px solid #E5E5EA; font-size:12px; box-sizing:border-box;">
+              </div>
+            `;
+          }).join('')}
+
+          <div style="background:#FFFDF0; border-radius:20px; padding:18px; margin-top:16px; border:1.5px solid #E6CA65;">
+            <h3 style="color:#B8860B; margin:0 0 4px; font-size:16px;">Synthèse & Validation</h3>
+            <p style="font-size:11px; color:#666; margin-bottom:12px;">Validez et publiez le Bilan 24h sur le Feed Instagram.</p>
+            <button onclick="window.publishBilanFeed24h()" style="width:100%; background:#34C759; color:#FFF; border:none; padding:14px; border-radius:14px; font-size:14px; font-weight:900; cursor:pointer;">
+              Valider et Publier le Bilan sur le Feed (24h)
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    if (activeTab === 'halloffame') {
+      return `
+        <header style="padding:16px 20px; background:#FFF; border-bottom:1px solid #EFEFEF;">
+          <p style="font-size:11px; font-weight:800; color:#B8860B; text-transform:uppercase; letter-spacing:1.2px; margin:0 0 2px;">Archives Permanentes</p>
+          <h1 style="font-size:24px; font-weight:900; color:#000000; margin:0;">Espace Vedettes</h1>
+        </header>
+
+        <div style="padding:16px;">
+          <div style="background:#FFF; border-radius:18px; padding:16px; margin-bottom:14px; border:1px solid #E5E5EA;">
+            <span style="font-size:11px; font-weight:700; color:#8E8E93;">DIMANCHE 02 AOÛT 2026</span>
+            <h3 style="font-size:16px; margin:4px 0 10px;">Culte n°1 — Section Vedette</h3>
+            <div style="background:#FFFDF0; padding:10px; border-radius:12px; display:flex; justify-content:space-between; align-items:center; border:1px solid #E6CA65;">
+              <span><strong>Section Cadrage</strong></span>
+              <strong style="color:#B8860B;">★ 4.88 / 5.0</strong>
+            </div>
+          </div>
+
+          <div style="background:#1C1C1E; color:#FFF; border-radius:22px; padding:22px; text-align:center; margin-top:16px;">
+            <span style="font-size:11px; font-weight:800; color:#FFD700; text-transform:uppercase; letter-spacing:1.5px;">TROPHÉE ANNUEL 2025-2026</span>
+            <h2 style="font-size:22px; margin:6px 0;">Section Régie Technique</h2>
+            <p style="font-size:12px; color:rgba(255,255,255,0.75);">Meilleure section de l'année (4.96/5.0 de moyenne).</p>
+          </div>
+        </div>
+      `;
+    }
+
+    if (activeTab === 'profile') {
+      return `
+        <header style="padding:16px 20px; background:#FFF; border-bottom:1px solid #EFEFEF; display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <p style="font-size:11px; font-weight:800; color:#007AFF; text-transform:uppercase; letter-spacing:1.2px; margin:0 0 2px;">Département Communication</p>
+            <h1 style="font-size:24px; font-weight:900; color:#000000; margin:0;">Mon Profil</h1>
+          </div>
+          <button onclick="window.handleLogout()" style="background:#FFEBEA; color:#FF3B30; border:none; padding:6px 12px; border-radius:10px; font-size:12px; font-weight:800; cursor:pointer;">
+            Se déconnecter
+          </button>
+        </header>
+
+        <div style="padding:16px;">
+          <div style="background:#FFF; border-radius:22px; padding:20px; text-align:center; margin-bottom:16px; border:1px solid #E5E5EA;">
+            <div style="width:72px; height:72px; border-radius:36px; background:#F0F6FF; color:#007AFF; font-size:30px; font-weight:800; display:flex; align-items:center; justify-content:center; margin:0 auto 10px; border:3px solid #007AFF;">${userInitial}</div>
+            <h2 style="font-size:20px; margin:0;">${currentUser.prenom} ${currentUser.nom}</h2>
+            <p style="font-size:13px; color:#8E8E93; margin-top:2px;">Rôle : ${currentUser.role} • Section ${currentUser.sectionNom}</p>
+          </div>
+        </div>
+      `;
+    }
+
+    return '<div>Rendu...</div>';
+  }
+
+  // EXECUTION SYNCHRONE IMMÉDIATE SANS DÉLAI
+  function executeInstantRender() {
+    renderAppRoot();
   }
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initApp);
+    document.addEventListener('DOMContentLoaded', executeInstantRender);
+    // Exécution de sécurité immédiate pour court-circuiter tout retard DOMContentLoaded
+    setTimeout(executeInstantRender, 0);
   } else {
-    initApp();
+    executeInstantRender();
   }
 })();

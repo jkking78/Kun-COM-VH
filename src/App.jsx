@@ -3,13 +3,15 @@ import HomeScreen from './screens/HomeScreen';
 import LoginScreen from './screens/LoginScreen';
 import SignupScreen from './screens/SignupScreen';
 
-export default function AppWeb() {
+export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
-  const [authView, setAuthView] = useState('login');
+  const [authView, setAuthView] = useState('login'); // 'login', 'signup', 'app'
 
+  // INITIALISATION OPTIMISTE IMMÉDIATE (SANS AWAIT BLOQUANT)
   useEffect(() => {
     let isMounted = true;
 
+    // Timeout de sécurité de 1.5s max sur le check d'authentification
     const authTimeout = setTimeout(() => {
       if (isMounted && !currentUser) {
         setAuthView('login');

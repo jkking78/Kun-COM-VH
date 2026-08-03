@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { styles, COLORS } from './homeScreenStyles';
+import Toast from '../components/Toast';
 
 // ICÔNES SVG VECTORIELLES FIL DE FER
 const HeartIcon = ({ filled, color = '#000000', size = 22 }) => (
@@ -46,7 +47,7 @@ const CheckIcon = ({ color = '#007AFF', size = 24 }) => (
   </Svg>
 );
 
-// STORIES DES SECTIONS AVEC 'TOUS' EN PREMIÈRE POSITION
+// STORIES DES SECTIONS
 const STORIES_SECTIONS = [
   { id: 'all', nom: 'Tous', emoji: '✨' },
   { id: 'cadrage', nom: 'Cadrage', emoji: '🎥' },
@@ -59,11 +60,15 @@ const STORIES_SECTIONS = [
 ];
 
 export default function HomeScreen({ currentUser = { prenom: 'Éric', nom: 'Kouamé', sectionId: 'cadrage', sectionNom: 'Cadrage' }, onLogout }) {
-  // FILTRE SÉLECTIONNÉ PAR DÉFAUT SUR 'ALL' (TOUS)
   const [selectedStory, setSelectedStory] = useState('all');
   const [activeTab, setActiveTab] = useState('home');
 
-  // LISTE DES POSTS EN BD DYNAMIQUE
+  const [toast, setToast] = useState({ visible: false, message: '', type: 'success' });
+
+  const showToast = (message, type = 'success') => {
+    setToast({ visible: true, message, type });
+  };
+
   const [posts, setPosts] = useState([
     {
       id: 'post-1',
@@ -101,16 +106,13 @@ export default function HomeScreen({ currentUser = { prenom: 'Éric', nom: 'Koua
     }
   ]);
 
-  // MODAL CRÉATION POST
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newPostText, setNewPostText] = useState('');
   const [newPostSection, setNewPostSection] = useState(currentUser.sectionId || 'cadrage');
 
-  // MODAL COMMENTAIRES
   const [activeCommentPost, setActiveCommentPost] = useState(null);
   const [newCommentText, setNewCommentText] = useState('');
 
-  // 1. TOGGLE LIKE INTERACTIF
   const handleToggleLike = (postId) => {
     setPosts(prev => prev.map(p => {
       if (p.id === postId) {
@@ -124,10 +126,9 @@ export default function HomeScreen({ currentUser = { prenom: 'Éric', nom: 'Koua
     }));
   };
 
-  // 2. SOUMISSION D'UN NOUVEAU POST
   const handleCreatePostSubmit = () => {
     if (!newPostText.trim()) {
-      alert("Veuillez saisir le texte de votre publication.");
+      showToast("Veuillez saisir le texte de votre publication.", "error");
       return;
     }
 
@@ -151,10 +152,9 @@ export default function HomeScreen({ currentUser = { prenom: 'Éric', nom: 'Koua
     setPosts([newPostObj, ...posts]);
     setNewPostText('');
     setIsCreateModalOpen(false);
-    alert("🚀 Publication partagée avec succès dans le feed !");
+    showToast("Publication partagée avec succès !");
   };
 
-  // 3. SOUMISSION D'UN COMMENTAIRE
   const handleAddCommentSubmit = () => {
     if (!newCommentText.trim() || !activeCommentPost) return;
 
@@ -173,9 +173,9 @@ export default function HomeScreen({ currentUser = { prenom: 'Éric', nom: 'Koua
 
     setActiveCommentPost(prev => ({ ...prev, comments: [...prev.comments, newC] }));
     setNewCommentText('');
+    showToast("Commentaire ajouté !");
   };
 
-  // 4. PARTAGE WEB
   const handleSharePost = (post) => {
     if (typeof navigator !== 'undefined' && navigator.share) {
       navigator.share({
@@ -184,11 +184,10 @@ export default function HomeScreen({ currentUser = { prenom: 'Éric', nom: 'Koua
         url: window.location.href,
       }).catch(() => {});
     } else {
-      alert("📋 Lien de la publication copié dans le presse-papier !");
+      showToast("Lien de la publication copié !");
     }
   };
 
-  // FILTRAGE DES POSTS PAR STORY SÉLECTIONNÉE
   const filteredPosts = posts.filter(p => {
     if (selectedStory === 'all') return true;
     return p.sectionId === selectedStory;
@@ -197,6 +196,7 @@ export default function HomeScreen({ currentUser = { prenom: 'Éric', nom: 'Koua
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
+      <Toast visible={toast.visible} message={toast.message} type={toast.type} onDismiss={() => setToast({ ...toast, visible: false })} />
 
       {/* HEADER INSTAGRAM CLEAN */}
       <View style={styles.header}>
@@ -221,7 +221,6 @@ export default function HomeScreen({ currentUser = { prenom: 'Éric', nom: 'Koua
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.feedScroll}>
-        {/* STORIES CARROUSEL : 'TOUS' EN 1ÈRE POSITION & BAGUE ACTIVE UNIQUEMENT SI SÉLECTIONNÉ */}
         <View style={styles.storiesContainer}>
           <ScrollView
             horizontal
@@ -250,7 +249,6 @@ export default function HomeScreen({ currentUser = { prenom: 'Éric', nom: 'Koua
           </ScrollView>
         </View>
 
-        {/* FEED OU ÉTAT À VIDE (EMPTY FEED STATE) */}
         {filteredPosts.length === 0 ? (
           <View style={styles.emptyContainer}>
             <View style={styles.emptyIconBox}>
@@ -267,7 +265,6 @@ export default function HomeScreen({ currentUser = { prenom: 'Éric', nom: 'Koua
         ) : (
           filteredPosts.map(post => (
             <View key={post.id} style={styles.postCard}>
-              {/* En-tête Post */}
               <View style={styles.postHeader}>
                 <View style={styles.postHeaderLeft}>
                   <View style={styles.postAvatar}>
@@ -286,7 +283,6 @@ export default function HomeScreen({ currentUser = { prenom: 'Éric', nom: 'Koua
                 )}
               </View>
 
-              {/* Zone Visuelle */}
               <View style={styles.postImageContainer}>
                 <View style={styles.postImagePlaceholder}>
                   <Text style={styles.postImageTitle}>{post.title}</Text>
@@ -300,7 +296,6 @@ export default function HomeScreen({ currentUser = { prenom: 'Éric', nom: 'Koua
                 )}
               </View>
 
-              {/* Barre d'interactions Sociales */}
               <View style={styles.postActionsBar}>
                 <View style={styles.postActionsLeft}>
                   <TouchableOpacity style={styles.socialIconBtn} onPress={() => handleToggleLike(post.id)}>
@@ -323,7 +318,6 @@ export default function HomeScreen({ currentUser = { prenom: 'Éric', nom: 'Koua
                 </TouchableOpacity>
               </View>
 
-              {/* Légende & Comments Preview */}
               <View style={styles.postCaptionBox}>
                 <Text style={styles.postLikesText}>Aimé par {post.likes} membres</Text>
                 <Text style={styles.postCaptionText}>
@@ -340,7 +334,6 @@ export default function HomeScreen({ currentUser = { prenom: 'Éric', nom: 'Koua
           ))
         )}
 
-        {/* BLOC INSTAGRAM "VOUS ÊTES À JOUR" */}
         <View style={styles.allCaughtUpContainer}>
           <View style={styles.checkCircle}>
             <CheckIcon color="#007AFF" size={24} />
@@ -350,7 +343,7 @@ export default function HomeScreen({ currentUser = { prenom: 'Éric', nom: 'Koua
         </View>
       </ScrollView>
 
-      {/* MODAL DE CRÉATION DE POST [+] */}
+      {/* MODAL DE CRÉATION DE POST */}
       <Modal visible={isCreateModalOpen} animationType="slide" transparent={true}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
