@@ -977,6 +977,14 @@
 
   function renderCreateEventModal() {
     var today = new Date().toISOString().split('T')[0];
+    var cData = S.createEventData || {};
+    var titleVal = cData.title !== undefined ? cData.title : '';
+    var locVal = cData.location !== undefined ? cData.location : '';
+    var dateVal = cData.date !== undefined ? cData.date : today;
+    var startVal = cData.start !== undefined ? cData.start : '09:00';
+    var endVal = cData.end !== undefined ? cData.end : '11:30';
+    var descVal = cData.desc !== undefined ? cData.desc : '';
+
     return '<div style="position:fixed;inset:0;background:#FFF;z-index:10000;display:flex;flex-direction:column;animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
       '<header style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #E5E5EA;background:#FFF;z-index:2;">' +
         '<button onclick="App.closeCreateEvent()" style="background:none;border:none;font-size:16px;color:#000;cursor:pointer;">Annuler</button>' +
@@ -989,11 +997,11 @@
           '<div style="display:flex;flex-direction:column;gap:16px;">' +
             '<div style="display:flex;flex-direction:column;gap:4px;">' +
               '<label style="font-size:13px;color:#8E8E93;font-weight:600;">Titre de l\'événement</label>' +
-              '<input type="text" id="eventTitle" placeholder="Ex: Culte de Dimanche" style="border:none;border-bottom:1px solid #E5E5EA;font-size:16px;outline:none;padding-bottom:8px;border-radius:0;font-weight:600;" />' +
+              '<input type="text" id="eventTitle" value="' + safeHtml(titleVal) + '" placeholder="Ex: Culte de Dimanche" style="border:none;border-bottom:1px solid #E5E5EA;font-size:16px;outline:none;padding-bottom:8px;border-radius:0;font-weight:600;" />' +
             '</div>' +
             '<div style="display:flex;flex-direction:column;gap:4px;">' +
               '<label style="font-size:13px;color:#8E8E93;font-weight:600;">Lieu / Salle</label>' +
-              '<input type="text" id="eventLocation" placeholder="Ex: Salle Principale" style="border:none;border-bottom:1px solid #E5E5EA;font-size:16px;outline:none;padding-bottom:8px;border-radius:0;" />' +
+              '<input type="text" id="eventLocation" value="' + safeHtml(locVal) + '" placeholder="Ex: Salle Principale" style="border:none;border-bottom:1px solid #E5E5EA;font-size:16px;outline:none;padding-bottom:8px;border-radius:0;" />' +
             '</div>' +
           '</div>' +
         '</div>' +
@@ -1002,15 +1010,15 @@
           '<div style="display:flex;flex-direction:column;gap:16px;">' +
             '<div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #E5E5EA;padding-bottom:12px;">' +
               '<label style="font-size:15px;color:#000;font-weight:600;">Date</label>' +
-              '<input type="date" id="eventDate" value="' + today + '" style="border:none;font-size:16px;outline:none;background:transparent;color:#007AFF;font-weight:600;" />' +
+              '<input type="date" id="eventDate" value="' + dateVal + '" style="border:none;font-size:16px;outline:none;background:transparent;color:#007AFF;font-weight:600;" />' +
             '</div>' +
             '<div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #E5E5EA;padding-bottom:12px;">' +
               '<label style="font-size:15px;color:#000;font-weight:600;">Heure de début</label>' +
-              '<input type="time" id="eventStart" value="09:00" style="border:none;font-size:16px;outline:none;background:transparent;color:#007AFF;font-weight:600;" />' +
+              '<input type="time" id="eventStart" value="' + startVal + '" style="border:none;font-size:16px;outline:none;background:transparent;color:#007AFF;font-weight:600;" />' +
             '</div>' +
             '<div style="display:flex;align-items:center;justify-content:space-between;">' +
               '<label style="font-size:15px;color:#000;font-weight:600;">Heure de fin</label>' +
-              '<input type="time" id="eventEnd" value="11:30" style="border:none;font-size:16px;outline:none;background:transparent;color:#007AFF;font-weight:600;" />' +
+              '<input type="time" id="eventEnd" value="' + endVal + '" style="border:none;font-size:16px;outline:none;background:transparent;color:#007AFF;font-weight:600;" />' +
             '</div>' +
           '</div>' +
         '</div>' +
@@ -1022,7 +1030,7 @@
         
         '<div style="background:#FFF;border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px;">' +
           '<label style="font-size:13px;color:#8E8E93;font-weight:600;display:block;margin-bottom:8px;">Description / Notes</label>' +
-          '<textarea id="eventDesc" placeholder="Ajoutez un briefing ou des notes pour les équipes..." style="width:100%;border:none;font-size:15px;outline:none;resize:none;font-family:inherit;min-height:80px;background:#F8F8F8;padding:12px;border-radius:12px;box-sizing:border-box;"></textarea>' +
+          '<textarea id="eventDesc" placeholder="Ajoutez un briefing ou des notes pour les équipes..." style="width:100%;border:none;font-size:15px;outline:none;resize:none;font-family:inherit;min-height:80px;background:#F8F8F8;padding:12px;border-radius:12px;box-sizing:border-box;">' + safeHtml(descVal) + '</textarea>' +
         '</div>' +
         
         ((S.user && (S.user.role === 'RESP_SECTION' || S.user.role === 'GRAND_RESPONSABLE')) ? 
@@ -1754,18 +1762,24 @@
         '<div style="padding:0 16px 30px;">' +
           '<div style="background:#FFF;border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px;">' +
             '<div style="display:flex;flex-direction:column;gap:16px;">' +
-              '<div style="display:flex;flex-direction:column;gap:4px;">' +
-                '<label style="font-size:13px;color:#8E8E93;font-weight:600;">Prénom</label>' +
-                '<input type="text" id="editPrenom" value="' + safeHtml(freshU.prenom) + '" style="border:none;border-bottom:1px solid #E5E5EA;font-size:16px;outline:none;padding-bottom:8px;border-radius:0;" />' +
-              '</div>' +
-              '<div style="display:flex;flex-direction:column;gap:4px;">' +
-                '<label style="font-size:13px;color:#8E8E93;font-weight:600;">Nom</label>' +
-                '<input type="text" id="editNom" value="' + safeHtml(freshU.nom) + '" style="border:none;border-bottom:1px solid #E5E5EA;font-size:16px;outline:none;padding-bottom:8px;border-radius:0;" />' +
-              '</div>' +
-              '<div style="display:flex;flex-direction:column;gap:4px;">' +
-                '<label style="font-size:13px;color:#8E8E93;font-weight:600;">Bio</label>' +
-                '<textarea id="editBio" style="border:none;font-size:16px;outline:none;resize:none;font-family:inherit;min-height:60px;background:#F8F8F8;padding:12px;border-radius:12px;">' + safeHtml(freshU.bio||'') + '</textarea>' +
-              '</div>' +
+              (function(){
+                var eData = S.editProfileData || {};
+                var prenomVal = eData.prenom !== undefined ? eData.prenom : (freshU.prenom||'');
+                var nomVal = eData.nom !== undefined ? eData.nom : (freshU.nom||'');
+                var bioVal = eData.bio !== undefined ? eData.bio : (freshU.bio||'');
+                return '<div style="display:flex;flex-direction:column;gap:4px;">' +
+                  '<label style="font-size:13px;color:#8E8E93;font-weight:600;">Prénom</label>' +
+                  '<input type="text" id="editPrenom" value="' + safeHtml(prenomVal) + '" style="border:none;border-bottom:1px solid #E5E5EA;font-size:16px;outline:none;padding-bottom:8px;border-radius:0;" />' +
+                '</div>' +
+                '<div style="display:flex;flex-direction:column;gap:4px;">' +
+                  '<label style="font-size:13px;color:#8E8E93;font-weight:600;">Nom</label>' +
+                  '<input type="text" id="editNom" value="' + safeHtml(nomVal) + '" style="border:none;border-bottom:1px solid #E5E5EA;font-size:16px;outline:none;padding-bottom:8px;border-radius:0;" />' +
+                '</div>' +
+                '<div style="display:flex;flex-direction:column;gap:4px;">' +
+                  '<label style="font-size:13px;color:#8E8E93;font-weight:600;">Bio</label>' +
+                  '<textarea id="editBio" style="border:none;font-size:16px;outline:none;resize:none;font-family:inherit;min-height:60px;background:#F8F8F8;padding:12px;border-radius:12px;">' + safeHtml(bioVal) + '</textarea>' +
+                '</div>';
+              })() +
             '</div>' +
           '</div>' +
 
@@ -1797,6 +1811,7 @@
   // ============================================================
   window.App = {
     addAssignment: function() {
+      App.syncCreateEventData();
       var select = document.getElementById('assignUserSelect');
       var taskInput = document.getElementById('assignTaskInput');
       if (select && select.value && taskInput && taskInput.value.trim()) {
@@ -1814,15 +1829,49 @@
       }
     },
     removeAssignment: function(idx) {
+      App.syncCreateEventData();
       if (S.eventAssignments) {
         S.eventAssignments.splice(idx, 1);
         render();
       }
     },
-    openCreateEvent: function() { S.createEventOpen = true; S.eventSections = []; S.eventAssignments = []; render(); },
-    closeCreateEvent: function() { S.createEventOpen = false; render(); },
+    syncCreateEventData: function() {
+      var titleEl = document.getElementById('eventTitle');
+      var locEl = document.getElementById('eventLocation');
+      var dateEl = document.getElementById('eventDate');
+      var startEl = document.getElementById('eventStart');
+      var endEl = document.getElementById('eventEnd');
+      var descEl = document.getElementById('eventDesc');
+      var pinnedEl = document.getElementById('eventPinned');
+      if (titleEl || locEl || descEl) {
+        S.createEventData = {
+          title: titleEl ? titleEl.value : '',
+          location: locEl ? locEl.value : '',
+          date: dateEl ? dateEl.value : '',
+          start: startEl ? startEl.value : '',
+          end: endEl ? endEl.value : '',
+          desc: descEl ? descEl.value : '',
+          pinned: pinnedEl ? pinnedEl.checked : false
+        };
+      }
+    },
+    syncEditProfileData: function() {
+      var prenomEl = document.getElementById('editPrenom');
+      var nomEl = document.getElementById('editNom');
+      var bioEl = document.getElementById('editBio');
+      if (prenomEl || nomEl || bioEl) {
+        S.editProfileData = {
+          prenom: prenomEl ? prenomEl.value : '',
+          nom: nomEl ? nomEl.value : '',
+          bio: bioEl ? bioEl.value : ''
+        };
+      }
+    },
+    openCreateEvent: function() { S.createEventOpen = true; S.eventSections = []; S.eventAssignments = []; S.createEventData = null; render(); },
+    closeCreateEvent: function() { S.createEventOpen = false; S.createEventData = null; render(); },
     selectDate: function(d) { S.selectedDate = d; render(); },
     toggleEventSection: function(sec) {
+      App.syncCreateEventData();
       var idx = S.eventSections.indexOf(sec);
       if (idx !== -1) { S.eventSections.splice(idx, 1); }
       else { S.eventSections.push(sec); }
@@ -1954,6 +2003,7 @@
       render();
     },
     toggleEditSection: function(sec) {
+      App.syncEditProfileData();
       var idx = S.editSections.indexOf(sec);
       if (idx !== -1) { S.editSections.splice(idx, 1); }
       else {
@@ -2075,8 +2125,8 @@ toggleParticipation: function(postId, status) {
       render();
     },
 
-    openEditProfile: function() { S.editProfileOpen = true; S.avatarFile = null; S.coverFile = null; S.avatarPreview = null; S.coverPreview = null; S.editSections = App.getUserSections(S.user).slice(); render(); },
-    closeEditProfile: function() { S.editProfileOpen = false; S.avatarFile = null; S.coverFile = null; S.avatarPreview = null; S.coverPreview = null; render(); },
+    openEditProfile: function() { S.editProfileOpen = true; S.avatarFile = null; S.coverFile = null; S.avatarPreview = null; S.coverPreview = null; S.editProfileData = null; S.editSections = App.getUserSections(S.user).slice(); render(); },
+    closeEditProfile: function() { S.editProfileOpen = false; S.avatarFile = null; S.coverFile = null; S.avatarPreview = null; S.coverPreview = null; S.editProfileData = null; render(); },
     handleAvatarSelect: function(e) {
       var file = e.target.files[0];
       if (file) {
