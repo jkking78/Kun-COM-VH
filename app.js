@@ -1633,12 +1633,14 @@
     function renderEditProfileModal(u) {
     var freshU = db(SK.USERS, []).find(function(p){ return p.id === u.id; }) || u;
     
-    var avatarContent = freshU.avatar_url 
-      ? '<img id="editAvatarPreview" src="' + freshU.avatar_url + '" style="width:100%;height:100%;object-fit:cover;" />'
+    var displayAvatar = S.avatarPreview || freshU.avatar_url;
+    var avatarContent = displayAvatar 
+      ? '<img id="editAvatarPreview" src="' + displayAvatar + '" style="width:100%;height:100%;object-fit:cover;" />'
       : '<div id="editAvatarPreview" style="width:100%;height:100%;background:linear-gradient(135deg,'+(freshU.avatar_color||'#007AFF')+',#0040CC);color:#FFF;font-size:32px;font-weight:900;display:flex;align-items:center;justify-content:center;">' + (freshU.prenom||'M').charAt(0).toUpperCase() + '</div>';
 
-    var coverContent = freshU.cover_url
-      ? '<img src="' + freshU.cover_url + '" style="width:100%;height:100%;object-fit:cover;" />'
+    var displayCover = S.coverPreview || freshU.cover_url;
+    var coverContent = displayCover
+      ? '<img src="' + displayCover + '" style="width:100%;height:100%;object-fit:cover;" />'
       : '';
 
     return '<div style="position:fixed;inset:0;background:#FFF;z-index:10000;display:flex;flex-direction:column;animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
@@ -1971,14 +1973,15 @@ toggleParticipation: function(postId, status) {
       render();
     },
 
-    openEditProfile: function() { S.editProfileOpen = true; S.avatarFile = null; S.coverFile = null; S.editSections = App.getUserSections(S.user).slice(); render(); },
-    closeEditProfile: function() { S.editProfileOpen = false; S.avatarFile = null; S.coverFile = null; render(); },
+    openEditProfile: function() { S.editProfileOpen = true; S.avatarFile = null; S.coverFile = null; S.avatarPreview = null; S.coverPreview = null; S.editSections = App.getUserSections(S.user).slice(); render(); },
+    closeEditProfile: function() { S.editProfileOpen = false; S.avatarFile = null; S.coverFile = null; S.avatarPreview = null; S.coverPreview = null; render(); },
     handleAvatarSelect: function(e) {
       var file = e.target.files[0];
       if (file) {
         S.avatarFile = file;
         var reader = new FileReader();
         reader.onload = function(evt) {
+          S.avatarPreview = evt.target.result;
           var el = document.getElementById('editAvatarPreview');
           if (el) {
             var parent = el.parentNode;
@@ -1994,6 +1997,7 @@ toggleParticipation: function(postId, status) {
         S.coverFile = file;
         var reader = new FileReader();
         reader.onload = function(evt) {
+          S.coverPreview = evt.target.result;
           var el = document.getElementById('editCoverPreview');
           if (el) {
             el.innerHTML = '<img src="' + evt.target.result + '" style="width:100%;height:100%;object-fit:cover;" />';
