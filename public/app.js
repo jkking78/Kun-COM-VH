@@ -242,7 +242,8 @@
     avatarFile: null,
     viewUserProfileId: null,
     loadingUserProfile: false,
-    createEventOpen: false
+    createEventOpen: false,
+    forgotUser: null
 };
 
   // ============================================================
@@ -434,6 +435,45 @@
     '</div></div>';
   }
 
+
+  function renderForgot() {
+    if (!S.forgotUser) {
+      return '<div style="min-height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:28px 24px;box-sizing:border-box;background:linear-gradient(180deg,#F8F9FF 0%,#FFFFFF 100%);">' +
+        '<div style="width:100%;max-width:360px;">' +
+          '<div style="display:flex;align-items:center;gap:12px;margin-bottom:28px;">' +
+            '<button onclick="App.nav(\'login\')" style="background:#F2F2F7;border:none;width:36px;height:36px;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
+              '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>' +
+            '</button>' +
+            '<div><h1 style="font-size:22px;font-weight:900;color:#000;margin:0;">Mot de passe oublié</h1></div>' +
+          '</div>' +
+          '<p style="font-size:14px;color:#8E8E93;margin-bottom:24px;">Saisissez votre adresse e-mail pour retrouver votre compte et répondre à vos questions de sécurité.</p>' +
+          '<form onsubmit="App.checkForgotEmail(event)" style="display:flex;flex-direction:column;gap:14px;">' +
+            renderField('forgotEmail', 'email', 'E-mail', 'jean.dupont@eglise.org', 'email') +
+            '<button type="submit" style="' + btnStyle('#007AFF') + '">Suivant →</button>' +
+          '</form>' +
+        '</div></div>';
+    } else {
+      return '<div style="min-height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:28px 24px;box-sizing:border-box;background:linear-gradient(180deg,#F8F9FF 0%,#FFFFFF 100%);">' +
+        '<div style="width:100%;max-width:360px;">' +
+          '<div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">' +
+            '<button onclick="S.forgotUser=null;render();" style="background:#F2F2F7;border:none;width:36px;height:36px;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
+              '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>' +
+            '</button>' +
+            '<div><h1 style="font-size:22px;font-weight:900;color:#000;margin:0;">Réinitialisation</h1></div>' +
+          '</div>' +
+          '<p style="font-size:14px;color:#8E8E93;margin-bottom:20px;">Répondez aux deux questions de sécurité que vous avez définies lors de votre inscription.</p>' +
+          '<form onsubmit="App.resetPassword(event)" style="display:flex;flex-direction:column;gap:14px;">' +
+            '<div><label style="font-size:12px;font-weight:700;color:#3A3A3C;display:block;margin-bottom:5px;">Q1: ' + (S.forgotUser.sec_q1||'Question 1') + '</label>' +
+            '<input id="forgotA1" type="text" placeholder="Votre réponse secrète" required style="width:100%;height:48px;border-radius:12px;border:1.5px solid #E5E5EA;background:#FAFAFA;padding:0 14px;font-size:14px;box-sizing:border-box;outline:none;" /></div>' +
+            '<div><label style="font-size:12px;font-weight:700;color:#3A3A3C;display:block;margin-bottom:5px;">Q2: ' + (S.forgotUser.sec_q2||'Question 2') + '</label>' +
+            '<input id="forgotA2" type="text" placeholder="Votre réponse secrète" required style="width:100%;height:48px;border-radius:12px;border:1.5px solid #E5E5EA;background:#FAFAFA;padding:0 14px;font-size:14px;box-sizing:border-box;outline:none;" /></div>' +
+            '<div style="margin-top:10px;">' + renderField('forgotPwd', 'password', 'Nouveau mot de passe', '8 caractères minimum', 'new-password') + '</div>' +
+            '<button type="submit" style="' + btnStyle('#007AFF') + 'margin-top:6px;">Réinitialiser le mot de passe</button>' +
+          '</form>' +
+        '</div></div>';
+    }
+  }
+
   function renderSignup() {
     return '<div style="min-height:100%;overflow-y:auto;display:flex;flex-direction:column;align-items:center;padding:28px 24px;box-sizing:border-box;background:#FFF;">' +
     '<div style="width:100%;max-width:360px;">' +
@@ -457,6 +497,23 @@
           SECTIONS.map(function(s){ return '<option value="'+s.id+'">'+s.emoji+' '+s.nom+'</option>'; }).join('') +
         '</select></div>' +
         renderField('signupPwd', 'password', 'Mot de passe', '8 caractères minimum', 'new-password') +
+        '<div style="margin-top:10px;border-top:1px dashed #E5E5EA;padding-top:12px;"><p style="font-size:13px;font-weight:800;margin:0 0 10px;">Questions de sécurité (Récupération)</p>' +
+        '<div><label style="font-size:12px;font-weight:700;color:#3A3A3C;display:block;margin-bottom:5px;">Question 1</label>' +
+          '<select id="signupQ1" style="width:100%;height:44px;border-radius:12px;border:1.5px solid #E5E5EA;background:#FAFAFA;padding:0 14px;font-size:13px;color:#000;box-sizing:border-box;margin-bottom:8px;outline:none;">' +
+            '<option>Quel est votre verset préféré ?</option>' +
+            '<option>Quel est le nom de votre premier animal ?</option>' +
+            '<option>Quelle est votre couleur préférée ?</option>' +
+          '</select>' +
+          '<input id="signupA1" type="text" placeholder="Réponse secrète" required style="width:100%;height:44px;border-radius:12px;border:1.5px solid #E5E5EA;background:#FAFAFA;padding:0 14px;font-size:13px;box-sizing:border-box;margin-bottom:12px;outline:none;" />' +
+        '</div>' +
+        '<div><label style="font-size:12px;font-weight:700;color:#3A3A3C;display:block;margin-bottom:5px;">Question 2</label>' +
+          '<select id="signupQ2" style="width:100%;height:44px;border-radius:12px;border:1.5px solid #E5E5EA;background:#FAFAFA;padding:0 14px;font-size:13px;color:#000;box-sizing:border-box;margin-bottom:8px;outline:none;">' +
+            '<option>Quelle est votre fonction dans la COM ?</option>' +
+            '<option>Quel est le prénom de votre mère ?</option>' +
+            '<option>Quel est votre plat préféré ?</option>' +
+          '</select>' +
+          '<input id="signupA2" type="text" placeholder="Réponse secrète" required style="width:100%;height:44px;border-radius:12px;border:1.5px solid #E5E5EA;background:#FAFAFA;padding:0 14px;font-size:13px;box-sizing:border-box;margin-bottom:12px;outline:none;" />' +
+        '</div></div>' +
         '<button type="submit" style="' + btnStyle('#007AFF') + 'margin-top:6px;">Créer mon compte</button>' +
       '</form>' +
 
@@ -1424,7 +1481,39 @@
       S.optionsOpen = false; S.optionsPost = null;
       render();
     },
-    toggleParticipation: function(postId, status) {
+    
+    checkForgotEmail: function(e) {
+      e && e.preventDefault();
+      var email = ((document.getElementById('forgotEmail')||{}).value||'').trim();
+      var users = db(SK.USERS, []);
+      var u = users.find(function(x){ return x.email.toLowerCase() === email.toLowerCase(); });
+      if (!u) { toast('Aucun compte trouvé avec cet e-mail.', 'error'); return; }
+      if (!u.sec_q1) { toast('Ce compte n\'a pas configuré de questions de sécurité.', 'error'); return; }
+      S.forgotUser = u;
+      render();
+    },
+    resetPassword: function(e) {
+      e && e.preventDefault();
+      if (!S.forgotUser) return;
+      var a1 = ((document.getElementById('forgotA1')||{}).value||'').trim().toLowerCase();
+      var a2 = ((document.getElementById('forgotA2')||{}).value||'').trim().toLowerCase();
+      var newPwd = ((document.getElementById('forgotPwd')||{}).value||'').trim();
+      if (a1 !== S.forgotUser.sec_a1 || a2 !== S.forgotUser.sec_a2) {
+        toast('Les réponses de sécurité sont incorrectes.', 'error'); return;
+      }
+      var users = db(SK.USERS, []);
+      var idx = users.findIndex(function(x){ return x.id === S.forgotUser.id; });
+      if (idx !== -1) {
+        users[idx].pwd = newPwd;
+        dbSet(SK.USERS, users);
+        if (supabase) supabase.from('profiles').update({ updated_at: new Date().toISOString() }).eq('id', users[idx].id).then(function(){});
+      }
+      S.forgotUser = null;
+      S.auth = 'login';
+      render();
+      toast('Votre mot de passe a été réinitialisé ! 🎉', 'success');
+    },
+toggleParticipation: function(postId, status) {
       if (!S.user) return;
       var posts = db(SK.POSTS, []);
       var p = posts.find(function(x){ return x.id === postId; });
@@ -1585,6 +1674,7 @@
     login: function(e) {
       e && e.preventDefault();
       var email = (document.getElementById('loginEmail')||{}).value || '';
+      var pwd = ((document.getElementById('loginPwd')||{}).value||'').trim();
       if (!email.trim()) { toast('Veuillez saisir votre e-mail.', 'error'); return; }
       var users = db(SK.USERS, []);
       var user = users.find(function(u){ return u.email.toLowerCase() === email.toLowerCase(); });
@@ -1592,7 +1682,10 @@
         var p = email.split('@')[0]; var parts = p.split('.');
         user = { id: 'u'+Date.now(), prenom: parts[0]&&parts[0].charAt(0).toUpperCase()+parts[0].slice(1)||'Membre', nom: parts[1]&&parts[1].charAt(0).toUpperCase()+parts[1].slice(1)||'COM', email: email, section_id:'cadrage', section_nom:'Cadrage', role:'RESP_SECTION', is_online:true, last_seen_at:new Date().toISOString(), last_action:'Connexion', avatar_color:'#007AFF' };
         users.push(user);
-      } else { user.is_online = true; user.last_seen_at = new Date().toISOString(); user.last_action = 'Connexion'; }
+      } else { 
+        if (user.pwd && user.pwd !== pwd) { toast('Mot de passe incorrect.', 'error'); return; }
+        user.is_online = true; user.last_seen_at = new Date().toISOString(); user.last_action = 'Connexion'; 
+      }
       dbSet(SK.USERS, users);
       sessionStorage.setItem(SK.SESS, JSON.stringify(user));
       S.user = user; S.auth = 'app';
@@ -1605,12 +1698,17 @@
       var nom = ((document.getElementById('signupNom')||{}).value||'').trim();
       var email = ((document.getElementById('signupEmail')||{}).value||'').trim();
       var sec = ((document.getElementById('signupSection')||{}).value)||'cadrage';
-      if (!prenom||!nom||!email) { toast('Veuillez remplir tous les champs.', 'error'); return; }
+      var pwd = ((document.getElementById('signupPwd')||{}).value||'').trim();
+      var q1 = ((document.getElementById('signupQ1')||{}).value||'');
+      var a1 = ((document.getElementById('signupA1')||{}).value||'').trim().toLowerCase();
+      var q2 = ((document.getElementById('signupQ2')||{}).value||'');
+      var a2 = ((document.getElementById('signupA2')||{}).value||'').trim().toLowerCase();
+      if (!prenom||!nom||!email||!pwd||!a1||!a2) { toast('Veuillez remplir tous les champs et questions de sécurité.', 'error'); return; }
       var users = db(SK.USERS, []);
       if (users.find(function(u){ return u.email.toLowerCase()===email.toLowerCase(); })) {
         toast('Un compte existe déjà avec cet e-mail.', 'error'); return;
       }
-      var newUser = { id:'u'+Date.now(), prenom:prenom, nom:nom, email:email, section_id:sec, section_nom:secNom(sec), role:'MEMBRE', is_online:true, last_seen_at:new Date().toISOString(), last_action:'Inscription', avatar_color: ['#007AFF','#FF2D55','#34C759','#FF9500','#5856D6','#AF52DE'][Math.floor(Math.random()*6)] };
+      var newUser = { id:'u'+Date.now(), prenom:prenom, nom:nom, email:email, section_id:sec, section_nom:secNom(sec), role:'MEMBRE', is_online:true, last_seen_at:new Date().toISOString(), last_action:'Inscription', avatar_color: ['#007AFF','#FF2D55','#34C759','#FF9500','#5856D6','#AF52DE'][Math.floor(Math.random()*6)], pwd: pwd, sec_q1: q1, sec_a1: a1, sec_q2: q2, sec_a2: a2 };
       users.push(newUser); dbSet(SK.USERS, users);
       sessionStorage.setItem(SK.SESS, JSON.stringify(newUser));
       S.user = newUser; S.auth = 'app';
