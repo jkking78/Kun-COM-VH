@@ -348,9 +348,22 @@
   function hashtagify(text) {
     if (!text) return '';
     var safe = safeHtml(text);
-    return safe.replace(/#[\wéèêàâôûîçÉÈÊÀÂÔÛÎÇùÙ]+/gi, function(m) {
+    var users = db(SK.USERS, []);
+    var html = safe.replace(/#[\wéèêàâôûîçÉÈÊÀÂÔÛÎÇùÙ]+/gi, function(m) {
       return '<span onclick="App.filterTag(\'' + encodeURIComponent(m) + '\')" style="color:#007AFF;font-weight:700;cursor:pointer;">' + m + '</span>';
+    }).replace(/@[\wéèêàâôûîçÉÈÊÀÂÔÛÎÇùÙ_.]+/gi, function(m) {
+      var clean = m.slice(1).toLowerCase();
+      var found = users.find(function(u) {
+        var fullName = ((u.prenom||'') + (u.nom||'')).toLowerCase().replace(/\s+/g, '');
+        var prenom = (u.prenom||'').toLowerCase();
+        return fullName === clean || prenom === clean;
+      });
+      if (found) {
+        return '<span onclick="App.openUserProfile(\'' + found.id + '\')" style="color:#007AFF;font-weight:800;cursor:pointer;background:#EBF5FF;padding:2px 6px;border-radius:6px;">' + safeHtml(m) + '</span>';
+      }
+      return '<span style="color:#007AFF;font-weight:700;">' + safeHtml(m) + '</span>';
     }).replace(/\n/g, '<br>');
+    return html;
   }
 
   function trendingTags() {
@@ -605,6 +618,20 @@
         if (a.is_pinned !== b.is_pinned) return a.is_pinned ? -1 : 1;
         return (b.timestamp||0)-(a.timestamp||0); 
       }).filter(function(p) {
+        // Scheduled post filter
+        if (p.status === 'scheduled' && p.scheduled_at && p.scheduled_at > Date.now()) {
+          if (u.role !== 'GRAND_RESPONSABLE' && p.userId !== u.id) return false;
+        }
+
+        // Privacy / Targeted sections filter
+        if (p.visibility === 'sections' && Array.isArray(p.targetSections) && p.targetSections.length > 0) {
+          if (u.role !== 'GRAND_RESPONSABLE' && p.userId !== u.id) {
+            var mySecs = App.getUserSections(u);
+            var hasAccess = p.targetSections.some(function(sec) { return mySecs.indexOf(sec) !== -1; });
+            if (!hasAccess) return false;
+          }
+        }
+
         if (S.story !== 'all' && p.sectionId !== S.story) return false;
         if (S.q.trim()) {
           var q = S.q.toLowerCase();
@@ -646,6 +673,7 @@
     if (S.editProfileOpen) modals += renderEditProfileModal(u);
     if (S.postOptionsOpen) modals += renderPostOptionsModal(posts.find(function(p){return p.id===S.selectedPostId;}));
     if (S.createEventOpen) modals += renderCreateEventModal();
+    if (S.editPostId) modals += renderEditPostModal();
     if (S.createOpen) modals += renderCreateModal(u);
     if (S.optionsOpen && S.optionsPost) modals += renderOptionsModal();
     if (S.commentOpen && S.commentPostId) modals += renderCommentsModal(posts, initial);
@@ -993,7 +1021,7 @@
         })() +
             '<div style="font-size:11.5px;color:#8E8E93;display:flex;align-items:center;gap:4px;">' +
               '<span style="color:' + sec.color + ';font-weight:600;">' + sec.emoji + ' ' + (post.sectionNom||'') + '</span>' +
-              '<span>·</span><span>' + ago + '</span>' +
+              '<span>·</span><span>' + ago + '</span>' + (post.is_edited ? '<span style="font-style:italic;color:#8E8E93;margin-left:4px;">(modifié)</span>' : '') +
             '</div>' +
           '</div>' +
         '</div>' +
@@ -1132,6 +1160,68 @@
       '</div>' +
     '</div>';
   }
+  function renderEditPostModal() {
+    if (!S.editPostId) return '';
+    var posts = db(SK.POSTS, []);
+    var post = posts.find(function(p){ return p.id === S.editPostId; });
+    if (!post) return '';
+
+    var vis = S.postVisibility || post.visibility || 'all';
+    var schedDateVal = '';
+    var schedTimeVal = '';
+    if (post.scheduled_at) {
+      var d = new Date(post.scheduled_at);
+      schedDateVal = d.toISOString().split('T')[0];
+      schedTimeVal = d.toTimeString().split(' ')[0].slice(0, 5);
+    }
+
+    return '<div onclick="App.closeEditPost()" style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:10000;display:flex;justify-content:center;align-items:flex-end;">' +
+      '<div onclick="event.stopPropagation()" style="width:100%;max-width:460px;background:#FFF;border-top-left-radius:28px;border-top-right-radius:28px;max-height:92vh;display:flex;flex-direction:column;animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
+
+        '<div style="display:flex;justify-content:center;padding:10px 0 0;cursor:pointer;" onclick="App.closeEditPost()">' +
+          '<div style="width:40px;height:4px;background:#D1D1D6;border-radius:2px;"></div>' +
+        '</div>' +
+
+        '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 18px 10px;border-bottom:0.5px solid #F2F2F7;">' +
+          '<span onclick="App.closeEditPost()" style="font-size:15px;color:#007AFF;cursor:pointer;font-weight:600;">Annuler</span>' +
+          '<h3 style="font-size:16px;font-weight:800;margin:0;color:#000;">Modifier la publication</h3>' +
+          '<button type="button" onclick="App.saveEditPost('' + post.id + '')" style="font-size:15px;color:#007AFF;font-weight:800;background:none;border:none;cursor:pointer;">Enregistrer</button>' +
+        '</div>' +
+
+        '<div style="overflow-y:auto;flex:1;padding:16px;">' +
+          '<div id="mentionSugg" style="display:none;flex-wrap:wrap;gap:6px;background:#F0F6FF;border:1px solid #CCDEFF;border-radius:14px;padding:10px;margin-bottom:12px;"></div>' +
+
+          '<textarea id="editPostText" oninput="App.onPostInput(this.value)" placeholder="Modifiez votre texte... Tapez @ pour mentionner un membre..." style="width:100%;min-height:120px;border:1px solid #E5E5EA;border-radius:14px;padding:12px;font-size:15px;line-height:1.5;color:#000;resize:none;outline:none;box-sizing:border-box;font-family:inherit;margin-bottom:14px;">' + safeHtml(post.caption||'') + '</textarea>' +
+
+          '<!-- Confidentialité -->' +
+          '<div style="background:#FAFAFA;border-radius:16px;padding:14px;margin-bottom:14px;border:1px solid #E5E5EA;">' +
+            '<label style="font-size:13px;font-weight:800;color:#000;display:block;margin-bottom:8px;">🔒 Qui peut voir cette publication ?</label>' +
+            '<div style="display:flex;gap:8px;margin-bottom:10px;">' +
+              '<button type="button" onclick="App.setPostVisibility('all')" style="flex:1;padding:8px;border-radius:10px;font-size:12px;font-weight:700;border:none;cursor:pointer;background:' + (vis==='all'?'#007AFF':'#FFF') + ';color:' + (vis==='all'?'#FFF':'#3A3A3C') + ';box-shadow:0 1px 3px rgba(0,0,0,0.1);">🌍 Tout le monde</button>' +
+              '<button type="button" onclick="App.setPostVisibility('sections')" style="flex:1;padding:8px;border-radius:10px;font-size:12px;font-weight:700;border:none;cursor:pointer;background:' + (vis==='sections'?'#007AFF':'#FFF') + ';color:' + (vis==='sections'?'#FFF':'#3A3A3C') + ';box-shadow:0 1px 3px rgba(0,0,0,0.1);">🔒 Sections ciblées</button>' +
+            '</div>' +
+            (vis === 'sections' 
+              ? '<div style="margin-top:10px;">' +
+                  '<label style="font-size:12px;color:#8E8E93;font-weight:600;display:block;margin-bottom:6px;">Cliquer sur les sections autorisées :</label>' +
+                  '<div id="targetSectionBadgesContainer">' + App.renderSectionBadges(S.postTargetSections||[], 'toggleTargetSection') + '</div>' +
+                '</div>'
+              : '') +
+          '</div>' +
+
+          '<!-- Programmation -->' +
+          '<div style="background:#FAFAFA;border-radius:16px;padding:14px;border:1px solid #E5E5EA;">' +
+            '<label style="font-size:13px;font-weight:800;color:#000;display:block;margin-bottom:8px;">⏰ Programmer la publication</label>' +
+            '<div style="display:flex;gap:8px;">' +
+              '<input type="date" id="editPostScheduleDate" value="' + schedDateVal + '" style="flex:1;height:40px;border-radius:10px;border:1px solid #E5E5EA;background:#FFF;padding:0 10px;font-size:13px;outline:none;" />' +
+              '<input type="time" id="editPostScheduleTime" value="' + schedTimeVal + '" style="flex:1;height:40px;border-radius:10px;border:1px solid #E5E5EA;background:#FFF;padding:0 10px;font-size:13px;outline:none;" />' +
+            '</div>' +
+          '</div>' +
+
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
   function renderCreateModal(u) {
     var previewHtml = '';
     if (S.pendingMedia.length > 0) {
@@ -1175,6 +1265,7 @@
           '</div>' +
 
           hashHtml +
+          '<div id="mentionSugg" style="display:none;flex-wrap:wrap;gap:6px;background:#F0F6FF;border:1px solid #CCDEFF;border-radius:14px;padding:10px;margin-bottom:12px;"></div>' +
           previewHtml +
 
           // Color preview or plain textarea
@@ -1191,7 +1282,30 @@
           (S.postBg ? '<form id="createPostForm" onsubmit="App.submitPost(event)" style="display:none;"></form>' : '') +
         '</div>' +
 
-        '<div style="border-top:0.5px solid #F2F2F7;padding:10px 16px;">' +
+        <!-- Confidentialité & Programmation -->
+        <div style="padding:0 16px 10px;">
+          <div style="background:#FAFAFA;border-radius:16px;padding:12px;margin-bottom:10px;border:1px solid #E5E5EA;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+              <span style="font-size:12.5px;font-weight:800;color:#000;">🔒 Qui peut voir ?</span>
+              <div style="display:flex;gap:6px;">
+                <button type="button" onclick="App.setPostVisibility('all')" style="padding:4px 10px;border-radius:8px;font-size:11px;font-weight:700;border:none;cursor:pointer;background:' + ((S.postVisibility||'all')==='all'?'#007AFF':'#FFF') + ';color:' + ((S.postVisibility||'all')==='all'?'#FFF':'#3A3A3C') + ';">🌍 Tout le monde</button>
+                <button type="button" onclick="App.setPostVisibility('sections')" style="padding:4px 10px;border-radius:8px;font-size:11px;font-weight:700;border:none;cursor:pointer;background:' + ((S.postVisibility||'all')==='sections'?'#007AFF':'#FFF') + ';color:' + ((S.postVisibility||'all')==='sections'?'#FFF':'#3A3A3C') + ';">🔒 Sections ciblées</button>
+              </div>
+            </div>
+            ' + (S.postVisibility === 'sections' 
+              ? '<div style="margin-top:8px;"><div id="targetSectionBadgesContainer">' + App.renderSectionBadges(S.postTargetSections||[], 'toggleTargetSection') + '</div></div>'
+              : '') + '
+          </div>
+          <div style="background:#FAFAFA;border-radius:16px;padding:12px;border:1px solid #E5E5EA;">
+            <span style="font-size:12.5px;font-weight:800;color:#000;display:block;margin-bottom:6px;">⏰ Programmer la publication (optionnel)</span>
+            <div style="display:flex;gap:6px;">
+              <input type="date" id="postScheduleDate" style="flex:1;height:36px;border-radius:8px;border:1px solid #E5E5EA;background:#FFF;padding:0 8px;font-size:12px;outline:none;" />
+              <input type="time" id="postScheduleTime" style="flex:1;height:36px;border-radius:8px;border:1px solid #E5E5EA;background:#FFF;padding:0 8px;font-size:12px;outline:none;" />
+            </div>
+          </div>
+        </div>
+
+        <div style="border-top:0.5px solid #F2F2F7;padding:10px 16px;">
           // Color palette row
           (S.pendingMedia.length === 0
             ? '<div style="display:flex;gap:8px;align-items:center;overflow-x:auto;padding-bottom:8px;scrollbar-width:none;">' +
@@ -1260,7 +1374,11 @@
         '</button>' +
 
         (canDelete
-          ? '<button onclick="App.deletePost(\''+post.id+'\')" style="width:100%;background:#FFF5F5;border:1px solid #FFE0E0;border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;margin-bottom:10px;text-align:left;">' +
+          ? '<button onclick="App.openEditPost(\''+post.id+'\');App.closeOptions();" style="width:100%;background:#F8F8F8;border:none;border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;margin-bottom:10px;text-align:left;">' +
+              '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#007AFF" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>' +
+              '<span style="font-size:15px;font-weight:600;color:#000;">✏️ Modifier la publication</span>' +
+            '</button>' +
+            '<button onclick="App.deletePost(\''+post.id+'\')" style="width:100%;background:#FFF5F5;border:1px solid #FFE0E0;border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;margin-bottom:10px;text-align:left;">' +
               SVG.trash + '<span style="font-size:15px;font-weight:700;color:#FF3B30;">Supprimer</span>' +
             '</button>'
           : '') +
@@ -2560,6 +2678,104 @@ toggleParticipation: function(postId, status) {
     },
 
     // Create post
+    // Mentions & Privacy
+    onPostInput: function(val) {
+      var match = val.match(/@([\wéèêàâôûîçÉÈÊÀÂÔÛÎÇùÙ]*)$/);
+      var box = document.getElementById('mentionSugg');
+      if (match && box) {
+        var query = match[1].toLowerCase();
+        var users = db(SK.USERS, []).filter(function(u) {
+          var name = ((u.prenom||'') + ' ' + (u.nom||'')).toLowerCase();
+          return name.indexOf(query) !== -1;
+        }).slice(0, 5);
+
+        if (users.length > 0) {
+          box.innerHTML = '<div style="font-size:11px;font-weight:800;color:#007AFF;width:100%;margin-bottom:4px;">Membres à mentionner :</div>' +
+            users.map(function(u) {
+              return '<button type="button" onclick="App.insertMention(\'@' + safeHtml(u.prenom + u.nom) + ' \')" style="background:#EBF5FF;color:#007AFF;border:none;padding:5px 10px;border-radius:12px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:4px;">👤 ' + safeHtml(u.prenom + ' ' + u.nom) + '</button>';
+            }).join('');
+          box.style.display = 'flex';
+        } else {
+          box.style.display = 'none';
+        }
+      } else if (box) {
+        box.style.display = 'none';
+      }
+    },
+    insertMention: function(mention) {
+      var ta = document.getElementById('newPostText') || document.getElementById('editPostText');
+      if (!ta) return;
+      var val = ta.value;
+      ta.value = val.replace(/@[\wéèêàâôûîçÉÈÊÀÂÔÛÎÇùÙ]*$/, mention);
+      var box = document.getElementById('mentionSugg');
+      if (box) box.style.display = 'none';
+      ta.focus();
+    },
+    toggleTargetSection: function(sec) {
+      S.postTargetSections = S.postTargetSections || [];
+      var idx = S.postTargetSections.indexOf(sec);
+      if (idx !== -1) S.postTargetSections.splice(idx, 1);
+      else S.postTargetSections.push(sec);
+      var container = document.getElementById('targetSectionBadgesContainer');
+      if (container) {
+        container.innerHTML = App.renderSectionBadges(S.postTargetSections, 'toggleTargetSection');
+      } else {
+        render();
+      }
+    },
+    setPostVisibility: function(vis) {
+      S.postVisibility = vis;
+      render();
+    },
+    openEditPost: function(postId) {
+      var posts = db(SK.POSTS, []);
+      var p = posts.find(function(x){ return x.id === postId; });
+      if (!p) return;
+      S.editPostId = postId;
+      S.postVisibility = p.visibility || 'all';
+      S.postTargetSections = (p.targetSections || []).slice();
+      render();
+    },
+    closeEditPost: function() {
+      S.editPostId = null;
+      render();
+    },
+    saveEditPost: async function(postId) {
+      var ta = document.getElementById('editPostText');
+      var txt = ta ? ta.value.trim() : '';
+      if (!txt) { toast('Le texte ne peut pas être vide.', 'error'); return; }
+      var posts = db(SK.POSTS, []);
+      var post = posts.find(function(p){ return p.id === postId; });
+      if (!post) return;
+      
+      post.caption = txt;
+      post.is_edited = true;
+      post.visibility = S.postVisibility || 'all';
+      post.targetSections = (S.postTargetSections || []).slice();
+
+      var dateEl = document.getElementById('editPostScheduleDate');
+      var timeEl = document.getElementById('editPostScheduleTime');
+      if (dateEl && dateEl.value && timeEl && timeEl.value) {
+        var schedDate = new Date(dateEl.value + 'T' + timeEl.value);
+        if (schedDate.getTime() > Date.now()) {
+          post.status = 'scheduled';
+          post.scheduled_at = schedDate.getTime();
+        } else {
+          post.status = 'published';
+          post.scheduled_at = null;
+        }
+      }
+
+      dbSet(SK.POSTS, posts);
+      if (supabase) {
+        try {
+          await supabase.from('kun_com_posts').upsert({ id: post.id, content: post, created_at: new Date(post.timestamp).toISOString() }, { onConflict: 'id' });
+        } catch(e){}
+      }
+      S.editPostId = null;
+      render();
+      toast('Publication modifiée ! 🎉', 'success');
+    },
     openCreate: function() { S.createOpen=true; S.pendingMedia=[]; render(); setTimeout(function(){ var t=document.getElementById('newPostText'); if(t) t.focus(); },120); },
     closeCreate: function() { S.createOpen=false; S.pendingMedia=[]; S.hashSuggestions=false; S.postBg=null; render(); },
     onPostInput: function(val) {
