@@ -1,210 +1,243 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
-  StatusBar,
-  Alert
+  StyleSheet,
+  SafeAreaView
 } from 'react-native';
-import { styles, COLORS } from './profileStyles';
+import { supabase } from '../supabaseClient';
 
-export default function ProfileScreen() {
-  // Profil Utilisateur
-  const [user, setUser] = useState({
-    nom: 'Éric Kouamé',
-    email: 'eric.cadrage@eglise.org',
-    role: 'RESP_SECTION', // 'RESP_SECTION' ou 'STAGIAIRE'
-    sectionNom: 'Cadrage',
-    isStagiaireBadge: false, // Conditionné au rôle STAGIAIRE
-    trustScore: 98.5, // Float 0-100%
-    servicesCompleted: 45,
-    averageRating: 4.88,
-  });
+export default function ProfileScreen({ currentUser = { prenom: 'Éric', nom: 'Kouamé', role: 'RESP_SECTION', sectionNom: 'Cadrage' }, onLogout }) {
+  const [profiles, setProfiles] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  const [activeBottomTab, setActiveBottomTab] = useState('profile');
+  const isAdmin = currentUser.role === 'GRAND_RESPONSABLE';
 
-  // Basculer en mode Stagiaire pour démo visuelle du Badge
-  const toggleStagiaireRole = () => {
-    setUser(prev => {
-      const isStag = prev.role !== 'STAGIAIRE';
-      return {
-        ...prev,
-        role: isStag ? 'STAGIAIRE' : 'RESP_SECTION',
-        isStagiaireBadge: isStag,
-        trustScore: isStag ? 92.0 : 98.5
-      };
-    });
-  };
+  useEffect(() => {
+    if (isAdmin) {
+      fetchProfiles();
+    }
+  }, [isAdmin]);
 
-  // Synchronisation avec l'agenda du téléphone
-  const handleSyncCalendar = () => {
-    Alert.alert(
-      "Synchronisation Agenda",
-      "Vos 3 prochains services cultes de Dimanche ont été ajoutés à l'agenda de votre téléphone avec des rappels 2h avant le début.",
-      [{ text: "Super !", style: "default" }]
-    );
-  };
-
-  // Gestion des disponibilités
-  const handleManageAvailability = () => {
-    Alert.alert(
-      "Gestion des Disponibilités",
-      "Vos disponibilités pour les cultes du mois d'Août sont actuellement configurées sur : TOUS LES DIMANCHES.\n\nSouhaitez-vous déclarer une indisponibilité ?",
-      [
-        { text: "Déclarer une absence", style: "destructive", onPress: () => Alert.alert("Information", "Absence transmise au Chef de Département.") },
-        { text: "Conserver disponible", style: "cancel" }
-      ]
-    );
+  const fetchProfiles = async () => {
+    setLoading(true);
+    try {
+      const { data } = await supabase.from('profiles').select('*');
+      if (data) {
+        setProfiles(data);
+      }
+    } catch (e) {}
+    setLoading(false);
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
+      <ScrollView contentContainerStyle={styles.scroll}>
+        <View style={styles.headerRow}>
+          <View>
+            <Text style={styles.headerSub}>DÉPARTEMENT COMMUNICATION</Text>
+            <Text style={styles.headerTitle}>Mon Profil</Text>
+          </View>
 
-      {/* 1. HEADER */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.headerSubtitle}>Département Communication</Text>
-          <Text style={styles.headerTitle}>Mon Profil</Text>
+          <TouchableOpacity style={styles.logoutBtn} onPress={onLogout}>
+            <Text style={styles.logoutBtnText}>Se déconnecter</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Bouton démo bascule rôle */}
-        <TouchableOpacity
-          style={{ backgroundColor: COLORS.appleBlueLight, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12 }}
-          onPress={toggleStagiaireRole}
-        >
-          <Text style={{ fontSize: 11, fontWeight: '700', color: COLORS.appleBlue }}>
-            🔄 Rôle: {user.role}
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* CONTENU SCROLLABLE */}
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
-
-        {/* 2. CARTE PROFIL & BADGE STAGIAIRE CONDITIONNEL */}
+        {/* CARTE PROFIL */}
         <View style={styles.profileCard}>
-          <View style={styles.avatarContainer}>
-            <Text style={styles.avatarText}>{user.nom.charAt(0)}</Text>
+          <View style={styles.avatarCircle}>
+            <Text style={styles.avatarText}>{currentUser.prenom ? currentUser.prenom.charAt(0) : 'U'}</Text>
           </View>
-
-          <Text style={styles.userName}>{user.nom}</Text>
-          <Text style={styles.userRole}>
-            {user.role} • Section {user.sectionNom}
-          </Text>
-
-          {/* BADGE STAGIAIRE CONDITIONNEL (si is_stagiaire_badge == true) */}
-          {user.isStagiaireBadge && (
-            <View style={styles.stagiaireBadge}>
-              <Text style={{ fontSize: 13 }}>🐣</Text>
-              <Text style={styles.stagiaireBadgeText}>Badge Stagiaire en Formation</Text>
-            </View>
-          )}
+          <Text style={styles.profileName}>{currentUser.prenom} {currentUser.nom}</Text>
+          <Text style={styles.profileSub}>Rôle : {currentUser.role} • Section {currentUser.sectionNom || 'Cadrage'}</Text>
         </View>
 
-        {/* 3. JAUGE D'INDICE DE CONFIANCE (TRUST SCORE) */}
-        <View style={styles.trustCard}>
-          <Text style={styles.trustCardTitle}>Indice de Confiance (Trust Score)</Text>
-
-          <View style={styles.gaugeRow}>
-            {/* Jauge Circulaire Visuelle */}
-            <View style={styles.circleGauge}>
-              <Text style={styles.gaugeScoreText}>{user.trustScore}%</Text>
-              <Text style={styles.gaugeLabelText}>Fiabilité</Text>
+        {/* DASHBOARD ADMIN DE TRACKING DU GRAND RESPONSABLE */}
+        {isAdmin && (
+          <View style={styles.adminDashboard}>
+            <View style={styles.adminHeader}>
+              <Text style={styles.adminTitle}>Dashboard Grand Responsable</Text>
+              <Text style={styles.adminSub}>Suivi des membres & Activité Temps Réel</Text>
             </View>
 
-            {/* Statistiques en Colonne */}
-            <View style={styles.statsColumn}>
-              <View style={styles.statBox}>
-                <Text style={styles.statValue}>{user.servicesCompleted} Services</Text>
-                <Text style={styles.statLabel}>Effectués au culte</Text>
+            {loading ? (
+              <Text style={styles.loadingText}>Chargement des membres Supabase...</Text>
+            ) : (
+              <View style={styles.membersList}>
+                {profiles.map(p => (
+                  <View key={p.id} style={styles.memberCard}>
+                    <View style={styles.memberLeft}>
+                      <View style={[styles.statusDot, p.is_online ? styles.dotOnline : styles.dotOffline]} />
+                      <View>
+                        <Text style={styles.memberName}>{p.prenom} {p.nom} ({p.section_nom || 'COM'})</Text>
+                        <Text style={styles.memberRole}>{p.role} • {p.email}</Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.memberRight}>
+                      <Text style={styles.lastActionText}>{p.last_action || 'Actif'}</Text>
+                      <Text style={styles.timeAgoText}>{p.is_online ? 'En ligne' : 'Hors ligne'}</Text>
+                    </View>
+                  </View>
+                ))}
               </View>
-
-              <View style={styles.statBox}>
-                <Text style={styles.statValue}>{user.averageRating.toFixed(2)} / 5.0 ★</Text>
-                <Text style={styles.statLabel}>Note moyenne reçue</Text>
-              </View>
-            </View>
+            )}
           </View>
-        </View>
-
-        {/* 4. SECTION BADGES ET COMPÉTENCES */}
-        <Text style={styles.sectionTitle}>Badges & Compétences Accréditées</Text>
-
-        <View style={styles.badgesGrid}>
-          <View style={styles.badgeItem}>
-            <Text style={styles.badgeIcon}>🎥</Text>
-            <Text style={styles.badgeText}>Expert Caméra Live</Text>
-          </View>
-
-          <View style={styles.badgeItem}>
-            <Text style={styles.badgeIcon}>🎓</Text>
-            <Text style={styles.badgeText}>Formateur Cadrage</Text>
-          </View>
-
-          <View style={styles.badgeItem}>
-            <Text style={styles.badgeIcon}>🎛️</Text>
-            <Text style={styles.badgeText}>Régie Technique</Text>
-          </View>
-
-          <View style={styles.badgeItem}>
-            <Text style={styles.badgeIcon}>⏰</Text>
-            <Text style={styles.badgeText}>Ponctualité Or (100%)</Text>
-          </View>
-        </View>
-
-        {/* 5. BOUTONS D'ACTION ET CONFIGURATION */}
-        <Text style={styles.sectionTitle}>Actions & Réglages</Text>
-
-        <View style={styles.actionsContainer}>
-          <TouchableOpacity style={styles.btnActionPrimary} onPress={handleSyncCalendar}>
-            <Text style={{ fontSize: 18 }}>📅</Text>
-            <Text style={styles.btnActionPrimaryText}>
-              Synchroniser avec l'agenda du téléphone
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.btnActionSecondary} onPress={handleManageAvailability}>
-            <Text style={{ fontSize: 18 }}>⚙️</Text>
-            <Text style={styles.btnActionSecondaryText}>
-              Gérer mes disponibilités de culte
-            </Text>
-          </TouchableOpacity>
-        </View>
-
+        )}
       </ScrollView>
-
-      {/* BOTTOM TAB BAR iOS (5 Onglets) */}
-      <View style={styles.bottomTabBar}>
-        <TouchableOpacity style={styles.tabItem} onPress={() => setActiveBottomTab('home')}>
-          <Text style={styles.tabIcon}>🏠</Text>
-          <Text style={[styles.tabLabel, activeBottomTab === 'home' && styles.tabLabelActive]}>Accueil</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.tabItem} onPress={() => setActiveBottomTab('planning')}>
-          <Text style={styles.tabIcon}>📅</Text>
-          <Text style={[styles.tabLabel, activeBottomTab === 'planning' && styles.tabLabelActive]}>Planning</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.publishButton} onPress={() => setActiveBottomTab('publish')}>
-          <Text style={styles.publishButtonText}>+</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.tabItem} onPress={() => setActiveBottomTab('notes')}>
-          <Text style={styles.tabIcon}>📝</Text>
-          <Text style={[styles.tabLabel, activeBottomTab === 'notes' && styles.tabLabelActive]}>Débrief</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.tabItem} onPress={() => setActiveBottomTab('profile')}>
-          <Text style={styles.tabIcon}>👤</Text>
-          <Text style={[styles.tabLabel, activeBottomTab === 'profile' && styles.tabLabelActive]}>Profil</Text>
-        </TouchableOpacity>
-      </View>
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  scroll: {
+    padding: 16,
+    paddingBottom: 90,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  headerSub: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#007AFF',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '900',
+    color: '#000000',
+  },
+  logoutBtn: {
+    backgroundColor: '#FFEBEA',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+  },
+  logoutBtnText: {
+    color: '#FF3B30',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  profileCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 22,
+    padding: 20,
+    alignItems: 'center',
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+  },
+  avatarCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#F0F6FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
+    borderWidth: 3,
+    borderColor: '#007AFF',
+  },
+  avatarText: {
+    fontSize: 30,
+    fontWeight: '800',
+    color: '#007AFF',
+  },
+  profileName: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#000000',
+  },
+  profileSub: {
+    fontSize: 13,
+    color: '#8E8E93',
+    marginTop: 2,
+  },
+  adminDashboard: {
+    backgroundColor: '#FAFAFA',
+    borderRadius: 22,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#EFEFEF',
+  },
+  adminHeader: {
+    marginBottom: 14,
+  },
+  adminTitle: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#000000',
+  },
+  adminSub: {
+    fontSize: 12,
+    color: '#8E8E93',
+  },
+  loadingText: {
+    fontSize: 13,
+    color: '#8E8E93',
+    textAlign: 'center',
+    paddingVertical: 20,
+  },
+  membersList: {
+    gap: 10,
+  },
+  memberCard: {
+    backgroundColor: '#FFFFFF',
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  memberLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  statusDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  dotOnline: {
+    backgroundColor: '#34C759',
+  },
+  dotOffline: {
+    backgroundColor: '#C7C7CC',
+  },
+  memberName: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    color: '#000000',
+  },
+  memberRole: {
+    fontSize: 11,
+    color: '#8E8E93',
+  },
+  memberRight: {
+    alignItems: 'flex-end',
+  },
+  lastActionText: {
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: '#007AFF',
+  },
+  timeAgoText: {
+    fontSize: 10.5,
+    color: '#8E8E93',
+  },
+});

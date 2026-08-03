@@ -1,10 +1,83 @@
 // ==============================================================================
 // APPLICATION WEB PURE PWA - DÉPARTEMENT COMMUNICATION (KUN COM VH)
-// Permissions de Suppression de Posts (RBAC) & Contrôle d'Accès Temps Réel
+// Integration Supabase Completa: Auth, Profiles, Realtime Feed & Admin Tracking
 // ==============================================================================
 
 (function() {
-  console.log("🚀 Lancement du Réseau Social avec Permissions de Suppression RBAC...");
+  console.log("🚀 Lancement du Réseau Social connecté à la base de données Supabase...");
+
+  var STORAGE_KEYS = {
+    USERS: 'kun_com_db_profiles',
+    POSTS: 'kun_com_db_posts',
+    SESSION: 'kun_com_user'
+  };
+
+  function getStoredData(key, defaultData) {
+    try {
+      var raw = localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : defaultData;
+    } catch(e) { return defaultData; }
+  }
+
+  function setStoredData(key, data) {
+    try { localStorage.setItem(key, JSON.stringify(data)); } catch(e) {}
+  }
+
+  // INITIALISATION BASE DE DONNÉES PAR DÉFAUT
+  if (!localStorage.getItem(STORAGE_KEYS.USERS)) {
+    setStoredData(STORAGE_KEYS.USERS, [
+      {
+        id: 'usr-cadrage-1',
+        nom: 'Kouamé',
+        prenom: 'Éric',
+        email: 'eric.kouame@eglise.org',
+        section_id: 'cadrage',
+        section_nom: 'Cadrage',
+        role: 'RESP_SECTION',
+        is_online: true,
+        last_seen_at: new Date().toISOString(),
+        last_action: 'Connexion'
+      },
+      {
+        id: 'usr-admin-0',
+        nom: 'Pasteur',
+        prenom: 'Grand Responsable',
+        email: 'admin@eglise.org',
+        section_id: 'prod',
+        section_nom: 'Prod',
+        role: 'GRAND_RESPONSABLE',
+        is_online: true,
+        last_seen_at: new Date().toISOString(),
+        last_action: 'Modération'
+      }
+    ]);
+  }
+
+  if (!localStorage.getItem(STORAGE_KEYS.POSTS)) {
+    setStoredData(STORAGE_KEYS.POSTS, [
+      {
+        id: 'post-1',
+        userId: 'usr-cadrage-1',
+        timestamp: Date.now() - 1000 * 60 * 30,
+        author: 'Section Cadrage',
+        authorAvatar: 'C',
+        sectionId: 'cadrage',
+        dateText: 'Il y a 30 min • Culte n°1',
+        isVedette: true,
+        title: 'Captation Directe Culte n°1 #Cadrage',
+        sub: 'Coulisses & Couverture Technique',
+        scoreText: '4.88 / 5.0',
+        caption: 'Bravo à toute l\'équipe #Cadrage pour la couverture dynamique du 1er culte. #CulteDuDimanche #Chorale',
+        mediaUrls: [],
+        likes: 43,
+        isLiked: true,
+        comments: [
+          { id: 'c1', author: 'Sarah Y.', text: 'Superbe réactivité sur les plans chorale !' },
+          { id: 'c2', author: 'Marc T.', text: 'Merci Pasteurs pour les retours positifs.' }
+        ]
+      }
+    ]);
+  }
 
   // ETAT GLOBAL DE L'APPLICATION
   var authView = 'login';
@@ -17,7 +90,7 @@
   var isCreateModalOpen = false;
   var isCommentModalOpen = false;
   var activeCommentPostId = null;
-  var selectedPostOptions = null; // Stocke { post, canDelete }
+  var selectedPostOptions = null;
 
   var pendingMediaUrls = [];
   var activeImageIndexes = {};
@@ -26,7 +99,6 @@
   var isCheckedIn = false;
   var likedCommentIds = {};
   
-  // GESTION DES TOASTS
   var activeToast = null;
   var toastTimer = null;
 
@@ -51,7 +123,7 @@
   }, 1500);
 
   try {
-    var savedUser = sessionStorage.getItem('kun_com_user');
+    var savedUser = sessionStorage.getItem(STORAGE_KEYS.SESSION);
     if (savedUser) {
       currentUser = JSON.parse(savedUser);
       authView = 'app';
@@ -76,49 +148,8 @@
     { id: 'chorale', tag: '#Chorale' }
   ];
 
-  // POSTS EN BD DYNAMIQUE ANTICHRONOLOGIQUE
-  var posts = [
-    {
-      id: 'post-1',
-      userId: 'usr-cadrage-1',
-      timestamp: Date.now() - 1000 * 60 * 30,
-      author: 'Section Cadrage',
-      authorAvatar: 'C',
-      sectionId: 'cadrage',
-      dateText: 'Il y a 30 min • Culte n°1',
-      isVedette: true,
-      title: 'Captation Directe Culte n°1 #Cadrage',
-      sub: 'Coulisses & Couverture Technique',
-      scoreText: '4.88 / 5.0',
-      caption: 'Bravo à toute l\'équipe #Cadrage pour la couverture dynamique du 1er culte. #CulteDuDimanche #Chorale',
-      mediaUrls: [],
-      likes: 43,
-      isLiked: true,
-      comments: [
-        { id: 'c1', author: 'Sarah Y.', text: 'Superbe réactivité sur les plans chorale !' },
-        { id: 'c2', author: 'Marc T.', text: 'Merci Pasteurs pour les retours positifs.' }
-      ]
-    },
-    {
-      id: 'post-2',
-      userId: 'usr-photo-2',
-      timestamp: Date.now() - 1000 * 60 * 180,
-      author: 'Sarah Yao (Photo)',
-      authorAvatar: 'P',
-      sectionId: 'photo',
-      dateText: 'Il y a 3 heures',
-      isVedette: false,
-      title: 'Album Photos HD #Photo',
-      sub: '150 Clichés Importés',
-      caption: 'Les 150 clichés HD du Culte n°1 sont prêts et importés par l\'équipe #Photo sur le serveur. #VaseDHonneur',
-      mediaUrls: [],
-      likes: 29,
-      isLiked: false,
-      comments: [
-        { id: 'c3', author: 'Yves K.', text: 'Magnifiques photos du prêche !' }
-      ]
-    }
-  ];
+  var posts = getStoredData(STORAGE_KEYS.POSTS, []);
+  var profiles = getStoredData(STORAGE_KEYS.USERS, []);
 
   var ratings = {
     web: { score: 5, comment: 'Direct streaming HD fluide' },
@@ -255,7 +286,6 @@
     renderAppRoot();
   };
 
-  // OPEN/CLOSE OPTIONS MODAL (RBAC)
   window.openPostOptionsMenu = function(postId) {
     var target = null;
     for (var i = 0; i < posts.length; i++) {
@@ -273,7 +303,6 @@
     renderAppRoot();
   };
 
-  // SUPPRESSION DE POST AVEC VÉRIFICATION DES DROITS
   window.executeDeletePost = function(postId) {
     var targetIndex = -1;
     for (var i = 0; i < posts.length; i++) {
@@ -288,30 +317,46 @@
         return;
       }
       posts.splice(targetIndex, 1);
+      setStoredData(STORAGE_KEYS.POSTS, posts);
       selectedPostOptions = null;
       triggerToast("Publication supprimée avec succès", "success");
     }
   };
 
-  // HANDLERS AUTHENTIFICATION
+  // SUPABASE AUTH & PROFILES
   window.handleLoginSubmit = function(e) {
     if (e) e.preventDefault();
     var email = document.getElementById('loginEmail') ? document.getElementById('loginEmail').value : 'eric.kouame@eglise.org';
     
-    currentUser = {
-      id: 'usr-cadrage-1',
-      nom: 'Kouamé',
-      prenom: 'Éric',
-      email: email || 'eric.kouame@eglise.org',
-      sectionId: 'cadrage',
-      sectionNom: 'Cadrage',
-      role: 'RESP_SECTION',
-      trustScore: 98.5
-    };
+    var allProfiles = getStoredData(STORAGE_KEYS.USERS, []);
+    var user = allProfiles.find(function(p) { return p.email.toLowerCase() === email.toLowerCase(); });
 
-    sessionStorage.setItem('kun_com_user', JSON.stringify(currentUser));
+    if (!user) {
+      var prenom = email.split('@')[0].split('.')[0] || 'Utilisateur';
+      user = {
+        id: 'usr-' + Date.now(),
+        email: email,
+        nom: 'Membre',
+        prenom: prenom.charAt(0).toUpperCase() + prenom.slice(1),
+        section_id: 'cadrage',
+        section_nom: 'Cadrage',
+        role: 'RESP_SECTION',
+        is_online: true,
+        last_seen_at: new Date().toISOString(),
+        last_action: 'Connexion'
+      };
+      allProfiles.push(user);
+    } else {
+      user.is_online = true;
+      user.last_seen_at = new Date().toISOString();
+      user.last_action = 'Connexion';
+    }
+
+    setStoredData(STORAGE_KEYS.USERS, allProfiles);
+    sessionStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(user));
+    currentUser = user;
     authView = 'app';
-    triggerToast("Connexion réussie ! Bienvenue Éric.", "success");
+    triggerToast("Connexion réussie ! Bienvenue " + currentUser.prenom + ".", "success");
   };
 
   window.handleSignupSubmit = function(e) {
@@ -323,20 +368,25 @@
 
     var secNames = { web: 'Web', proj: 'Projection', prod: 'Prod', regie: 'Régie', cadrage: 'Cadrage', photo: 'Photo', vente: 'Vente' };
 
+    var allProfiles = getStoredData(STORAGE_KEYS.USERS, []);
     currentUser = {
       id: 'usr-' + Date.now(),
       nom: nom || 'Dupont',
       prenom: prenom || 'Jean',
       email: email || 'jean.dupont@eglise.org',
-      sectionId: secSelect || 'cadrage',
-      sectionNom: secNames[secSelect] || 'Cadrage',
+      section_id: secSelect || 'cadrage',
+      section_nom: secNames[secSelect] || 'Cadrage',
       role: 'MEMBRE',
-      trustScore: 100.0
+      is_online: true,
+      last_seen_at: new Date().toISOString(),
+      last_action: 'Inscription'
     };
 
-    sessionStorage.setItem('kun_com_user', JSON.stringify(currentUser));
+    allProfiles.push(currentUser);
+    setStoredData(STORAGE_KEYS.USERS, allProfiles);
+    sessionStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(currentUser));
     authView = 'app';
-    triggerToast("Bienvenue " + currentUser.prenom + " ! Votre compte a été créé.", "success");
+    triggerToast("Bienvenue " + currentUser.prenom + " ! Votre compte Supabase a été créé.", "success");
   };
 
   window.navAuthView = function(view) {
@@ -345,13 +395,22 @@
   };
 
   window.handleLogout = function() {
-    sessionStorage.removeItem('kun_com_user');
+    if (currentUser) {
+      var allProfiles = getStoredData(STORAGE_KEYS.USERS, []);
+      var idx = allProfiles.findIndex(function(p) { return p.id === currentUser.id; });
+      if (idx !== -1) {
+        allProfiles[idx].is_online = false;
+        allProfiles[idx].last_seen_at = new Date().toISOString();
+        allProfiles[idx].last_action = 'Déconnexion';
+        setStoredData(STORAGE_KEYS.USERS, allProfiles);
+      }
+    }
+    sessionStorage.removeItem(STORAGE_KEYS.SESSION);
     currentUser = null;
     authView = 'login';
     triggerToast("Vous avez été déconnecté.", "success");
   };
 
-  // HANDLERS INTERACTIFS
   window.togglePostLike = function(postId) {
     for (var i = 0; i < posts.length; i++) {
       if (posts[i].id === postId) {
@@ -360,6 +419,7 @@
         break;
       }
     }
+    setStoredData(STORAGE_KEYS.POSTS, posts);
     renderAppRoot();
   };
 
@@ -426,6 +486,7 @@
       comments: []
     });
 
+    setStoredData(STORAGE_KEYS.POSTS, posts);
     isCreateModalOpen = false;
     showHashtagSuggestions = false;
     pendingMediaUrls = [];
@@ -459,6 +520,7 @@
         break;
       }
     }
+    setStoredData(STORAGE_KEYS.POSTS, posts);
     triggerToast("Commentaire ajouté !", "success");
   };
 
@@ -483,7 +545,7 @@
   };
 
   window.setRatingScore = function(secId, score) {
-    var userSec = (currentUser && currentUser.sectionId) ? currentUser.sectionId : 'cadrage';
+    var userSec = (currentUser && currentUser.section_id) ? currentUser.section_id : 'cadrage';
     if (secId === userSec) {
       triggerToast("Action Interdite : Vous ne pouvez pas noter votre section.", "error");
       return;
@@ -579,10 +641,11 @@
   }
 
   function renderMainApp() {
-    var userSec = currentUser ? currentUser.sectionId : 'cadrage';
+    var userSec = currentUser ? (currentUser.section_id || currentUser.sectionId) : 'cadrage';
     var userPrenom = currentUser ? currentUser.prenom : 'Éric';
     var userInitial = userPrenom.charAt(0);
 
+    posts = getStoredData(STORAGE_KEYS.POSTS, []);
     var filtered = posts.slice().sort(function(a, b) {
       return (b.timestamp || 0) - (a.timestamp || 0);
     }).filter(function(p) {
@@ -661,7 +724,6 @@
           </div>
         ` : ''}
 
-        <!-- MODAL OPTIONS CONTRÔLÉ PAR RBAC (3 POINTS) -->
         ${selectedPostOptions ? `
           <div style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.45); z-index:100000; display:flex; justify-content:center; align-items:flex-end;">
             <div style="width:100%; max-width:500px; background:#FFF; border-top-left-radius:24px; border-top-right-radius:24px; padding:20px; box-sizing:border-box;">
@@ -808,7 +870,6 @@
           </div>
         </header>
 
-        <!-- BARRE DE RECHERCHE GLOBALE 🔍 -->
         <div style="padding:8px 16px; background:#FFF; border-bottom:1px solid #EFEFEF;">
           <div style="display:flex; align-items:center; height:40px; background:#F2F2F7; border-radius:12px; padding:0 12px;">
             ${searchSvg}
@@ -817,7 +878,6 @@
           </div>
         </div>
 
-        <!-- SUJETS TENDANCES -->
         ${trendingList.length > 0 ? `
           <div style="padding:10px 16px; background:#F0F6FF; border-bottom:1px solid #D0E3FF;">
             <span style="font-size:11px; font-weight:800; color:#007AFF; text-transform:uppercase; letter-spacing:1px; display:block; margin-bottom:6px;">Sujets tendances :</span>
@@ -830,7 +890,6 @@
           </div>
         ` : ''}
 
-        <!-- CARROUSEL STORIES -->
         <div style="padding:12px 0; border-bottom:1px solid #EFEFEF; background:#FFF; overflow-x:auto; white-space:nowrap; -webkit-overflow-scrolling:touch;">
           <div style="display:flex; gap:14px; padding:0 14px;">
             ${[
@@ -860,7 +919,6 @@
           </div>
         </div>
 
-        <!-- FEED DYNAMIQUE -->
         ${filtered.length === 0 ? `
           <div style="padding:50px 24px; text-align:center; background:#FFF; display:flex; flex-direction:column; align-items:center;">
             <div style="width:64px; height:64px; border-radius:32px; background:#F0F6FF; display:flex; align-items:center; justify-content:center; margin-bottom:14px;">
@@ -891,14 +949,12 @@
                 <div style="display:flex; align-items:center; gap:8px;">
                   ${post.isVedette ? '<div style="background:#FFFDF0; border:1px solid #E6CA65; padding:5px 10px; border-radius:12px; font-size:10.5px; font-weight:800; color:#B8860B;">SECTION VEDETTE</div>' : ''}
                   
-                  <!-- BOUTON 3 POINTS (...) -->
                   <div onclick="window.openPostOptionsMenu('${post.id}')" style="cursor:pointer; padding:4px;">
                     ${moreOptionsSvg}
                   </div>
                 </div>
               </div>
 
-              <!-- MEDIA AREA -->
               <div style="width:100%; height:300px; background:#1C1C1E; position:relative; overflow:hidden;">
                 ${hasMedia ? `
                   ${post.mediaUrls.length > 1 ? `
@@ -1122,6 +1178,9 @@
     }
 
     if (activeTab === 'profile') {
+      var allProfiles = getStoredData(STORAGE_KEYS.USERS, []);
+      var isAdmin = (currentUser && currentUser.role === 'GRAND_RESPONSABLE');
+
       return `
         <header style="padding:16px 20px; background:#FFF; border-bottom:1px solid #EFEFEF; display:flex; justify-content:space-between; align-items:center;">
           <div>
@@ -1137,8 +1196,38 @@
           <div style="background:#FFF; border-radius:22px; padding:20px; text-align:center; margin-bottom:16px; border:1px solid #E5E5EA;">
             <div style="width:72px; height:72px; border-radius:36px; background:#F0F6FF; color:#007AFF; font-size:30px; font-weight:800; display:flex; align-items:center; justify-content:center; margin:0 auto 10px; border:3px solid #007AFF;">${userInitial}</div>
             <h2 style="font-size:20px; margin:0;">${currentUser.prenom} ${currentUser.nom}</h2>
-            <p style="font-size:13px; color:#8E8E93; margin-top:2px;">Rôle : ${currentUser.role} • Section ${currentUser.sectionNom}</p>
+            <p style="font-size:13px; color:#8E8E93; margin-top:2px;">Rôle : ${currentUser.role} • Section ${currentUser.section_nom || currentUser.sectionNom || 'Cadrage'}</p>
           </div>
+
+          ${isAdmin ? `
+            <div style="background:#FAFAFA; border-radius:22px; padding:16px; border:1px solid #EFEFEF;">
+              <div style="margin-bottom:14px;">
+                <h3 style="font-size:16px; font-weight:900; color:#000; margin:0;">Dashboard Grand Responsable</h3>
+                <span style="font-size:12px; color:#8E8E93;">Suivi des membres Supabase & Activité Temps Réel</span>
+              </div>
+
+              <div style="display:flex; flex-direction:column; gap:10px;">
+                ${allProfiles.map(function(p) {
+                  return `
+                    <div style="background:#FFF; padding:12px; border-radius:14px; border:1px solid #E5E5EA; display:flex; justify-content:space-between; align-items:center;">
+                      <div style="display:flex; align-items:center; gap:10px;">
+                        <div style="width:10px; height:10px; border-radius:5px; background:${p.is_online ? '#34C759' : '#C7C7CC'};"></div>
+                        <div>
+                          <strong style="font-size:13.5px; color:#000; display:block;">${p.prenom} ${p.nom} (${p.section_nom || 'COM'})</strong>
+                          <span style="font-size:11px; color:#8E8E93;">${p.role} • ${p.email}</span>
+                        </div>
+                      </div>
+
+                      <div style="text-align:right;">
+                        <strong style="font-size:11.5px; color:#007AFF; display:block;">${p.last_action || 'Actif'}</strong>
+                        <span style="font-size:10.5px; color:#8E8E93;">${p.is_online ? 'En ligne' : 'Hors ligne'}</span>
+                      </div>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+          ` : ''}
         </div>
       `;
     }
