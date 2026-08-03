@@ -2800,7 +2800,16 @@ toggleParticipation: function(postId, status) {
       delete updatedUser.section_nom;
       
       S.user = updatedUser;
-      localStorage.setItem(SK.SESS, JSON.stringify(updatedUser));
+      
+      // Save session safely
+      try {
+        localStorage.setItem(SK.SESS, JSON.stringify(updatedUser));
+      } catch(e) {
+        var cleanUser = Object.assign({}, updatedUser);
+        if (cleanUser.avatar_url && cleanUser.avatar_url.length > 30000) cleanUser.avatar_url = null;
+        if (cleanUser.cover_url && cleanUser.cover_url.length > 30000) cleanUser.cover_url = null;
+        try { localStorage.setItem(SK.SESS, JSON.stringify(cleanUser)); } catch(e2){}
+      }
       
       var users = db(SK.USERS, []);
       var idx = users.findIndex(function(x){ return x.id === u.id; });
@@ -2834,8 +2843,13 @@ toggleParticipation: function(postId, status) {
         dbSet(SK.POSTS, allPosts);
       }
       
+      // Upsert to Supabase safely
       if (supabase) {
-        await supabase.from('kun_com_profiles').upsert({ id: updatedUser.id, content: updatedUser }, { onConflict: 'id' });
+        try {
+          await supabase.from('kun_com_profiles').upsert({ id: updatedUser.id, content: updatedUser }, { onConflict: 'id' });
+        } catch(supErr) {
+          console.warn("Supabase profile save error:", supErr);
+        }
       }
       
       S.editProfileOpen = false;
