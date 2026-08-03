@@ -723,21 +723,50 @@
       
       var contentZone = '';
       if (post.type === 'EVENT' && post.metadata) {
-         contentZone = '<div style="margin:10px 14px;padding:16px;background:#F8F8FC;border-radius:16px;border:1px solid #EFEFFF;display:flex;gap:14px;align-items:flex-start;">' +
-          '<div style="background:#FFF;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);min-width:54px;text-align:center;flex-shrink:0;">' +
-            '<div style="background:#FF3B30;color:#FFF;font-size:10px;font-weight:900;text-transform:uppercase;padding:3px 0;">' + (post.metadata.month||'MOIS') + '</div>' +
-            '<div style="font-size:22px;font-weight:900;color:#000;padding:6px 0;">' + (post.metadata.day||'00') + '</div>' +
-          '</div>' +
-          '<div style="flex:1;">' +
-            '<h3 style="margin:0 0 6px;font-size:16px;font-weight:800;color:#000;line-height:1.2;">' + safeHtml(post.metadata.title||'') + '</h3>' +
-            '<div style="font-size:12.5px;color:#8E8E93;display:flex;align-items:center;gap:6px;margin-bottom:4px;"><span>🕒</span> ' + safeHtml(post.metadata.time||'') + '</div>' +
-            '<div style="font-size:12.5px;color:#8E8E93;display:flex;align-items:center;gap:6px;margin-bottom:8px;"><span>📍</span> ' + safeHtml(post.metadata.location||'') + '</div>' +
-            '<p style="font-size:13px;color:#000;margin:0 0 12px;line-height:1.4;">' + safeHtml(post.caption||'') + '</p>' +
-            '<div style="display:flex;gap:8px;">' +
-              '<button onclick="App.toggleParticipation(\''+post.id+'\',\'yes\')" style="flex:1;padding:8px;border-radius:10px;font-size:13px;font-weight:700;border:none;cursor:pointer;background:'+((post.metadata.participations||{})[(S.user||{}).id]==='yes'?'#34C759':'#E5E5EA')+';color:'+((post.metadata.participations||{})[(S.user||{}).id]==='yes'?'#FFF':'#8E8E93')+';transition:all 0.2s;">Participer 👍</button>' +
-              '<button onclick="App.toggleParticipation(\''+post.id+'\',\'no\')" style="flex:1;padding:8px;border-radius:10px;font-size:13px;font-weight:700;border:none;cursor:pointer;background:'+((post.metadata.participations||{})[(S.user||{}).id]==='no'?'#FF3B30':'#E5E5EA')+';color:'+((post.metadata.participations||{})[(S.user||{}).id]==='no'?'#FFF':'#8E8E93')+';transition:all 0.2s;">Absent ❌</button>' +
+         var participants = Object.keys(post.metadata.participations || {}).filter(function(k) { return post.metadata.participations[k] === 'yes'; });
+         var partAvatars = '';
+         if (participants.length > 0) {
+             partAvatars = '<div style="display:flex;margin-left:8px;">';
+             for (var i=0; i<Math.min(participants.length, 3); i++) {
+                 partAvatars += '<div style="width:24px;height:24px;border-radius:12px;background:#5856D6;color:#FFF;border:2px solid #FFF;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;margin-left:-8px;">👤</div>';
+             }
+             if (participants.length > 3) {
+                 partAvatars += '<div style="width:24px;height:24px;border-radius:12px;background:#E5E5EA;color:#000;border:2px solid #FFF;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;margin-left:-8px;">+'+(participants.length-3)+'</div>';
+             }
+             partAvatars += '</div>';
+         }
+
+         contentZone = '<div style="margin:10px 14px;padding:20px;background:linear-gradient(145deg, #F9F9FF 0%, #F0F0FA 100%);border-radius:20px;border-left:5px solid #5856D6;box-shadow:0 4px 12px rgba(0,0,0,0.03);position:relative;overflow:hidden;">' +
+          '<div style="position:absolute;top:0;right:0;width:100px;height:100px;background:radial-gradient(circle, rgba(88,86,214,0.05) 0%, rgba(255,255,255,0) 70%);border-radius:50%;transform:translate(30%,-30%);"></div>' +
+          
+          '<div style="display:inline-block;background:rgba(88,86,214,0.1);color:#5856D6;padding:4px 10px;border-radius:6px;font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin-bottom:16px;">🗓️ Événement Planning</div>' +
+          
+          '<div style="display:flex;gap:16px;align-items:center;margin-bottom:16px;">' +
+            '<div style="background:#FFF;border-radius:16px;overflow:hidden;box-shadow:0 6px 16px rgba(0,0,0,0.08);width:70px;text-align:center;flex-shrink:0;border:1px solid #EFEFFF;">' +
+              '<div style="background:linear-gradient(135deg, #FF3B30, #D70015);color:#FFF;font-size:11px;font-weight:900;text-transform:uppercase;padding:6px 0;letter-spacing:1px;">' + (post.metadata.month||'MOIS') + '</div>' +
+              '<div style="font-size:28px;font-weight:900;color:#000;padding:8px 0;">' + (post.metadata.day||'00') + '</div>' +
             '</div>' +
-            '<div style="font-size:11px;color:#8E8E93;margin-top:8px;font-weight:600;">' + Object.values(post.metadata.participations||{}).filter(function(x){return x==='yes'}).length + ' participant(s)</div>' +
+            '<div style="flex:1;">' +
+              '<h3 style="margin:0 0 8px;font-size:19px;font-weight:900;color:#1C1C1E;line-height:1.2;letter-spacing:-0.3px;">' + safeHtml(post.metadata.title||'') + '</h3>' +
+              '<div style="display:flex;flex-wrap:wrap;gap:10px;">' +
+                '<div style="font-size:13px;color:#5856D6;display:flex;align-items:center;gap:4px;font-weight:600;background:rgba(88,86,214,0.08);padding:4px 8px;border-radius:6px;"><span style="font-size:14px;">🕒</span> ' + safeHtml(post.metadata.time||'') + '</div>' +
+                '<div style="font-size:13px;color:#8E8E93;display:flex;align-items:center;gap:4px;font-weight:600;background:#F2F2F7;padding:4px 8px;border-radius:6px;"><span style="font-size:14px;">📍</span> ' + safeHtml(post.metadata.location||'') + '</div>' +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+          
+          (post.caption ? '<p style="font-size:14px;color:#3A3A3C;margin:0 0 16px;line-height:1.5;">' + safeHtml(post.caption) + '</p>' : '') +
+          
+          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-top:12px;border-top:1px dashed #D1D1D6;">' +
+            '<div style="display:flex;align-items:center;">' +
+              '<span style="font-size:12px;color:#8E8E93;font-weight:600;">' + participants.length + ' Confirmé(s)</span>' +
+              partAvatars +
+            '</div>' +
+          '</div>' +
+
+          '<div style="display:flex;gap:10px;">' +
+            '<button onclick="App.toggleParticipation(\''+post.id+'\',\'yes\')" style="flex:1;padding:12px;border-radius:12px;font-size:14px;font-weight:800;border:none;cursor:pointer;background:'+((post.metadata.participations||{})[(S.user||{}).id]==='yes'?'linear-gradient(135deg,#34C759,#28A347)':'#FFF')+';color:'+((post.metadata.participations||{})[(S.user||{}).id]==='yes'?'#FFF':'#000')+';box-shadow:'+((post.metadata.participations||{})[(S.user||{}).id]==='yes'?'0 4px 12px rgba(52,199,89,0.3)':'0 2px 6px rgba(0,0,0,0.05)')+';transition:all 0.2s;">' + ((post.metadata.participations||{})[(S.user||{}).id]==='yes' ? '👍 Confirmé' : '👍 Je participe') + '</button>' +
+            '<button onclick="App.toggleParticipation(\''+post.id+'\',\'no\')" style="flex:1;padding:12px;border-radius:12px;font-size:14px;font-weight:800;border:none;cursor:pointer;background:'+((post.metadata.participations||{})[(S.user||{}).id]==='no'?'linear-gradient(135deg,#FF3B30,#D70015)':'#FFF')+';color:'+((post.metadata.participations||{})[(S.user||{}).id]==='no'?'#FFF':'#000')+';box-shadow:'+((post.metadata.participations||{})[(S.user||{}).id]==='no'?'0 4px 12px rgba(255,59,48,0.3)':'0 2px 6px rgba(0,0,0,0.05)')+';transition:all 0.2s;">' + ((post.metadata.participations||{})[(S.user||{}).id]==='no' ? '❌ Indisponible' : '❌ Non dispo') + '</button>' +
           '</div>' +
         '</div>';
       } else if (post.type === 'EVALUATION' && post.metadata) {
