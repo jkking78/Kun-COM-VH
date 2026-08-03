@@ -1262,14 +1262,6 @@
         myPostsSection +
         adminDashboard +
       '</div>';
-  } '</strong>' +
-                '<span style="font-size:11px;font-weight:600;color:' + (p.is_online?'#34C759':'#C7C7CC') + ';">' + (p.is_online?'● En ligne':'○ Hors ligne') + '</span>' +
-              '</div>' +
-            '</div>';
-          }).join('') +
-          '</div></div>' : '') +
-
-      '</div>';
   }
 
   // ============================================================
