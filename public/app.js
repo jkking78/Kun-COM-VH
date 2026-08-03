@@ -247,7 +247,8 @@
     signupSections: [],
     editSections: [],
     eventSections: [],
-    selectedDate: null
+    selectedDate: null,
+    postBg: null
 };
 
   // ============================================================
@@ -757,14 +758,27 @@
       '</div>';
     } else {
       // Text-only: only show dark zone for vedette/scored posts
-      if (post.isVedette || post.scoreText) {
+      if (post.postBg) {
+        // Colored/gradient background post — Facebook style
+        var bgStyle = post.postBg.startsWith('url') 
+          ? 'background:' + post.postBg + ';background-size:cover;background-position:center;'
+          : 'background:' + post.postBg + ';';
+        var captionForBg = post.caption || '';
+        var fontSize = captionForBg.length > 100 ? '18px' : captionForBg.length > 60 ? '22px' : '26px';
+        mediaZone = '<div ondblclick="App.doubleTapLike(\''+post.id+'\')" style="position:relative;' + bgStyle + 'min-height:220px;display:flex;align-items:center;justify-content:center;padding:28px 20px;text-align:center;overflow:hidden;">' +
+          '<div style="position:absolute;inset:0;background:rgba(0,0,0,0.08);"></div>' +
+          '<p style="position:relative;z-index:1;font-size:' + fontSize + ';font-weight:900;color:#FFF;margin:0;line-height:1.4;text-shadow:0 2px 16px rgba(0,0,0,0.4);word-break:break-word;">' + hashtagify(captionForBg) + '</p>' +
+        '</div>';
+        // Don't show caption again below for bg posts (it's in the card)
+        captionHtml = '';
+      } else if (post.isVedette || post.scoreText) {
         mediaZone = '<div ondblclick="App.doubleTapLike(\''+post.id+'\')" style="background:linear-gradient(135deg,#1A1A2E,#2D2D44);min-height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;text-align:center;position:relative;">' +
           '<div style="width:44px;height:44px;border-radius:22px;background:rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center;margin-bottom:8px;font-size:22px;">' + sec.emoji + '</div>' +
           (post.isVedette ? '<div style="background:linear-gradient(135deg,#FFD700,#FF9500);color:#5D3A00;font-size:10px;font-weight:900;padding:4px 12px;border-radius:20px;letter-spacing:0.8px;margin-bottom:6px;">⭐ SECTION VEDETTE</div>' : '') +
           (post.scoreText ? '<div style="background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);padding:5px 12px;border-radius:12px;position:absolute;bottom:12px;right:12px;"><strong style="font-size:13px;color:#1C1C1E;">★ ' + post.scoreText + '</strong></div>' : '') +
         '</div>';
       } else {
-        // Plain text post — no dark background, just show caption below
+        // Plain text post — no background, caption shown below
         mediaZone = '';
       }
     }
@@ -918,8 +932,8 @@
         '</div>' +
       '</div>' +
 
-      // Caption
-      '<div style="padding:0 14px 10px;">' +
+      // Caption (hidden for bg posts — text is shown on the card itself)
+      (!post.postBg ? '<div style="padding:0 14px 10px;">' +
         '<p style="font-size:14px;color:#000;margin:0;line-height:1.45;">' +
           '<strong>' + safeHtml(post.author||'') + '</strong> ' + captionHtml +
         '</p>' +
@@ -928,7 +942,12 @@
           : '<button onclick="App.openComments(\''+post.id+'\')" style="background:none;border:none;padding:0;margin-top:5px;font-size:13.5px;color:#8E8E93;cursor:pointer;">Ajouter un commentaire…</button>'
         ) +
         '<div style="font-size:11px;color:#C7C7CC;margin-top:4px;text-transform:uppercase;letter-spacing:0.5px;">' + ago + '</div>' +
-      '</div>' +
+      '</div>' : '') +
+      // For bg posts: show timestamp and comment button below the card
+      (post.postBg ? '<div style="padding:2px 14px 10px;display:flex;justify-content:space-between;align-items:center;">' +
+        '<button onclick="App.openComments(''+post.id+'')" style="background:none;border:none;padding:0;font-size:13.5px;color:#8E8E93;cursor:pointer;">' + (post.comments&&post.comments.length>0?'Voir les '+post.comments.length+' commentaire'+(post.comments.length>1?'s':''):' Ajouter un commentaire…') + '</button>' +
+        '<div style="font-size:11px;color:#C7C7CC;text-transform:uppercase;letter-spacing:0.5px;">' + ago + '</div>' +
+      '</div>' : '') +
 
     '</article>';
     return finalHtml;
@@ -1049,19 +1068,57 @@
           hashHtml +
           previewHtml +
 
-          '<form id="createPostForm" onsubmit="App.submitPost(event)">' +
-            '<textarea id="newPostText" oninput="App.onPostInput(this.value)" placeholder="Quoi de neuf ? Tapez # pour ajouter un hashtag de section..." style="width:100%;min-height:110px;border:none;background:transparent;font-size:15px;line-height:1.5;color:#000;resize:none;outline:none;box-sizing:border-box;font-family:inherit;"></textarea>' +
-          '</form>' +
+          // Color preview or plain textarea
+          (S.pendingMedia.length === 0 && S.postBg
+            ? '<div id="bgPreviewZone" style="border-radius:18px;overflow:hidden;margin-bottom:12px;position:relative;min-height:180px;display:flex;align-items:center;justify-content:center;' + (S.postBg.startsWith('url') ? 'background:' + S.postBg + ';background-size:cover;background-position:center;' : 'background:' + S.postBg + ';') + '">' +
+                (S.postBg && !S.postBg.includes('linear-gradient') && !S.postBg.includes('url') ? '<div style="position:absolute;inset:0;background:rgba(0,0,0,0.18);border-radius:18px;"></div>' : '') +
+                '<textarea id="newPostText" oninput="App.onPostInput(this.value)" placeholder="Quoi de neuf ?" style="width:100%;min-height:180px;border:none;background:transparent;font-size:24px;font-weight:900;line-height:1.4;color:#FFF;resize:none;outline:none;box-sizing:border-box;font-family:inherit;text-align:center;padding:24px 20px;text-shadow:0 2px 12px rgba(0,0,0,0.3);position:relative;z-index:1;"></textarea>' +
+              '</div>'
+            : '<form id="createPostForm" onsubmit="App.submitPost(event)">' +
+                '<textarea id="newPostText" oninput="App.onPostInput(this.value)" placeholder="Quoi de neuf ? Tapez # pour ajouter un hashtag de section..." style="width:100%;min-height:110px;border:none;background:transparent;font-size:15px;line-height:1.5;color:#000;resize:none;outline:none;box-sizing:border-box;font-family:inherit;"></textarea>' +
+              '</form>'
+          ) +
+          // Hidden form for bg posts
+          (S.postBg ? '<form id="createPostForm" onsubmit="App.submitPost(event)" style="display:none;"></form>' : '') +
         '</div>' +
 
-        '<div style="border-top:0.5px solid #F2F2F7;padding:10px 16px;display:flex;gap:14px;align-items:center;">' +
-          '<label style="cursor:pointer;display:flex;align-items:center;gap:6px;color:#007AFF;font-size:13px;font-weight:700;">' +
-            '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#007AFF" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>' +
-            'Photo' +
-            '<input type="file" accept="image/*" multiple onchange="App.addMedia(event)" style="display:none;">' +
-          '</label>' +
-          '<span style="color:#8E8E93;font-size:13px;">|</span>' +
-          '<span style="font-size:12px;color:#8E8E93;">' + S.pendingMedia.length + '/10 photos</span>' +
+        '<div style="border-top:0.5px solid #F2F2F7;padding:10px 16px;">' +
+          // Color palette row
+          (S.pendingMedia.length === 0
+            ? '<div style="display:flex;gap:8px;align-items:center;overflow-x:auto;padding-bottom:8px;scrollbar-width:none;">' +
+                '<span style="font-size:11px;font-weight:700;color:#8E8E93;flex-shrink:0;">Fond :</span>' +
+                // "No color" option
+                '<div onclick="App.setPostBg(null)" style="width:28px;height:28px;border-radius:14px;background:#FFF;border:2px solid ' + (S.postBg===null?'#007AFF':'#E5E5EA') + ';cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;">Aa</div>' +
+                // Color swatches
+                [
+                  'linear-gradient(135deg,#1A1A2E,#16213E)',
+                  'linear-gradient(135deg,#FF6B6B,#FF8E53)',
+                  'linear-gradient(135deg,#4ECDC4,#2ECC71)',
+                  'linear-gradient(135deg,#667EEA,#764BA2)',
+                  'linear-gradient(135deg,#F093FB,#F5576C)',
+                  'linear-gradient(135deg,#4481EB,#04BEFE)',
+                  'linear-gradient(135deg,#0F2027,#203A43,#2C5364)',
+                  'linear-gradient(135deg,#FFA62E,#EA4D2C)',
+                  'linear-gradient(135deg,#56AB2F,#A8E063)',
+                  'linear-gradient(135deg,#373B44,#4286F4)',
+                  'linear-gradient(135deg,#C94B4B,#4B134F)',
+                  'linear-gradient(135deg,#F7971E,#FFD200)',
+                ].map(function(bg) {
+                  var isSel = S.postBg === bg;
+                  return '<div onclick="App.setPostBg(\\'' + bg.replace(/'/g, "\\'") + '\\')" style="width:28px;height:28px;border-radius:14px;background:' + bg + ';cursor:pointer;flex-shrink:0;border:2.5px solid ' + (isSel?'#FFF':'transparent') + ';box-shadow:' + (isSel?'0 0 0 2px #007AFF':'none') + ';transition:0.15s;"></div>';
+                }).join('') +
+              '</div>'
+            : ''
+          ) +
+          '<div style="display:flex;gap:14px;align-items:center;">' +
+            '<label style="cursor:pointer;display:flex;align-items:center;gap:6px;color:#007AFF;font-size:13px;font-weight:700;">' +
+              '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#007AFF" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>' +
+              'Photo' +
+              '<input type="file" accept="image/*" multiple onchange="App.addMedia(event)" style="display:none;">' +
+            '</label>' +
+            '<span style="color:#8E8E93;font-size:13px;">|</span>' +
+            '<span style="font-size:12px;color:#8E8E93;">' + S.pendingMedia.length + '/10 photos</span>' +
+          '</div>' +
         '</div>' +
 
       '</div>' +
@@ -2072,7 +2129,7 @@ toggleParticipation: function(postId, status) {
 
     // Create post
     openCreate: function() { S.createOpen=true; S.pendingMedia=[]; render(); setTimeout(function(){ var t=document.getElementById('newPostText'); if(t) t.focus(); },120); },
-    closeCreate: function() { S.createOpen=false; S.pendingMedia=[]; S.hashSuggestions=false; render(); },
+    closeCreate: function() { S.createOpen=false; S.pendingMedia=[]; S.hashSuggestions=false; S.postBg=null; render(); },
     onPostInput: function(val) {
       var words = val.split(/\s/); var last = words[words.length-1];
       var show = last.length > 0 && last.startsWith('#');
@@ -2097,6 +2154,10 @@ toggleParticipation: function(postId, status) {
       });
     },
     removeMedia: function(i) { S.pendingMedia.splice(i,1); render(); },
+    setPostBg: function(bg) {
+      S.postBg = bg;
+      render();
+    },
     submitPost: function(e) {
       e && e.preventDefault();
       var txt = ((document.getElementById('newPostText')||{}).value||'').trim();
@@ -2117,11 +2178,12 @@ toggleParticipation: function(postId, status) {
         sectionId: secId, sectionNom: secNom(secId),
         isVedette: false, scoreText: '',
         caption: txt, mediaUrls: S.pendingMedia.slice(),
+        postBg: S.pendingMedia.length === 0 ? (S.postBg || null) : null,
         likes: 0, likedBy: [], comments: []
       });
       dbSet(SK.POSTS, posts);
       updateUserActivity('Publication');
-      S.createOpen=false; S.pendingMedia=[]; S.hashSuggestions=false;
+      S.createOpen=false; S.pendingMedia=[]; S.hashSuggestions=false; S.postBg=null;
       S.tab = 'home';
       S.q = ''; // Optional: clear search if they were searching
       render();
