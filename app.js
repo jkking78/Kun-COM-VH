@@ -718,6 +718,31 @@
 
       mediaZone +
 
+      (post.type === 'EVALUATION' && post.metadata ?
+        '<div style="margin:10px 14px;padding:18px;background:linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%);border-radius:20px;border:1px solid #E2E8F0;box-shadow:inset 0 2px 4px rgba(255,255,255,0.8), 0 4px 12px rgba(0,0,0,0.03);">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">' +
+            '<div>' +
+              '<div style="display:inline-flex;align-items:center;gap:4px;background:#FFF;padding:4px 8px;border-radius:8px;font-size:10px;font-weight:800;color:#64748B;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05);"><span>📊</span> Évaluation</div>' +
+              '<div style="font-size:20px;font-weight:900;color:#0F172A;letter-spacing:-0.5px;">' + safeHtml(post.metadata.teamName || '') + '</div>' +
+            '</div>' +
+            '<div style="background:' + (post.metadata.globalScore>=4?'linear-gradient(135deg,#DCFCE7,#22C55E)':post.metadata.globalScore>=2?'linear-gradient(135deg,#FEF3C7,#F59E0B)':'linear-gradient(135deg,#FEE2E2,#EF4444)') + ';color:#FFF;padding:12px 16px;border-radius:16px;font-size:24px;font-weight:900;box-shadow:0 6px 16px ' + (post.metadata.globalScore>=4?'rgba(34,197,94,0.3)':post.metadata.globalScore>=2?'rgba(245,158,11,0.3)':'rgba(239,68,68,0.3)') + ';text-shadow:0 2px 4px rgba(0,0,0,0.1);">' + post.metadata.globalScore + '/5</div>' +
+          '</div>' +
+          '<div style="display:flex;flex-direction:column;gap:14px;">' +
+            (post.metadata.criteria ? Object.keys(post.metadata.criteria).map(function(k) {
+              var v = post.metadata.criteria[k];
+              var pct = (v/5)*100;
+              var cCol = v>=4?'linear-gradient(90deg,#34D399,#10B981)':v>=2?'linear-gradient(90deg,#FBBF24,#F59E0B)':'linear-gradient(90deg,#F87171,#EF4444)';
+              return '<div style="display:flex;flex-direction:column;gap:6px;">' +
+                       '<div style="display:flex;justify-content:space-between;font-size:12.5px;font-weight:800;color:#475569;"><span>' + safeHtml(k) + '</span><span style="color:#0F172A;">' + v + '/5</span></div>' +
+                       '<div style="height:10px;background:#E2E8F0;border-radius:5px;overflow:hidden;box-shadow:inset 0 1px 3px rgba(0,0,0,0.06);">' +
+                         '<div style="height:100%;width:' + pct + '%;background:' + cCol + ';border-radius:5px;transition:width 1s cubic-bezier(0.34, 1.56, 0.64, 1);box-shadow:0 1px 2px rgba(0,0,0,0.1);"></div>' +
+                       '</div>' +
+                     '</div>';
+            }).join('') : '') +
+          '</div>' +
+        '</div>'
+      : '') +
+
       // Actions row — style Instagram exact
       '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px 6px;">' +
         '<div style="display:flex;gap:14px;align-items:center;">' +
@@ -1684,15 +1709,56 @@
     publishBilan: function() {
       if (!S.user) return;
       var posts = db(SK.POSTS, []);
-      posts.unshift({
-        id:'bilan-'+Date.now(), userId:S.user.id, timestamp:Date.now(),
-        author:S.user.prenom+' '+S.user.nom, authorAvatar:S.user.prenom.charAt(0).toUpperCase(), avatarColor:S.user.avatar_color||'#FFD700',
-        sectionId:'general', sectionNom:'Bilan Officiel', isVedette:true, scoreText:'4.88 / 5.0',
-        caption:'Bilan officiel du culte du '+new Date().toLocaleDateString('fr-FR')+'. Excellente performance globale ! #CulteDuDimanche #Bilan',
-        mediaUrls:[], likes:0, likedBy:[], comments:[]
+      var hasRatings = false;
+      var ts = Date.now();
+      
+      Object.keys(S.ratings).forEach(function(secId) {
+        var r = S.ratings[secId];
+        if (r && r.score > 0) {
+          hasRatings = true;
+          var targetSec = SECTIONS.find(function(s){ return s.id === secId; });
+          var tNom = targetSec ? targetSec.nom : secId;
+          
+          var globalScore = r.score;
+          // Simulate criteria based on global score
+          var crit = {
+             "Ponctualité": Math.min(5, Math.max(1, globalScore + (Math.random()>0.5?1:0))),
+             "Technique": globalScore,
+             "Réactivité": Math.min(5, Math.max(1, globalScore - (Math.random()>0.5?1:0))),
+             "Esprit d'équipe": Math.min(5, Math.max(1, globalScore + (Math.random()>0.5?1:-1)))
+          };
+          
+          var newPost = {
+            id: 'eval-'+secId+'-'+ts, userId: S.user.id, timestamp: ts++,
+            author: S.user.prenom + ' ' + S.user.nom,
+            authorAvatar: S.user.prenom.charAt(0).toUpperCase(),
+            avatarColor: S.user.avatar_color || '#007AFF',
+            sectionId: S.user.section_id || 'general', sectionNom: secNom(S.user.section_id || 'general'),
+            type: 'EVALUATION',
+            metadata: {
+               teamName: tNom,
+               globalScore: globalScore,
+               criteria: crit
+            },
+            caption: r.comment || ("Évaluation de l'équipe " + tNom),
+            mediaUrls: [], likes: 0, likedBy: [], comments: []
+          };
+          posts.unshift(newPost);
+        }
       });
-      dbSet(SK.POSTS, posts); S.tab='home'; render();
-      toast('Bilan publié sur le feed !', 'success');
+      
+      if (!hasRatings) {
+         toast('Veuillez noter au moins une section.', 'error');
+         return;
+      }
+      
+      dbSet(SK.POSTS, posts); 
+      S.ratings = {};
+      S.tab='home'; 
+      S.q = ''; // Reset search
+      render();
+      setTimeout(function() { window.scrollTo({ top: 0, behavior: 'smooth' }); }, 50);
+      toast('Évaluations publiées avec succès ! 🎉', 'success');
     }
   };
 
