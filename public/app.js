@@ -1574,8 +1574,11 @@
       dbSet(SK.POSTS, posts);
       updateUserActivity('Publication');
       S.createOpen=false; S.pendingMedia=[]; S.hashSuggestions=false;
+      S.tab = 'home';
+      S.q = ''; // Optional: clear search if they were searching
       render();
-      toast('Publication partagée ! 🎉', 'success');
+      setTimeout(function() { window.scrollTo({ top: 0, behavior: 'smooth' }); }, 50);
+      toast('Publication publiée avec succès ! 🎉', 'success');
     },
 
     // Options
