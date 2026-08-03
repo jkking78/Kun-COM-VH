@@ -1506,7 +1506,7 @@
       if (idx !== -1) {
         users[idx].pwd = newPwd;
         dbSet(SK.USERS, users);
-        if (supabase) supabase.from('profiles').update({ updated_at: new Date().toISOString() }).eq('id', users[idx].id).then(function(){});
+        if (supabase) supabase.from('kun_com_profiles').upsert({ id: users[idx].id, content: users[idx] }, { onConflict: 'id' }).then(function(){});
       }
       S.forgotUser = null;
       S.auth = 'login';
