@@ -1,6 +1,6 @@
 // ==============================================================================
 // KUN COM VH — RÉSEAU SOCIAL PWA
-// Version 3.0 — Complet, fonctionnel, style Instagram
+// Version 3.1 — Profils enrichis : identité, section, rôle, statut, activité
 // Tous bugs corrigés — Zéro alert() — Toast non-bloquant — Scroll préservé
 // ==============================================================================
 
@@ -28,11 +28,60 @@
   // DONNÉES PAR DÉFAUT
   // ============================================================
   if (!localStorage.getItem(SK.USERS)) {
+    var _now = new Date().toISOString();
     dbSet(SK.USERS, [
-      { id: 'u1', prenom: 'Éric', nom: 'Kouamé', email: 'eric.kouame@eglise.org', section_id: 'cadrage', section_nom: 'Cadrage', role: 'RESP_SECTION', is_online: true, last_seen_at: new Date().toISOString(), last_action: 'Connexion', avatar_color: '#007AFF' },
-      { id: 'u2', prenom: 'Sarah', nom: 'Yao', email: 'sarah.yao@eglise.org', section_id: 'photo', section_nom: 'Photo', role: 'MEMBRE', is_online: true, last_seen_at: new Date().toISOString(), last_action: 'Publication', avatar_color: '#FF2D55' },
-      { id: 'u3', prenom: 'Marc', nom: 'Touré', email: 'marc.toure@eglise.org', section_id: 'regie', section_nom: 'Régie', role: 'RESP_SECTION', is_online: false, last_seen_at: new Date(Date.now() - 3600000).toISOString(), last_action: 'Commentaire', avatar_color: '#34C759' },
-      { id: 'u0', prenom: 'Grand Resp.', nom: 'Pasteur', email: 'admin@eglise.org', section_id: 'prod', section_nom: 'Prod', role: 'GRAND_RESPONSABLE', is_online: true, last_seen_at: new Date().toISOString(), last_action: 'Modération', avatar_color: '#FFD700' }
+      {
+        id: 'u1', prenom: 'Éric', nom: 'Kouamé',
+        email: 'eric.kouame@eglise.org',
+        bio: 'Responsable Cadrage depuis 2022. Passionné de cinématographie et de captation live. 🎥',
+        section_id: 'cadrage', section_nom: 'Cadrage',
+        role: 'RESP_SECTION',
+        is_online: true,
+        joined_at: '2022-01-15T08:00:00.000Z',
+        last_seen_at: _now,
+        last_action_at: _now,
+        last_action_label: 'Publication',
+        avatar_color: '#007AFF'
+      },
+      {
+        id: 'u2', prenom: 'Sarah', nom: 'Yao',
+        email: 'sarah.yao@eglise.org',
+        bio: 'Photographe de l\'équipe. Je capture les meilleurs moments du culte 📸',
+        section_id: 'photo', section_nom: 'Photo',
+        role: 'MEMBRE',
+        is_online: true,
+        joined_at: '2023-03-10T09:00:00.000Z',
+        last_seen_at: _now,
+        last_action_at: new Date(Date.now() - 900000).toISOString(),
+        last_action_label: 'Commentaire',
+        avatar_color: '#FF2D55'
+      },
+      {
+        id: 'u3', prenom: 'Marc', nom: 'Touré',
+        email: 'marc.toure@eglise.org',
+        bio: 'Régie son & lumières. 3 ans au service du département. 🎛️',
+        section_id: 'regie', section_nom: 'Régie',
+        role: 'RESP_SECTION',
+        is_online: false,
+        joined_at: '2021-06-01T07:00:00.000Z',
+        last_seen_at: new Date(Date.now() - 3600000).toISOString(),
+        last_action_at: new Date(Date.now() - 7200000).toISOString(),
+        last_action_label: 'Like',
+        avatar_color: '#34C759'
+      },
+      {
+        id: 'u0', prenom: 'Grand Resp.', nom: 'Pasteur',
+        email: 'admin@eglise.org',
+        bio: 'Responsable général du Département Communication VH. Vision, excellence et foi. 🙏',
+        section_id: 'prod', section_nom: 'Prod',
+        role: 'GRAND_RESPONSABLE',
+        is_online: true,
+        joined_at: '2020-01-01T06:00:00.000Z',
+        last_seen_at: _now,
+        last_action_at: _now,
+        last_action_label: 'Modération',
+        avatar_color: '#FFD700'
+      }
     ]);
   }
 
@@ -874,11 +923,6 @@
           '</div>';
         }).join('') +
 
-        '<div style="background:linear-gradient(135deg,#FFFDF0,#FFF8DC);border:1.5px solid #E6CA65;border-radius:22px;padding:20px;margin-top:8px;">' +
-          '<div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">' +
-            '<div style="width:44px;height:44px;border-radius:22px;background:linear-gradient(135deg,#FFD700,#FFA500);display:flex;align-items:center;justify-content:center;font-size:22px;">🏆</div>' +
-            '<div><h3 style="font-size:16px;font-weight:800;color:#B8860B;margin:0;">Publier le Bilan</h3><p style="font-size:12px;color:#8E8E93;margin:0;">Validation 24h sur le feed</p></div>' +
-          '</div>' +
           '<button onclick="App.publishBilan()" style="width:100%;background:linear-gradient(135deg,#34C759,#28A347);color:#FFF;border:none;border-radius:16px;padding:15px;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 4px 14px rgba(52,199,89,0.3);">Valider & Publier le Bilan ✓</button>' +
         '</div>' +
 
@@ -886,74 +930,260 @@
   }
 
   // ============================================================
+  // HELPER : Mise à jour activité utilisateur courant
+  // ============================================================
+  function updateUserActivity(actionLabel) {
+    if (!S.user) return;
+    var users = db(SK.USERS, []);
+    var idx = users.findIndex(function(u){ return u.id === S.user.id; });
+    if (idx === -1) return;
+    var now = new Date().toISOString();
+    users[idx].last_action_at = now;
+    users[idx].last_action_label = actionLabel || 'Action';
+    users[idx].last_seen_at = now;
+    users[idx].is_online = true;
+    S.user = users[idx];
+    sessionStorage.setItem(SK.SESS, JSON.stringify(S.user));
+    dbSet(SK.USERS, users);
+  }
+
+  function fmtDate(iso) {
+    if (!iso) return '—';
+    try {
+      return new Date(iso).toLocaleDateString('fr-FR', { day:'numeric', month:'long', year:'numeric' });
+    } catch(e) { return iso; }
+  }
+
+  function fmtDateTime(iso) {
+    if (!iso) return '—';
+    try {
+      var d = new Date(iso);
+      return d.toLocaleDateString('fr-FR', { day:'numeric', month:'short', year:'numeric' }) +
+             ' à ' + d.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' });
+    } catch(e) { return iso; }
+  }
+
+  function infoRow(icon, label, val) {
+    return '<div style="display:flex;align-items:center;gap:12px;padding:13px 18px;border-bottom:0.5px solid #F7F7F7;">' +
+      '<span style="font-size:18px;width:24px;text-align:center;">' + icon + '</span>' +
+      '<div style="flex:1;">' +
+        '<div style="font-size:11.5px;color:#8E8E93;font-weight:600;margin-bottom:1px;">' + label + '</div>' +
+        '<div style="font-size:14px;color:#000;font-weight:600;">' + val + '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function adminKpi(icon, val, label) {
+    return '<div style="background:rgba(255,255,255,0.12);border-radius:14px;padding:10px;text-align:center;">' +
+      '<div style="font-size:16px;">' + icon + '</div>' +
+      '<strong style="font-size:22px;font-weight:900;color:#FFF;display:block;">' + val + '</strong>' +
+      '<span style="font-size:10.5px;color:rgba(255,255,255,0.6);">' + label + '</span>' +
+    '</div>';
+  }
+
+  function adminMiniInfo(icon, text, color) {
+    return '<div style="background:#FFF;border-radius:10px;padding:8px 10px;display:flex;align-items:center;gap:6px;">' +
+      '<span style="font-size:13px;">' + icon + '</span>' +
+      '<span style="font-size:12px;font-weight:700;color:' + (color||'#000') + ';overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + text + '</span>' +
+    '</div>';
+  }
+
+  // ============================================================
   // PROFILE TAB
   // ============================================================
   function renderProfile(u, posts) {
+    if (!u) return '<div style="padding:40px;text-align:center;">Chargement...</div>';
     var allProfiles = db(SK.USERS, []);
-    var isAdmin = u && u.role === 'GRAND_RESPONSABLE';
-    var roleLabel = { GRAND_RESPONSABLE:'Grand Responsable', RESP_SECTION:'Resp. Section', MEMBRE:'Membre', STAGIAIRE:'Stagiaire' };
-    var myPosts = posts.filter(function(p){ return u && p.userId === u.id; });
-    var myLikes = posts.filter(function(p){ return u && Array.isArray(p.likedBy) && p.likedBy.indexOf(u.id) !== -1; });
+    var freshU = allProfiles.find(function(p){ return p.id === u.id; }) || u;
+    var isAdmin = freshU.role === 'GRAND_RESPONSABLE';
+    var ROLE_LABELS = {
+      GRAND_RESPONSABLE: 'Grand Responsable',
+      RESP_SECTION: 'Responsable de Section',
+      MEMBRE: 'Membre',
+      STAGIAIRE: 'Stagiaire'
+    };
+    var ROLE_COLORS = {
+      GRAND_RESPONSABLE: { bg:'linear-gradient(135deg,#FFD700,#FF9500)', text:'#5D3A00' },
+      RESP_SECTION: { bg:'linear-gradient(135deg,#007AFF,#0040CC)', text:'#FFF' },
+      MEMBRE: { bg:'linear-gradient(135deg,#34C759,#28A347)', text:'#FFF' },
+      STAGIAIRE: { bg:'linear-gradient(135deg,#AF52DE,#8A3DBF)', text:'#FFF' }
+    };
+    var roleConf = ROLE_COLORS[freshU.role] || ROLE_COLORS.MEMBRE;
+    var myPosts = posts.filter(function(p){ return p.userId === freshU.id; });
+    var myLikes = posts.filter(function(p){ return Array.isArray(p.likedBy) && p.likedBy.indexOf(freshU.id) !== -1; });
     var saved = Object.keys(S.savedPosts).filter(function(id){ return S.savedPosts[id]; });
+    var myComments = 0;
+    posts.forEach(function(p){ myComments += (p.comments||[]).filter(function(c){ return c.userId === freshU.id; }).length; });
+    var secConf = SECTIONS.find(function(s){ return s.id === freshU.section_id; }) || { emoji:'📢', color:'#8E8E93', nom:'Général' };
 
-    return '<header style="padding:16px 18px;background:#FFF;border-bottom:0.5px solid #F2F2F7;display:flex;justify-content:space-between;align-items:center;">' +
-        '<h1 style="font-size:24px;font-weight:900;color:#000;margin:0;">' + safeHtml((u&&u.prenom||'') + ' ' + (u&&u.nom||'')) + '</h1>' +
-        '<button onclick="App.logout()" style="background:#FFEBEA;border:none;color:#FF3B30;font-size:13px;font-weight:700;padding:7px 14px;border-radius:12px;cursor:pointer;">Déconnexion</button>' +
-      '</header>' +
+    // ---- CARTE PROFIL HERO ----
+    var heroCard = '<div style="position:relative;overflow:hidden;">' +
+      '<div style="background:linear-gradient(160deg,' + (freshU.avatar_color||'#007AFF') + ' 0%,#001A66 100%);padding:32px 20px 24px;">' +
+        '<button onclick="App.logout()" style="position:absolute;top:14px;right:14px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);color:#FFF;font-size:12px;font-weight:700;padding:6px 12px;border-radius:20px;cursor:pointer;backdrop-filter:blur(8px);">Déconnexion</button>' +
 
-      '<div style="padding:0 0 20px;">' +
-
-        // Profile card
-        '<div style="background:linear-gradient(135deg,' + (u&&u.avatar_color||'#007AFF') + ' 0%,#0040CC 100%);padding:28px 20px;text-align:center;margin-bottom:10px;">' +
-          '<div style="width:80px;height:80px;border-radius:40px;background:rgba(255,255,255,0.25);color:#FFF;font-size:34px;font-weight:900;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;border:3px solid rgba(255,255,255,0.5);">' + ((u&&u.prenom||'M').charAt(0).toUpperCase()) + '</div>' +
-          '<h2 style="font-size:20px;font-weight:800;color:#FFF;margin:0;">' + safeHtml((u&&u.prenom||'') + ' ' + (u&&u.nom||'')) + '</h2>' +
-          '<p style="font-size:13px;color:rgba(255,255,255,0.8);margin:4px 0 0;">' + (roleLabel[(u&&u.role)||'MEMBRE']||'Membre') + ' · ' + secNom((u&&u.section_id)||'cadrage') + '</p>' +
-          (isAdmin ? '<div style="margin-top:10px;background:rgba(255,215,0,0.25);border:1px solid rgba(255,215,0,0.5);border-radius:20px;display:inline-block;padding:5px 14px;font-size:12px;font-weight:800;color:#FFD700;letter-spacing:0.5px;">⭐ GRAND RESPONSABLE</div>' : '') +
+        '<div style="width:90px;height:90px;border-radius:45px;background:rgba(255,255,255,0.2);color:#FFF;font-size:38px;font-weight:900;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;border:3px solid rgba(255,255,255,0.6);box-shadow:0 8px 24px rgba(0,0,0,0.3);">' +
+          freshU.prenom.charAt(0).toUpperCase() +
         '</div>' +
 
-        // Stats grid
-        '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:#F2F2F7;margin-bottom:10px;">' +
-          [
-            { val: myPosts.length, label: 'Publications' },
-            { val: myLikes.length, label: 'J\'aime donnés' },
-            { val: saved.length, label: 'Enregistrés' }
-          ].map(function(s) {
-            return '<div style="background:#FFF;padding:16px;text-align:center;">' +
-              '<strong style="font-size:22px;font-weight:900;color:#000;display:block;">' + s.val + '</strong>' +
-              '<span style="font-size:11.5px;color:#8E8E93;">' + s.label + '</span>' +
+        '<h2 style="font-size:22px;font-weight:900;color:#FFF;text-align:center;margin:0 0 4px;">' + safeHtml(freshU.prenom + ' ' + freshU.nom) + '</h2>' +
+        '<p style="font-size:12px;color:rgba(255,255,255,0.7);text-align:center;margin:0 0 12px;">' + safeHtml(freshU.email) + '</p>' +
+
+        '<div style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-bottom:' + (freshU.bio ? '14px' : '0') + ';">' +
+          '<div style="background:' + roleConf.bg + ';color:' + roleConf.text + ';padding:5px 14px;border-radius:20px;font-size:12px;font-weight:800;display:inline-flex;align-items:center;gap:5px;">' +
+            (freshU.role === 'GRAND_RESPONSABLE' ? '⭐ ' : '') + (ROLE_LABELS[freshU.role]||'Membre') +
+          '</div>' +
+          '<div style="background:rgba(255,255,255,0.18);border:1px solid rgba(255,255,255,0.3);color:#FFF;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:5px;">' +
+            secConf.emoji + ' #' + secConf.nom +
+          '</div>' +
+        '</div>' +
+
+        (freshU.bio ? '<p style="font-size:13px;color:rgba(255,255,255,0.85);text-align:center;line-height:1.45;max-width:300px;margin:0 auto;">' + safeHtml(freshU.bio) + '</p>' : '') +
+      '</div>' +
+
+      '<div style="background:' + (freshU.is_online ? '#EDFBF3' : '#F2F2F7') + ';border-bottom:1px solid ' + (freshU.is_online ? '#B8F0CE' : '#E5E5EA') + ';padding:10px 16px;display:flex;align-items:center;gap:8px;">' +
+        '<div style="width:10px;height:10px;border-radius:5px;background:' + (freshU.is_online ? '#34C759' : '#C7C7CC') + ';' + (freshU.is_online ? 'box-shadow:0 0 0 3px rgba(52,199,89,0.25);' : '') + '"></div>' +
+        '<span style="font-size:13px;font-weight:700;color:' + (freshU.is_online ? '#1B7A3E' : '#8E8E93') + ';">' + (freshU.is_online ? 'En ligne maintenant' : 'Hors ligne') + '</span>' +
+        '<span style="font-size:12px;color:#8E8E93;margin-left:auto;">Vu ' + timeAgo(freshU.last_seen_at ? new Date(freshU.last_seen_at).getTime() : Date.now()) + '</span>' +
+      '</div>' +
+    '</div>';
+
+    // ---- STATS BARRE ----
+    var statsBar = '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:#F2F2F7;margin-bottom:10px;">' +
+      [
+        { val: myPosts.length, label: 'Posts', icon: '📝' },
+        { val: myLikes.length, label: 'J\'aime', icon: '❤️' },
+        { val: myComments, label: 'Commentaires', icon: '💬' },
+        { val: saved.length, label: 'Sauvegardés', icon: '🔖' }
+      ].map(function(s) {
+        return '<div style="background:#FFF;padding:14px 8px;text-align:center;">' +
+          '<div style="font-size:18px;margin-bottom:2px;">' + s.icon + '</div>' +
+          '<strong style="font-size:20px;font-weight:900;color:#000;display:block;letter-spacing:-0.5px;">' + s.val + '</strong>' +
+          '<span style="font-size:10.5px;color:#8E8E93;">' + s.label + '</span>' +
+        '</div>';
+      }).join('') +
+    '</div>';
+
+    // ---- CARTE INFOS DÉTAILLÉES ----
+    var infoCard = '<div style="background:#FFF;margin-bottom:10px;">' +
+      '<div style="padding:16px 18px;border-bottom:0.5px solid #F2F2F7;">' +
+        '<h3 style="font-size:15px;font-weight:800;margin:0;color:#000;">Informations du profil</h3>' +
+      '</div>' +
+      '<div style="padding:4px 0;">' +
+
+        infoRow('👤', 'Identité', safeHtml(freshU.prenom + ' ' + freshU.nom)) +
+        infoRow('✉️', 'E-mail', safeHtml(freshU.email)) +
+        infoRow(secConf.emoji, 'Section / Pôle', '#' + secConf.nom + ' — ' + safeHtml(freshU.section_nom||'')) +
+        infoRow('🎖️', 'Rôle & Permissions', ROLE_LABELS[freshU.role]||'Membre') +
+        infoRow('📅', 'Membre depuis le', fmtDate(freshU.joined_at)) +
+        infoRow('🕐', 'Dernière visite (last_seen_at)', fmtDateTime(freshU.last_seen_at)) +
+        infoRow('⚡', 'Dernière action (last_action_at)', (freshU.last_action_label||'Action') + ' · ' + fmtDateTime(freshU.last_action_at)) +
+        infoRow('🌐', 'Statut de connexion', freshU.is_online ? '🟢 En ligne' : '⚪ Hors ligne') +
+
+      '</div>' +
+    '</div>';
+
+    // ---- POSTS RÉCENTS DE L'UTILISATEUR ----
+    var myPostsSection = myPosts.length > 0
+      ? '<div style="background:#FFF;margin-bottom:10px;">' +
+          '<div style="padding:14px 18px;border-bottom:0.5px solid #F2F2F7;display:flex;justify-content:space-between;align-items:center;">' +
+            '<h3 style="font-size:15px;font-weight:800;margin:0;color:#000;">Mes publications</h3>' +
+            '<span style="font-size:12px;color:#8E8E93;">' + myPosts.length + ' au total</span>' +
+          '</div>' +
+          '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1.5px;background:#F2F2F7;">' +
+          myPosts.slice(0,9).map(function(p) {
+            if (p.mediaUrls && p.mediaUrls.length > 0) {
+              return '<div onclick="App.openComments(\'' + p.id + '\')" style="aspect-ratio:1;overflow:hidden;cursor:pointer;"><img src="' + p.mediaUrls[0] + '" style="width:100%;height:100%;object-fit:cover;" loading="lazy"/></div>';
+            }
+            return '<div onclick="App.openComments(\'' + p.id + '\')" style="aspect-ratio:1;background:linear-gradient(135deg,' + secColor(p.sectionId) + '25,#EEE);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-direction:column;gap:4px;">' +
+              '<span style="font-size:22px;">' + secEmoji(p.sectionId) + '</span>' +
+              '<span style="font-size:9px;color:#8E8E93;font-weight:600;text-align:center;padding:0 4px;">' + (p.caption||'').slice(0,20) + '…</span>' +
             '</div>';
           }).join('') +
+          '</div>' +
+        '</div>'
+      : '';
+
+    // ---- DASHBOARD ADMIN ----
+    var adminDashboard = '';
+    if (isAdmin) {
+      var onlineCount = allProfiles.filter(function(p){ return p.is_online; }).length;
+      var todayPosts = posts.filter(function(p){ return Date.now() - (p.timestamp||0) < 86400000; }).length;
+
+      adminDashboard = '<div style="background:#FFF;margin-bottom:10px;">' +
+
+        // En-tête dashboard
+        '<div style="background:linear-gradient(135deg,#1A1A2E,#2D2D44);padding:18px;">' +
+          '<div style="display:flex;align-items:center;gap:12px;">' +
+            '<div style="width:44px;height:44px;border-radius:22px;background:linear-gradient(135deg,#FFD700,#FF9500);display:flex;align-items:center;justify-content:center;font-size:20px;">🛡️</div>' +
+            '<div><h3 style="font-size:16px;font-weight:800;margin:0;color:#FFF;">Tableau de Bord Administration</h3><p style="font-size:12px;color:rgba(255,255,255,0.6);margin:0;">Gestion des profils & Activité temps réel</p></div>' +
+          '</div>' +
+          '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px;">' +
+            adminKpi('🟢', onlineCount, 'En ligne') +
+            adminKpi('📝', todayPosts, 'Posts 24h') +
+            adminKpi('👥', allProfiles.length, 'Membres') +
+          '</div>' +
         '</div>' +
 
-        // Saved posts mini-grid
-        (saved.length > 0 ? '<div style="background:#FFF;padding:16px;margin-bottom:10px;">' +
-          '<h3 style="font-size:15px;font-weight:800;margin:0 0 12px;color:#000;">Enregistrés</h3>' +
-          '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:2px;">' +
-          saved.slice(0,9).map(function(pid) {
-            var p = posts.find(function(x){ return x.id===pid; });
-            return p ? '<div onclick="App.openComments(\''+p.id+'\')" style="aspect-ratio:1;background:linear-gradient(135deg,' + secColor(p.sectionId) + '30,#EEE);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:24px;">' + secEmoji(p.sectionId) + '</div>' : '';
-          }).join('') +
-          '</div></div>' : '') +
-
-        // Admin dashboard
-        (isAdmin ? '<div style="background:#FFF;padding:16px;margin-bottom:10px;">' +
-          '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">' +
-            '<div style="width:38px;height:38px;border-radius:19px;background:linear-gradient(135deg,#FFD700,#FF9500);display:flex;align-items:center;justify-content:center;font-size:18px;">🛡️</div>' +
-            '<div><h3 style="font-size:16px;font-weight:800;margin:0;color:#000;">Dashboard</h3><p style="font-size:12px;color:#8E8E93;margin:0;">Membres & Activité temps réel</p></div>' +
-          '</div>' +
-          '<div style="display:flex;flex-direction:column;gap:8px;">' +
+        // Liste de tous les profils membres
+        '<div style="padding:14px 16px;">' +
+          '<h4 style="font-size:13px;font-weight:800;color:#8E8E93;text-transform:uppercase;letter-spacing:0.8px;margin:0 0 12px;">Profils Membres — Supabase Realtime</h4>' +
+          '<div style="display:flex;flex-direction:column;gap:10px;">' +
           allProfiles.map(function(p) {
-            return '<div style="display:flex;align-items:center;gap:12px;padding:12px;background:#F8F8FC;border-radius:16px;">' +
-              '<div style="position:relative;">' +
-                '<div style="width:40px;height:40px;border-radius:20px;background:linear-gradient(135deg,' + (p.avatar_color||'#007AFF') + ',#0040CC);color:#FFF;font-weight:800;font-size:15px;display:flex;align-items:center;justify-content:center;">' + ((p.prenom||'M').charAt(0)) + '</div>' +
-                '<div style="position:absolute;bottom:1px;right:1px;width:11px;height:11px;border-radius:6px;background:' + (p.is_online?'#34C759':'#C7C7CC') + ';border:2px solid #F8F8FC;"></div>' +
+            var pr = ROLE_COLORS[p.role] || ROLE_COLORS.MEMBRE;
+            var pSec = SECTIONS.find(function(s){ return s.id===p.section_id; }) || { emoji:'📢', color:'#8E8E93', nom:'Général' };
+            var pPosts = posts.filter(function(x){ return x.userId===p.id; }).length;
+            return '<div style="background:#F8F9FF;border-radius:18px;padding:14px;border:1px solid #EFEFEF;">' +
+
+              // Entête carte utilisateur
+              '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">' +
+                '<div style="position:relative;flex-shrink:0;">' +
+                  '<div style="width:44px;height:44px;border-radius:22px;background:linear-gradient(135deg,' + (p.avatar_color||'#007AFF') + ',#0040CC);color:#FFF;font-weight:900;font-size:17px;display:flex;align-items:center;justify-content:center;">' + p.prenom.charAt(0) + '</div>' +
+                  '<div style="position:absolute;bottom:0;right:0;width:13px;height:13px;border-radius:7px;background:' + (p.is_online?'#34C759':'#C7C7CC') + ';border:2.5px solid #F8F9FF;"></div>' +
+                '</div>' +
+                '<div style="flex:1;min-width:0;">' +
+                  '<div style="font-size:14px;font-weight:800;color:#000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(p.prenom + ' ' + p.nom) + '</div>' +
+                  '<div style="font-size:11.5px;color:#8E8E93;">' + safeHtml(p.email) + '</div>' +
+                '</div>' +
+                '<div style="flex-shrink:0;">' +
+                  '<span style="background:' + pr.bg + ';color:' + pr.text + ';font-size:10.5px;font-weight:800;padding:4px 10px;border-radius:20px;white-space:nowrap;display:inline-block;">' + (ROLE_LABELS[p.role]||'Membre') + '</span>' +
+                '</div>' +
               '</div>' +
-              '<div style="flex:1;">' +
-                '<strong style="font-size:13.5px;color:#000;display:block;">' + safeHtml(p.prenom+' '+p.nom) + '</strong>' +
-                '<span style="font-size:11.5px;color:#8E8E93;">' + safeHtml(p.section_nom||'COM') + ' · ' + (p.role||'MEMBRE') + '</span>' +
+
+              // Grille infos détaillées (Section, Inscription, Visite, Action)
+              '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;">' +
+                adminMiniInfo(pSec.emoji, '#' + pSec.nom, pSec.color) +
+                adminMiniInfo('📝', pPosts + ' post' + (pPosts > 1 ? 's' : ''), '#007AFF') +
+                adminMiniInfo('🕐', 'Vu ' + timeAgo(p.last_seen_at ? new Date(p.last_seen_at).getTime() : 0), '#8E8E93') +
+                adminMiniInfo('⚡', (p.last_action_label||'Action') + ' ' + timeAgo(p.last_action_at ? new Date(p.last_action_at).getTime() : 0), '#FF9500') +
               '</div>' +
-              '<div style="text-align:right;">' +
-                '<strong style="font-size:11.5px;color:#007AFF;display:block;">' + safeHtml(p.last_action||'Actif') + '</strong>' +
+
+              // Date inscription
+              '<div style="font-size:11px;color:#8E8E93;border-top:0.5px solid #EFEFEF;padding-top:6px;display:flex;justify-content:space-between;">' +
+                '<span>📅 Inscrit le ' + fmtDate(p.joined_at) + '</span>' +
+                '<span style="font-weight:700;color:' + (p.is_online?'#34C759':'#8E8E93') + ';">' + (p.is_online?'🟢 En ligne':'⚪ Hors ligne') + '</span>' +
+              '</div>' +
+
+            '</div>';
+          }).join('') +
+          '</div>' +
+        '</div>' +
+
+      '</div>';
+    }
+
+    return '<header style="padding:16px 18px;background:#FFF;border-bottom:0.5px solid #F2F2F7;display:flex;justify-content:space-between;align-items:center;">' +
+        '<h1 style="font-size:20px;font-weight:900;color:#000;margin:0;">Mon Profil</h1>' +
+        '<span style="font-size:12px;color:#8E8E93;font-weight:600;">' + safeHtml(freshU.email) + '</span>' +
+      '</header>' +
+
+      '<div style="padding-bottom:20px;">' +
+        heroCard +
+        statsBar +
+        infoCard +
+        myPostsSection +
+        adminDashboard +
+      '</div>';
+  } '</strong>' +
                 '<span style="font-size:11px;font-weight:600;color:' + (p.is_online?'#34C759':'#C7C7CC') + ';">' + (p.is_online?'● En ligne':'○ Hors ligne') + '</span>' +
               '</div>' +
             '</div>';
@@ -1129,6 +1359,7 @@
         likes: 0, likedBy: [], comments: []
       });
       dbSet(SK.POSTS, posts);
+      updateUserActivity('Publication');
       S.createOpen=false; S.pendingMedia=[]; S.hashSuggestions=false;
       render();
       toast('Publication partagée ! 🎉', 'success');
@@ -1171,6 +1402,7 @@
       if (!post) return;
       var newC = { id:'c'+Date.now(), userId:S.user.id, author:S.user.prenom+' '+S.user.nom.charAt(0)+'.', avatarColor:S.user.avatar_color||'#007AFF', text:txt, timestamp:Date.now() };
       post.comments.push(newC); dbSet(SK.POSTS, posts);
+      updateUserActivity('Commentaire');
       // DOM update: append to list without full re-render
       var list = document.getElementById('commentsList');
       if (list) {
