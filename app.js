@@ -1272,7 +1272,6 @@
       MEMBRE: 'Membre',
       STAGIAIRE: 'Stagiaire'
     };
-    var secConf = SECTIONS.find(function(s){ return s.id === freshU.section_id; }) || { emoji:'📢', color:'#8E8E93', nom:'Général' };
     
     var myPosts = posts.filter(function(p){ return p.userId === freshU.id; }).sort(function(a,b){return (b.timestamp||0)-(a.timestamp||0)});
     var myLikes = posts.filter(function(p){ return Array.isArray(p.likedBy) && p.likedBy.indexOf(freshU.id) !== -1; });
@@ -1292,69 +1291,59 @@
       ) +
     '</header>';
 
-    var topSection = '<div style="background:#FFF;padding:16px 16px 20px;">' +
-      '<div style="display:flex;align-items:center;margin-bottom:14px;">' +
-        '<div style="position:relative;width:86px;height:86px;border-radius:43px;padding:3px;background:linear-gradient(45deg,#F58529,#DD2A7B,#8134AF,#515BD4);flex-shrink:0;">' +
-          '<div style="width:100%;height:100%;border-radius:50%;border:2px solid #FFF;background:#FFF;position:relative;overflow:hidden;">' +
+    var coverContent = freshU.cover_url
+      ? '<img src="' + freshU.cover_url + '" style="width:100%;height:100%;object-fit:cover;" />'
+      : '<div style="width:100%;height:100%;background:linear-gradient(135deg, #E5E5EA 0%, #D1D1D6 100%);"></div>';
+
+    var topSection = '<div style="background:#FFF;position:relative;">' +
+      '<div style="width:100%;height:160px;position:relative;">' + 
+        coverContent + 
+        (isMe ? '<div onclick="App.openEditProfile()" style="position:absolute;bottom:12px;right:12px;width:32px;height:32px;border-radius:16px;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);color:#FFF;display:flex;align-items:center;justify-content:center;cursor:pointer;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>' : '') +
+      '</div>' +
+      '<div style="padding:0 16px 20px;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:-40px;margin-bottom:12px;">' +
+          '<div style="width:90px;height:90px;border-radius:45px;border:4px solid #FFF;background:#FFF;position:relative;overflow:hidden;flex-shrink:0;">' +
             avatarContent +
           '</div>' +
-          (isMe ? '<div onclick="App.openEditProfile()" style="position:absolute;bottom:0;right:0;width:26px;height:26px;border-radius:13px;background:#007AFF;border:2px solid #FFF;color:#FFF;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 5px rgba(0,0,0,0.2);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>' : '') +
+          (isMe ? '<button onclick="App.openEditProfile()" style="background:#F2F2F7;border:none;border-radius:20px;padding:8px 16px;font-size:14px;font-weight:700;cursor:pointer;color:#000;">Éditer profil</button>' : '') +
         '</div>' +
         
-        '<div style="flex:1;display:flex;justify-content:space-around;align-items:center;margin-left:10px;">' +
-          '<div style="text-align:center;"><strong style="font-size:18px;display:block;">' + myPosts.length + '</strong><span style="font-size:12px;color:#000;">Posts</span></div>' +
-          '<div style="text-align:center;"><strong style="font-size:18px;display:block;">' + myLikes.length + '</strong><span style="font-size:12px;color:#000;">J\'aime</span></div>' +
-          '<div style="text-align:center;"><strong style="font-size:18px;display:block;">' + myComments + '</strong><span style="font-size:12px;color:#000;">Comm.</span></div>' +
+        '<div>' +
+          '<div style="font-size:22px;font-weight:900;color:#000;margin-bottom:2px;letter-spacing:-0.5px;">' + safeHtml(freshU.prenom + ' ' + freshU.nom) + '</div>' +
+          '<div style="font-size:13px;color:#8E8E93;margin-bottom:12px;display:flex;align-items:center;flex-wrap:wrap;gap:6px;">' +
+            (function(){
+              var uSecs = App.getUserSections(freshU);
+              return uSecs.map(function(s){ return '<span style="background:#F2F2F7;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;color:#000;">' + secNom(s) + '</span>'; }).join('');
+            })() + 
+            '<span style="background:#E5F0FF;color:#007AFF;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;">' + (ROLE_LABELS[freshU.role]||'Membre') + '</span>' +
+          '</div>' +
+          (freshU.bio ? '<div style="font-size:14px;line-height:1.4;white-space:pre-wrap;color:#000;margin-bottom:16px;">' + safeHtml(freshU.bio) + '</div>' : '') +
+        '</div>' +
+
+        '<div style="display:flex;gap:24px;border-top:1px solid #F2F2F7;padding-top:16px;">' +
+          '<div><strong style="font-size:16px;color:#000;">' + myPosts.length + '</strong> <span style="font-size:14px;color:#8E8E93;">Posts</span></div>' +
+          '<div><strong style="font-size:16px;color:#000;">' + myLikes.length + '</strong> <span style="font-size:14px;color:#8E8E93;">J\'aime</span></div>' +
+          '<div><strong style="font-size:16px;color:#000;">' + myComments + '</strong> <span style="font-size:14px;color:#8E8E93;">Commentaires</span></div>' +
         '</div>' +
       '</div>' +
-
-      '<div>' +
-        '<div style="font-size:14px;font-weight:700;color:#000;margin-bottom:2px;">' + safeHtml(freshU.prenom + ' ' + freshU.nom) + '</div>' +
-        '<div style="font-size:13px;color:#8E8E93;margin-bottom:4px;display:flex;align-items:center;gap:6px;">' +
-          '<span style="background:#F2F2F7;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;color:#000;">' + secConf.emoji + ' ' + secConf.nom + '</span>' +
-          '<span style="background:#F2F2F7;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;color:#000;">' + (ROLE_LABELS[freshU.role]||'Membre') + '</span>' +
-        '</div>' +
-        (freshU.bio ? '<div style="font-size:14px;line-height:1.4;white-space:pre-wrap;color:#000;">' + safeHtml(freshU.bio) + '</div>' : '') +
-      '</div>' +
-
-      (isMe ? '<div style="display:flex;gap:8px;margin-top:16px;">' +
-        '<button onclick="App.openEditProfile()" style="flex:1;background:#F2F2F7;border:none;border-radius:8px;height:34px;font-size:14px;font-weight:700;cursor:pointer;color:#000;">Éditer le profil</button>' +
-        '<button onclick="App.shareProfile()" style="flex:1;background:#F2F2F7;border:none;border-radius:8px;height:34px;font-size:14px;font-weight:700;cursor:pointer;color:#000;">Partager</button>' +
-      '</div>' : '') +
     '</div>';
 
-    // Tabs 
-    var tabs = '<div style="display:flex;border-top:0.5px solid #E5E5EA;background:#FFF;position:sticky;top:49px;z-index:10;">' +
-      '<div style="flex:1;text-align:center;padding:12px 0;border-bottom:1px solid #000;cursor:pointer;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg></div>' +
-    '</div>';
+    var separator = '<div style="background:#F2F2F7;padding:12px 16px;font-size:12px;font-weight:800;color:#8E8E93;letter-spacing:1px;text-transform:uppercase;">Publications</div>';
 
-    // Grid of posts
-    var grid = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:2px;background:#FFF;min-height:30vh;align-content:start;">';
+    var feed = '<div style="background:#F2F2F7;min-height:30vh;padding-bottom:100px;">';
     if (myPosts.length === 0) {
-      grid += '<div style="grid-column:1/4;padding:40px 20px;text-align:center;color:#8E8E93;">' +
-        '<div style="width:60px;height:60px;border-radius:30px;border:2px solid #000;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="1.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>' +
-        '<strong style="font-size:22px;color:#000;display:block;margin-bottom:8px;">Pas encore de post</strong>' +
-        '<span style="font-size:14px;">Publiez pour les voir ici.</span>' +
+      feed += '<div style="padding:40px 20px;text-align:center;color:#8E8E93;">' +
+        '<div style="font-size:40px;margin-bottom:16px;">📝</div>' +
+        '<strong style="font-size:18px;color:#000;display:block;margin-bottom:8px;">Aucune publication pour le moment</strong>' +
+        '<span style="font-size:14px;">Publiez pour les voir ici sur votre mur.</span>' +
       '</div>';
     } else {
-      myPosts.forEach(function(p) {
-        if (p.mediaUrls && p.mediaUrls.length > 0) {
-          grid += '<div onclick="App.openPostOptions(\'' + p.id + '\')" style="aspect-ratio:1;position:relative;cursor:pointer;">' +
-            '<img src="' + p.mediaUrls[0] + '" style="width:100%;height:100%;object-fit:cover;" />' +
-            (p.mediaUrls.length > 1 ? '<svg style="position:absolute;top:8px;right:8px;" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M21 8H3M8 21V8"/></svg>' : '') +
-          '</div>';
-        } else {
-          grid += '<div onclick="App.openPostOptions(\'' + p.id + '\')" style="aspect-ratio:1;background:linear-gradient(135deg,' + secColor(p.sectionId) + '25,#EEE);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;padding:8px;position:relative;">' +
-            '<span style="font-size:28px;margin-bottom:4px;">' + secEmoji(p.sectionId) + '</span>' +
-            '<span style="font-size:11px;font-weight:700;color:#000;text-align:center;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;">' + (p.caption||'') + '</span>' +
-          '</div>';
-        }
-      });
+      feed += myPosts.map(function(p) { return renderPostCard(p, false); }).join('');
     }
-    grid += '</div>';
+    feed += '</div>';
 
-    return header + topSection + tabs + grid;
-}
+    return header + topSection + separator + feed;
+  }
 
   function renderEditProfileModal(u) {
     var freshU = db(SK.USERS, []).find(function(p){ return p.id === u.id; }) || u;
