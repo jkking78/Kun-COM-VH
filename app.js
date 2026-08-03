@@ -1,10 +1,10 @@
 // ==============================================================================
 // APPLICATION WEB PURE PWA - DÉPARTEMENT COMMUNICATION (KUN COM VH)
-// Style Instagram Clean & Minimaliste (Zero Emoji & SVG fil de fer)
+// Règle Restrictive Émojis (Émojis autorisés uniquement dans les bulles Stories)
 // ==============================================================================
 
 (function() {
-  console.log("🚀 Lancement de l'application Web (Style Instagram Clean)...");
+  console.log("🚀 Lancement de l'application Web (Émojis ciblés Stories uniquement)...");
 
   // ETAT GLOBAL
   var activeTab = 'home';
@@ -104,11 +104,11 @@
       return 'background:none; border:none; display:flex; align-items:center; justify-content:center; cursor:pointer; padding:8px 16px; opacity:' + (active ? 1 : 0.5) + ';';
     }
 
-    // RENDU DES 5 ÉCRANS INSTAGRAM CLEAN
+    // RENDU DES 5 ÉCRANS INSTAGRAM (ÉMOJIS DANS BULLES STORIES UNIQUEMENT)
     function renderScreen() {
       if (activeTab === 'home') {
         return `
-          <!-- 1. HEADER INSTAGRAM TOP -->
+          <!-- 1. HEADER INSTAGRAM TOP (SANS EMOJI) -->
           <header style="padding:14px 18px; background:#FFF; border-bottom:1px solid #EFEFEF; display:flex; justify-content:space-between; align-items:center; position:sticky; top:0; z-index:100;">
             <div>
               <p style="font-size:10px; font-weight:800; color:#007AFF; text-transform:uppercase; letter-spacing:1.2px; margin:0 0 1px;">EGLISE VASE D'HONNEUR</p>
@@ -124,24 +124,24 @@
             </div>
           </header>
 
-          <!-- 2. CARROUSEL STORIES EN BULLES CIRCULAIRES -->
+          <!-- 2. CARROUSEL STORIES EN BULLES CIRCULAIRES (ÉMOJIS SECTION AUTORISÉS) -->
           <div style="padding:12px 0; border-bottom:1px solid #EFEFEF; background:#FFF; overflow-x:auto; white-space:nowrap; -webkit-overflow-scrolling:touch;">
             <div style="display:flex; gap:14px; padding:0 14px;">
               ${[
-                { id: 'cadrage', nom: 'Cadrage', initial: 'C', active: true },
-                { id: 'regie', nom: 'Régie', initial: 'R', active: true },
-                { id: 'web', nom: 'Web', initial: 'W', active: false },
-                { id: 'proj', nom: 'Projection', initial: 'P', active: false },
-                { id: 'prod', nom: 'Prod', initial: 'PR', active: false },
-                { id: 'photo', nom: 'Photo', initial: 'PH', active: false },
-                { id: 'vente', nom: 'Vente', initial: 'V', active: false }
+                { id: 'cadrage', nom: 'Cadrage', emoji: '🎥', active: true },
+                { id: 'regie', nom: 'Régie', emoji: '🎛️', active: true },
+                { id: 'web', nom: 'Web', emoji: '🌐', active: false },
+                { id: 'proj', nom: 'Projection', emoji: '🖥️', active: false },
+                { id: 'prod', nom: 'Prod', emoji: '🎬', active: false },
+                { id: 'photo', nom: 'Photo', emoji: '📸', active: false },
+                { id: 'vente', nom: 'Vente', emoji: '🛒', active: false }
               ].map(function(story) {
                 var isSel = activeStory === story.id;
                 return `
                   <div onclick="window.setStory('${story.id}')" style="display:inline-flex; flex-direction:column; align-items:center; cursor:pointer; width:66px;">
                     <div style="width:62px; height:62px; border-radius:31px; padding:2px; border:2px solid ${isSel || story.active ? '#D4AF37' : '#E5E5EA'}; display:flex; align-items:center; justify-content:center; background:#FFF;">
-                      <div style="width:100%; height:100%; border-radius:27px; background:#F0F6FF; color:#007AFF; font-weight:800; font-size:15px; display:flex; align-items:center; justify-content:center;">
-                        ${story.initial}
+                      <div style="width:100%; height:100%; border-radius:27px; background:#F0F6FF; display:flex; align-items:center; justify-content:center; font-size:24px;">
+                        ${story.emoji}
                       </div>
                     </div>
                     <span style="font-size:11px; font-weight:${isSel ? '700' : '500'}; color:${isSel ? '#000000' : '#8E8E93'}; margin-top:4px; text-align:center;">
@@ -153,7 +153,7 @@
             </div>
           </div>
 
-          <!-- 3. POST INSTAGRAM : CARTE BILAN DE CULTE -->
+          <!-- 3. POST INSTAGRAM : CARTE BILAN DE CULTE (TEXTE PUR SANS EMOJI) -->
           <article style="background:#FFF; border-bottom:8px solid #FAFAFA;">
             <!-- En-tête Post -->
             <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px;">
@@ -243,7 +243,7 @@
             </div>
           </article>
 
-          <!-- 5. BLOC INSTAGRAM "VOUS ÊTES À JOUR" -->
+          <!-- 5. BLOC INSTAGRAM "VOUS ÊTES À JOUR" (SANS EMOJI) -->
           <div style="padding:36px 20px; text-align:center; background:#FFF; border-top:1px solid #EFEFEF; display:flex; flex-direction:column; align-items:center;">
             <div style="width:48px; height:48px; border-radius:24px; background:#F0F6FF; display:flex; align-items:center; justify-content:center; margin-bottom:10px;">
               ${checkSvg}

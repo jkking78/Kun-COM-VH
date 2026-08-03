@@ -60,7 +60,7 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  // 2. STORIES INSTAGRAM CARROUSEL
+  // 2. STORIES INSTAGRAM CARROUSEL (AVEC ÉMOJIS SECTION)
   storiesContainer: {
     paddingVertical: 14,
     borderBottomWidth: 1,
@@ -96,10 +96,8 @@ export const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  storyAvatarText: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: COLORS.appleBlue,
+  storyEmoji: {
+    fontSize: 24,
   },
   storyLabel: {
     fontSize: 11,
@@ -279,7 +277,7 @@ export const styles = StyleSheet.create({
     marginTop: 6,
   },
 
-  // 4. BLOC "VOUS ÊTES À JOUR" (INSTAGRAM STYLE)
+  // 4. BLOC "VOUS ÊTES À JOUR"
   allCaughtUpContainer: {
     paddingVertical: 36,
     paddingHorizontal: 20,
@@ -320,7 +318,7 @@ export const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: COLORS.borderLight,
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    justify.content: 'space-around',
     alignItems: 'center',
     zIndex: 99999,
   },

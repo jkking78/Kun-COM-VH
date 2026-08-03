@@ -44,15 +44,15 @@ const CheckIcon = ({ color = '#007AFF', size = 24 }) => (
   </Svg>
 );
 
-// 2. LES 7 STORIES DES SECTIONS (AVEC INITIALES)
+// 2. LES 7 STORIES DES SECTIONS (ÉMOJIS UNIQUEMENT DANS LES BULLES)
 const STORIES_SECTIONS = [
-  { id: 'cadrage', nom: 'Cadrage', initial: 'C', active: true },
-  { id: 'regie', nom: 'Régie', initial: 'R', active: true },
-  { id: 'web', nom: 'Web', initial: 'W', active: false },
-  { id: 'proj', nom: 'Projection', initial: 'P', active: false },
-  { id: 'prod', nom: 'Prod', initial: 'PR', active: false },
-  { id: 'photo', nom: 'Photo', initial: 'PH', active: false },
-  { id: 'vente', nom: 'Vente', initial: 'V', active: false },
+  { id: 'cadrage', nom: 'Cadrage', emoji: '🎥', active: true },
+  { id: 'regie', nom: 'Régie', emoji: '🎛️', active: true },
+  { id: 'web', nom: 'Web', emoji: '🌐', active: false },
+  { id: 'proj', nom: 'Projection', emoji: '🖥️', active: false },
+  { id: 'prod', nom: 'Prod', emoji: '🎬', active: false },
+  { id: 'photo', nom: 'Photo', emoji: '📸', active: false },
+  { id: 'vente', nom: 'Vente', emoji: '🛒', active: false },
 ];
 
 export default function HomeScreen() {
@@ -68,7 +68,7 @@ export default function HomeScreen() {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
 
-      {/* 1. HEADER INSTAGRAM CLEAN */}
+      {/* 1. HEADER INSTAGRAM CLEAN (SANS EMOJI) */}
       <View style={styles.header}>
         <View>
           <Text style={styles.headerSub}>ÉGLISE VASE D'HONNEUR</Text>
@@ -89,7 +89,7 @@ export default function HomeScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.feedScroll}>
-        {/* 2. STORIES CARROUSEL EN HAUT */}
+        {/* 2. STORIES CARROUSEL EN HAUT (ÉMOJIS DANS LES BULLES UNIQUEMENT) */}
         <View style={styles.storiesContainer}>
           <ScrollView
             horizontal
@@ -106,7 +106,7 @@ export default function HomeScreen() {
                 >
                   <View style={[styles.storyRing, (isSelected || story.active) && styles.storyRingActive]}>
                     <View style={styles.storyAvatar}>
-                      <Text style={styles.storyAvatarText}>{story.initial}</Text>
+                      <Text style={styles.storyEmoji}>{story.emoji}</Text>
                     </View>
                   </View>
                   <Text style={[styles.storyLabel, isSelected && styles.storyLabelActive]}>
@@ -118,7 +118,7 @@ export default function HomeScreen() {
           </ScrollView>
         </View>
 
-        {/* 3. POST INSTAGRAM : CARTE BILAN CULTE N°1 */}
+        {/* 3. POST INSTAGRAM : CARTE BILAN CULTE N°1 (TEXTE SANS EMOJI) */}
         <View style={styles.postCard}>
           {/* En-tête Post */}
           <View style={styles.postHeader}>
@@ -151,7 +151,7 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          {/* Barre d'interactions Sociales */}
+          {/* Barre d'interactions Sociales (SVG fil de fer) */}
           <View style={styles.postActionsBar}>
             <View style={styles.postActionsLeft}>
               <TouchableOpacity style={styles.socialIconBtn} onPress={() => toggleLike('post-bilan')}>
@@ -174,7 +174,7 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Légende & Description */}
+          {/* Légende & Description (Texte Pur sans émoji) */}
           <View style={styles.postCaptionBox}>
             <Text style={styles.postLikesText}>Aimé par Sarah Yao et 42 autres membres</Text>
             <Text style={styles.postCaptionText}>
@@ -226,7 +226,7 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* 5. BLOC INSTAGRAM "VOUS ÊTES À JOUR" */}
+        {/* 5. BLOC INSTAGRAM "VOUS ÊTES À JOUR" (SANS EMOJI) */}
         <View style={styles.allCaughtUpContainer}>
           <View style={styles.checkCircle}>
             <CheckIcon color="#007AFF" size={24} />
