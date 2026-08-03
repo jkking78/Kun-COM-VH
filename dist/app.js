@@ -1754,6 +1754,36 @@
     posts.forEach(function(p){ myCommentsCount += (p.comments||[]).filter(function(c){ return c.userId === freshU.id; }).length; });
 
     // ---- Avatar ----
+        // ---- Dynamic RH Metrics ----
+    var eventsList = posts.filter(function(p){ return p.type === 'EVENT'; });
+    var myServicesCount = 0;
+    eventsList.forEach(function(ev) {
+      var assignments = ev.assignments || [];
+      var isAssigned = assignments.some(function(a){ return a.userId === freshU.id; });
+      var isParticipant = Array.isArray(ev.likedBy) && ev.likedBy.indexOf(freshU.id) !== -1;
+      if (isAssigned || isParticipant) myServicesCount++;
+    });
+    if (freshU.services_count && freshU.services_count > myServicesCount) {
+      myServicesCount = freshU.services_count;
+    }
+
+    var evalPosts = posts.filter(function(p){ return p.type === 'EVALUATION' || (p.metadata && p.metadata.type === 'EVALUATION'); });
+    var sumStars = 0;
+    var evalCount = 0;
+    evalPosts.forEach(function(ep) {
+      var meta = ep.metadata || {};
+      var r = parseFloat(meta.overallRating || meta.rating || ep.rating || 0);
+      if (r > 0) {
+        sumStars += r;
+        evalCount++;
+      }
+    });
+    var avgRating = evalCount > 0 ? (sumStars / evalCount).toFixed(1) : (freshU.rating ? freshU.rating.toFixed(1) : '4.8');
+
+    var trustScore = freshU.trust_score !== undefined ? freshU.trust_score : (myServicesCount > 0 ? Math.min(100, 75 + myServicesCount * 3) : 92);
+    var trustColor = trustScore < 50 ? '#FF3B30' : (trustScore <= 80 ? '#FF9500' : '#34C759');
+    var trustLabel = trustScore < 50 ? 'Suivi Requis' : (trustScore <= 80 ? 'Assiduité Satisfaisante' : 'Fiabilité Élevée 🌟');
+
     var avatarContent = freshU.avatar_url
       ? '<img src="' + freshU.avatar_url + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />'
       : '<div style="width:100%;height:100%;border-radius:50%;background:linear-gradient(135deg,'+(theme.primary)+',#000);color:#FFF;font-size:34px;font-weight:900;display:flex;align-items:center;justify-content:center;">' + (freshU.prenom||'M').charAt(0).toUpperCase() + '</div>';
@@ -1829,19 +1859,42 @@
         '<span style="font-size:12px;font-weight:800;color:' + theme.badgeText + ';background:' + theme.badgeBg + ';padding:4px 10px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.1);">' + (ROLE_LABELS[freshU.role]||'Membre') + '</span>' +
         (secBadges ? '<span style="color:#D1D1D6;">·</span>' + secBadges : '') +
       '</div>' +
-      // Stats row
-      '<div style="display:flex;gap:0;border-top:1px solid #F2F2F7;border-bottom:1px solid #F2F2F7;margin-bottom:14px;">' +
-        '<div style="flex:1;text-align:center;padding:12px 0;border-right:1px solid #F2F2F7;">' +
-          '<div style="font-size:18px;font-weight:900;color:#000;">' + myPosts.length + '</div>' +
-          '<div style="font-size:11px;color:#8E8E93;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Posts</div>' +
+      // ---- Tableau de Bord RH: Performances & Suivi ----
+      '<div style="background:linear-gradient(135deg, #1C1C1E, #2C2C2E);border-radius:20px;padding:16px;margin:12px 0 16px;color:#FFF;box-shadow:0 6px 20px rgba(0,0,0,0.15);">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;border-bottom:1px solid rgba(255,255,255,0.1);padding-bottom:10px;">' +
+          '<div style="display:flex;align-items:center;gap:8px;">' +
+            '<span style="font-size:16px;">📊</span>' +
+            '<span style="font-size:14px;font-weight:800;letter-spacing:0.3px;color:#FFF;">Performances & Suivi</span>' +
+          '</div>' +
+          '<span style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.7);background:rgba(255,255,255,0.12);padding:3px 10px;border-radius:12px;">Tableau RH</span>' +
         '</div>' +
-        '<div style="flex:1;text-align:center;padding:12px 0;border-right:1px solid #F2F2F7;">' +
-          '<div style="font-size:18px;font-weight:900;color:#000;">' + myLikesCount + '</div>' +
-          '<div style="font-size:11px;color:#8E8E93;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">J\'aime reçus</div>' +
+
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">' +
+          '<div style="background:rgba(255,255,255,0.06);border-radius:14px;padding:12px;border:1px solid rgba(255,255,255,0.08);text-align:center;">' +
+            '<div style="font-size:22px;font-weight:900;color:#FFF;margin-bottom:2px;">' + myServicesCount + '</div>' +
+            '<div style="font-size:10.5px;font-weight:700;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:0.5px;">Services Effectués</div>' +
+          '</div>' +
+
+          '<div style="background:rgba(255,255,255,0.06);border-radius:14px;padding:12px;border:1px solid rgba(255,255,255,0.08);text-align:center;">' +
+            '<div style="font-size:22px;font-weight:900;color:#FFD700;display:flex;align-items:center;justify-content:center;gap:4px;margin-bottom:2px;">' +
+              '⭐ ' + avgRating + '<span style="font-size:12px;color:rgba(255,255,255,0.5);font-weight:600;">/5</span>' +
+            '</div>' +
+            '<div style="font-size:10.5px;font-weight:700;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:0.5px;">Note Moyenne</div>' +
+          '</div>' +
         '</div>' +
-        '<div style="flex:1;text-align:center;padding:12px 0;">' +
-          '<div style="font-size:18px;font-weight:900;color:#000;">' + myCommentsCount + '</div>' +
-          '<div style="font-size:11px;color:#8E8E93;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Commentaires</div>' +
+
+        '<div>' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
+            '<span style="font-size:12px;font-weight:700;color:rgba(255,255,255,0.9);">Indice de Confiance & Assiduité</span>' +
+            '<span style="font-size:12px;font-weight:900;color:' + trustColor + ';">' + trustScore + '%</span>' +
+          '</div>' +
+          '<div style="width:100%;height:10px;background:rgba(255,255,255,0.12);border-radius:5px;overflow:hidden;position:relative;">' +
+            '<div style="width:' + trustScore + '%;height:100%;background:' + trustColor + ';border-radius:5px;transition:width 0.5s ease;"></div>' +
+          '</div>' +
+          '<div style="display:flex;justify-content:space-between;margin-top:6px;font-size:10.5px;color:rgba(255,255,255,0.5);font-weight:600;">' +
+            '<span>Présences & cultes validés</span>' +
+            '<span style="color:' + trustColor + ';font-weight:700;">' + trustLabel + '</span>' +
+          '</div>' +
         '</div>' +
       '</div>' +
       // Bio
@@ -1919,6 +1972,36 @@
     var freshU = db(SK.USERS, []).find(function(p){ return p.id === u.id; }) || u;
     
     var displayAvatar = S.avatarPreview || freshU.avatar_url;
+        // ---- Dynamic RH Metrics ----
+    var eventsList = posts.filter(function(p){ return p.type === 'EVENT'; });
+    var myServicesCount = 0;
+    eventsList.forEach(function(ev) {
+      var assignments = ev.assignments || [];
+      var isAssigned = assignments.some(function(a){ return a.userId === freshU.id; });
+      var isParticipant = Array.isArray(ev.likedBy) && ev.likedBy.indexOf(freshU.id) !== -1;
+      if (isAssigned || isParticipant) myServicesCount++;
+    });
+    if (freshU.services_count && freshU.services_count > myServicesCount) {
+      myServicesCount = freshU.services_count;
+    }
+
+    var evalPosts = posts.filter(function(p){ return p.type === 'EVALUATION' || (p.metadata && p.metadata.type === 'EVALUATION'); });
+    var sumStars = 0;
+    var evalCount = 0;
+    evalPosts.forEach(function(ep) {
+      var meta = ep.metadata || {};
+      var r = parseFloat(meta.overallRating || meta.rating || ep.rating || 0);
+      if (r > 0) {
+        sumStars += r;
+        evalCount++;
+      }
+    });
+    var avgRating = evalCount > 0 ? (sumStars / evalCount).toFixed(1) : (freshU.rating ? freshU.rating.toFixed(1) : '4.8');
+
+    var trustScore = freshU.trust_score !== undefined ? freshU.trust_score : (myServicesCount > 0 ? Math.min(100, 75 + myServicesCount * 3) : 92);
+    var trustColor = trustScore < 50 ? '#FF3B30' : (trustScore <= 80 ? '#FF9500' : '#34C759');
+    var trustLabel = trustScore < 50 ? 'Suivi Requis' : (trustScore <= 80 ? 'Assiduité Satisfaisante' : 'Fiabilité Élevée 🌟');
+
     var avatarContent = displayAvatar 
       ? '<img id="editAvatarPreview" src="' + displayAvatar + '" style="width:100%;height:100%;object-fit:cover;" />'
       : '<div id="editAvatarPreview" style="width:100%;height:100%;background:linear-gradient(135deg,'+(freshU.avatar_color||'#007AFF')+',#0040CC);color:#FFF;font-size:32px;font-weight:900;display:flex;align-items:center;justify-content:center;">' + (freshU.prenom||'M').charAt(0).toUpperCase() + '</div>';
