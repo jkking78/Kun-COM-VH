@@ -461,9 +461,30 @@
     var scrollTop = prev ? prev.scrollTop : 0;
 
     var html = '';
-    if (S.auth === 'login') html = renderLogin();
-    else if (S.auth === 'signup') html = renderSignup();
-    else html = renderApp();
+    try {
+      if (S.auth === 'app' && (!S.user || !S.user.id)) {
+        console.warn("Session non valide ou utilisateur manquant -> retour écran de connexion");
+        S.auth = 'login';
+        S.user = null;
+      }
+
+      if (S.auth === 'login') html = renderLogin();
+      else if (S.auth === 'signup') html = renderSignup();
+      else html = renderApp();
+    } catch (err) {
+      console.error("Critical render error caught, falling back to login:", err);
+      S.auth = 'login';
+      S.user = null;
+      try {
+        html = renderLogin();
+      } catch(loginErr) {
+        html = '<div style="padding:40px;text-align:center;font-family:sans-serif;">' +
+                 '<h2>Une erreur est survenue</h2>' +
+                 '<p style="color:#8E8E93;font-size:13px;">' + (err ? err.message : '') + '</p>' +
+                 '<button onclick="localStorage.clear();location.reload();" style="margin-top:16px;padding:10px 20px;border-radius:10px;background:#007AFF;color:#FFF;border:none;font-weight:700;cursor:pointer;">Réinitialiser et recharger</button>' +
+               '</div>';
+      }
+    }
 
     root.innerHTML = html;
 
@@ -3301,8 +3322,8 @@ toggleParticipation: function(postId, status) {
   // INIT
   // ============================================================
   function init() {
-    syncSupabaseToLocal();
-    injectCSS();
+    try { syncSupabaseToLocal(); } catch(e) { console.warn("syncSupabaseToLocal init error:", e); }
+    try { injectCSS(); } catch(e) {}
     render();
   }
 
