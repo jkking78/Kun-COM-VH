@@ -1281,34 +1281,32 @@
                 '<textarea id="newPostText" oninput="App.onPostInput(this.value)" placeholder="Quoi de neuf ? Tapez # pour ajouter un hashtag de section..." style="width:100%;min-height:110px;border:none;background:transparent;font-size:15px;line-height:1.5;color:#000;resize:none;outline:none;box-sizing:border-box;font-family:inherit;"></textarea>' +
               '</form>'
           ) +
-          // Hidden form for bg posts
           (S.postBg ? '<form id="createPostForm" onsubmit="App.submitPost(event)" style="display:none;"></form>' : '') +
         '</div>' +
 
-        <!-- Confidentialité & Programmation -->
-        <div style="padding:0 16px 10px;">
-          <div style="background:#FAFAFA;border-radius:16px;padding:12px;margin-bottom:10px;border:1px solid #E5E5EA;">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-              <span style="font-size:12.5px;font-weight:800;color:#000;">🔒 Qui peut voir ?</span>
-              <div style="display:flex;gap:6px;">
-                <button type="button" onclick="App.setPostVisibility('all')" style="padding:4px 10px;border-radius:8px;font-size:11px;font-weight:700;border:none;cursor:pointer;background:' + ((S.postVisibility||'all')==='all'?'#007AFF':'#FFF') + ';color:' + ((S.postVisibility||'all')==='all'?'#FFF':'#3A3A3C') + ';">🌍 Tout le monde</button>
-                <button type="button" onclick="App.setPostVisibility('sections')" style="padding:4px 10px;border-radius:8px;font-size:11px;font-weight:700;border:none;cursor:pointer;background:' + ((S.postVisibility||'all')==='sections'?'#007AFF':'#FFF') + ';color:' + ((S.postVisibility||'all')==='sections'?'#FFF':'#3A3A3C') + ';">🔒 Sections ciblées</button>
-              </div>
-            </div>
-            ' + (S.postVisibility === 'sections' 
+        '<div style="padding:0 16px 10px;">' +
+          '<div style="background:#FAFAFA;border-radius:16px;padding:12px;margin-bottom:10px;border:1px solid #E5E5EA;">' +
+            '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">' +
+              '<span style="font-size:12.5px;font-weight:800;color:#000;">🔒 Qui peut voir ?</span>' +
+              '<div style="display:flex;gap:6px;">' +
+                '<button type="button" onclick="App.setPostVisibility(\'all\')" style="padding:4px 10px;border-radius:8px;font-size:11px;font-weight:700;border:none;cursor:pointer;background:' + ((S.postVisibility||'all')==='all'?'#007AFF':'#FFF') + ';color:' + ((S.postVisibility||'all')==='all'?'#FFF':'#3A3A3C') + ';">🌍 Tout le monde</button>' +
+                '<button type="button" onclick="App.setPostVisibility(\'sections\')" style="padding:4px 10px;border-radius:8px;font-size:11px;font-weight:700;border:none;cursor:pointer;background:' + ((S.postVisibility||'all')==='sections'?'#007AFF':'#FFF') + ';color:' + ((S.postVisibility||'all')==='sections'?'#FFF':'#3A3A3C') + ';">🔒 Sections ciblées</button>' +
+              '</div>' +
+            '</div>' +
+            (S.postVisibility === 'sections'
               ? '<div style="margin-top:8px;"><div id="targetSectionBadgesContainer">' + App.renderSectionBadges(S.postTargetSections||[], 'toggleTargetSection') + '</div></div>'
-              : '') + '
-          </div>
-          <div style="background:#FAFAFA;border-radius:16px;padding:12px;border:1px solid #E5E5EA;">
-            <span style="font-size:12.5px;font-weight:800;color:#000;display:block;margin-bottom:6px;">⏰ Programmer la publication (optionnel)</span>
-            <div style="display:flex;gap:6px;">
-              <input type="date" id="postScheduleDate" style="flex:1;height:36px;border-radius:8px;border:1px solid #E5E5EA;background:#FFF;padding:0 8px;font-size:12px;outline:none;" />
-              <input type="time" id="postScheduleTime" style="flex:1;height:36px;border-radius:8px;border:1px solid #E5E5EA;background:#FFF;padding:0 8px;font-size:12px;outline:none;" />
-            </div>
-          </div>
-        </div>
+              : '') +
+          '</div>' +
+          '<div style="background:#FAFAFA;border-radius:16px;padding:12px;border:1px solid #E5E5EA;">' +
+            '<span style="font-size:12.5px;font-weight:800;color:#000;display:block;margin-bottom:6px;">⏰ Programmer la publication (optionnel)</span>' +
+            '<div style="display:flex;gap:6px;">' +
+              '<input type="date" id="postScheduleDate" style="flex:1;height:36px;border-radius:8px;border:1px solid #E5E5EA;background:#FFF;padding:0 8px;font-size:12px;outline:none;" />' +
+              '<input type="time" id="postScheduleTime" style="flex:1;height:36px;border-radius:8px;border:1px solid #E5E5EA;background:#FFF;padding:0 8px;font-size:12px;outline:none;" />' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
 
-        <div style="border-top:0.5px solid #F2F2F7;padding:10px 16px;">
+        '<div style="border-top:0.5px solid #F2F2F7;padding:10px 16px;">' +
           // Color palette row
           (S.pendingMedia.length === 0
             ? '<div style="display:flex;gap:8px;align-items:center;overflow-x:auto;padding-bottom:8px;scrollbar-width:none;">' +
@@ -3072,8 +3070,21 @@ toggleParticipation: function(postId, status) {
         isVedette: false, scoreText: '',
         caption: txt, mediaUrls: S.pendingMedia.slice(),
         postBg: S.pendingMedia.length === 0 ? (S.postBg || null) : null,
-        likes: 0, likedBy: [], comments: []
+        likes: 0, likedBy: [], comments: [],
+        visibility: S.postVisibility || 'all',
+        targetSections: (S.postTargetSections || []).slice()
       };
+
+      var schedDateEl = document.getElementById('postScheduleDate');
+      var schedTimeEl = document.getElementById('postScheduleTime');
+      if (schedDateEl && schedDateEl.value && schedTimeEl && schedTimeEl.value) {
+        var schedDate = new Date(schedDateEl.value + 'T' + schedTimeEl.value);
+        if (schedDate.getTime() > Date.now()) {
+          newPost.status = 'scheduled';
+          newPost.scheduled_at = schedDate.getTime();
+        }
+      }
+
       var posts = db(SK.POSTS, []);
       posts.unshift(newPost);
       dbSet(SK.POSTS, posts);
@@ -3087,7 +3098,7 @@ toggleParticipation: function(postId, status) {
       }
 
       updateUserActivity('Publication');
-      S.createOpen=false; S.pendingMedia=[]; S.hashSuggestions=false; S.postBg=null;
+      S.createOpen=false; S.pendingMedia=[]; S.hashSuggestions=false; S.postBg=null; S.postVisibility='all'; S.postTargetSections=[];
       S.tab = 'home';
       S.q = ''; // Optional: clear search if they were searching
       render();
