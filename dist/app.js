@@ -946,7 +946,7 @@
       '</div>' : '') +
       // For bg posts: show timestamp and comment button below the card
       (post.postBg ? '<div style="padding:2px 14px 10px;display:flex;justify-content:space-between;align-items:center;">' +
-        '<button onclick="App.openComments(''+post.id+'')" style="background:none;border:none;padding:0;font-size:13.5px;color:#8E8E93;cursor:pointer;">' + (post.comments&&post.comments.length>0?'Voir les '+post.comments.length+' commentaire'+(post.comments.length>1?'s':''):' Ajouter un commentaire…') + '</button>' +
+        '<button onclick="App.openComments(\'' + post.id + '\')" style="background:none;border:none;padding:0;font-size:13.5px;color:#8E8E93;cursor:pointer;">' + (post.comments&&post.comments.length>0?'Voir les '+post.comments.length+' commentaire'+(post.comments.length>1?'s':''):' Ajouter un commentaire…') + '</button>' +
         '<div style="font-size:11px;color:#C7C7CC;text-transform:uppercase;letter-spacing:0.5px;">' + ago + '</div>' +
       '</div>' : '') +
 
@@ -1104,9 +1104,9 @@
                   'linear-gradient(135deg,#373B44,#4286F4)',
                   'linear-gradient(135deg,#C94B4B,#4B134F)',
                   'linear-gradient(135deg,#F7971E,#FFD200)',
-                ].map(function(bg) {
+                ].map(function(bg, idx) {
                   var isSel = S.postBg === bg;
-                  return '<div onclick="App.setPostBg(\\'' + bg.replace(/'/g, "\\'") + '\\')" style="width:28px;height:28px;border-radius:14px;background:' + bg + ';cursor:pointer;flex-shrink:0;border:2.5px solid ' + (isSel?'#FFF':'transparent') + ';box-shadow:' + (isSel?'0 0 0 2px #007AFF':'none') + ';transition:0.15s;"></div>';
+                  return '<div onclick="App.setPostBgIdx(' + idx + ')" style="width:28px;height:28px;border-radius:14px;background:' + bg + ';cursor:pointer;flex-shrink:0;border:2.5px solid ' + (isSel?'#FFF':'transparent') + ';box-shadow:' + (isSel?'0 0 0 2px #007AFF':'none') + ';transition:0.15s;"></div>';
                 }).join('') +
               '</div>'
             : ''
@@ -2251,6 +2251,24 @@ toggleParticipation: function(postId, status) {
     removeMedia: function(i) { S.pendingMedia.splice(i,1); render(); },
     setProfileTab: function(tab) {
       S.profileTab = tab;
+      render();
+    },
+    setPostBgIdx: function(idx) {
+      var BG_PALETTES = [
+        'linear-gradient(135deg,#1A1A2E,#16213E)',
+        'linear-gradient(135deg,#FF6B6B,#FF8E53)',
+        'linear-gradient(135deg,#4ECDC4,#2ECC71)',
+        'linear-gradient(135deg,#667EEA,#764BA2)',
+        'linear-gradient(135deg,#F093FB,#F5576C)',
+        'linear-gradient(135deg,#4481EB,#04BEFE)',
+        'linear-gradient(135deg,#0F2027,#203A43,#2C5364)',
+        'linear-gradient(135deg,#FFA62E,#EA4D2C)',
+        'linear-gradient(135deg,#56AB2F,#A8E063)',
+        'linear-gradient(135deg,#373B44,#4286F4)',
+        'linear-gradient(135deg,#C94B4B,#4B134F)',
+        'linear-gradient(135deg,#F7971E,#FFD200)'
+      ];
+      S.postBg = BG_PALETTES[idx] || null;
       render();
     },
     setPostBg: function(bg) {
