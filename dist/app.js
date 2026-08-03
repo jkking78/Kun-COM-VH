@@ -2452,7 +2452,12 @@
         if (S.signupSections.length >= 2) { toast('Maximum 2 sections autorisées.', 'error'); return; }
         S.signupSections.push(sec);
       }
-      render();
+      var container = document.getElementById('signupSectionBadgesContainer');
+      if (container) {
+        container.innerHTML = App.renderSectionBadges(S.signupSections, 'toggleSignupSection');
+      } else {
+        render();
+      }
     },
     toggleEditSection: function(sec) {
       var idx = S.editSections.indexOf(sec);
