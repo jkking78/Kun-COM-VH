@@ -248,7 +248,8 @@
     editSections: [],
     eventSections: [],
     selectedDate: null,
-    postBg: null
+    postBg: null,
+    profileTab: 'tout'
 };
 
   // ============================================================
@@ -1453,89 +1454,183 @@
     if (!u) return '<div style="padding:40px;text-align:center;">Chargement...</div>';
     var allProfiles = db(SK.USERS, []);
     var freshU = allProfiles.find(function(p){ return p.id === u.id; }) || u;
-    
+
     var isMe = S.user && S.user.id === freshU.id;
-    
+    var profileTab = S.profileTab || 'tout';
+
     var ROLE_LABELS = {
-      GRAND_RESPONSABLE: 'Grand Resp.',
-      RESP_SECTION: 'Responsable',
-      MEMBRE: 'Membre',
-      STAGIAIRE: 'Stagiaire'
+      GRAND_RESPONSABLE: '👑 Grand Resp.',
+      RESP_SECTION: '🎬 Responsable',
+      MEMBRE: '🎥 Membre',
+      STAGIAIRE: '✏️ Stagiaire'
     };
-    
+
+    // ---- Stats ----
     var myPosts = posts.filter(function(p){ return p.userId === freshU.id; }).sort(function(a,b){return (b.timestamp||0)-(a.timestamp||0)});
-    var myLikes = posts.filter(function(p){ return Array.isArray(p.likedBy) && p.likedBy.indexOf(freshU.id) !== -1; });
-    var myComments = 0;
-    posts.forEach(function(p){ myComments += (p.comments||[]).filter(function(c){ return c.userId === freshU.id; }).length; });
+    var photosPosts = myPosts.filter(function(p){ return p.mediaUrls && p.mediaUrls.length > 0; });
+    var eventPosts = myPosts.filter(function(p){ return p.type === 'EVENT'; });
+    var myLikesCount = posts.filter(function(p){ return Array.isArray(p.likedBy) && p.likedBy.indexOf(freshU.id) !== -1; }).length;
+    var myCommentsCount = 0;
+    posts.forEach(function(p){ myCommentsCount += (p.comments||[]).filter(function(c){ return c.userId === freshU.id; }).length; });
 
-    var avatarContent = freshU.avatar_url 
+    // ---- Avatar ----
+    var avatarContent = freshU.avatar_url
       ? '<img src="' + freshU.avatar_url + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />'
-      : '<div style="width:100%;height:100%;border-radius:50%;background:linear-gradient(135deg,'+(freshU.avatar_color||'#007AFF')+',#0040CC);color:#FFF;font-size:32px;font-weight:900;display:flex;align-items:center;justify-content:center;">' + (freshU.prenom||'M').charAt(0).toUpperCase() + '</div>';
+      : '<div style="width:100%;height:100%;border-radius:50%;background:linear-gradient(135deg,'+(freshU.avatar_color||'#007AFF')+',#0040CC);color:#FFF;font-size:34px;font-weight:900;display:flex;align-items:center;justify-content:center;">' + (freshU.prenom||'M').charAt(0).toUpperCase() + '</div>';
 
-    var header = '<header style="padding:12px 16px;background:#FFF;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #E5E5EA;position:sticky;top:0;z-index:20;">' +
-      (isMe 
-        ? '<div style="font-size:18px;font-weight:900;color:#000;letter-spacing:-0.5px;">' + safeHtml(freshU.prenom) + '_kun</div>' +
-          '<button onclick="App.logout()" style="background:none;border:none;font-size:24px;cursor:pointer;color:#000;">≡</button>'
-        : '<button onclick="App.closeUserProfile()" style="background:none;border:none;font-size:16px;font-weight:600;color:#007AFF;cursor:pointer;display:flex;align-items:center;gap:4px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> Retour</button>' +
-          '<div style="font-size:16px;font-weight:800;color:#000;letter-spacing:-0.5px;">' + safeHtml(freshU.prenom) + '</div><div style="width:70px;"></div>'
+    // ---- Cover ----
+    var coverBg = freshU.cover_url
+      ? 'background:url(\'' + freshU.cover_url + '\') center/cover no-repeat;'
+      : 'background:linear-gradient(135deg,#1A1A2E 0%,#2D2D5E 50%,#1A1A2E 100%);';
+
+    // ---- Sections badges ----
+    var uSecs = App.getUserSections(freshU);
+    var secBadges = uSecs.map(function(s){
+      var sc = secColor(s) || '#007AFF';
+      return '<span style="background:' + sc + '22;color:' + sc + ';padding:4px 10px;border-radius:12px;font-size:12px;font-weight:800;">' + secNom(s) + '</span>';
+    }).join('');
+
+    // ---- Sticky top bar ----
+    var topBar = '<div style="position:sticky;top:0;z-index:200;background:rgba(0,0,0,0.72);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);display:flex;align-items:center;justify-content:space-between;padding:12px 16px;">' +
+      (isMe
+        ? '<button onclick="App.logout()" style="background:rgba(255,255,255,0.15);border:none;width:36px;height:36px;border-radius:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
+            '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>' +
+          '</button>'
+        : '<button onclick="App.closeUserProfile()" style="background:rgba(255,255,255,0.15);border:none;width:36px;height:36px;border-radius:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
+            '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>' +
+          '</button>'
       ) +
-    '</header>';
-
-    var coverContent = freshU.cover_url
-      ? '<img src="' + freshU.cover_url + '" style="width:100%;height:100%;object-fit:cover;" />'
-      : '<div style="width:100%;height:100%;background:linear-gradient(135deg, #E5E5EA 0%, #D1D1D6 100%);"></div>';
-
-    var topSection = '<div style="background:#FFF;position:relative;">' +
-      '<div style="width:100%;height:160px;position:relative;">' + 
-        coverContent + 
-        (isMe ? '<div onclick="App.openEditProfile()" style="position:absolute;bottom:12px;right:12px;width:32px;height:32px;border-radius:16px;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);color:#FFF;display:flex;align-items:center;justify-content:center;cursor:pointer;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>' : '') +
+      '<div style="font-size:17px;font-weight:800;color:#FFF;letter-spacing:-0.3px;">' + safeHtml(freshU.prenom) + ' ' + safeHtml(freshU.nom) + '</div>' +
+      '<div style="display:flex;gap:8px;">' +
+        (isMe ? '<button onclick="App.openEditProfile()" style="background:rgba(255,255,255,0.15);border:none;width:36px;height:36px;border-radius:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
+          '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>' +
+        '</button>' : '') +
+        '<button style="background:rgba(255,255,255,0.15);border:none;width:36px;height:36px;border-radius:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
+          '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>' +
+        '</button>' +
       '</div>' +
-      '<div style="padding:0 16px 20px;">' +
-        '<div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:-40px;margin-bottom:12px;">' +
-          '<div style="width:90px;height:90px;border-radius:45px;border:4px solid #FFF;background:#FFF;position:relative;overflow:hidden;flex-shrink:0;">' +
+    '</div>';
+
+    // ---- Hero cover block ----
+    var hero = '<div style="position:relative;' + coverBg + 'min-height:220px;display:flex;flex-direction:column;justify-content:flex-end;">' +
+      '<div style="position:absolute;inset:0;background:linear-gradient(to bottom, rgba(0,0,0,0) 30%, rgba(0,0,0,0.7) 100%);"></div>' +
+      // Camera icon for cover
+      (isMe ? '<label style="position:absolute;top:12px;right:12px;background:rgba(0,0,0,0.5);border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:2;">' +
+        '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>' +
+        '<input type="file" accept="image/*" onchange="App.handleCoverSelect(event)" style="display:none;">' +
+      '</label>' : '') +
+      // Avatar + name bottom left
+      '<div style="position:relative;z-index:2;padding:0 16px 16px;display:flex;align-items:flex-end;justify-content:space-between;">' +
+        '<div style="position:relative;">' +
+          '<div style="width:90px;height:90px;border-radius:45px;border:3px solid #FFF;overflow:hidden;background:#1A1A2E;">' +
             avatarContent +
           '</div>' +
-          (isMe ? '<button onclick="App.openEditProfile()" style="background:#F2F2F7;border:none;border-radius:20px;padding:8px 16px;font-size:14px;font-weight:700;cursor:pointer;color:#000;">Éditer profil</button>' : '') +
+          (isMe ? '<label style="position:absolute;bottom:2px;right:2px;background:#FFF;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.3);">' +
+            '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>' +
+            '<input type="file" accept="image/*" onchange="App.handleAvatarSelect(event)" style="display:none;">' +
+          '</label>' : '') +
         '</div>' +
-        
-        '<div>' +
-          '<div style="font-size:22px;font-weight:900;color:#000;margin-bottom:2px;letter-spacing:-0.5px;">' + safeHtml(freshU.prenom + ' ' + freshU.nom) + '</div>' +
-          '<div style="font-size:13px;color:#8E8E93;margin-bottom:12px;display:flex;align-items:center;flex-wrap:wrap;gap:6px;">' +
-            (function(){
-              var uSecs = App.getUserSections(freshU);
-              return uSecs.map(function(s){ return '<span style="background:#F2F2F7;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;color:#000;">' + secNom(s) + '</span>'; }).join('');
-            })() + 
-            '<span style="background:#E5F0FF;color:#007AFF;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;">' + (ROLE_LABELS[freshU.role]||'Membre') + '</span>' +
-          '</div>' +
-          (freshU.bio ? '<div style="font-size:14px;line-height:1.4;white-space:pre-wrap;color:#000;margin-bottom:16px;">' + safeHtml(freshU.bio) + '</div>' : '') +
-        '</div>' +
-
-        '<div style="display:flex;gap:24px;border-top:1px solid #F2F2F7;padding-top:16px;">' +
-          '<div><strong style="font-size:16px;color:#000;">' + myPosts.length + '</strong> <span style="font-size:14px;color:#8E8E93;">Posts</span></div>' +
-          '<div><strong style="font-size:16px;color:#000;">' + myLikes.length + '</strong> <span style="font-size:14px;color:#8E8E93;">J\'aime</span></div>' +
-          '<div><strong style="font-size:16px;color:#000;">' + myComments + '</strong> <span style="font-size:14px;color:#8E8E93;">Commentaires</span></div>' +
+        // Follow / Edit buttons
+        '<div style="display:flex;gap:8px;">' +
+          (isMe
+            ? '<button onclick="App.openEditProfile()" style="background:#007AFF;color:#FFF;border:none;border-radius:20px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;">Modifier</button>'
+            : '<button style="background:#007AFF;color:#FFF;border:none;border-radius:20px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;">Suivre</button>' +
+              '<button style="background:rgba(255,255,255,0.9);color:#000;border:none;border-radius:20px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;">Message</button>'
+          ) +
         '</div>' +
       '</div>' +
     '</div>';
 
-    var separator = '<div style="background:#F2F2F7;padding:12px 16px;font-size:12px;font-weight:800;color:#8E8E93;letter-spacing:1px;text-transform:uppercase;">Publications</div>';
+    // ---- Info block ----
+    var infoBlock = '<div style="background:#FFF;padding:16px;border-bottom:8px solid #F2F2F7;">' +
+      // Name + role
+      '<div style="font-size:22px;font-weight:900;color:#000;letter-spacing:-0.5px;margin-bottom:4px;">' + safeHtml(freshU.prenom + ' ' + freshU.nom) + '</div>' +
+      '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;">' +
+        '<span style="font-size:13px;font-weight:700;color:#007AFF;">' + (ROLE_LABELS[freshU.role]||'Membre') + '</span>' +
+        (secBadges ? '<span style="color:#D1D1D6;">·</span>' + secBadges : '') +
+      '</div>' +
+      // Stats row
+      '<div style="display:flex;gap:0;border-top:1px solid #F2F2F7;border-bottom:1px solid #F2F2F7;margin-bottom:14px;">' +
+        '<div style="flex:1;text-align:center;padding:12px 0;border-right:1px solid #F2F2F7;">' +
+          '<div style="font-size:18px;font-weight:900;color:#000;">' + myPosts.length + '</div>' +
+          '<div style="font-size:11px;color:#8E8E93;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Posts</div>' +
+        '</div>' +
+        '<div style="flex:1;text-align:center;padding:12px 0;border-right:1px solid #F2F2F7;">' +
+          '<div style="font-size:18px;font-weight:900;color:#000;">' + myLikesCount + '</div>' +
+          '<div style="font-size:11px;color:#8E8E93;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">J\'aime reçus</div>' +
+        '</div>' +
+        '<div style="flex:1;text-align:center;padding:12px 0;">' +
+          '<div style="font-size:18px;font-weight:900;color:#000;">' + myCommentsCount + '</div>' +
+          '<div style="font-size:11px;color:#8E8E93;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;">Commentaires</div>' +
+        '</div>' +
+      '</div>' +
+      // Bio
+      (freshU.bio ? '<div style="font-size:14px;color:#3A3A3C;line-height:1.5;margin-bottom:14px;white-space:pre-wrap;">' + safeHtml(freshU.bio) + '</div>' : '') +
+      // Infos personnelles
+      '<div style="background:#F8F8F8;border-radius:16px;padding:14px;margin-bottom:14px;">' +
+        '<div style="font-size:13px;font-weight:800;color:#000;margin-bottom:10px;">Informations</div>' +
+        '<div style="display:flex;flex-direction:column;gap:8px;">' +
+          '<div style="display:flex;align-items:center;gap:10px;font-size:13px;color:#3A3A3C;">' +
+            '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>' +
+            '<span>Église Vase d\'Honneur · Abidjan</span>' +
+          '</div>' +
+          '<div style="display:flex;align-items:center;gap:10px;font-size:13px;color:#3A3A3C;">' +
+            '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>' +
+            '<span>Membre depuis ' + (freshU.joined_at ? new Date(freshU.joined_at).toLocaleDateString('fr-FR', {month:'long', year:'numeric'}) : '2024') + '</span>' +
+          '</div>' +
+          (uSecs.length > 0 ? '<div style="display:flex;align-items:center;gap:10px;font-size:13px;color:#3A3A3C;">' +
+            '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>' +
+            '<span>' + uSecs.map(function(s){ return secNom(s); }).join(' · ') + '</span>' +
+          '</div>' : '') +
+        '</div>' +
+      '</div>' +
+      // Action buttons
+      (isMe ? '<div style="display:flex;gap:10px;">' +
+        '<button onclick="App.tab(\'home\');App.openCreate();" style="flex:1;background:#007AFF;color:#FFF;border:none;border-radius:12px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">' +
+          '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg> Publier' +
+        '</button>' +
+        '<button onclick="App.openEditProfile()" style="flex:1;background:#F2F2F7;color:#000;border:none;border-radius:12px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;">✏️ Modifier le profil</button>' +
+      '</div>' : '') +
+    '</div>';
 
-    var feed = '<div style="background:#F2F2F7;min-height:30vh;padding-bottom:100px;">';
-    if (myPosts.length === 0) {
-      feed += '<div style="padding:40px 20px;text-align:center;color:#8E8E93;">' +
-        '<div style="font-size:40px;margin-bottom:16px;">📝</div>' +
-        '<strong style="font-size:18px;color:#000;display:block;margin-bottom:8px;">Aucune publication pour le moment</strong>' +
-        '<span style="font-size:14px;">Publiez pour les voir ici sur votre mur.</span>' +
+    // ---- Filter tabs ----
+    var tabs = ['tout', 'photos', 'evenements'];
+    var tabLabels = { tout: 'Tout', photos: 'Photos', evenements: 'Événements' };
+    var tabBar = '<div style="background:#FFF;display:flex;border-bottom:1px solid #E5E5EA;position:sticky;top:60px;z-index:100;">' +
+      tabs.map(function(t) {
+        var active = profileTab === t;
+        return '<button onclick="App.setProfileTab(\'' + t + '\')" style="flex:1;background:none;border:none;border-bottom:2.5px solid ' + (active ? '#007AFF' : 'transparent') + ';color:' + (active ? '#007AFF' : '#8E8E93') + ';font-size:14px;font-weight:' + (active ? '800' : '600') + ';padding:12px 0;cursor:pointer;transition:0.2s;">' +
+          tabLabels[t] +
+        '</button>';
+      }).join('') +
+    '</div>';
+
+    // ---- Feed ----
+    var filteredPosts;
+    if (profileTab === 'photos') filteredPosts = photosPosts;
+    else if (profileTab === 'evenements') filteredPosts = eventPosts;
+    else filteredPosts = myPosts;
+
+    var feed = '<div style="background:#F2F2F7;min-height:50vh;padding-bottom:100px;">';
+
+    if (filteredPosts.length === 0) {
+      feed += '<div style="padding:50px 20px;text-align:center;color:#8E8E93;background:#FFF;margin-top:1px;">' +
+        '<div style="font-size:44px;margin-bottom:14px;">' + (profileTab === 'photos' ? '📷' : profileTab === 'evenements' ? '📅' : '📝') + '</div>' +
+        '<div style="font-size:17px;font-weight:700;color:#000;margin-bottom:6px;">Aucun contenu</div>' +
+        '<div style="font-size:13px;">Rien à afficher dans cet onglet pour le moment.</div>' +
       '</div>';
     } else {
-      feed += myPosts.map(function(p) { return renderPostCard(p, false); }).join('');
+      filteredPosts.forEach(function(p) {
+        feed += renderPostCard(p);
+      });
     }
+
     feed += '</div>';
 
-    return header + topSection + separator + feed;
+    return topBar + hero + infoBlock + tabBar + feed;
   }
 
-  function renderEditProfileModal(u) {
+    function renderEditProfileModal(u) {
     var freshU = db(SK.USERS, []).find(function(p){ return p.id === u.id; }) || u;
     
     var avatarContent = freshU.avatar_url 
@@ -2154,6 +2249,10 @@ toggleParticipation: function(postId, status) {
       });
     },
     removeMedia: function(i) { S.pendingMedia.splice(i,1); render(); },
+    setProfileTab: function(tab) {
+      S.profileTab = tab;
+      render();
+    },
     setPostBg: function(bg) {
       S.postBg = bg;
       render();
