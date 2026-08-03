@@ -766,21 +766,6 @@
 
     var pinnedBadge = post.is_pinned ? '<div style="background:#5856D6;color:#FFF;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:1px;padding:4px 12px;display:flex;align-items:center;gap:6px;"><span style="font-size:12px;">📌</span> ÉPINGLÉ</div>' : '';
 
-        return '<article id="post-'+post.id+'" style="background:#FFF;margin-bottom:10px;">' +
-      pinnedBadge +
-      // Header
-      '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;">' +
-        '<div onclick="App.openUserProfile(\'' + post.userId + '\')" style="display:flex;align-items:center;gap:10px;cursor:pointer;">' +
-          '<div style="width:40px;height:40px;border-radius:20px;background:linear-gradient(135deg,' + (post.avatarColor||'#007AFF') + ',#0040CC);color:#FFF;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + (post.authorAvatar||'M') + '</div>' +
-          '<div>' +
-            '<div style="font-size:13.5px;font-weight:700;color:#000;">' + safeHtml(post.author||'Membre') + '</div>' +
-            '<div style="font-size:11.5px;color:#8E8E93;display:flex;align-items:center;gap:4px;">' +
-              '<span style="color:' + sec.color + ';font-weight:600;">' + sec.emoji + ' ' + (post.sectionNom||'') + '</span>' +
-              '<span>·</span><span>' + ago + '</span>' +
-            '</div>' +
-          '</div>' +
-        '</div>' +
-        '<button onclick="App.openOptions(\'' + post.id + '\')" style="background:#F2F2F7;border:none;width:32px;height:32px;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' + SVG.dots + '</button>' +
       '</div>';
       
       var contentZone = '';
@@ -877,7 +862,7 @@
       '</div>' +
       contentZone +
       // Actions row
-      '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px 6px;">';
+      '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px 6px;">' +
         '<div style="display:flex;gap:14px;align-items:center;">' +
           '<button id="likeBtn-'+post.id+'" onclick="App.like(\''+post.id+'\')" style="background:none;border:none;padding:2px;cursor:pointer;display:flex;align-items:center;transition:transform 0.1s;" onmousedown="this.style.transform=\'scale(0.85)\'" onmouseup="this.style.transform=\'scale(1)\'">' + SVG.heart(iLiked, 26) + '</button>' +
           '<button onclick="App.openComments(\''+post.id+'\')" style="background:none;border:none;padding:2px;cursor:pointer;display:flex;align-items:center;">' + SVG.comment + '</button>' +
