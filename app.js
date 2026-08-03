@@ -241,7 +241,8 @@
     selectedPostId: null,
     avatarFile: null,
     viewUserProfileId: null,
-    loadingUserProfile: false
+    loadingUserProfile: false,
+    createEventOpen: false
 };
 
   // ============================================================
@@ -487,8 +488,10 @@
     var posts = db(SK.POSTS, []);
 
     // Filter posts
-    var filtered = posts.slice().sort(function(a,b){ return (b.timestamp||0)-(a.timestamp||0); })
-      .filter(function(p) {
+    var filtered = posts.slice().sort(function(a,b){
+        if (a.is_pinned !== b.is_pinned) return a.is_pinned ? -1 : 1;
+        return (b.timestamp||0)-(a.timestamp||0); 
+      }).filter(function(p) {
         if (S.story !== 'all' && p.sectionId !== S.story) return false;
         if (S.q.trim()) {
           var q = S.q.toLowerCase();
@@ -699,8 +702,10 @@
       '</div>';
     }
 
-    return '<article id="post-'+post.id+'" style="background:#FFF;margin-bottom:10px;">' +
+    var pinnedBadge = post.is_pinned ? '<div style="background:#5856D6;color:#FFF;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:1px;padding:4px 12px;display:flex;align-items:center;gap:6px;"><span style="font-size:12px;">📌</span> ÉPINGLÉ</div>' : '';
 
+        return '<article id="post-'+post.id+'" style="background:#FFF;margin-bottom:10px;">' +
+      pinnedBadge +
       // Header
       '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;">' +
         '<div onclick="App.openUserProfile(\'' + post.userId + '\')" style="display:flex;align-items:center;gap:10px;cursor:pointer;">' +
@@ -714,12 +719,29 @@
           '</div>' +
         '</div>' +
         '<button onclick="App.openOptions(\'' + post.id + '\')" style="background:#F2F2F7;border:none;width:32px;height:32px;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' + SVG.dots + '</button>' +
-      '</div>' +
-
-      mediaZone +
-
-      (post.type === 'EVALUATION' && post.metadata ?
-        '<div style="margin:10px 14px;padding:18px;background:linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%);border-radius:20px;border:1px solid #E2E8F0;box-shadow:inset 0 2px 4px rgba(255,255,255,0.8), 0 4px 12px rgba(0,0,0,0.03);">' +
+      '</div>';
+      
+      var contentZone = '';
+      if (post.type === 'EVENT' && post.metadata) {
+         contentZone = '<div style="margin:10px 14px;padding:16px;background:#F8F8FC;border-radius:16px;border:1px solid #EFEFFF;display:flex;gap:14px;align-items:flex-start;">' +
+          '<div style="background:#FFF;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);min-width:54px;text-align:center;flex-shrink:0;">' +
+            '<div style="background:#FF3B30;color:#FFF;font-size:10px;font-weight:900;text-transform:uppercase;padding:3px 0;">' + (post.metadata.month||'MOIS') + '</div>' +
+            '<div style="font-size:22px;font-weight:900;color:#000;padding:6px 0;">' + (post.metadata.day||'00') + '</div>' +
+          '</div>' +
+          '<div style="flex:1;">' +
+            '<h3 style="margin:0 0 6px;font-size:16px;font-weight:800;color:#000;line-height:1.2;">' + safeHtml(post.metadata.title||'') + '</h3>' +
+            '<div style="font-size:12.5px;color:#8E8E93;display:flex;align-items:center;gap:6px;margin-bottom:4px;"><span>🕒</span> ' + safeHtml(post.metadata.time||'') + '</div>' +
+            '<div style="font-size:12.5px;color:#8E8E93;display:flex;align-items:center;gap:6px;margin-bottom:8px;"><span>📍</span> ' + safeHtml(post.metadata.location||'') + '</div>' +
+            '<p style="font-size:13px;color:#000;margin:0 0 12px;line-height:1.4;">' + safeHtml(post.caption||'') + '</p>' +
+            '<div style="display:flex;gap:8px;">' +
+              '<button onclick="App.toggleParticipation(\''+post.id+'\',\'yes\')" style="flex:1;padding:8px;border-radius:10px;font-size:13px;font-weight:700;border:none;cursor:pointer;background:'+((post.metadata.participations||{})[(S.user||{}).id]==='yes'?'#34C759':'#E5E5EA')+';color:'+((post.metadata.participations||{})[(S.user||{}).id]==='yes'?'#FFF':'#8E8E93')+';transition:all 0.2s;">Participer 👍</button>' +
+              '<button onclick="App.toggleParticipation(\''+post.id+'\',\'no\')" style="flex:1;padding:8px;border-radius:10px;font-size:13px;font-weight:700;border:none;cursor:pointer;background:'+((post.metadata.participations||{})[(S.user||{}).id]==='no'?'#FF3B30':'#E5E5EA')+';color:'+((post.metadata.participations||{})[(S.user||{}).id]==='no'?'#FFF':'#8E8E93')+';transition:all 0.2s;">Absent ❌</button>' +
+            '</div>' +
+            '<div style="font-size:11px;color:#8E8E93;margin-top:8px;font-weight:600;">' + Object.values(post.metadata.participations||{}).filter(function(x){return x==='yes'}).length + ' participant(s)</div>' +
+          '</div>' +
+        '</div>';
+      } else if (post.type === 'EVALUATION' && post.metadata) {
+         contentZone = '<div style="margin:10px 14px;padding:18px;background:linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%);border-radius:20px;border:1px solid #E2E8F0;box-shadow:inset 0 2px 4px rgba(255,255,255,0.8), 0 4px 12px rgba(0,0,0,0.03);">' +
           '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">' +
             '<div>' +
               '<div style="display:inline-flex;align-items:center;gap:4px;background:#FFF;padding:4px 8px;border-radius:8px;font-size:10px;font-weight:800;color:#64748B;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05);"><span>📊</span> Évaluation</div>' +
@@ -740,11 +762,31 @@
                      '</div>';
             }).join('') : '') +
           '</div>' +
-        '</div>'
-      : '') +
-
-      // Actions row — style Instagram exact
-      '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px 6px;">' +
+          '<p style="font-size:13px;color:#334155;margin:14px 0 0;line-height:1.4;">' + safeHtml(post.caption||'') + '</p>' +
+        '</div>';
+      } else {
+         contentZone = captionHtml + mediaZone;
+      }
+      
+    var finalHtml = '<article id="post-'+post.id+'" style="background:#FFF;margin-bottom:10px;">' +
+      pinnedBadge +
+      // Header
+      '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;">' +
+        '<div onclick="App.openUserProfile(\'' + post.userId + '\')" style="display:flex;align-items:center;gap:10px;cursor:pointer;">' +
+          '<div style="width:40px;height:40px;border-radius:20px;background:linear-gradient(135deg,' + (post.avatarColor||'#007AFF') + ',#0040CC);color:#FFF;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + (post.authorAvatar||'M') + '</div>' +
+          '<div>' +
+            '<div style="font-size:13.5px;font-weight:700;color:#000;">' + safeHtml(post.author||'Membre') + '</div>' +
+            '<div style="font-size:11.5px;color:#8E8E93;display:flex;align-items:center;gap:4px;">' +
+              '<span style="color:' + sec.color + ';font-weight:600;">' + sec.emoji + ' ' + (post.sectionNom||'') + '</span>' +
+              '<span>·</span><span>' + ago + '</span>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        '<button onclick="App.openOptions(\'' + post.id + '\')" style="background:#F2F2F7;border:none;width:32px;height:32px;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' + SVG.dots + '</button>' +
+      '</div>' +
+      contentZone +
+      // Actions row
+      '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px 6px;">';
         '<div style="display:flex;gap:14px;align-items:center;">' +
           '<button id="likeBtn-'+post.id+'" onclick="App.like(\''+post.id+'\')" style="background:none;border:none;padding:2px;cursor:pointer;display:flex;align-items:center;transition:transform 0.1s;" onmousedown="this.style.transform=\'scale(0.85)\'" onmouseup="this.style.transform=\'scale(1)\'">' + SVG.heart(iLiked, 26) + '</button>' +
           '<button onclick="App.openComments(\''+post.id+'\')" style="background:none;border:none;padding:2px;cursor:pointer;display:flex;align-items:center;">' + SVG.comment + '</button>' +
@@ -971,9 +1013,13 @@
       '</div>';
     }
 
-    return '<header style="padding:16px 18px;background:#FFF;border-bottom:0.5px solid #F2F2F7;">' +
-        '<div style="font-size:11px;font-weight:800;color:#5856D6;text-transform:uppercase;letter-spacing:1.3px;margin-bottom:3px;">' + dateStr + '</div>' +
-        '<h1 style="font-size:24px;font-weight:900;color:#000;margin:0;">Planning Cultes</h1>' +
+    var canCreate = S.user && (S.user.role === 'RESP_SECTION' || S.user.role === 'GRAND_RESPONSABLE');
+    return '<header style="padding:16px 18px;background:#FFF;border-bottom:0.5px solid #F2F2F7;display:flex;justify-content:space-between;align-items:center;">' +
+        '<div>' +
+          '<div style="font-size:11px;font-weight:800;color:#5856D6;text-transform:uppercase;letter-spacing:1.3px;margin-bottom:3px;">' + dateStr + '</div>' +
+          '<h1 style="font-size:24px;font-weight:900;color:#000;margin:0;">Planning Cultes</h1>' +
+        '</div>' +
+        (canCreate ? '<button onclick="App.openCreateEvent()" style="background:#5856D6;color:#FFF;border:none;border-radius:20px;padding:8px 16px;font-size:13px;font-weight:800;cursor:pointer;">+ Événement</button>' : '') +
       '</header>' +
 
       '<div style="padding:16px;">' +
@@ -1293,6 +1339,75 @@
   // APP CONTROLLER — toutes les actions
   // ============================================================
   window.App = {
+    openCreateEvent: function() { S.createEventOpen = true; render(); },
+    closeCreateEvent: function() { S.createEventOpen = false; render(); },
+    submitEvent: function() {
+      var title = (document.getElementById('evTitle')||{}).value;
+      var dStr = (document.getElementById('evDate')||{}).value;
+      var tStr = (document.getElementById('evTime')||{}).value;
+      var loc = (document.getElementById('evLocation')||{}).value;
+      var sec = (document.getElementById('evSection')||{}).value;
+      var desc = (document.getElementById('evDesc')||{}).value;
+      var pin = (document.getElementById('evPinned')||{}).checked;
+      
+      if (!title || !dStr) { toast('Titre et date obligatoires', 'error'); return; }
+      
+      var d = new Date(dStr);
+      var monthStr = d.toLocaleDateString('fr-FR', { month:'short' });
+      var dayStr = d.toLocaleDateString('fr-FR', { day:'2-digit' });
+      
+      var secObj = SECTIONS.find(function(s){ return s.id === sec; });
+      var secNomStr = secObj ? secObj.nom : 'Département';
+      
+      var posts = db(SK.POSTS, []);
+      var newPost = {
+        id: 'event-'+Date.now(), userId: S.user.id, timestamp: Date.now(),
+        author: S.user.prenom + ' ' + S.user.nom, authorAvatar: S.user.prenom.charAt(0).toUpperCase(),
+        avatarColor: S.user.avatar_color || '#007AFF',
+        sectionId: sec, sectionNom: secNomStr,
+        type: 'EVENT', is_pinned: pin,
+        metadata: {
+           title: title, date: dStr, time: tStr, location: loc,
+           month: monthStr, day: dayStr, participations: {}
+        },
+        caption: desc, mediaUrls: [], likes: 0, likedBy: [], comments: []
+      };
+      
+      posts.unshift(newPost);
+      dbSet(SK.POSTS, posts);
+      
+      if (supabase) supabase.from('kun_com_posts').upsert({ id: newPost.id, content: newPost, created_at: new Date().toISOString() }, { onConflict: 'id' }).then(function(){});
+      
+      S.createEventOpen = false;
+      S.tab = 'home'; S.q = '';
+      render();
+      setTimeout(function() { window.scrollTo({ top: 0, behavior: 'smooth' }); }, 50);
+      toast('Événement créé ! 🎉', 'success');
+    },
+    togglePin: function(postId) {
+      var posts = db(SK.POSTS, []);
+      var p = posts.find(function(x){ return x.id === postId; });
+      if (p) {
+        p.is_pinned = !p.is_pinned;
+        dbSet(SK.POSTS, posts);
+        if (supabase) supabase.from('kun_com_posts').upsert({ id: p.id, content: p }, { onConflict: 'id' }).then(function(){});
+      }
+      S.optionsOpen = false; S.optionsPost = null;
+      render();
+    },
+    toggleParticipation: function(postId, status) {
+      if (!S.user) return;
+      var posts = db(SK.POSTS, []);
+      var p = posts.find(function(x){ return x.id === postId; });
+      if (p && p.metadata) {
+        if (!p.metadata.participations) p.metadata.participations = {};
+        p.metadata.participations[S.user.id] = status;
+        dbSet(SK.POSTS, posts);
+        if (supabase) supabase.from('kun_com_posts').upsert({ id: p.id, content: p }, { onConflict: 'id' }).then(function(){});
+        render();
+      }
+    },
+
     openUserProfile: async function(userId) {
       if (!userId) return;
       if (S.user && userId === S.user.id) {
