@@ -643,7 +643,7 @@
           '<button onclick="App.openCreate()" style="width:34px;height:34px;border-radius:17px;background:#F0F6FF;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
             '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#007AFF" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg>' +
           '</button>' +
-          '<button onclick="App.tab(\'profile\')" style="width:34px;height:34px;border-radius:17px;background:linear-gradient(135deg,' + (u.avatar_color||'#007AFF') + ',#0040CC);border:none;cursor:pointer;color:#FFF;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;">' + initial + '</button>' +
+          (u.avatar_url ? '<button onclick="App.tab(\'profile\')" style="width:34px;height:34px;border-radius:17px;border:none;cursor:pointer;padding:0;overflow:hidden;flex-shrink:0;"><img src="' + u.avatar_url + '" style="width:100%;height:100%;object-fit:cover;" /></button>' : '<button onclick="App.tab(\'profile\')" style="width:34px;height:34px;border-radius:17px;background:linear-gradient(135deg,' + (u.avatar_color||'#007AFF') + ',#0040CC);border:none;cursor:pointer;color:#FFF;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;">' + initial + '</button>') +
         '</div>' +
       '</div>' +
       // Search
@@ -920,10 +920,23 @@
       pinnedBadge +
       // Header
       '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;">' +
-        '<div onclick="App.openUserProfile(\'' + post.userId + '\')" style="display:flex;align-items:center;gap:10px;cursor:pointer;">' +
-          '<div style="width:40px;height:40px;border-radius:20px;background:linear-gradient(135deg,' + (post.avatarColor||'#007AFF') + ',#0040CC);color:#FFF;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + (post.authorAvatar||'M') + '</div>' +
-          '<div>' +
-            '<div style="font-size:13.5px;font-weight:700;color:#000;">' + safeHtml(post.author||'Membre') + '</div>' +
+        (function(){
+          var allU = db(SK.USERS, []);
+          var pAuthor = allU.find(function(u){ return u.id === post.userId; });
+          var pAvatarUrl = (pAuthor && pAuthor.avatar_url) ? pAuthor.avatar_url : post.avatar_url;
+          var pColor = (pAuthor && pAuthor.avatar_color) ? pAuthor.avatar_color : (post.avatarColor || '#007AFF');
+          var pInitial = (pAuthor && pAuthor.prenom) ? pAuthor.prenom.charAt(0).toUpperCase() : (post.authorAvatar || 'M');
+          var pName = (pAuthor && pAuthor.prenom && pAuthor.nom) ? (pAuthor.prenom + ' ' + pAuthor.nom) : (post.author || 'Membre');
+          
+          var avatarNode = pAvatarUrl
+            ? '<img src="' + pAvatarUrl + '" style="width:40px;height:40px;border-radius:20px;object-fit:cover;flex-shrink:0;" />'
+            : '<div style="width:40px;height:40px;border-radius:20px;background:linear-gradient(135deg,' + pColor + ',#0040CC);color:#FFF;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + pInitial + '</div>';
+
+          return '<div onclick="App.openUserProfile(\'' + post.userId + '\')" style="display:flex;align-items:center;gap:10px;cursor:pointer;">' +
+            avatarNode +
+            '<div>' +
+              '<div style="font-size:13.5px;font-weight:700;color:#000;">' + safeHtml(pName) + '</div>';
+        })() +
             '<div style="font-size:11.5px;color:#8E8E93;display:flex;align-items:center;gap:4px;">' +
               '<span style="color:' + sec.color + ';font-weight:600;">' + sec.emoji + ' ' + (post.sectionNom||'') + '</span>' +
               '<span>·</span><span>' + ago + '</span>' +
@@ -1240,7 +1253,7 @@
             }).join('') +
           '</div>' +
           '<form onsubmit="App.submitComment(event)" style="display:flex;align-items:center;gap:10px;padding:10px 14px;">' +
-            '<div style="width:34px;height:34px;border-radius:17px;background:linear-gradient(135deg,' + (u.avatar_color||'#007AFF') + ',#0040CC);color:#FFF;font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + userInitial + '</div>' +
+            (u.avatar_url ? '<img src="' + u.avatar_url + '" style="width:34px;height:34px;border-radius:17px;object-fit:cover;flex-shrink:0;" />' : '<div style="width:34px;height:34px;border-radius:17px;background:linear-gradient(135deg,' + (u.avatar_color||'#007AFF') + ',#0040CC);color:#FFF;font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + userInitial + '</div>') +
             '<div style="flex:1;display:flex;align-items:center;background:#F2F2F7;border-radius:22px;height:40px;padding:0 14px;">' +
               '<input id="commentInput" type="text" placeholder="Ajouter un commentaire…" style="flex:1;border:none;background:transparent;font-size:14px;color:#000;outline:none;" required>' +
               '<button type="submit" style="background:none;border:none;padding:0 0 0 8px;cursor:pointer;display:flex;align-items:center;">' + SVG.send + '</button>' +
@@ -1254,8 +1267,18 @@
   function renderCommentItem(c) {
     var likedComments = db(SK.LIKED_COMMENTS, {});
     var isLiked = !!likedComments[c.id];
+    var allU = db(SK.USERS, []);
+    var cAuthor = allU.find(function(u){ return u.id === c.userId; });
+    var cAvatarUrl = (cAuthor && cAuthor.avatar_url) ? cAuthor.avatar_url : c.avatar_url;
+    var cColor = (cAuthor && cAuthor.avatar_color) ? cAuthor.avatar_color : (c.avatarColor || '#007AFF');
+    var cInitial = (cAuthor && cAuthor.prenom) ? cAuthor.prenom.charAt(0).toUpperCase() : ((c.author||'U').charAt(0));
+
+    var cAvatarNode = cAvatarUrl
+      ? '<img src="' + cAvatarUrl + '" style="width:36px;height:36px;border-radius:18px;object-fit:cover;flex-shrink:0;" />'
+      : '<div style="width:36px;height:36px;border-radius:18px;background:linear-gradient(135deg,' + cColor + ',#0040CC);color:#FFF;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + cInitial + '</div>';
+
     return '<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:16px;">' +
-      '<div onclick="App.openUserProfile(\'' + c.userId + '\')" style="cursor:pointer;width:36px;height:36px;border-radius:18px;background:linear-gradient(135deg,' + (c.avatarColor||'#007AFF') + ',#0040CC);color:#FFF;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + ((c.author||'U').charAt(0)) + '</div>' +
+      '<div onclick="App.openUserProfile(\'' + c.userId + '\')" style="cursor:pointer;">' + cAvatarNode + '</div>' +
       '<div style="flex:1;">' +
         '<div style="display:flex;align-items:baseline;gap:6px;">' +
           '<strong onclick="App.openUserProfile(\'' + c.userId + '\')" style="cursor:pointer;font-size:13.5px;color:#000;">' + safeHtml(c.author||'Membre') + '</strong>' +
@@ -2272,6 +2295,29 @@ toggleParticipation: function(postId, status) {
         users.push(updatedUser);
       }
       dbSet(SK.USERS, users);
+      
+      var allPosts = db(SK.POSTS, []);
+      var postsModified = false;
+      allPosts.forEach(function(p) {
+        if (p.userId === updatedUser.id) {
+          p.avatar_url = updatedUser.avatar_url;
+          p.author = updatedUser.prenom + ' ' + updatedUser.nom;
+          p.authorAvatar = (updatedUser.prenom || 'M').charAt(0).toUpperCase();
+          postsModified = true;
+        }
+        if (Array.isArray(p.comments)) {
+          p.comments.forEach(function(c) {
+            if (c.userId === updatedUser.id) {
+              c.avatar_url = updatedUser.avatar_url;
+              c.author = updatedUser.prenom + ' ' + updatedUser.nom;
+              postsModified = true;
+            }
+          });
+        }
+      });
+      if (postsModified) {
+        dbSet(SK.POSTS, allPosts);
+      }
       
       if (supabase) {
         await supabase.from('kun_com_profiles').upsert({ id: updatedUser.id, content: updatedUser }, { onConflict: 'id' });
