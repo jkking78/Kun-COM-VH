@@ -13,41 +13,41 @@
   <title>Kun COM VH — Département Communication</title>
 
   <style>
-    /* Reset & Clean iOS Base Styles */
-    * {
+    /* Reset Complete & Mobile Layout */
+    *, *::before, *::after {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
       -webkit-tap-highlight-color: transparent;
-      user-select: none;
-      -webkit-user-select: none;
     }
 
-    body, html {
+    html, body {
       width: 100%;
       height: 100%;
-      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background-color: #E5E5EA;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: #000000;
       color: #1C1C1E;
       overflow: hidden;
     }
 
-    /* DESKTOP / TABLET : Conteneur centré au format iPhone */
+    /* DESKTOP / TABLET WRAPPER */
     .desktop-bg-wrapper {
       width: 100vw;
       height: 100vh;
       display: flex;
       justify-content: center;
       align-items: center;
-      background: radial-gradient(circle at top left, #1C1C1E, #000000);
-      background-attachment: fixed;
+      background: radial-gradient(circle at center, #1C1C1E 0%, #000000 100%);
     }
 
+    /* DEVICE CONTAINER FRAME */
     .app-device-frame {
       width: 100%;
       height: 100%;
-      max-width: 440px;
-      max-height: 920px;
+      max-width: 460px;
+      max-height: 940px;
       background-color: #F2F2F7;
       position: relative;
       overflow: hidden;
@@ -55,57 +55,24 @@
       flex-direction: column;
     }
 
-    /* Sur grand écran : Bordures arrondies et ombre portée iOS */
+    /* Adaptations Ordinateur & Tablette */
     @media (min-width: 501px) {
       .app-device-frame {
-        border-radius: 44px;
-        box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5), 0 0 0 12px #2C2C2E;
-        height: 90vh;
+        border-radius: 40px;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 0 10px #2C2C2E;
+        height: 92vh;
       }
     }
 
-    /* Application Root Container */
+    /* APP ROOT CONTAINER */
     #root {
       flex: 1;
+      width: 100%;
+      height: 100%;
       display: flex;
       flex-direction: column;
-      height: 100%;
-      width: 100%;
       overflow: hidden;
-    }
-
-    /* PWA Banner d'installation */
-    .pwa-install-banner {
-      position: fixed;
-      top: 12px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(255, 255, 255, 0.94);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      padding: 10px 18px;
-      border-radius: 20px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      z-index: 9999;
-      border: 1px solid rgba(0,122,255,0.2);
-    }
-    .pwa-install-banner text {
-      font-size: 12px;
-      font-weight: 700;
-      color: #1C1C1E;
-    }
-    .pwa-install-btn {
-      background: #007AFF;
-      color: #FFF;
-      border: none;
-      padding: 6px 12px;
-      border-radius: 12px;
-      font-size: 11px;
-      font-weight: 800;
-      cursor: pointer;
+      position: relative;
     }
   </style>
 </head>
@@ -113,22 +80,27 @@
 
   <div class="desktop-bg-wrapper">
     <div class="app-device-frame">
+      <!-- LE COMPOSANT RACINE REACT SE REND ICI -->
       <div id="root">
-        <!-- Rendu dynamique par React / App.web.jsx -->
+        <div style="display:flex; flex-direction:column; justify-content:center; align-items:center; height:100%; background:#F2F2F7; font-family:sans-serif;">
+          <div style="font-size:32px; margin-bottom:10px;">📱</div>
+          <h2 style="font-size:18px; font-weight:800; color:#007AFF;">Kun COM VH</h2>
+          <p style="font-size:12px; color:#8E8E93; margin-top:4px;">Chargement de l'application...</p>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- Chargement du Bundle Frontend App Web & PWA -->
+  <!-- SCRIPT BUNDLE FRONTEND REACT / PWA -->
   <script src="app.js"></script>
 
-  <!-- Enregistrement du Service Worker PWA -->
+  <!-- REGISTRATION SERVICE WORKER PWA -->
   <script>
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
+      window.addEventListener('load', function() {
         navigator.serviceWorker.register('./sw.js')
-          .then(reg => console.log('✅ PWA Service Worker Enregistré :', reg.scope))
-          .catch(err => console.log('❌ Erreur Service Worker :', err));
+          .then(function(reg) { console.log('✅ PWA Service Worker Enregistré :', reg.scope); })
+          .catch(function(err) { console.log('❌ Erreur Service Worker :', err); });
       });
     }
   </script>
