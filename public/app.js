@@ -615,6 +615,8 @@
         }
 
         if (S.story !== 'all' && p.sectionId !== S.story) return false;
+        // Filter expired ephemeral posts
+        if (p.is_ephemeral && p.ephemeral_expiry && p.ephemeral_expiry < Date.now()) return false;
         if (S.q.trim()) {
           var q = S.q.toLowerCase();
           return (p.caption||'').toLowerCase().indexOf(q) !== -1 ||
@@ -1070,10 +1072,28 @@
          // For standard posts: only the media zone goes in contentZone.
          // The caption is rendered separately in finalHtml below.
          contentZone = mediaZone;
+         // For REPOST: override with original content
+         if (post.type === 'REPOST') {
+           var origMedia = post.originalMediaUrls || [];
+           if (origMedia.length > 0) {
+             contentZone = '<div style="padding:0;">' + origMedia.map(function(url){ return '<img src="' + url + '" style="width:100%;display:block;" />'; }).join('') + '</div>';
+           } else if (post.originalPostBg) {
+             contentZone = '<div style="background:' + post.originalPostBg + ';min-height:200px;display:flex;align-items:center;justify-content:center;padding:30px;"><p style="color:#FFF;font-size:20px;font-weight:800;text-align:center;text-shadow:0 2px 8px rgba(0,0,0,0.3);margin:0;line-height:1.4;">' + safeHtml(post.originalCaption || '') + '</p></div>';
+           }
+         }
       }
-      
+    // Repost banner
+    var repostBanner = '';
+    if (post.type === 'REPOST') {
+      repostBanner = '<div style="padding:10px 14px 0;display:flex;align-items:center;gap:6px;color:#8E8E93;font-size:12.5px;font-weight:700;">' +
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>' +
+        safeHtml(post.author || '') + ' a partagé la publication de ' + safeHtml(post.originalAuthor || '') +
+      '</div>';
+    }
     var finalHtml = '<article id="post-'+post.id+'" style="background:#FFF;margin-bottom:10px;">' +
+      repostBanner +
       pinnedBadge +
+      (post.is_ephemeral ? '<div style="padding:6px 14px 0;"><span style="background:#FFF3E0;color:#FF9500;font-size:10.5px;font-weight:800;padding:3px 8px;border-radius:8px;">🕐 Éphémère · disparaît dans ' + (function(){ var h = Math.max(0, Math.round((post.ephemeral_expiry - Date.now()) / 3600000)); return h > 0 ? h + 'h' : 'bientôt'; })() + '</span></div>' : '') +
       // Header
       '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;">' +
         (function(){
@@ -1121,6 +1141,7 @@
 
       // Caption (hidden for bg posts — text is shown on the card itself)
       (!post.postBg ? '<div style="padding:0 14px 10px;">' +
+        (post.type === 'REPOST' && post.originalCaption ? '<p style="font-size:14px;color:#000;margin:0 0 4px;line-height:1.45;"><strong>' + safeHtml(post.originalAuthor || '') + '</strong> ' + safeHtml(post.originalCaption) + '</p>' : '') +
         '<p style="font-size:14px;color:#000;margin:0;line-height:1.45;">' +
           '<strong>' + safeHtml(post.author||'') + '</strong> ' + captionHtml +
         '</p>' +
@@ -1377,6 +1398,24 @@
           '</div>' +
         '</div>' +
 
+        '<div style="background:#FAFAFA;border-radius:16px;padding:12px;border:1px solid #E5E5EA;margin:0 16px 12px;">' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;">' +
+            '<div style="display:flex;align-items:center;gap:8px;">' +
+              '<span style="font-size:18px;">🕐</span>' +
+              '<div>' +
+                '<div style="font-size:13px;font-weight:700;color:#000;">Publication éphémère</div>' +
+                '<div style="font-size:11px;color:#8E8E93;">Disparaît automatiquement après 24h</div>' +
+              '</div>' +
+            '</div>' +
+            '<label style="position:relative;display:inline-block;width:50px;height:30px;">' +
+              '<input type="checkbox" id="postEphemeral" style="opacity:0;width:0;height:0;" onchange="this.nextElementSibling.style.background=this.checked?\'#FF9500\':\'#E5E5EA\'; this.nextElementSibling.children[0].style.transform=this.checked?\'translateX(20px)\':\'translateX(0)\';"/>' +
+              '<span style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:#E5E5EA;transition:.3s;border-radius:30px;">' +
+                '<span style="position:absolute;content:\'\';height:26px;width:26px;left:2px;bottom:2px;background-color:white;transition:.3s;border-radius:50%;box-shadow:0 2px 4px rgba(0,0,0,0.2);"></span>' +
+              '</span>' +
+            '</label>' +
+          '</div>' +
+        '</div>' +
+
         '<div style="border-top:0.5px solid #F2F2F7;padding:10px 16px;">' +
           // Color palette row
           (S.pendingMedia.length === 0
@@ -1471,7 +1510,7 @@
         '<p style="text-align:center;font-size:12px;color:#8E8E93;margin:0 0 14px;font-weight:600;">' + safeHtml(post.author||'Publication') + '</p>' +
 
         // Share
-        '<button onclick="App.share(\''+post.id+'\');App.closeOptions();" style="width:100%;background:#F8F8F8;border:none;border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;margin-bottom:10px;text-align:left;">' +
+        '<button onclick="App.shareExternal(\''+post.id+'\');App.closeOptions();" style="width:100%;background:#F8F8F8;border:none;border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;margin-bottom:10px;text-align:left;">' +
           SVG.share + '<span style="font-size:15px;font-weight:600;color:#000;">Partager</span>' +
         '</button>' +
 
@@ -1880,15 +1919,25 @@
     var evalCount = 0;
     evalPosts.forEach(function(ep) {
       var meta = ep.metadata || {};
-      var r = parseFloat(meta.overallRating || meta.rating || ep.rating || 0);
+      // Check if this evaluation involves the user's section or team
+      var r = parseFloat(meta.globalScore || meta.overallRating || meta.rating || ep.rating || 0);
       if (r > 0) {
         sumStars += r;
         evalCount++;
       }
     });
-    var avgRating = evalCount > 0 ? (sumStars / evalCount).toFixed(1) : (freshU.rating ? freshU.rating.toFixed(1) : '4.8');
+    var avgRating = evalCount > 0 ? (sumStars / evalCount).toFixed(1) : (freshU.rating ? freshU.rating.toFixed(1) : '—');
 
-    var trustScore = freshU.trust_score !== undefined ? freshU.trust_score : (myServicesCount > 0 ? Math.min(100, 75 + myServicesCount * 3) : 92);
+    // Calculate real trust score based on event participation ratio
+    var totalEvents = eventsList.length;
+    var trustScore;
+    if (freshU.trust_score !== undefined) {
+      trustScore = freshU.trust_score;
+    } else if (totalEvents > 0) {
+      trustScore = Math.round((myServicesCount / totalEvents) * 100);
+    } else {
+      trustScore = myServicesCount > 0 ? 100 : 0;
+    }
     var trustColor = trustScore < 50 ? '#FF3B30' : (trustScore <= 80 ? '#FF9500' : '#34C759');
     var trustLabel = trustScore < 50 ? 'Suivi Requis' : (trustScore <= 80 ? 'Assiduité Satisfaisante' : 'Fiabilité Élevée 🌟');
 
@@ -2039,35 +2088,53 @@
       '</div>' : '') +
     '</div>';
 
-    // ---- Filter tabs ----
-    var tabs = ['tout', 'enregistres', 'evenements'];
-    var tabLabels = { 
-      tout: 'Tout', 
-      enregistres: '<div style="display:flex;align-items:center;justify-content:center;gap:6px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg> Enregistrés</div>', 
-      evenements: 'Événements' 
-    };
-    var tabBar = '<div style="background:#FFF;display:flex;border-bottom:1px solid #E5E5EA;position:sticky;top:60px;z-index:100;">' +
-      tabs.map(function(t) {
-        var active = profileTab === t;
-        return '<button onclick="App.setProfileTab(\'' + t + '\')" style="flex:1;background:none;border:none;border-bottom:2.5px solid ' + (active ? theme.primary : 'transparent') + ';color:' + (active ? theme.primary : '#8E8E93') + ';font-size:14px;font-weight:' + (active ? '800' : '600') + ';padding:12px 0;cursor:pointer;transition:0.2s;">' +
-          tabLabels[t] +
-        '</button>';
-      }).join('') +
+    // ---- Continuous scroll (no tabs) ----
+    var tabBar = '';
+
+    // ---- Feed: continuous scroll layout ----
+    var feed = '<div style="background:#F2F2F7;min-height:50vh;padding-bottom:100px;">';
+
+    // Section 1: Photos grid (if any)
+    if (photosPosts.length > 0) {
+      feed += '<div style="background:#FFF;padding:14px;margin-bottom:8px;">' +
+        '<div style="font-size:15px;font-weight:800;color:#000;margin-bottom:10px;display:flex;align-items:center;gap:6px;">📷 Photos <span style="font-size:12px;font-weight:600;color:#8E8E93;">(' + photosPosts.length + ')</span></div>' +
+        '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:3px;border-radius:12px;overflow:hidden;">' +
+        photosPosts.slice(0, 9).map(function(p) {
+          var imgUrl = p.mediaUrls[0];
+          return '<div style="aspect-ratio:1;overflow:hidden;cursor:pointer;" onclick="App.viewPost(\'' + p.id + '\')">' +
+            '<img src="' + imgUrl + '" style="width:100%;height:100%;object-fit:cover;" />' +
+          '</div>';
+        }).join('') +
+        '</div>' +
+        (photosPosts.length > 9 ? '<button onclick="S.showAllPhotos=true;render();" style="width:100%;margin-top:8px;background:#F2F2F7;border:none;border-radius:10px;padding:10px;font-size:13px;font-weight:700;color:#007AFF;cursor:pointer;">Voir toutes les photos (' + photosPosts.length + ')</button>' : '') +
+      '</div>';
+    }
+
+    // Section 2: Events (if any)
+    if (eventPosts.length > 0) {
+      feed += '<div style="background:#FFF;padding:14px;margin-bottom:8px;">' +
+        '<div style="font-size:15px;font-weight:800;color:#000;margin-bottom:10px;display:flex;align-items:center;gap:6px;">📅 Événements <span style="font-size:12px;font-weight:600;color:#8E8E93;">(' + eventPosts.length + ')</span></div>' +
+        eventPosts.slice(0, 3).map(function(ev) {
+          var meta = ev.metadata || {};
+          return '<div style="background:#F9FAFB;border-radius:12px;padding:12px;margin-bottom:8px;border:1px solid #E5E5EA;">' +
+            '<div style="font-size:14px;font-weight:700;color:#000;">' + safeHtml(meta.title || ev.eventTitle || ev.caption || '') + '</div>' +
+            '<div style="font-size:12px;color:#8E8E93;margin-top:4px;">' + safeHtml(meta.date || ev.eventDate || '') + (meta.time || ev.eventStart ? ' · ' + safeHtml(meta.time || ev.eventStart || '') : '') + '</div>' +
+          '</div>';
+        }).join('') +
+      '</div>';
+    }
+
+    // Section 3: All publications header
+    feed += '<div style="background:#FFF;padding:14px 14px 8px;margin-bottom:1px;">' +
+      '<div style="font-size:15px;font-weight:800;color:#000;display:flex;align-items:center;gap:6px;">📝 Publications <span style="font-size:12px;font-weight:600;color:#8E8E93;">(' + myPosts.length + ')</span></div>' +
     '</div>';
 
-    // ---- Feed ----
-    var savedPostsList = posts.filter(function(p){ return S.savedPosts && S.savedPosts[p.id]; }).sort(function(a,b){return (b.timestamp||0)-(a.timestamp||0)});
-    var filteredPosts;
-    if (profileTab === 'enregistres') filteredPosts = savedPostsList;
-    else if (profileTab === 'evenements') filteredPosts = eventPosts;
-    else filteredPosts = myPosts;
-
-    var feed = '<div style="background:#F2F2F7;min-height:50vh;padding-bottom:100px;">';
+    var filteredPosts = myPosts;
 
     if (filteredPosts.length === 0) {
       feed += '<div style="padding:50px 20px;text-align:center;color:#8E8E93;background:#FFF;margin-top:1px;">' +
-        '<div style="font-size:44px;margin-bottom:14px;">' + (profileTab === 'enregistres' ? '🔖' : profileTab === 'evenements' ? '📅' : '📝') + '</div>' +
-        '<div style="font-size:17px;font-weight:700;color:#000;margin-bottom:6px;">Aucun contenu</div>' +
+        '<div style="font-size:44px;margin-bottom:14px;">📝</div>' +
+        '<div style="font-size:17px;font-weight:700;color:#000;margin-bottom:6px;">Aucune publication</div>' +
         '<div style="font-size:13px;">Rien à afficher dans cet onglet pour le moment.</div>' +
       '</div>';
     } else {
@@ -2103,15 +2170,25 @@
     var evalCount = 0;
     evalPosts.forEach(function(ep) {
       var meta = ep.metadata || {};
-      var r = parseFloat(meta.overallRating || meta.rating || ep.rating || 0);
+      // Check if this evaluation involves the user's section or team
+      var r = parseFloat(meta.globalScore || meta.overallRating || meta.rating || ep.rating || 0);
       if (r > 0) {
         sumStars += r;
         evalCount++;
       }
     });
-    var avgRating = evalCount > 0 ? (sumStars / evalCount).toFixed(1) : (freshU.rating ? freshU.rating.toFixed(1) : '4.8');
+    var avgRating = evalCount > 0 ? (sumStars / evalCount).toFixed(1) : (freshU.rating ? freshU.rating.toFixed(1) : '—');
 
-    var trustScore = freshU.trust_score !== undefined ? freshU.trust_score : (myServicesCount > 0 ? Math.min(100, 75 + myServicesCount * 3) : 92);
+    // Calculate real trust score based on event participation ratio
+    var totalEvents = eventsList.length;
+    var trustScore;
+    if (freshU.trust_score !== undefined) {
+      trustScore = freshU.trust_score;
+    } else if (totalEvents > 0) {
+      trustScore = Math.round((myServicesCount / totalEvents) * 100);
+    } else {
+      trustScore = myServicesCount > 0 ? 100 : 0;
+    }
     var trustColor = trustScore < 50 ? '#FF3B30' : (trustScore <= 80 ? '#FF9500' : '#34C759');
     var trustLabel = trustScore < 50 ? 'Suivi Requis' : (trustScore <= 80 ? 'Assiduité Satisfaisante' : 'Fiabilité Élevée 🌟');
 
@@ -3016,6 +3093,38 @@ toggleParticipation: function(postId, status) {
     share: function(postId) {
       var posts = db(SK.POSTS, []);
       var post = posts.find(function(p){ return p.id===postId; });
+      if (!post || !S.user) return;
+      // Check if already reposted
+      var alreadyReposted = posts.some(function(p){ return p.type === 'REPOST' && p.originalPostId === postId && p.userId === S.user.id; });
+      if (alreadyReposted) { toast('Vous avez déjà partagé cette publication.', 'error'); return; }
+      var repost = {
+        id: 'rp_' + Date.now(), userId: S.user.id, timestamp: Date.now(),
+        author: S.user.prenom + ' ' + S.user.nom,
+        authorAvatar: S.user.prenom.charAt(0).toUpperCase(),
+        avatarColor: S.user.avatar_color || '#007AFF',
+        avatar_url: S.user.avatar_url || null,
+        sectionId: post.sectionId || 'general', sectionNom: post.sectionNom || '',
+        type: 'REPOST', originalPostId: postId,
+        originalAuthor: post.author || 'Membre',
+        originalCaption: post.caption || '',
+        originalMediaUrls: (post.mediaUrls || []).slice(),
+        originalPostBg: post.postBg || null,
+        caption: '', mediaUrls: [], postBg: null,
+        likes: 0, likedBy: [], comments: [],
+        visibility: 'all', targetSections: []
+      };
+      posts.unshift(repost);
+      dbSet(SK.POSTS, posts);
+      if (supabase) {
+        supabase.from('kun_com_posts').upsert({ id: repost.id, content: repost, created_at: new Date().toISOString() }, { onConflict: 'id' }).catch(function(e){});
+      }
+      updateUserActivity('Partage');
+      render();
+      toast('Publication partagée sur votre mur ! 🔄', 'success');
+    },
+    shareExternal: function(postId) {
+      var posts = db(SK.POSTS, []);
+      var post = posts.find(function(p){ return p.id===postId; });
       var txt = post ? (post.caption||'').slice(0,100) : '';
       if (navigator.share) {
         navigator.share({ title:'Kun COM VH', text:txt, url:location.href }).catch(function(){});
@@ -3200,6 +3309,13 @@ toggleParticipation: function(postId, status) {
         visibility: S.postVisibility || 'all',
         targetSections: (S.postTargetSections || []).slice()
       };
+
+      // Ephemeral post handling
+      var ephemeralEl = document.getElementById('postEphemeral');
+      if (ephemeralEl && ephemeralEl.checked) {
+        newPost.is_ephemeral = true;
+        newPost.ephemeral_expiry = Date.now() + 86400000; // 24 hours
+      }
 
       var schedDateEl = document.getElementById('postScheduleDate');
       var schedTimeEl = document.getElementById('postScheduleTime');
