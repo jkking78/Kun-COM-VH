@@ -86,11 +86,19 @@
         }
       }
       
-      // Setup Realtime
-      supabase.channel('public:kun_com_posts')
+      // Setup Supabase Realtime for Posts, Profiles & Events
+      supabase.channel('public:kun_com_realtime')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'kun_com_posts' }, function(payload) {
-           console.log('Realtime post update:', payload);
+           console.log('⚡ Realtime post update:', payload);
            fetchPostsSilently();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'kun_com_profiles' }, function(payload) {
+           console.log('⚡ Realtime profile update:', payload);
+           fetchProfilesSilently();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'kun_com_events' }, function(payload) {
+           console.log('⚡ Realtime event update:', payload);
+           fetchEventsSilently();
         })
         .subscribe();
         
@@ -102,6 +110,36 @@
     }
   }
   
+  
+  async function fetchProfilesSilently() {
+    if (!supabase) return;
+    var resProf = await supabase.from('kun_com_profiles').select('*');
+    if (resProf && resProf.data) {
+      var mergedProfiles = mergeProfilesWithLocal(resProf.data);
+      DB_CACHE[SK.USERS] = mergedProfiles;
+      localStorage.setItem(SK.USERS, JSON.stringify(mergedProfiles));
+      if (S.user) {
+        var freshMe = mergedProfiles.find(function(x){ return x.id === S.user.id; });
+        if (freshMe) {
+          S.user = freshMe;
+          localStorage.setItem(SK.SESS, JSON.stringify(freshMe));
+        }
+      }
+      render();
+    }
+  }
+
+  async function fetchEventsSilently() {
+    if (!supabase) return;
+    var resEv = await supabase.from('kun_com_events').select('*');
+    if (resEv && resEv.data) {
+      var mergedEvents = (resEv.data || []).map(function(item){ return item.content || item; });
+      DB_CACHE[SK.EVENTS] = mergedEvents;
+      localStorage.setItem(SK.EVENTS, JSON.stringify(mergedEvents));
+      render();
+    }
+  }
+
   async function fetchPostsSilently() {
     if (!supabase) return;
     var res = await supabase.from('kun_com_posts').select('*');
@@ -139,63 +177,7 @@
   // ============================================================
   // DONNÉES PAR DÉFAUT
   // ============================================================
-  if (!db(SK.USERS, null)) {
-    var _now = new Date().toISOString();
-    dbSet(SK.USERS, [
-      {
-        id: 'u1', prenom: 'Éric', nom: 'Kouamé',
-        email: 'eric.kouame@eglise.org',
-        bio: 'Responsable Cadrage depuis 2022. Passionné de cinématographie et de captation live. 🎥',
-        section_id: 'cadrage', section_nom: 'Cadrage',
-        role: 'RESP_SECTION',
-        is_online: true,
-        joined_at: '2022-01-15T08:00:00.000Z',
-        last_seen_at: _now,
-        last_action_at: _now,
-        last_action_label: 'Publication',
-        avatar_color: '#007AFF'
-      },
-      {
-        id: 'u2', prenom: 'Sarah', nom: 'Yao',
-        email: 'sarah.yao@eglise.org',
-        bio: 'Photographe de l\'équipe. Je capture les meilleurs moments du culte 📸',
-        section_id: 'photo', section_nom: 'Photo',
-        role: 'MEMBRE',
-        is_online: true,
-        joined_at: '2023-03-10T09:00:00.000Z',
-        last_seen_at: _now,
-        last_action_at: new Date(Date.now() - 900000).toISOString(),
-        last_action_label: 'Commentaire',
-        avatar_color: '#FF2D55'
-      },
-      {
-        id: 'u3', prenom: 'Marc', nom: 'Touré',
-        email: 'marc.toure@eglise.org',
-        bio: 'Régie son & lumières. 3 ans au service du département. 🎛️',
-        section_id: 'regie', section_nom: 'Régie',
-        role: 'RESP_SECTION',
-        is_online: false,
-        joined_at: '2021-06-01T07:00:00.000Z',
-        last_seen_at: new Date(Date.now() - 3600000).toISOString(),
-        last_action_at: new Date(Date.now() - 7200000).toISOString(),
-        last_action_label: 'Like',
-        avatar_color: '#34C759'
-      },
-      {
-        id: 'u0', prenom: 'Grand Resp.', nom: 'Pasteur',
-        email: 'admin@eglise.org',
-        bio: 'Responsable général du Département Communication VH. Vision, excellence et foi. 🙏',
-        section_id: 'prod', section_nom: 'Prod',
-        role: 'GRAND_RESPONSABLE',
-        is_online: true,
-        joined_at: '2020-01-01T06:00:00.000Z',
-        last_seen_at: _now,
-        last_action_at: _now,
-        last_action_label: 'Modération',
-        avatar_color: '#FFD700'
-      }
-    ]);
-  }
+  if (!db(SK.USERS, null)) { dbSet(SK.USERS, []); }
 
     // Initial cleanup of old EVALUATION posts
   try {
@@ -206,40 +188,7 @@
     }
   } catch(e){}
 
-  if (!db(SK.POSTS, null)) {
-    var now = Date.now();
-    dbSet(SK.POSTS, [
-      {
-        id: 'p1', userId: 'u1', timestamp: now - 1800000,
-        author: 'Éric Kouamé', authorAvatar: 'É', avatarColor: '#007AFF',
-        sectionId: 'cadrage', sectionNom: 'Cadrage',
-        isVedette: true, scoreText: '4.88 / 5.0',
-        caption: 'Excellente captation pour le Culte n°1 ! Toute l\'équipe #Cadrage a assuré. Merci à chacun pour le professionnalisme. #CulteDuDimanche 🙌',
-        mediaUrls: [], likes: 43, likedBy: ['u2', 'u3', 'u0'], comments: [
-          { id: 'c1', userId: 'u2', author: 'Sarah Yao', avatarColor: '#FF2D55', text: 'Superbe réactivité sur les plans chorale ! 🔥', timestamp: now - 1500000 },
-          { id: 'c2', userId: 'u3', author: 'Marc Touré', avatarColor: '#34C759', text: 'Merci à toute l\'équipe, travail impeccable 👏', timestamp: now - 900000 }
-        ]
-      },
-      {
-        id: 'p2', userId: 'u2', timestamp: now - 5400000,
-        author: 'Sarah Yao', authorAvatar: 'S', avatarColor: '#FF2D55',
-        sectionId: 'photo', sectionNom: 'Photo',
-        isVedette: false, scoreText: '',
-        caption: 'Photos du culte disponibles dans le drive partagé 📸 #Photo #CulteDuDimanche\nUn grand merci au responsable pour la coordination !',
-        mediaUrls: [], likes: 19, likedBy: ['u1'], comments: []
-      },
-      {
-        id: 'p3', userId: 'u0', timestamp: now - 7200000,
-        author: 'Grand Resp. Pasteur', authorAvatar: 'G', avatarColor: '#FFD700',
-        sectionId: 'prod', sectionNom: 'Prod',
-        isVedette: false, scoreText: '',
-        caption: 'Bravo à tout le département #Prod pour l\'excellente coordination de ce dimanche. Continuez dans cet élan ! 💪 #CulteDuDimanche #Chorale',
-        mediaUrls: [], likes: 31, likedBy: ['u1', 'u2'], comments: [
-          { id: 'c3', userId: 'u1', author: 'Éric Kouamé', avatarColor: '#007AFF', text: 'Merci infiniment Pasteur ! On donne le meilleur 🙏', timestamp: now - 6800000 }
-        ]
-      }
-    ]);
-  }
+  if (!db(SK.POSTS, null)) { dbSet(SK.POSTS, []); }
 
   // ============================================================
   // ÉTAT GLOBAL
@@ -868,7 +817,7 @@
         '<div style="font-size:52px;margin-bottom:16px;">📭</div>' +
         '<h3 style="font-size:18px;font-weight:800;color:#000;margin:0 0 8px;">' + (S.q ? 'Aucun résultat' : 'Aucune publication') + '</h3>' +
         '<p style="font-size:13.5px;color:#8E8E93;margin:0 0 22px;max-width:240px;line-height:1.5;">' +
-          (S.q ? 'Aucun résultat trouvé pour "' + safeHtml(S.q) + '"' : 'Soyez le premier à partager quelque chose !') +
+          (S.q ? 'Aucun résultat trouvé pour "' + safeHtml(S.q) + '"' : 'Aucune publication pour le moment. Soyez le premier à publier ! 🎉') +
         '</p>' +
         (S.q
           ? '<button onclick="App.search(\'\')" style="' + btnStyle('#007AFF') + 'height:44px;width:auto;padding:0 22px;font-size:14px;">Réinitialiser la recherche</button>'
