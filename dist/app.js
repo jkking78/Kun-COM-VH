@@ -239,7 +239,9 @@
     editProfileOpen: false,
     postOptionsOpen: false,
     selectedPostId: null,
-    avatarFile: null
+    avatarFile: null,
+    viewUserProfileId: null,
+    loadingUserProfile: false
 };
 
   // ============================================================
@@ -503,6 +505,26 @@
     else if (S.tab === 'profile') content = renderProfile(u, posts);
 
     var modals = '';
+    
+  function renderUserProfileModal() {
+    if (!S.viewUserProfileId) return '';
+    var targetUser = db(SK.USERS, []).find(function(p){ return p.id === S.viewUserProfileId; });
+    var posts = db(SK.POSTS, []);
+    
+    var content = '';
+    if (S.loadingUserProfile) {
+      content = '<div style="padding:100px 20px;text-align:center;"><div style="font-size:32px;animation:spin 1s linear infinite;">⏳</div><div style="margin-top:16px;font-size:14px;color:#8E8E93;">Chargement du profil...</div></div>';
+    } else if (!targetUser) {
+      content = '<div style="padding:100px 20px;text-align:center;"><div style="font-size:40px;">😕</div><div style="margin-top:16px;font-size:16px;font-weight:600;">Utilisateur introuvable</div><button onclick="App.closeUserProfile()" style="margin-top:20px;padding:10px 20px;background:#007AFF;color:#FFF;border:none;border-radius:20px;font-weight:600;cursor:pointer;">Retour</button></div>';
+    } else {
+      content = renderProfile(targetUser, posts);
+    }
+    
+    return '<div style="position:fixed;inset:0;background:#FFF;z-index:9000;overflow-y:auto;animation:slideIn 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
+      content +
+    '</div>';
+  }
+    if (S.viewUserProfileId) modals += renderUserProfileModal();
     if (S.editProfileOpen) modals += renderEditProfileModal(u);
     if (S.postOptionsOpen) modals += renderPostOptionsModal(posts.find(function(p){return p.id===S.selectedPostId;}));
     if (S.createOpen) modals += renderCreateModal(u);
@@ -679,7 +701,7 @@
 
       // Header
       '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;">' +
-        '<div style="display:flex;align-items:center;gap:10px;">' +
+        '<div onclick="App.openUserProfile(\'' + post.userId + '\')" style="display:flex;align-items:center;gap:10px;cursor:pointer;">' +
           '<div style="width:40px;height:40px;border-radius:20px;background:linear-gradient(135deg,' + (post.avatarColor||'#007AFF') + ',#0040CC);color:#FFF;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + (post.authorAvatar||'M') + '</div>' +
           '<div>' +
             '<div style="font-size:13.5px;font-weight:700;color:#000;">' + safeHtml(post.author||'Membre') + '</div>' +
@@ -881,10 +903,10 @@
     var likedComments = db(SK.LIKED_COMMENTS, {});
     var isLiked = !!likedComments[c.id];
     return '<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:16px;">' +
-      '<div style="width:36px;height:36px;border-radius:18px;background:linear-gradient(135deg,' + (c.avatarColor||'#007AFF') + ',#0040CC);color:#FFF;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + ((c.author||'U').charAt(0)) + '</div>' +
+      '<div onclick="App.openUserProfile(\'' + c.userId + '\')" style="cursor:pointer;width:36px;height:36px;border-radius:18px;background:linear-gradient(135deg,' + (c.avatarColor||'#007AFF') + ',#0040CC);color:#FFF;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + ((c.author||'U').charAt(0)) + '</div>' +
       '<div style="flex:1;">' +
         '<div style="display:flex;align-items:baseline;gap:6px;">' +
-          '<strong style="font-size:13.5px;color:#000;">' + safeHtml(c.author||'Membre') + '</strong>' +
+          '<strong onclick="App.openUserProfile(\'' + c.userId + '\')" style="cursor:pointer;font-size:13.5px;color:#000;">' + safeHtml(c.author||'Membre') + '</strong>' +
           '<span style="font-size:11.5px;color:#8E8E93;">' + timeAgo(c.timestamp) + '</span>' +
         '</div>' +
         '<p style="font-size:14px;color:#1C1C1E;margin:3px 0 5px;line-height:1.4;">' + hashtagify(c.text) + '</p>' +
@@ -1101,8 +1123,12 @@
       : '<div style="width:100%;height:100%;border-radius:50%;background:linear-gradient(135deg,'+(freshU.avatar_color||'#007AFF')+',#0040CC);color:#FFF;font-size:32px;font-weight:900;display:flex;align-items:center;justify-content:center;">' + (freshU.prenom||'M').charAt(0).toUpperCase() + '</div>';
 
     var header = '<header style="padding:12px 16px;background:#FFF;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #E5E5EA;position:sticky;top:0;z-index:20;">' +
-      '<div style="font-size:18px;font-weight:900;color:#000;letter-spacing:-0.5px;">' + safeHtml(freshU.prenom) + '_kun</div>' +
-      '<button onclick="App.logout()" style="background:none;border:none;font-size:24px;cursor:pointer;color:#000;">≡</button>' +
+      (isMe 
+        ? '<div style="font-size:18px;font-weight:900;color:#000;letter-spacing:-0.5px;">' + safeHtml(freshU.prenom) + '_kun</div>' +
+          '<button onclick="App.logout()" style="background:none;border:none;font-size:24px;cursor:pointer;color:#000;">≡</button>'
+        : '<button onclick="App.closeUserProfile()" style="background:none;border:none;font-size:16px;font-weight:600;color:#007AFF;cursor:pointer;display:flex;align-items:center;gap:4px;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> Retour</button>' +
+          '<div style="font-size:16px;font-weight:800;color:#000;letter-spacing:-0.5px;">' + safeHtml(freshU.prenom) + '</div><div style="width:70px;"></div>'
+      ) +
     '</header>';
 
     var topSection = '<div style="background:#FFF;padding:16px 16px 20px;">' +
@@ -1240,6 +1266,54 @@
   // APP CONTROLLER — toutes les actions
   // ============================================================
   window.App = {
+    openUserProfile: async function(userId) {
+      if (!userId) return;
+      if (S.user && userId === S.user.id) {
+        S.tab = 'profile';
+        if (S.postOptionsOpen) App.closePostOptions();
+        if (S.commentPostId) App.closeComments();
+        render();
+        return;
+      }
+      S.viewUserProfileId = userId;
+      S.loadingUserProfile = true;
+      render();
+      
+      if (supabase) {
+        try {
+          var res = await supabase.from('kun_com_profiles').select('*').eq('id', userId).single();
+          if (res && res.data && res.data.content) {
+            var users = db(SK.USERS, []);
+            var idx = users.findIndex(function(u){ return u.id === userId; });
+            if (idx !== -1) users[idx] = res.data.content;
+            else users.push(res.data.content);
+            dbSet(SK.USERS, users);
+          }
+          
+          var pres = await supabase.from('kun_com_posts').select('*').eq('content->>userId', userId).order('created_at', {ascending:false});
+          if (pres && pres.data && pres.data.length > 0) {
+            var allPosts = db(SK.POSTS, []);
+            pres.data.forEach(function(up) {
+              var mapped = up.content;
+              var pIdx = allPosts.findIndex(function(p){ return p.id === mapped.id; });
+              if (pIdx !== -1) allPosts[pIdx] = Object.assign(allPosts[pIdx], mapped);
+              else allPosts.push(mapped);
+            });
+            dbSet(SK.POSTS, allPosts);
+          }
+        } catch(e) {
+          console.error("Erreur chargement profil:", e);
+        }
+      }
+      
+      S.loadingUserProfile = false;
+      render();
+    },
+    closeUserProfile: function() {
+      S.viewUserProfileId = null;
+      render();
+    },
+
     openEditProfile: function() { S.editProfileOpen = true; S.avatarFile = null; render(); },
     closeEditProfile: function() { S.editProfileOpen = false; S.avatarFile = null; render(); },
     handleAvatarSelect: function(e) {
