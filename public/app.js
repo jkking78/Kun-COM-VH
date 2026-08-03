@@ -33,14 +33,28 @@
     console.error("Supabase init error:", e);
   }
 
+    function mergePostsWithLocal(remoteData) {
+    var localPosts = db(SK.POSTS, []);
+    var map = {};
+    (localPosts || []).forEach(function(p) {
+      if (p && p.id) map[p.id] = p;
+    });
+    (remoteData || []).forEach(function(item) {
+      var p = item.content || item;
+      if (p && p.id) map[p.id] = p;
+    });
+    var merged = Object.keys(map).map(function(k) { return map[k]; });
+    merged.sort(function(a, b) { return (b.timestamp || 0) - (a.timestamp || 0); });
+    return merged;
+  }
+
   async function syncSupabaseToLocal() {
     if (!supabase) return;
     try {
       // Fetch posts
       var res = await supabase.from('kun_com_posts').select('*');
-      if (res && res.data && res.data.length > 0) {
-        var mergedPosts = res.data.map(function(p) { return p.content; });
-        mergedPosts.sort(function(a,b) { return new Date(b.created_at || 0) - new Date(a.created_at || 0); });
+      if (res && res.data) {
+        var mergedPosts = mergePostsWithLocal(res.data);
         DB_CACHE[SK.POSTS] = mergedPosts;
         localStorage.setItem(SK.POSTS, JSON.stringify(mergedPosts));
       }
@@ -71,9 +85,8 @@
   async function fetchPostsSilently() {
     if (!supabase) return;
     var res = await supabase.from('kun_com_posts').select('*');
-    if (res && res.data && res.data.length > 0) {
-      var mergedPosts = res.data.map(function(p) { return p.content; });
-      mergedPosts.sort(function(a,b) { return new Date(b.created_at || 0) - new Date(a.created_at || 0); });
+    if (res && res.data) {
+      var mergedPosts = mergePostsWithLocal(res.data);
       DB_CACHE[SK.POSTS] = mergedPosts;
       localStorage.setItem(SK.POSTS, JSON.stringify(mergedPosts));
       render();
@@ -1992,7 +2005,11 @@
       allPosts.unshift(newPost);
       dbSet(SK.POSTS, allPosts);
       if (supabase) {
-        supabase.from('kun_com_posts').upsert([{ id: newPost.id, content: newPost }], { onConflict: 'id' }).then(function(){});
+        try {
+          await supabase.from('kun_com_posts').upsert({ id: newPost.id, content: newPost, created_at: new Date().toISOString() }, { onConflict: 'id' });
+        } catch(e) {
+          console.warn("Save event supabase error:", e);
+        }
       }
       S.createEventOpen = false;
       S.selectedDate = date;
