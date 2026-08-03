@@ -1667,8 +1667,12 @@
     '</div>';
 
     // ---- Filter tabs ----
-    var tabs = ['tout', 'photos', 'evenements'];
-    var tabLabels = { tout: 'Tout', photos: 'Photos', evenements: 'Événements' };
+    var tabs = ['tout', 'enregistres', 'evenements'];
+    var tabLabels = { 
+      tout: 'Tout', 
+      enregistres: '<div style="display:flex;align-items:center;justify-content:center;gap:6px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg> Enregistrés</div>', 
+      evenements: 'Événements' 
+    };
     var tabBar = '<div style="background:#FFF;display:flex;border-bottom:1px solid #E5E5EA;position:sticky;top:60px;z-index:100;">' +
       tabs.map(function(t) {
         var active = profileTab === t;
@@ -1679,8 +1683,9 @@
     '</div>';
 
     // ---- Feed ----
+    var savedPostsList = posts.filter(function(p){ return S.savedPosts && S.savedPosts[p.id]; }).sort(function(a,b){return (b.timestamp||0)-(a.timestamp||0)});
     var filteredPosts;
-    if (profileTab === 'photos') filteredPosts = photosPosts;
+    if (profileTab === 'enregistres') filteredPosts = savedPostsList;
     else if (profileTab === 'evenements') filteredPosts = eventPosts;
     else filteredPosts = myPosts;
 
@@ -1688,7 +1693,7 @@
 
     if (filteredPosts.length === 0) {
       feed += '<div style="padding:50px 20px;text-align:center;color:#8E8E93;background:#FFF;margin-top:1px;">' +
-        '<div style="font-size:44px;margin-bottom:14px;">' + (profileTab === 'photos' ? '📷' : profileTab === 'evenements' ? '📅' : '📝') + '</div>' +
+        '<div style="font-size:44px;margin-bottom:14px;">' + (profileTab === 'enregistres' ? '🔖' : profileTab === 'evenements' ? '📅' : '📝') + '</div>' +
         '<div style="font-size:17px;font-weight:700;color:#000;margin-bottom:6px;">Aucun contenu</div>' +
         '<div style="font-size:13px;">Rien à afficher dans cet onglet pour le moment.</div>' +
       '</div>';
