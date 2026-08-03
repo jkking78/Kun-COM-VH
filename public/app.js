@@ -104,10 +104,6 @@
            console.log('⚡ Realtime profile update:', payload);
            fetchProfilesSilently();
         })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'kun_com_events' }, function(payload) {
-           console.log('⚡ Realtime event update:', payload);
-           fetchEventsSilently();
-        })
         .subscribe();
         
       if (window.App && window.App.tab) {
@@ -137,16 +133,7 @@
     }
   }
 
-  async function fetchEventsSilently() {
-    if (!supabase) return;
-    var resEv = await supabase.from('kun_com_events').select('*');
-    if (resEv && resEv.data) {
-      var mergedEvents = (resEv.data || []).map(function(item){ return item.content || item; });
-      DB_CACHE[SK.EVENTS] = mergedEvents;
-      localStorage.setItem(SK.EVENTS, JSON.stringify(mergedEvents));
-      render();
-    }
-  }
+}
 
   async function fetchPostsSilently() {
     if (!supabase) return;
@@ -159,17 +146,6 @@
     }
   }
 
-  function dbSetSupabase(key, val) {
-    if (!supabase) return;
-    if (key === SK.POSTS && Array.isArray(val)) {
-       val.forEach(async function(post) {
-         await supabase.from('kun_com_posts').upsert({ id: post.id, content: post }, { onConflict: 'id' });
-       });
-    } else if (key === SK.USERS && Array.isArray(val)) {
-       val.forEach(async function(user) {
-         await supabase.from('kun_com_profiles').upsert({ id: user.id, content: user }, { onConflict: 'id' });
-       });
-    }
   }
 
   function db(key, def) {
@@ -178,7 +154,6 @@
   }
   function dbSet(key, val) {
     DB_CACHE[key] = val;
-    dbSetSupabase(key, val);
     try { localStorage.setItem(key, JSON.stringify(val)); } catch(e) {}
   }
 
@@ -3009,6 +2984,9 @@ toggleParticipation: function(postId, status) {
       var nowLiked = post.likedBy.indexOf(S.user.id) !== -1;
       var likeCount = post.likedBy.length;
       dbSet(SK.POSTS, posts);
+      if (supabase && post) {
+        supabase.from('kun_com_posts').upsert({ id: post.id, content: post }, { onConflict: 'id' }).catch(function(e){ console.warn(e); });
+      }
       // DOM update only (no full re-render)
       var btn = document.getElementById('likeBtn-'+postId);
       if (btn) { btn.innerHTML = SVG.heart(nowLiked, 26); btn.style.animation='heartPop 0.35s'; setTimeout(function(){btn.style.animation='';},350); }
@@ -3296,6 +3274,7 @@ toggleParticipation: function(postId, status) {
       if (!post) return;
       var newC = { id:'c'+Date.now(), userId:S.user.id, author:S.user.prenom+' '+S.user.nom.charAt(0)+'.', avatarColor:S.user.avatar_color||'#007AFF', text:txt, timestamp:Date.now() };
       post.comments.push(newC); dbSet(SK.POSTS, posts);
+      if (supabase && post) supabase.from('kun_com_posts').upsert({ id: post.id, content: post }, { onConflict: 'id' }).catch(function(e){});
       updateUserActivity('Commentaire');
       // DOM update: append to list without full re-render
       var list = document.getElementById('commentsList');
@@ -3417,6 +3396,7 @@ toggleParticipation: function(postId, status) {
       }
       
       dbSet(SK.POSTS, posts); 
+      if (supabase && newPost) supabase.from('kun_com_posts').upsert({ id: newPost.id, content: newPost }, { onConflict: 'id' }).catch(function(e){});
       S.ratings = {};
       S.evalEventId = null;
       S.tab='home'; 
