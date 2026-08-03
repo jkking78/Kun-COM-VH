@@ -235,8 +235,12 @@
     toast: null,
     toastTimer: null,
     // Hashtag
-    hashSuggestions: false
-  };
+    hashSuggestions: false,
+    editProfileOpen: false,
+    postOptionsOpen: false,
+    selectedPostId: null,
+    avatarFile: null
+};
 
   // ============================================================
   // RESTORE SESSION
@@ -499,6 +503,8 @@
     else if (S.tab === 'profile') content = renderProfile(u, posts);
 
     var modals = '';
+    if (S.editProfileOpen) modals += renderEditProfileModal(u);
+    if (S.postOptionsOpen) modals += renderPostOptionsModal(posts.find(function(p){return p.id===S.selectedPostId;}));
     if (S.createOpen) modals += renderCreateModal(u);
     if (S.optionsOpen && S.optionsPost) modals += renderOptionsModal();
     if (S.commentOpen && S.commentPostId) modals += renderCommentsModal(posts, initial);
@@ -1074,200 +1080,260 @@
     if (!u) return '<div style="padding:40px;text-align:center;">Chargement...</div>';
     var allProfiles = db(SK.USERS, []);
     var freshU = allProfiles.find(function(p){ return p.id === u.id; }) || u;
-    var isAdmin = freshU.role === 'GRAND_RESPONSABLE';
+    
+    var isMe = S.user && S.user.id === freshU.id;
+    
     var ROLE_LABELS = {
-      GRAND_RESPONSABLE: 'Grand Responsable',
-      RESP_SECTION: 'Responsable de Section',
+      GRAND_RESPONSABLE: 'Grand Resp.',
+      RESP_SECTION: 'Responsable',
       MEMBRE: 'Membre',
       STAGIAIRE: 'Stagiaire'
     };
-    var ROLE_COLORS = {
-      GRAND_RESPONSABLE: { bg:'linear-gradient(135deg,#FFD700,#FF9500)', text:'#5D3A00' },
-      RESP_SECTION: { bg:'linear-gradient(135deg,#007AFF,#0040CC)', text:'#FFF' },
-      MEMBRE: { bg:'linear-gradient(135deg,#34C759,#28A347)', text:'#FFF' },
-      STAGIAIRE: { bg:'linear-gradient(135deg,#AF52DE,#8A3DBF)', text:'#FFF' }
-    };
-    var roleConf = ROLE_COLORS[freshU.role] || ROLE_COLORS.MEMBRE;
-    var myPosts = posts.filter(function(p){ return p.userId === freshU.id; });
+    var secConf = SECTIONS.find(function(s){ return s.id === freshU.section_id; }) || { emoji:'📢', color:'#8E8E93', nom:'Général' };
+    
+    var myPosts = posts.filter(function(p){ return p.userId === freshU.id; }).sort(function(a,b){return (b.timestamp||0)-(a.timestamp||0)});
     var myLikes = posts.filter(function(p){ return Array.isArray(p.likedBy) && p.likedBy.indexOf(freshU.id) !== -1; });
-    var saved = Object.keys(S.savedPosts).filter(function(id){ return S.savedPosts[id]; });
     var myComments = 0;
     posts.forEach(function(p){ myComments += (p.comments||[]).filter(function(c){ return c.userId === freshU.id; }).length; });
-    var secConf = SECTIONS.find(function(s){ return s.id === freshU.section_id; }) || { emoji:'📢', color:'#8E8E93', nom:'Général' };
 
-    // ---- CARTE PROFIL HERO ----
-    var heroCard = '<div style="position:relative;overflow:hidden;">' +
-      '<div style="background:linear-gradient(160deg,' + (freshU.avatar_color||'#007AFF') + ' 0%,#001A66 100%);padding:32px 20px 24px;">' +
-        '<button onclick="App.logout()" style="position:absolute;top:14px;right:14px;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);color:#FFF;font-size:12px;font-weight:700;padding:6px 12px;border-radius:20px;cursor:pointer;backdrop-filter:blur(8px);">Déconnexion</button>' +
+    var avatarContent = freshU.avatar_url 
+      ? '<img src="' + freshU.avatar_url + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />'
+      : '<div style="width:100%;height:100%;border-radius:50%;background:linear-gradient(135deg,'+(freshU.avatar_color||'#007AFF')+',#0040CC);color:#FFF;font-size:32px;font-weight:900;display:flex;align-items:center;justify-content:center;">' + (freshU.prenom||'M').charAt(0).toUpperCase() + '</div>';
 
-        '<div style="width:90px;height:90px;border-radius:45px;background:rgba(255,255,255,0.2);color:#FFF;font-size:38px;font-weight:900;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;border:3px solid rgba(255,255,255,0.6);box-shadow:0 8px 24px rgba(0,0,0,0.3);">' +
-          freshU.prenom.charAt(0).toUpperCase() +
-        '</div>' +
+    var header = '<header style="padding:12px 16px;background:#FFF;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #E5E5EA;position:sticky;top:0;z-index:20;">' +
+      '<div style="font-size:18px;font-weight:900;color:#000;letter-spacing:-0.5px;">' + safeHtml(freshU.prenom) + '_kun</div>' +
+      '<button onclick="App.logout()" style="background:none;border:none;font-size:24px;cursor:pointer;color:#000;">≡</button>' +
+    '</header>';
 
-        '<h2 style="font-size:22px;font-weight:900;color:#FFF;text-align:center;margin:0 0 4px;">' + safeHtml(freshU.prenom + ' ' + freshU.nom) + '</h2>' +
-        '<p style="font-size:12px;color:rgba(255,255,255,0.7);text-align:center;margin:0 0 12px;">' + safeHtml(freshU.email) + '</p>' +
-
-        '<div style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-bottom:' + (freshU.bio ? '14px' : '0') + ';">' +
-          '<div style="background:' + roleConf.bg + ';color:' + roleConf.text + ';padding:5px 14px;border-radius:20px;font-size:12px;font-weight:800;display:inline-flex;align-items:center;gap:5px;">' +
-            (freshU.role === 'GRAND_RESPONSABLE' ? '⭐ ' : '') + (ROLE_LABELS[freshU.role]||'Membre') +
+    var topSection = '<div style="background:#FFF;padding:16px 16px 20px;">' +
+      '<div style="display:flex;align-items:center;margin-bottom:14px;">' +
+        '<div style="position:relative;width:86px;height:86px;border-radius:43px;padding:3px;background:linear-gradient(45deg,#F58529,#DD2A7B,#8134AF,#515BD4);flex-shrink:0;">' +
+          '<div style="width:100%;height:100%;border-radius:50%;border:2px solid #FFF;background:#FFF;position:relative;overflow:hidden;">' +
+            avatarContent +
           '</div>' +
-          '<div style="background:rgba(255,255,255,0.18);border:1px solid rgba(255,255,255,0.3);color:#FFF;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:5px;">' +
-            secConf.emoji + ' #' + secConf.nom +
-          '</div>' +
+          (isMe ? '<div onclick="App.openEditProfile()" style="position:absolute;bottom:0;right:0;width:26px;height:26px;border-radius:13px;background:#007AFF;border:2px solid #FFF;color:#FFF;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 5px rgba(0,0,0,0.2);"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>' : '') +
         '</div>' +
-
-        (freshU.bio ? '<p style="font-size:13px;color:rgba(255,255,255,0.85);text-align:center;line-height:1.45;max-width:300px;margin:0 auto;">' + safeHtml(freshU.bio) + '</p>' : '') +
+        
+        '<div style="flex:1;display:flex;justify-content:space-around;align-items:center;margin-left:10px;">' +
+          '<div style="text-align:center;"><strong style="font-size:18px;display:block;">' + myPosts.length + '</strong><span style="font-size:12px;color:#000;">Posts</span></div>' +
+          '<div style="text-align:center;"><strong style="font-size:18px;display:block;">' + myLikes.length + '</strong><span style="font-size:12px;color:#000;">J\'aime</span></div>' +
+          '<div style="text-align:center;"><strong style="font-size:18px;display:block;">' + myComments + '</strong><span style="font-size:12px;color:#000;">Comm.</span></div>' +
+        '</div>' +
       '</div>' +
 
-      '<div style="background:' + (freshU.is_online ? '#EDFBF3' : '#F2F2F7') + ';border-bottom:1px solid ' + (freshU.is_online ? '#B8F0CE' : '#E5E5EA') + ';padding:10px 16px;display:flex;align-items:center;gap:8px;">' +
-        '<div style="width:10px;height:10px;border-radius:5px;background:' + (freshU.is_online ? '#34C759' : '#C7C7CC') + ';' + (freshU.is_online ? 'box-shadow:0 0 0 3px rgba(52,199,89,0.25);' : '') + '"></div>' +
-        '<span style="font-size:13px;font-weight:700;color:' + (freshU.is_online ? '#1B7A3E' : '#8E8E93') + ';">' + (freshU.is_online ? 'En ligne maintenant' : 'Hors ligne') + '</span>' +
-        '<span style="font-size:12px;color:#8E8E93;margin-left:auto;">Vu ' + timeAgo(freshU.last_seen_at ? new Date(freshU.last_seen_at).getTime() : Date.now()) + '</span>' +
+      '<div>' +
+        '<div style="font-size:14px;font-weight:700;color:#000;margin-bottom:2px;">' + safeHtml(freshU.prenom + ' ' + freshU.nom) + '</div>' +
+        '<div style="font-size:13px;color:#8E8E93;margin-bottom:4px;display:flex;align-items:center;gap:6px;">' +
+          '<span style="background:#F2F2F7;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;color:#000;">' + secConf.emoji + ' ' + secConf.nom + '</span>' +
+          '<span style="background:#F2F2F7;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;color:#000;">' + (ROLE_LABELS[freshU.role]||'Membre') + '</span>' +
+        '</div>' +
+        (freshU.bio ? '<div style="font-size:14px;line-height:1.4;white-space:pre-wrap;color:#000;">' + safeHtml(freshU.bio) + '</div>' : '') +
       '</div>' +
+
+      (isMe ? '<div style="display:flex;gap:8px;margin-top:16px;">' +
+        '<button onclick="App.openEditProfile()" style="flex:1;background:#F2F2F7;border:none;border-radius:8px;height:34px;font-size:14px;font-weight:700;cursor:pointer;color:#000;">Éditer le profil</button>' +
+        '<button onclick="App.shareProfile()" style="flex:1;background:#F2F2F7;border:none;border-radius:8px;height:34px;font-size:14px;font-weight:700;cursor:pointer;color:#000;">Partager</button>' +
+      '</div>' : '') +
     '</div>';
 
-    // ---- STATS BARRE ----
-    var statsBar = '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:#F2F2F7;margin-bottom:10px;">' +
-      [
-        { val: myPosts.length, label: 'Posts', icon: '📝' },
-        { val: myLikes.length, label: 'J\'aime', icon: '❤️' },
-        { val: myComments, label: 'Commentaires', icon: '💬' },
-        { val: saved.length, label: 'Sauvegardés', icon: '🔖' }
-      ].map(function(s) {
-        return '<div style="background:#FFF;padding:14px 8px;text-align:center;">' +
-          '<div style="font-size:18px;margin-bottom:2px;">' + s.icon + '</div>' +
-          '<strong style="font-size:20px;font-weight:900;color:#000;display:block;letter-spacing:-0.5px;">' + s.val + '</strong>' +
-          '<span style="font-size:10.5px;color:#8E8E93;">' + s.label + '</span>' +
-        '</div>';
-      }).join('') +
+    // Tabs 
+    var tabs = '<div style="display:flex;border-top:0.5px solid #E5E5EA;background:#FFF;position:sticky;top:49px;z-index:10;">' +
+      '<div style="flex:1;text-align:center;padding:12px 0;border-bottom:1px solid #000;cursor:pointer;"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg></div>' +
     '</div>';
 
-    // ---- CARTE INFOS DÉTAILLÉES ----
-    var infoCard = '<div style="background:#FFF;margin-bottom:10px;">' +
-      '<div style="padding:16px 18px;border-bottom:0.5px solid #F2F2F7;">' +
-        '<h3 style="font-size:15px;font-weight:800;margin:0;color:#000;">Informations du profil</h3>' +
-      '</div>' +
-      '<div style="padding:4px 0;">' +
-
-        infoRow('👤', 'Identité', safeHtml(freshU.prenom + ' ' + freshU.nom)) +
-        infoRow('✉️', 'E-mail', safeHtml(freshU.email)) +
-        infoRow(secConf.emoji, 'Section / Pôle', '#' + secConf.nom + ' — ' + safeHtml(freshU.section_nom||'')) +
-        infoRow('🎖️', 'Rôle & Permissions', ROLE_LABELS[freshU.role]||'Membre') +
-        infoRow('📅', 'Membre depuis le', fmtDate(freshU.joined_at)) +
-        infoRow('🕐', 'Dernière visite (last_seen_at)', fmtDateTime(freshU.last_seen_at)) +
-        infoRow('⚡', 'Dernière action (last_action_at)', (freshU.last_action_label||'Action') + ' · ' + fmtDateTime(freshU.last_action_at)) +
-        infoRow('🌐', 'Statut de connexion', freshU.is_online ? '🟢 En ligne' : '⚪ Hors ligne') +
-
-      '</div>' +
-    '</div>';
-
-    // ---- POSTS RÉCENTS DE L'UTILISATEUR ----
-    var myPostsSection = myPosts.length > 0
-      ? '<div style="background:#FFF;margin-bottom:10px;">' +
-          '<div style="padding:14px 18px;border-bottom:0.5px solid #F2F2F7;display:flex;justify-content:space-between;align-items:center;">' +
-            '<h3 style="font-size:15px;font-weight:800;margin:0;color:#000;">Mes publications</h3>' +
-            '<span style="font-size:12px;color:#8E8E93;">' + myPosts.length + ' au total</span>' +
-          '</div>' +
-          '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1.5px;background:#F2F2F7;">' +
-          myPosts.slice(0,9).map(function(p) {
-            if (p.mediaUrls && p.mediaUrls.length > 0) {
-              return '<div onclick="App.openComments(\'' + p.id + '\')" style="aspect-ratio:1;overflow:hidden;cursor:pointer;"><img src="' + p.mediaUrls[0] + '" style="width:100%;height:100%;object-fit:cover;" loading="lazy"/></div>';
-            }
-            return '<div onclick="App.openComments(\'' + p.id + '\')" style="aspect-ratio:1;background:linear-gradient(135deg,' + secColor(p.sectionId) + '25,#EEE);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-direction:column;gap:4px;">' +
-              '<span style="font-size:22px;">' + secEmoji(p.sectionId) + '</span>' +
-              '<span style="font-size:9px;color:#8E8E93;font-weight:600;text-align:center;padding:0 4px;">' + (p.caption||'').slice(0,20) + '…</span>' +
-            '</div>';
-          }).join('') +
-          '</div>' +
-        '</div>'
-      : '';
-
-    // ---- DASHBOARD ADMIN ----
-    var adminDashboard = '';
-    if (isAdmin) {
-      var onlineCount = allProfiles.filter(function(p){ return p.is_online; }).length;
-      var todayPosts = posts.filter(function(p){ return Date.now() - (p.timestamp||0) < 86400000; }).length;
-
-      adminDashboard = '<div style="background:#FFF;margin-bottom:10px;">' +
-
-        // En-tête dashboard
-        '<div style="background:linear-gradient(135deg,#1A1A2E,#2D2D44);padding:18px;">' +
-          '<div style="display:flex;align-items:center;gap:12px;">' +
-            '<div style="width:44px;height:44px;border-radius:22px;background:linear-gradient(135deg,#FFD700,#FF9500);display:flex;align-items:center;justify-content:center;font-size:20px;">🛡️</div>' +
-            '<div><h3 style="font-size:16px;font-weight:800;margin:0;color:#FFF;">Tableau de Bord Administration</h3><p style="font-size:12px;color:rgba(255,255,255,0.6);margin:0;">Gestion des profils & Activité temps réel</p></div>' +
-          '</div>' +
-          '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px;">' +
-            adminKpi('🟢', onlineCount, 'En ligne') +
-            adminKpi('📝', todayPosts, 'Posts 24h') +
-            adminKpi('👥', allProfiles.length, 'Membres') +
-          '</div>' +
-        '</div>' +
-
-        // Liste de tous les profils membres
-        '<div style="padding:14px 16px;">' +
-          '<h4 style="font-size:13px;font-weight:800;color:#8E8E93;text-transform:uppercase;letter-spacing:0.8px;margin:0 0 12px;">Profils Membres — Supabase Realtime</h4>' +
-          '<div style="display:flex;flex-direction:column;gap:10px;">' +
-          allProfiles.map(function(p) {
-            var pr = ROLE_COLORS[p.role] || ROLE_COLORS.MEMBRE;
-            var pSec = SECTIONS.find(function(s){ return s.id===p.section_id; }) || { emoji:'📢', color:'#8E8E93', nom:'Général' };
-            var pPosts = posts.filter(function(x){ return x.userId===p.id; }).length;
-            return '<div style="background:#F8F9FF;border-radius:18px;padding:14px;border:1px solid #EFEFEF;">' +
-
-              // Entête carte utilisateur
-              '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">' +
-                '<div style="position:relative;flex-shrink:0;">' +
-                  '<div style="width:44px;height:44px;border-radius:22px;background:linear-gradient(135deg,' + (p.avatar_color||'#007AFF') + ',#0040CC);color:#FFF;font-weight:900;font-size:17px;display:flex;align-items:center;justify-content:center;">' + p.prenom.charAt(0) + '</div>' +
-                  '<div style="position:absolute;bottom:0;right:0;width:13px;height:13px;border-radius:7px;background:' + (p.is_online?'#34C759':'#C7C7CC') + ';border:2.5px solid #F8F9FF;"></div>' +
-                '</div>' +
-                '<div style="flex:1;min-width:0;">' +
-                  '<div style="font-size:14px;font-weight:800;color:#000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(p.prenom + ' ' + p.nom) + '</div>' +
-                  '<div style="font-size:11.5px;color:#8E8E93;">' + safeHtml(p.email) + '</div>' +
-                '</div>' +
-                '<div style="flex-shrink:0;">' +
-                  '<span style="background:' + pr.bg + ';color:' + pr.text + ';font-size:10.5px;font-weight:800;padding:4px 10px;border-radius:20px;white-space:nowrap;display:inline-block;">' + (ROLE_LABELS[p.role]||'Membre') + '</span>' +
-                '</div>' +
-              '</div>' +
-
-              // Grille infos détaillées (Section, Inscription, Visite, Action)
-              '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;">' +
-                adminMiniInfo(pSec.emoji, '#' + pSec.nom, pSec.color) +
-                adminMiniInfo('📝', pPosts + ' post' + (pPosts > 1 ? 's' : ''), '#007AFF') +
-                adminMiniInfo('🕐', 'Vu ' + timeAgo(p.last_seen_at ? new Date(p.last_seen_at).getTime() : 0), '#8E8E93') +
-                adminMiniInfo('⚡', (p.last_action_label||'Action') + ' ' + timeAgo(p.last_action_at ? new Date(p.last_action_at).getTime() : 0), '#FF9500') +
-              '</div>' +
-
-              // Date inscription
-              '<div style="font-size:11px;color:#8E8E93;border-top:0.5px solid #EFEFEF;padding-top:6px;display:flex;justify-content:space-between;">' +
-                '<span>📅 Inscrit le ' + fmtDate(p.joined_at) + '</span>' +
-                '<span style="font-weight:700;color:' + (p.is_online?'#34C759':'#8E8E93') + ';">' + (p.is_online?'🟢 En ligne':'⚪ Hors ligne') + '</span>' +
-              '</div>' +
-
-            '</div>';
-          }).join('') +
-          '</div>' +
-        '</div>' +
-
+    // Grid of posts
+    var grid = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:2px;background:#FFF;min-height:30vh;align-content:start;">';
+    if (myPosts.length === 0) {
+      grid += '<div style="grid-column:1/4;padding:40px 20px;text-align:center;color:#8E8E93;">' +
+        '<div style="width:60px;height:60px;border-radius:30px;border:2px solid #000;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="1.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg></div>' +
+        '<strong style="font-size:22px;color:#000;display:block;margin-bottom:8px;">Pas encore de post</strong>' +
+        '<span style="font-size:14px;">Publiez pour les voir ici.</span>' +
       '</div>';
+    } else {
+      myPosts.forEach(function(p) {
+        if (p.mediaUrls && p.mediaUrls.length > 0) {
+          grid += '<div onclick="App.openPostOptions(\'' + p.id + '\')" style="aspect-ratio:1;position:relative;cursor:pointer;">' +
+            '<img src="' + p.mediaUrls[0] + '" style="width:100%;height:100%;object-fit:cover;" />' +
+            (p.mediaUrls.length > 1 ? '<svg style="position:absolute;top:8px;right:8px;" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M21 8H3M8 21V8"/></svg>' : '') +
+          '</div>';
+        } else {
+          grid += '<div onclick="App.openPostOptions(\'' + p.id + '\')" style="aspect-ratio:1;background:linear-gradient(135deg,' + secColor(p.sectionId) + '25,#EEE);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;padding:8px;position:relative;">' +
+            '<span style="font-size:28px;margin-bottom:4px;">' + secEmoji(p.sectionId) + '</span>' +
+            '<span style="font-size:11px;font-weight:700;color:#000;text-align:center;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;">' + (p.caption||'') + '</span>' +
+          '</div>';
+        }
+      });
     }
+    grid += '</div>';
 
-    return '<header style="padding:16px 18px;background:#FFF;border-bottom:0.5px solid #F2F2F7;display:flex;justify-content:space-between;align-items:center;">' +
-        '<h1 style="font-size:20px;font-weight:900;color:#000;margin:0;">Mon Profil</h1>' +
-        '<span style="font-size:12px;color:#8E8E93;font-weight:600;">' + safeHtml(freshU.email) + '</span>' +
+    return header + topSection + tabs + grid;
+}
+
+  function renderEditProfileModal(u) {
+    var freshU = db(SK.USERS, []).find(function(p){ return p.id === u.id; }) || u;
+    
+    var avatarContent = freshU.avatar_url 
+      ? '<img id="editAvatarPreview" src="' + freshU.avatar_url + '" style="width:100%;height:100%;object-fit:cover;" />'
+      : '<div id="editAvatarPreview" style="width:100%;height:100%;background:linear-gradient(135deg,'+(freshU.avatar_color||'#007AFF')+',#0040CC);color:#FFF;font-size:32px;font-weight:900;display:flex;align-items:center;justify-content:center;">' + (freshU.prenom||'M').charAt(0).toUpperCase() + '</div>';
+
+    return '<div style="position:fixed;inset:0;background:#FFF;z-index:10000;display:flex;flex-direction:column;animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
+      '<header style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #E5E5EA;">' +
+        '<button onclick="App.closeEditProfile()" style="background:none;border:none;font-size:16px;color:#000;cursor:pointer;">Annuler</button>' +
+        '<div style="font-weight:700;font-size:16px;">Modifier le profil</div>' +
+        '<button onclick="App.saveProfile(this)" style="background:none;border:none;font-size:16px;font-weight:700;color:#007AFF;cursor:pointer;">Terminer</button>' +
       '</header>' +
+      '<div style="flex:1;overflow-y:auto;padding:16px;">' +
+        
+        '<div style="display:flex;flex-direction:column;align-items:center;margin-bottom:24px;">' +
+          '<div style="position:relative;width:80px;height:80px;border-radius:40px;overflow:hidden;background:#F2F2F7;margin-bottom:12px;">' +
+             avatarContent +
+          '</div>' +
+          '<label style="color:#007AFF;font-weight:700;font-size:14px;cursor:pointer;">' +
+            'Modifier la photo' +
+            '<input type="file" id="editAvatarInput" accept="image/*" style="display:none;" onchange="App.handleAvatarSelect(event)" />' +
+          '</label>' +
+        '</div>' +
 
-      '<div style="padding-bottom:20px;">' +
-        heroCard +
-        statsBar +
-        infoCard +
-        myPostsSection +
-        adminDashboard +
-      '</div>';
+        '<div style="display:flex;flex-direction:column;gap:16px;">' +
+          '<div style="display:flex;align-items:center;border-bottom:1px solid #E5E5EA;padding-bottom:8px;">' +
+            '<label style="width:100px;font-size:14px;color:#000;">Prénom</label>' +
+            '<input type="text" id="editPrenom" value="' + safeHtml(freshU.prenom) + '" style="flex:1;border:none;font-size:16px;outline:none;" />' +
+          '</div>' +
+          
+          '<div style="display:flex;align-items:center;border-bottom:1px solid #E5E5EA;padding-bottom:8px;">' +
+            '<label style="width:100px;font-size:14px;color:#000;">Nom</label>' +
+            '<input type="text" id="editNom" value="' + safeHtml(freshU.nom) + '" style="flex:1;border:none;font-size:16px;outline:none;" />' +
+          '</div>' +
+          
+          '<div style="display:flex;align-items:flex-start;border-bottom:1px solid #E5E5EA;padding-bottom:8px;">' +
+            '<label style="width:100px;font-size:14px;color:#000;margin-top:2px;">Bio</label>' +
+            '<textarea id="editBio" style="flex:1;border:none;font-size:16px;outline:none;resize:none;font-family:inherit;min-height:60px;">' + safeHtml(freshU.bio||'') + '</textarea>' +
+          '</div>' +
+          
+          '<div style="display:flex;align-items:center;border-bottom:1px solid #E5E5EA;padding-bottom:8px;">' +
+            '<label style="width:100px;font-size:14px;color:#000;">Section</label>' +
+            '<select id="editSection" style="flex:1;border:none;font-size:16px;outline:none;background:#FFF;appearance:none;color:#007AFF;">' +
+              SECTIONS.map(function(s){ return '<option value="'+s.id+'" '+(s.id===freshU.section_id?'selected':'')+'>'+s.emoji+' '+s.nom+'</option>'; }).join('') +
+            '</select>' +
+          '</div>' +
+        '</div>' +
+
+      '</div>' +
+    '</div>';
   }
+
+  function renderPostOptionsModal(post) {
+    if (!post) return '';
+    var isMine = S.user && S.user.id === post.userId;
+    return '<div onclick="App.closePostOptions()" style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:10000;display:flex;justify-content:center;align-items:flex-end;">' +
+      '<div onclick="event.stopPropagation()" style="width:100%;max-width:460px;background:#FFF;border-top-left-radius:20px;border-top-right-radius:20px;padding:16px;animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
+        '<div style="width:40px;height:4px;background:#D1D1D6;border-radius:2px;margin:0 auto 20px;"></div>' +
+        (isMine ? '<button onclick="App.deletePost(\''+post.id+'\')" style="width:100%;padding:14px;color:#FF3B30;font-size:16px;font-weight:600;background:#F2F2F7;border:none;border-radius:12px;margin-bottom:8px;cursor:pointer;">Supprimer le post</button>' : '') +
+        '<button onclick="App.viewPost(\''+post.id+'\')" style="width:100%;padding:14px;color:#000;font-size:16px;font-weight:600;background:#F2F2F7;border:none;border-radius:12px;margin-bottom:8px;cursor:pointer;">Voir le post</button>' +
+        '<button onclick="App.closePostOptions()" style="width:100%;padding:14px;color:#000;font-size:16px;font-weight:600;background:#F2F2F7;border:none;border-radius:12px;cursor:pointer;">Annuler</button>' +
+      '</div>' +
+    '</div>';
+  }
+
 
   // ============================================================
   // APP CONTROLLER — toutes les actions
   // ============================================================
   window.App = {
+    openEditProfile: function() { S.editProfileOpen = true; S.avatarFile = null; render(); },
+    closeEditProfile: function() { S.editProfileOpen = false; S.avatarFile = null; render(); },
+    handleAvatarSelect: function(e) {
+      var file = e.target.files[0];
+      if (file) {
+        S.avatarFile = file;
+        var reader = new FileReader();
+        reader.onload = function(evt) {
+          var el = document.getElementById('editAvatarPreview');
+          if (el) {
+            var parent = el.parentNode;
+            parent.innerHTML = '<img id="editAvatarPreview" src="' + evt.target.result + '" style="width:100%;height:100%;object-fit:cover;" />';
+          }
+        };
+        reader.readAsDataURL(file);
+      }
+    },
+    saveProfile: async function(btn) {
+      if (btn) { btn.innerHTML = 'Enregistrement...'; btn.disabled = true; }
+      var u = S.user;
+      var prenom = document.getElementById('editPrenom').value.trim();
+      var nom = document.getElementById('editNom').value.trim();
+      var bio = document.getElementById('editBio').value.trim();
+      var section_id = document.getElementById('editSection').value;
+      var section_nom = SECTIONS.find(function(s){return s.id===section_id;}).nom;
+      
+      var avatar_url = u.avatar_url;
+      
+      if (S.avatarFile && supabase) {
+        try {
+          var ext = S.avatarFile.name.split('.').pop();
+          var fileName = 'avatar_' + u.id + '_' + Date.now() + '.' + ext;
+          var res = await supabase.storage.from('avatars').upload(fileName, S.avatarFile);
+          if (res.error) throw res.error;
+          var urlRes = supabase.storage.from('avatars').getPublicUrl(fileName);
+          avatar_url = urlRes.data.publicUrl;
+        } catch(e) {
+          console.error('Avatar upload error:', e);
+          toast('Erreur lors de\'upload de la photo', 'error');
+        }
+      }
+      
+      var updatedUser = Object.assign({}, u, {
+        prenom: prenom,
+        nom: nom,
+        bio: bio,
+        section_id: section_id,
+        section_nom: section_nom,
+        avatar_url: avatar_url
+      });
+      
+      S.user = updatedUser;
+      sessionStorage.setItem(SK.SESS, JSON.stringify(updatedUser));
+      
+      var allProfiles = db(SK.USERS, []);
+      var idx = allProfiles.findIndex(function(p){ return p.id === u.id; });
+      if (idx !== -1) {
+         allProfiles[idx] = updatedUser;
+      } else {
+         allProfiles.push(updatedUser);
+      }
+      dbSet(SK.USERS, allProfiles);
+      
+      S.editProfileOpen = false;
+      render();
+      toast('Profil mis à jour !', 'success');
+    },
+    openPostOptions: function(id) { S.selectedPostId = id; S.postOptionsOpen = true; render(); },
+    closePostOptions: function() { S.postOptionsOpen = false; S.selectedPostId = null; render(); },
+    viewPost: function(id) {
+       S.postOptionsOpen = false; S.selectedPostId = null;
+       S.q = ''; // clear search
+       // Scroll to post logic could go here
+       render();
+       setTimeout(function() {
+         var el = document.getElementById('post-' + id);
+         if (el) el.scrollIntoView({behavior: 'smooth'});
+       }, 100);
+    },
+    deletePost: async function(id) {
+       if (!confirm("Voulez-vous vraiment supprimer cette publication ?")) return;
+       var posts = db(SK.POSTS, []);
+       posts = posts.filter(function(p){ return p.id !== id; });
+       dbSet(SK.POSTS, posts);
+       if (supabase) {
+         try { await supabase.from('kun_com_posts').delete().eq('id', id); } catch(e){}
+       }
+       S.postOptionsOpen = false;
+       S.selectedPostId = null;
+       render();
+       toast('Publication supprimée', 'success');
+    },
+    shareProfile: function() { toast('Fonction de partage bientôt disponible !'); },
+
 
     // Auth
     nav: function(v) { S.auth = v; render(); },
