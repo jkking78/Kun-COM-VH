@@ -1,21 +1,70 @@
 // ==============================================================================
 // APPLICATION WEB PURE PWA - DÉPARTEMENT COMMUNICATION (KUN COM VH)
-// Authentification Sociale (Login / Signup, Persistance & Sécurité Invisible)
+// Network Social 100% Interactif (Posts Dynamiques, Modals, Comments & Shares)
 // ==============================================================================
 
 (function() {
-  console.log("🚀 Lancement de l'application Web avec Authentification Complète...");
+  console.log("🚀 Lancement du Réseau Social Dynamique 100% Interactif...");
 
-  // ETAT GLOBAL DE L'APPLICATION
-  var authView = 'login'; // 'login', 'signup', 'app'
-  var currentUser = null; // Utilisateur connecté
+  // ETAT GLOBAL
+  var authView = 'app'; // 'login', 'signup', 'app'
+  var currentUser = {
+    id: 'usr-cadrage-1',
+    nom: 'Kouamé',
+    prenom: 'Éric',
+    email: 'eric.kouame@eglise.org',
+    sectionId: 'cadrage',
+    sectionNom: 'Cadrage',
+    role: 'RESP_SECTION',
+    trustScore: 98.5
+  };
 
   var activeTab = 'home';
-  var activeStory = 'cadrage';
-  var isLikedBilan = true;
-  var likesBilanCount = 43;
+  var selectedStory = 'all'; // 'all' par défaut
+  var isCreateModalOpen = false;
+  var isCommentModalOpen = false;
+  var activeCommentPostId = null;
+
   var isCheckedIn = false;
   
+  // POSTS EN BD DYNAMIQUE
+  var posts = [
+    {
+      id: 'post-1',
+      author: 'Section Cadrage',
+      authorAvatar: 'C',
+      sectionId: 'cadrage',
+      dateText: 'Dimanche 02 Août 2026 • Culte n°1',
+      isVedette: true,
+      title: 'Captation Directe Culte n°1',
+      sub: 'Coulisses & Couverture Technique',
+      scoreText: '4.88 / 5.0',
+      caption: 'Bravo à toute l\'équipe Cadrage pour la couverture dynamique du 1er culte. Les cadrages serrés et la synchronisation avec la chorale étaient parfaits.',
+      likes: 43,
+      isLiked: true,
+      comments: [
+        { id: 'c1', author: 'Sarah Y.', text: 'Superbe réactivité sur les plans chorale !' },
+        { id: 'c2', author: 'Marc T.', text: 'Merci Pasteurs pour les retours positifs.' }
+      ]
+    },
+    {
+      id: 'post-2',
+      author: 'Sarah Yao (Photo)',
+      authorAvatar: 'P',
+      sectionId: 'photo',
+      dateText: 'Il y a 3 heures',
+      isVedette: false,
+      title: 'Album Photos HD',
+      sub: '150 Clichés Importés',
+      caption: 'Les 150 clichés HD du Culte n°1 sont prêts et importés sur le serveur du Département.',
+      likes: 29,
+      isLiked: false,
+      comments: [
+        { id: 'c3', author: 'Yves K.', text: 'Magnifiques photos du prêche !' }
+      ]
+    }
+  ];
+
   var ratings = {
     web: { score: 5, comment: 'Direct streaming HD fluide' },
     proj: { score: 4, comment: 'Textes affichés dans les temps' },
@@ -34,15 +83,6 @@
   var bookmarkSvg = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>';
   var checkSvg = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#007AFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>';
 
-  // RESTAURATION DE LA SESSION UTILISATEUR
-  try {
-    var savedUser = sessionStorage.getItem('kun_com_user');
-    if (savedUser) {
-      currentUser = JSON.parse(savedUser);
-      authView = 'app';
-    }
-  } catch(e) {}
-
   function initApp() {
     var root = document.getElementById('root');
     if (!root) return;
@@ -50,66 +90,105 @@
     render();
 
     function render() {
-      if (authView === 'login') {
-        root.innerHTML = renderLogin();
-      } else if (authView === 'signup') {
-        root.innerHTML = renderSignup();
-      } else {
-        root.innerHTML = renderMainApp();
-      }
+      if (authView === 'login') root.innerHTML = renderLogin();
+      else if (authView === 'signup') root.innerHTML = renderSignup();
+      else root.innerHTML = renderMainApp();
     }
 
-    // HANDLERS AUTHENTIFICATION
-    window.handleLoginSubmit = function(e) {
+    // HANDLERS INTERACTIFS
+    window.togglePostLike = function(postId) {
+      for (var i = 0; i < posts.length; i++) {
+        if (posts[i].id === postId) {
+          posts[i].isLiked = !posts[i].isLiked;
+          posts[i].likes += posts[i].isLiked ? 1 : -1;
+          break;
+        }
+      }
+      render();
+    };
+
+    window.openCreatePostModal = function() {
+      isCreateModalOpen = true;
+      render();
+    };
+
+    window.closeCreatePostModal = function() {
+      isCreateModalOpen = false;
+      render();
+    };
+
+    window.submitCreatePost = function(e) {
       if (e) e.preventDefault();
-      var email = document.getElementById('loginEmail') ? document.getElementById('loginEmail').value : 'eric.kouame@eglise.org';
-      
-      currentUser = {
-        id: 'usr-cadrage-1',
-        nom: 'Kouamé',
-        prenom: 'Éric',
-        email: email || 'eric.kouame@eglise.org',
-        sectionId: 'cadrage',
-        sectionNom: 'Cadrage',
-        role: 'RESP_SECTION',
-        trustScore: 98.5
-      };
+      var txt = document.getElementById('newPostText') ? document.getElementById('newPostText').value : '';
+      var secSelect = document.getElementById('newPostSectionSelect') ? document.getElementById('newPostSectionSelect').value : 'cadrage';
+      if (!txt.trim()) return;
 
-      sessionStorage.setItem('kun_com_user', JSON.stringify(currentUser));
-      authView = 'app';
+      var secNames = { cadrage: 'Cadrage', regie: 'Régie', web: 'Web', proj: 'Projection', prod: 'Prod', photo: 'Photo', vente: 'Vente' };
+
+      posts.unshift({
+        id: 'post-' + Date.now(),
+        author: currentUser.prenom + ' ' + currentUser.nom + ' (' + (secNames[secSelect] || 'COM') + ')',
+        authorAvatar: currentUser.prenom.charAt(0),
+        sectionId: secSelect,
+        dateText: 'À l\'instant',
+        isVedette: false,
+        title: 'Publication ' + (secNames[secSelect] || 'COM'),
+        sub: 'Contenu Partagé',
+        caption: txt,
+        likes: 1,
+        isLiked: true,
+        comments: []
+      });
+
+      isCreateModalOpen = false;
+      alert("🚀 Publication partagée avec succès dans le feed !");
       render();
     };
 
-    window.handleSignupSubmit = function(e) {
+    window.openCommentModal = function(postId) {
+      activeCommentPostId = postId;
+      isCommentModalOpen = true;
+      render();
+    };
+
+    window.closeCommentModal = function() {
+      isCommentModalOpen = false;
+      activeCommentPostId = null;
+      render();
+    };
+
+    window.submitAddComment = function(e) {
       if (e) e.preventDefault();
-      var prenom = document.getElementById('signupPrenom') ? document.getElementById('signupPrenom').value : 'Jean';
-      var nom = document.getElementById('signupNom') ? document.getElementById('signupNom').value : 'Dupont';
-      var email = document.getElementById('signupEmail') ? document.getElementById('signupEmail').value : 'jean.dupont@eglise.org';
-      var secSelect = document.getElementById('signupSection') ? document.getElementById('signupSection').value : 'cadrage';
+      var txt = document.getElementById('newCommentInput') ? document.getElementById('newCommentInput').value : '';
+      if (!txt.trim() || !activeCommentPostId) return;
 
-      var secNames = { web: 'Web', proj: 'Projection', prod: 'Prod', regie: 'Régie', cadrage: 'Cadrage', photo: 'Photo', vente: 'Vente' };
-
-      currentUser = {
-        id: 'usr-' + Date.now(),
-        nom: nom || 'Dupont',
-        prenom: prenom || 'Jean',
-        email: email || 'jean.dupont@eglise.org',
-        sectionId: secSelect || 'cadrage',
-        sectionNom: secNames[secSelect] || 'Cadrage',
-        role: 'MEMBRE', // Rôle par défaut
-        trustScore: 100.0
-      };
-
-      sessionStorage.setItem('kun_com_user', JSON.stringify(currentUser));
-      alert('Compte créé avec succès ! Bienvenue ' + currentUser.prenom + ' dans la section ' + currentUser.sectionNom + ' (Rôle MEMBRE).');
-      authView = 'app';
+      for (var i = 0; i < posts.length; i++) {
+        if (posts[i].id === activeCommentPostId) {
+          posts[i].comments.push({
+            id: 'c-' + Date.now(),
+            author: currentUser.prenom + ' ' + currentUser.nom.charAt(0) + '.',
+            text: txt
+          });
+          break;
+        }
+      }
       render();
     };
 
-    window.navAuthView = function(view) {
-      authView = view;
+    window.sharePostLink = function(title, text) {
+      if (typeof navigator !== 'undefined' && navigator.share) {
+        navigator.share({ title: title, text: text, url: window.location.href }).catch(function(){});
+      } else {
+        alert("📋 Lien de la publication copié dans le presse-papier !");
+      }
+    };
+
+    window.setStoryFilter = function(s) {
+      selectedStory = s;
       render();
     };
+
+    window.setTab = function(t) { activeTab = t; render(); };
 
     window.handleLogout = function() {
       sessionStorage.removeItem('kun_com_user');
@@ -118,39 +197,29 @@
       render();
     };
 
-    // HANDLERS APP PRINCIPALE
-    window.setTab = function(t) { activeTab = t; render(); };
-    window.setStory = function(s) { activeStory = s; render(); };
-    window.toggleBilanLike = function() {
-      isLikedBilan = !isLikedBilan;
-      likesBilanCount += isLikedBilan ? 1 : -1;
-      render();
-    };
     window.doCheckIn = function() {
       isCheckedIn = true;
       alert("Présence validée pour le Culte.");
       render();
     };
+
     window.setRatingScore = function(secId, score) {
       var userSec = (currentUser && currentUser.sectionId) ? currentUser.sectionId : 'cadrage';
       if (secId === userSec) {
-        alert("Action Interdite : Vous ne pouvez pas noter votre propre section !");
+        alert("Action Interdite : Vous ne pouvez pas noter votre propre section.");
         return;
       }
       ratings[secId].score = score;
       render();
     };
+
     window.publishBilanFeed24h = function() {
       alert("Bilan de Culte Validé et Publié sur le Feed (24h).\n\nSection Vedette attribuée : Cadrage (4.88 / 5.0)");
       activeTab = 'home';
       render();
     };
 
-    function tabStyle(active) {
-      return 'background:none; border:none; display:flex; align-items:center; justify-content:center; cursor:pointer; padding:8px 16px; opacity:' + (active ? 1 : 0.5) + ';';
-    }
-
-    // ÉCRAN DE CONNEXION (LOGIN)
+    // RENDU DES VUES AUTH & MAIN APP
     function renderLogin() {
       return `
         <div style="display:flex; flex-direction:column; justify-content:center; align-items:center; min-height:100vh; padding:24px; box-sizing:border-box; background:#FFF;">
@@ -182,7 +251,6 @@
       `;
     }
 
-    // ÉCRAN D'INSCRIPTION (SIGNUP)
     function renderSignup() {
       return `
         <div style="display:flex; flex-direction:column; justify-content:center; align-items:center; min-height:100vh; padding:24px; box-sizing:border-box; background:#FFF;">
@@ -232,19 +300,82 @@
       `;
     }
 
-    // APPLICATION PRINCIPALE INSTAGRAM
     function renderMainApp() {
       var userSec = currentUser ? currentUser.sectionId : 'cadrage';
       var userPrenom = currentUser ? currentUser.prenom : 'Éric';
       var userInitial = userPrenom.charAt(0);
 
+      // FILTRAGE DES POSTS DYNAMIQUES
+      var filtered = posts.filter(function(p) {
+        if (selectedStory === 'all') return true;
+        return p.sectionId === selectedStory;
+      });
+
+      // BUNDLE AVEC MODALS ET INTERACTIVITÉ
       return `
         <div style="display:flex; flex-direction:column; min-height:100vh; width:100%; position:relative; background-color:#FFFFFF; font-family:-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', sans-serif;">
           
           <div style="flex:1; padding-bottom:80px;">
-            ${renderScreen(userPrenom, userInitial, userSec)}
+            ${renderFeedContent(filtered, userPrenom, userInitial, userSec)}
           </div>
 
+          <!-- MODAL DE CRÉATION DE POST -->
+          ${isCreateModalOpen ? `
+            <div style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.4); z-index:100000; display:flex; justify-content:center; align-items:flex-end;">
+              <div style="width:100%; max-width:500px; background:#FFF; border-top-left-radius:24px; border-top-right-radius:24px; padding:20px; box-sizing:border-box;">
+                <div style="display:flex; justify-content:space-between; align-items:center; padding-bottom:14px; border-bottom:1px solid #EFEFEF; margin-bottom:16px;">
+                  <h3 style="font-size:18px; font-weight:800; margin:0; color:#000;">Créer une publication</h3>
+                  <span onclick="window.closeCreatePostModal()" style="font-size:14px; font-weight:700; color:#007AFF; cursor:pointer;">Fermer</span>
+                </div>
+
+                <form onsubmit="window.submitCreatePost(event)">
+                  <div style="margin-bottom:12px;">
+                    <label style="font-size:12px; font-weight:700; display:block; margin-bottom:4px;">Section associée</label>
+                    <select id="newPostSectionSelect" style="width:100%; height:44px; border-radius:10px; border:1px solid #EFEFEF; background:#FAFAFA; padding:0 12px; font-size:13px;">
+                      <option value="cadrage">Cadrage</option>
+                      <option value="regie">Régie</option>
+                      <option value="web">Web</option>
+                      <option value="proj">Projection</option>
+                      <option value="prod">Prod</option>
+                      <option value="photo">Photo</option>
+                      <option value="vente">Vente</option>
+                    </select>
+                  </div>
+
+                  <textarea id="newPostText" placeholder="Rédigez votre message pour le département..." required style="width:100%; height:90px; border-radius:12px; border:1px solid #EFEFEF; background:#FAFAFA; padding:12px; font-size:14px; box-sizing:border-box; font-family:sans-serif; margin-bottom:14px;"></textarea>
+
+                  <button type="submit" style="width:100%; height:48px; background:#007AFF; color:#FFF; border:none; border-radius:12px; font-size:15px; font-weight:800; cursor:pointer;">
+                    Publier sur le Feed
+                  </button>
+                </form>
+              </div>
+            </div>
+          ` : ''}
+
+          <!-- MODAL TIROIR COMMENTAIRES -->
+          ${isCommentModalOpen ? `
+            <div style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.4); z-index:100000; display:flex; justify-content:center; align-items:flex-end;">
+              <div style="width:100%; max-width:500px; background:#FFF; border-top-left-radius:24px; border-top-right-radius:24px; padding:20px; box-sizing:border-box;">
+                <div style="display:flex; justify-content:space-between; align-items:center; padding-bottom:14px; border-bottom:1px solid #EFEFEF; margin-bottom:14px;">
+                  <h3 style="font-size:18px; font-weight:800; margin:0; color:#000;">Commentaires</h3>
+                  <span onclick="window.closeCommentModal()" style="font-size:14px; font-weight:700; color:#007AFF; cursor:pointer;">Fermer</span>
+                </div>
+
+                <div style="max-height:220px; overflow-y:auto; margin-bottom:14px;">
+                  ${getCommentsListHTML(activeCommentPostId)}
+                </div>
+
+                <form onsubmit="window.submitAddComment(event)" style="display:flex; gap:10px;">
+                  <input id="newCommentInput" type="text" placeholder="Ajouter un commentaire..." required style="flex:1; height:44px; border-radius:10px; border:1px solid #EFEFEF; background:#FAFAFA; padding:0 12px; font-size:13px; box-sizing:border-box;">
+                  <button type="submit" style="height:44px; padding:0 16px; background:#007AFF; color:#FFF; border:none; border-radius:10px; font-size:13px; font-weight:800; cursor:pointer;">
+                    Envoyer
+                  </button>
+                </form>
+              </div>
+            </div>
+          ` : ''}
+
+          <!-- TAB BAR FIXE -->
           <nav style="position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:500px; height:68px; background:rgba(255,255,255,0.96); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); border-top:1px solid #EFEFEF; display:flex; justify-content:space-around; align-items:center; z-index:99999;">
             <button onclick="window.setTab('home')" style="${tabStyle(activeTab === 'home')}">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="${activeTab === 'home' ? '#000' : 'none'}" stroke="#000" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
@@ -254,7 +385,7 @@
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="1.8"><path d="M19 4H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zM16 2v4M8 2v4M3 10h18"/></svg>
             </button>
 
-            <button onclick="window.setTab('debrief')" style="width:44px; height:44px; border-radius:22px; background-color:#007AFF; color:#FFF; border:none; display:flex; align-items:center; justify-content:center; margin-top:-18px; box-shadow:0 4px 12px rgba(0,122,255,0.3); cursor:pointer;">
+            <button onclick="window.openCreatePostModal()" style="width:44px; height:44px; border-radius:22px; background-color:#007AFF; color:#FFF; border:none; display:flex; align-items:center; justify-content:center; margin-top:-18px; box-shadow:0 4px 12px rgba(0,122,255,0.3); cursor:pointer;">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>
             </button>
 
@@ -270,44 +401,66 @@
       `;
     }
 
-    function renderScreen(userPrenom, userInitial, userSec) {
+    function getCommentsListHTML(postId) {
+      var target = null;
+      for (var i = 0; i < posts.length; i++) {
+        if (posts[i].id === postId) { target = posts[i]; break; }
+      }
+
+      if (!target || target.comments.length === 0) {
+        return '<p style="color:#8E8E93; font-size:13px; text-align:center; padding:16px 0;">Aucun commentaire pour le moment. Soyez le premier !</p>';
+      }
+
+      return target.comments.map(function(c) {
+        return `
+          <div style="padding:8px 0; border-bottom:1px solid #EFEFEF;">
+            <strong style="font-size:13px; color:#000;">${c.author}</strong>
+            <p style="font-size:13px; color:#333; margin:2px 0 0; font-family:sans-serif;">${c.text}</p>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderFeedContent(filtered, userPrenom, userInitial, userSec) {
       if (activeTab === 'home') {
         return `
           <header style="padding:14px 18px; background:#FFF; border-bottom:1px solid #EFEFEF; display:flex; justify-content:space-between; align-items:center; position:sticky; top:0; z-index:100;">
             <div>
-              <p style="font-size:10px; font-weight:800; color:#007AFF; text-transform:uppercase; letter-spacing:1.2px; margin:0 0 1px;">ÉGLISE VASE D'HONNEUR</p>
+              <p style="font-size:10px; font-weight:800; color:#007AFF; text-transform:uppercase; letter-spacing:1.2px; margin:0 0 1px;">EGLISE VASE D'HONNEUR</p>
               <h1 style="font-size:22px; font-weight:900; color:#000000; margin:0; letter-spacing:-0.6px;">Kun COM</h1>
             </div>
-            <div style="display:flex; gap:10px; align-items:center;">
+            <div style="display:flex; gap:12px; align-items:center;">
+              <div onclick="window.openCreatePostModal()" style="width:34px; height:34px; border-radius:17px; background:#FAFAFA; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+              </div>
               <div onclick="window.handleLogout()" title="Déconnexion" style="width:34px; height:34px; border-radius:17px; background:#F0F6FF; color:#007AFF; font-weight:800; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:14px;">
                 ${userInitial}
-              </div>
-              <div style="cursor:pointer;">
-                ${commentSvg}
               </div>
             </div>
           </header>
 
+          <!-- CARROUSEL STORIES : 'TOUS' EN 1ÈRE POSITION -->
           <div style="padding:12px 0; border-bottom:1px solid #EFEFEF; background:#FFF; overflow-x:auto; white-space:nowrap; -webkit-overflow-scrolling:touch;">
             <div style="display:flex; gap:14px; padding:0 14px;">
               ${[
-                { id: 'cadrage', nom: 'Cadrage', emoji: '🎥', active: true },
-                { id: 'regie', nom: 'Régie', emoji: '🎛️', active: true },
-                { id: 'web', nom: 'Web', emoji: '🌐', active: false },
-                { id: 'proj', nom: 'Projection', emoji: '🖥️', active: false },
-                { id: 'prod', nom: 'Prod', emoji: '🎬', active: false },
-                { id: 'photo', nom: 'Photo', emoji: '📸', active: false },
-                { id: 'vente', nom: 'Vente', emoji: '🛒', active: false }
+                { id: 'all', nom: 'Tous', emoji: '✨' },
+                { id: 'cadrage', nom: 'Cadrage', emoji: '🎥' },
+                { id: 'regie', nom: 'Régie', emoji: '🎛️' },
+                { id: 'web', nom: 'Web', emoji: '🌐' },
+                { id: 'proj', nom: 'Projection', emoji: '🖥️' },
+                { id: 'prod', nom: 'Prod', emoji: '🎬' },
+                { id: 'photo', nom: 'Photo', emoji: '📸' },
+                { id: 'vente', nom: 'Vente', emoji: '🛒' }
               ].map(function(story) {
-                var isSel = activeStory === story.id;
+                var isSel = selectedStory === story.id;
                 return `
-                  <div onclick="window.setStory('${story.id}')" style="display:inline-flex; flex-direction:column; align-items:center; cursor:pointer; width:66px;">
-                    <div style="width:62px; height:62px; border-radius:31px; padding:2px; border:2px solid ${isSel || story.active ? '#D4AF37' : '#E5E5EA'}; display:flex; align-items:center; justify-content:center; background:#FFF;">
+                  <div onclick="window.setStoryFilter('${story.id}')" style="display:inline-flex; flex-direction:column; align-items:center; cursor:pointer; width:66px;">
+                    <div style="width:62px; height:62px; border-radius:31px; padding:2px; border:2px solid ${isSel ? '#D4AF37' : '#E5E5EA'}; display:flex; align-items:center; justify-content:center; background:#FFF;">
                       <div style="width:100%; height:100%; border-radius:27px; background:#F0F6FF; display:flex; align-items:center; justify-content:center; font-size:24px;">
                         ${story.emoji}
                       </div>
                     </div>
-                    <span style="font-size:11px; font-weight:${isSel ? '700' : '500'}; color:${isSel ? '#000000' : '#8E8E93'}; margin-top:4px; text-align:center;">
+                    <span style="font-size:11px; font-weight:${isSel ? '800' : '500'}; color:${isSel ? '#000000' : '#8E8E93'}; margin-top:4px; text-align:center;">
                       ${story.nom}
                     </span>
                   </div>
@@ -316,60 +469,83 @@
             </div>
           </div>
 
-          <article style="background:#FFF; border-bottom:8px solid #FAFAFA;">
-            <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px;">
-              <div style="display:flex; align-items:center; gap:10px;">
-                <div style="width:38px; height:38px; border-radius:19px; background:#007AFF; color:#FFF; font-size:15px; font-weight:800; display:flex; align-items:center; justify-content:center;">C</div>
-                <div>
-                  <h3 style="font-size:14px; font-weight:700; margin:0; color:#000000;">Section Cadrage</h3>
-                  <span style="font-size:11px; color:#8E8E93;">Dimanche 02 Août 2026 • Culte n°1</span>
-                </div>
+          <!-- FEED DYNAMIQUE OU ÉTAT À VIDE (EMPTY STATE) -->
+          ${filtered.length === 0 ? `
+            <div style="padding:50px 24px; text-align:center; background:#FFF; display:flex; flex-direction:column; align-items:center;">
+              <div style="width:64px; height:64px; border-radius:32px; background:#F0F6FF; display:flex; align-items:center; justify-content:center; margin-bottom:14px;">
+                ${checkSvg}
               </div>
-              <div style="background:#FFFDF0; border:1px solid #E6CA65; padding:5px 10px; border-radius:12px; font-size:10.5px; font-weight:800; color:#B8860B;">
-                SECTION VEDETTE
-              </div>
-            </div>
-
-            <div style="width:100%; height:280px; background:#1C1C1E; position:relative; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:20px; text-align:center;">
-              <h2 style="font-size:18px; font-weight:800; color:#FFFFFF; margin:0 0 4px; letter-spacing:-0.4px;">Captation Directe Culte n°1</h2>
-              <span style="color:#8E8E93; font-size:12px; font-weight:500;">Coulisses & Couverture Technique</span>
-
-              <div style="position:absolute; bottom:14px; right:14px; background:rgba(255,255,255,0.92); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); padding:6px 12px; border-radius:16px; border:1px solid rgba(255,255,255,0.8); box-shadow:0 4px 12px rgba(0,0,0,0.12);">
-                <strong style="font-size:14px; color:#1C1C1E; font-weight:900;">4.88 / 5.0</strong>
-              </div>
-            </div>
-
-            <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px;">
-              <div style="display:flex; align-items:center; gap:16px;">
-                <button onclick="window.toggleBilanLike()" style="background:none; border:none; padding:0; display:flex; align-items:center; gap:6px; cursor:pointer;">
-                  ${heartSvg(isLikedBilan)}
-                  <strong style="font-size:13px; color:#000000;">${likesBilanCount}</strong>
-                </button>
-
-                <button style="background:none; border:none; padding:0; display:flex; align-items:center; gap:6px; cursor:pointer;">
-                  ${commentSvg}
-                  <strong style="font-size:13px; color:#000000;">7</strong>
-                </button>
-
-                <button style="background:none; border:none; padding:0; cursor:pointer;">
-                  ${shareSvg}
-                </button>
-              </div>
-
-              <button style="background:none; border:none; padding:0; cursor:pointer;">
-                ${bookmarkSvg}
+              <h3 style="font-size:17px; font-weight:800; color:#000; margin:0 0 6px;">Aucune publication récente</h3>
+              <p style="font-size:13px; color:#8E8E93; margin:0 0 18px; max-width:280px; line-height:1.4;">
+                Aucun contenu publié pour cette section aujourd'hui. Soyez le premier à partager une publication !
+              </p>
+              <button onclick="window.openCreatePostModal()" style="padding:10px 20px; background:#007AFF; color:#FFF; border:none; border-radius:12px; font-size:13px; font-weight:800; cursor:pointer;">
+                Créer une publication
               </button>
             </div>
+          ` : filtered.map(function(post) {
+            return `
+              <article style="background:#FFF; border-bottom:8px solid #FAFAFA;">
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px;">
+                  <div style="display:flex; align-items:center; gap:10px;">
+                    <div style="width:38px; height:38px; border-radius:19px; background:#007AFF; color:#FFF; font-size:15px; font-weight:800; display:flex; align-items:center; justify-content:center;">${post.authorAvatar}</div>
+                    <div>
+                      <h3 style="font-size:14px; font-weight:700; margin:0; color:#000000;">${post.author}</h3>
+                      <span style="font-size:11px; color:#8E8E93;">${post.dateText}</span>
+                    </div>
+                  </div>
+                  ${post.isVedette ? '<div style="background:#FFFDF0; border:1px solid #E6CA65; padding:5px 10px; border-radius:12px; font-size:10.5px; font-weight:800; color:#B8860B;">SECTION VEDETTE</div>' : ''}
+                </div>
 
-            <div style="padding:0 16px 14px;">
-              <div style="font-size:13px; font-weight:700; color:#000000; margin-bottom:4px;">
-                Aimé par ${userPrenom} et ${likesBilanCount - 1} autres membres
-              </div>
-              <p style="font-size:13.5px; line-height:1.45; color:#000000; margin:0;">
-                <strong>Section Cadrage</strong> Bravo à toute l'équipe Cadrage pour la couverture dynamique du 1er culte. Les cadrages serrés et la synchronisation avec la chorale étaient parfaits.
-              </p>
-            </div>
-          </article>
+                <div style="width:100%; height:280px; background:#1C1C1E; position:relative; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:20px; text-align:center;">
+                  <h2 style="font-size:18px; font-weight:800; color:#FFFFFF; margin:0 0 4px; letter-spacing:-0.4px;">${post.title}</h2>
+                  <span style="color:#8E8E93; font-size:12px; font-weight:500;">${post.sub}</span>
+
+                  ${post.scoreText ? `
+                    <div style="position:absolute; bottom:14px; right:14px; background:rgba(255,255,255,0.92); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); padding:6px 12px; border-radius:16px; border:1px solid rgba(255,255,255,0.8); box-shadow:0 4px 12px rgba(0,0,0,0.12);">
+                      <strong style="font-size:14px; color:#1C1C1E; font-weight:900;">${post.scoreText}</strong>
+                    </div>
+                  ` : ''}
+                </div>
+
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px;">
+                  <div style="display:flex; align-items:center; gap:16px;">
+                    <button onclick="window.togglePostLike('${post.id}')" style="background:none; border:none; padding:0; display:flex; align-items:center; gap:6px; cursor:pointer;">
+                      ${heartSvg(post.isLiked)}
+                      <strong style="font-size:13px; color:#000000;">${post.likes}</strong>
+                    </button>
+
+                    <button onclick="window.openCommentModal('${post.id}')" style="background:none; border:none; padding:0; display:flex; align-items:center; gap:6px; cursor:pointer;">
+                      ${commentSvg}
+                      <strong style="font-size:13px; color:#000000;">${post.comments.length}</strong>
+                    </button>
+
+                    <button onclick="window.sharePostLink('${post.title}', '${post.caption}')" style="background:none; border:none; padding:0; cursor:pointer;">
+                      ${shareSvg}
+                    </button>
+                  </div>
+
+                  <button style="background:none; border:none; padding:0; cursor:pointer;">
+                    ${bookmarkSvg}
+                  </button>
+                </div>
+
+                <div style="padding:0 16px 14px;">
+                  <div style="font-size:13px; font-weight:700; color:#000000; margin-bottom:4px;">
+                    Aimé par ${post.likes} membres
+                  </div>
+                  <p style="font-size:13.5px; line-height:1.45; color:#000000; margin:0;">
+                    <strong>${post.author}</strong> ${post.caption}
+                  </p>
+                  ${post.comments.length > 0 ? `
+                    <span onclick="window.openCommentModal('${post.id}')" style="font-size:12px; color:#8E8E93; display:block; margin-top:6px; cursor:pointer;">
+                      Afficher les ${post.comments.length} commentaires...
+                    </span>
+                  ` : ''}
+                </div>
+              </article>
+            `;
+          }).join('')}
 
           <div style="padding:36px 20px; text-align:center; background:#FFF; border-top:1px solid #EFEFEF; display:flex; flex-direction:column; align-items:center;">
             <div style="width:48px; height:48px; border-radius:24px; background:#F0F6FF; display:flex; align-items:center; justify-content:center; margin-bottom:10px;">
@@ -379,6 +555,56 @@
             <p style="font-size:12px; color:#8E8E93; margin:4px 0 0; max-width:280px; line-height:1.4;">
               Vous avez vu toutes les nouvelles publications du Département Communication.
             </p>
+          </div>
+        `;
+      }
+
+      if (activeTab === 'planning') {
+        return `
+          <header style="padding:16px 20px; background:#FFF; border-bottom:1px solid #EFEFEF;">
+            <p style="font-size:11px; font-weight:800; color:#5856D6; text-transform:uppercase; letter-spacing:1.2px; margin:0 0 2px;">Dimanche 02 Août 2026</p>
+            <h1 style="font-size:24px; font-weight:900; color:#000000; margin:0;">Planning Cultes</h1>
+          </header>
+
+          <div style="padding:16px;">
+            <div style="background:#FFF4E5; border-radius:20px; padding:16px; margin-bottom:16px; border:1.5px solid #FF9500;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <strong style="color:#FF9500; font-size:15px;">Transition Culte 1 vers Culte 2</strong>
+                <span style="background:#FF9500; color:#FFF; padding:4px 9px; border-radius:10px; font-size:13px; font-weight:800;">15:00 min</span>
+              </div>
+              <p style="font-size:12px; color:#1C1C1E; margin-bottom:12px;">Pause technique de 15 minutes (09h00 à 09h15).</p>
+              
+              <div style="background:#FFF; padding:12px; border-radius:14px; display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                  <strong style="font-size:13px; display:block;">Check-in Rapide</strong>
+                  <span style="font-size:11px; color:#8E8E93;">Validez votre arrivée pour Culte 2</span>
+                </div>
+                <button onclick="window.doCheckIn()" style="background:${isCheckedIn ? '#34C759' : '#007AFF'}; color:#FFF; border:none; padding:8px 14px; border-radius:12px; font-size:12px; font-weight:800; cursor:pointer;">
+                  ${isCheckedIn ? 'Present' : 'Valider'}
+                </button>
+              </div>
+            </div>
+
+            <div style="background:#FFF; border-radius:18px; padding:16px; margin-bottom:12px; border:1px solid #E5E5EA;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div><h3 style="font-size:16px; margin:0;">Culte 1</h3><span style="font-size:12px; color:#8E8E93;">07h00 - 09h00</span></div>
+                <span style="background:#E5E5EA; color:#8E8E93; padding:4px 8px; border-radius:8px; font-size:11px; font-weight:800;">CLÔTURÉ</span>
+              </div>
+            </div>
+
+            <div style="background:#FFF; border-radius:18px; padding:16px; margin-bottom:12px; border:1.5px solid #007AFF;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div><h3 style="font-size:16px; margin:0;">Culte 2</h3><span style="font-size:12px; color:#8E8E93;">09h15 - 11h15</span></div>
+                <span style="background:#FFF4E5; color:#FF9500; padding:4px 8px; border-radius:8px; font-size:11px; font-weight:800;">EN TRANSITION</span>
+              </div>
+            </div>
+
+            <div style="background:#FFF; border-radius:18px; padding:16px; margin-bottom:12px; border:1px solid #E5E5EA;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div><h3 style="font-size:16px; margin:0;">Culte 3</h3><span style="font-size:12px; color:#8E8E93;">11h30 - 13h30</span></div>
+                <span style="background:#E5F1FF; color:#007AFF; padding:4px 8px; border-radius:8px; font-size:11px; font-weight:800;">À VENIR</span>
+              </div>
+            </div>
           </div>
         `;
       }
@@ -442,6 +668,32 @@
         `;
       }
 
+      if (activeTab === 'halloffame') {
+        return `
+          <header style="padding:16px 20px; background:#FFF; border-bottom:1px solid #EFEFEF;">
+            <p style="font-size:11px; font-weight:800; color:#B8860B; text-transform:uppercase; letter-spacing:1.2px; margin:0 0 2px;">Archives Permanentes</p>
+            <h1 style="font-size:24px; font-weight:900; color:#000000; margin:0;">Espace Vedettes</h1>
+          </header>
+
+          <div style="padding:16px;">
+            <div style="background:#FFF; border-radius:18px; padding:16px; margin-bottom:14px; border:1px solid #E5E5EA;">
+              <span style="font-size:11px; font-weight:700; color:#8E8E93;">DIMANCHE 02 AOÛT 2026</span>
+              <h3 style="font-size:16px; margin:4px 0 10px;">Culte n°1 — Section Vedette</h3>
+              <div style="background:#FFFDF0; padding:10px; border-radius:12px; display:flex; justify-content:space-between; align-items:center; border:1px solid #E6CA65;">
+                <span><strong>Section Cadrage</strong></span>
+                <strong style="color:#B8860B;">★ 4.88 / 5.0</strong>
+              </div>
+            </div>
+
+            <div style="background:#1C1C1E; color:#FFF; border-radius:22px; padding:22px; text-align:center; margin-top:16px;">
+              <span style="font-size:11px; font-weight:800; color:#FFD700; text-transform:uppercase; letter-spacing:1.5px;">TROPHÉE ANNUEL 2025-2026</span>
+              <h2 style="font-size:22px; margin:6px 0;">Section Régie Technique</h2>
+              <p style="font-size:12px; color:rgba(255,255,255,0.75);">Meilleure section de l'année (4.96/5.0 de moyenne).</p>
+            </div>
+          </div>
+        `;
+      }
+
       if (activeTab === 'profile') {
         return `
           <header style="padding:16px 20px; background:#FFF; border-bottom:1px solid #EFEFEF; display:flex; justify-content:space-between; align-items:center;">
@@ -464,7 +716,7 @@
         `;
       }
 
-      return '<div>Rendu de l\'écran...</div>';
+      return '<div>Rendu...</div>';
     }
   }
 

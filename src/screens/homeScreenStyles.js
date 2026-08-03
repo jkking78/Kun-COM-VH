@@ -60,7 +60,7 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  // 2. STORIES INSTAGRAM CARROUSEL (AVEC ÉMOJIS SECTION)
+  // 2. STORIES INSTAGRAM CARROUSEL
   storiesContainer: {
     paddingVertical: 14,
     borderBottomWidth: 1,
@@ -87,6 +87,7 @@ export const styles = StyleSheet.create({
   },
   storyRingActive: {
     borderColor: COLORS.goldBadge,
+    borderWidth: 2.5,
   },
   storyAvatar: {
     width: '100%',
@@ -108,7 +109,7 @@ export const styles = StyleSheet.create({
   },
   storyLabelActive: {
     color: COLORS.textPrimary,
-    fontWeight: '700',
+    fontWeight: '800',
   },
 
   // SCROLL CONTENT
@@ -122,8 +123,6 @@ export const styles = StyleSheet.create({
     borderBottomWidth: 8,
     borderBottomColor: COLORS.background,
   },
-  
-  // En-tête Post
   postHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -158,8 +157,6 @@ export const styles = StyleSheet.create({
     fontSize: 11,
     color: COLORS.textSecondary,
   },
-  
-  // Badge Vedette Doré Minimaliste
   goldTrophyBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -176,8 +173,6 @@ export const styles = StyleSheet.create({
     color: '#B8860B',
     letterSpacing: 0.4,
   },
-
-  // Zone Visuelle (Image Coulisses Minimaliste)
   postImageContainer: {
     width: '100%',
     height: 280,
@@ -206,8 +201,6 @@ export const styles = StyleSheet.create({
     marginTop: 4,
     fontWeight: '500',
   },
-
-  // Glassmorphic Score Overlay
   scoreOverlayBadge: {
     position: 'absolute',
     bottom: 14,
@@ -230,8 +223,6 @@ export const styles = StyleSheet.create({
     fontWeight: '900',
     color: '#1C1C1E',
   },
-
-  // Barre d'interactions Sociales
   postActionsBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -254,8 +245,6 @@ export const styles = StyleSheet.create({
     fontWeight: '700',
     color: COLORS.textPrimary,
   },
-
-  // Légende & Captions
   postCaptionBox: {
     paddingHorizontal: 16,
     paddingBottom: 14,
@@ -277,37 +266,97 @@ export const styles = StyleSheet.create({
     marginTop: 6,
   },
 
-  // 4. BLOC "VOUS ÊTES À JOUR"
-  allCaughtUpContainer: {
-    paddingVertical: 36,
-    paddingHorizontal: 20,
+  // 4. ÉTAT À VIDE (EMPTY FEED STATE)
+  emptyContainer: {
+    paddingVertical: 60,
+    paddingHorizontal: 24,
     alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: COLORS.cardBg,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.borderLight,
   },
-  checkCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+  emptyIconBox: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     backgroundColor: COLORS.appleBlueLight,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 14,
   },
-  allCaughtUpTitle: {
-    fontSize: 16,
+  emptyTitle: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
+    marginBottom: 6,
+    textAlign: 'center',
+  },
+  emptySub: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    lineHeight: 19,
+  },
+
+  // 5. MODAL DE CRÉATION DE POST & MODAL COMMENTAIRES
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: COLORS.cardBg,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    maxHeight: '85%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.borderLight,
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 18,
     fontWeight: '800',
     color: COLORS.textPrimary,
   },
-  allCaughtUpSub: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-    marginTop: 4,
-    textAlign: 'center',
+  modalCloseText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.appleBlue,
+  },
+  textInput: {
+    width: '100%',
+    minHeight: 80,
+    backgroundColor: COLORS.background,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+    padding: 12,
+    fontSize: 14,
+    color: COLORS.textPrimary,
+    textAlignVertical: 'top',
+    marginBottom: 14,
+  },
+  publishBtn: {
+    width: '100%',
+    height: 48,
+    backgroundColor: COLORS.appleBlue,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  publishBtnText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#FFF',
   },
 
-  // 5. FIX TAB BAR INSTAGRAM GLASSMORPHISM
+  // 6. FIX TAB BAR INSTAGRAM GLASSMORPHISM
   fixedTabBar: {
     position: 'absolute',
     bottom: 0,
@@ -318,7 +367,7 @@ export const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: COLORS.borderLight,
     flexDirection: 'row',
-    justify.content: 'space-around',
+    justifyContent: 'space-around',
     alignItems: 'center',
     zIndex: 99999,
   },

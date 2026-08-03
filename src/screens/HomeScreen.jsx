@@ -5,12 +5,14 @@ import {
   ScrollView,
   TouchableOpacity,
   SafeAreaView,
+  TextInput,
+  Modal,
   StatusBar
 } from 'react-native';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { styles, COLORS } from './homeScreenStyles';
 
-// 1. COMPOSANTS D'ICÔNES SVG VECTORIELLES EN FIL DE FER (STROKE)
+// ICÔNES SVG VECTORIELLES FIL DE FER
 const HeartIcon = ({ filled, color = '#000000', size = 22 }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill={filled ? '#FF2D55' : 'none'} stroke={filled ? '#FF2D55' : color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
     <Path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
@@ -44,31 +46,159 @@ const CheckIcon = ({ color = '#007AFF', size = 24 }) => (
   </Svg>
 );
 
-// 2. LES 7 STORIES DES SECTIONS
+// STORIES DES SECTIONS AVEC 'TOUS' EN PREMIÈRE POSITION
 const STORIES_SECTIONS = [
-  { id: 'cadrage', nom: 'Cadrage', emoji: '🎥', active: true },
-  { id: 'regie', nom: 'Régie', emoji: '🎛️', active: true },
-  { id: 'web', nom: 'Web', emoji: '🌐', active: false },
-  { id: 'proj', nom: 'Projection', emoji: '🖥️', active: false },
-  { id: 'prod', nom: 'Prod', emoji: '🎬', active: false },
-  { id: 'photo', nom: 'Photo', emoji: '📸', active: false },
-  { id: 'vente', nom: 'Vente', emoji: '🛒', active: false },
+  { id: 'all', nom: 'Tous', emoji: '✨' },
+  { id: 'cadrage', nom: 'Cadrage', emoji: '🎥' },
+  { id: 'regie', nom: 'Régie', emoji: '🎛️' },
+  { id: 'web', nom: 'Web', emoji: '🌐' },
+  { id: 'proj', nom: 'Projection', emoji: '🖥️' },
+  { id: 'prod', nom: 'Prod', emoji: '🎬' },
+  { id: 'photo', nom: 'Photo', emoji: '📸' },
+  { id: 'vente', nom: 'Vente', emoji: '🛒' },
 ];
 
 export default function HomeScreen({ currentUser = { prenom: 'Éric', nom: 'Kouamé', sectionId: 'cadrage', sectionNom: 'Cadrage' }, onLogout }) {
-  const [activeStory, setActiveStory] = useState(currentUser.sectionId || 'cadrage');
+  // FILTRE SÉLECTIONNÉ PAR DÉFAUT SUR 'ALL' (TOUS)
+  const [selectedStory, setSelectedStory] = useState('all');
   const [activeTab, setActiveTab] = useState('home');
-  const [likedPosts, setLikedPosts] = useState({ 'post-bilan': true });
 
-  const toggleLike = (postId) => {
-    setLikedPosts(prev => ({ ...prev, [postId]: !prev[postId] }));
+  // LISTE DES POSTS EN BD DYNAMIQUE
+  const [posts, setPosts] = useState([
+    {
+      id: 'post-1',
+      author: 'Section Cadrage',
+      authorAvatar: 'C',
+      sectionId: 'cadrage',
+      dateText: 'Dimanche 02 Août 2026 • Culte n°1',
+      isVedette: true,
+      title: 'Captation Directe Culte n°1',
+      sub: 'Coulisses & Couverture Technique',
+      scoreText: '4.88 / 5.0',
+      caption: 'Bravo à toute l\'équipe Cadrage pour la couverture dynamique du 1er culte. Les cadrages serrés et la synchronisation avec la chorale étaient parfaits.',
+      likes: 43,
+      isLiked: true,
+      comments: [
+        { id: 'c1', author: 'Sarah Y.', text: 'Superbe réactivité sur les plans chorale !' },
+        { id: 'c2', author: 'Marc T.', text: 'Merci Pasteurs pour les retours positifs.' }
+      ]
+    },
+    {
+      id: 'post-2',
+      author: 'Sarah Yao (Photo)',
+      authorAvatar: 'P',
+      sectionId: 'photo',
+      dateText: 'Il y a 3 heures',
+      isVedette: false,
+      title: 'Album Photos HD',
+      sub: '150 Clichés Importés',
+      caption: 'Les 150 clichés HD du Culte n°1 sont prêts et importés sur le serveur du Département.',
+      likes: 29,
+      isLiked: false,
+      comments: [
+        { id: 'c3', author: 'Yves K.', text: 'Magnifiques photos du prêche !' }
+      ]
+    }
+  ]);
+
+  // MODAL CRÉATION POST
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [newPostText, setNewPostText] = useState('');
+  const [newPostSection, setNewPostSection] = useState(currentUser.sectionId || 'cadrage');
+
+  // MODAL COMMENTAIRES
+  const [activeCommentPost, setActiveCommentPost] = useState(null);
+  const [newCommentText, setNewCommentText] = useState('');
+
+  // 1. TOGGLE LIKE INTERACTIF
+  const handleToggleLike = (postId) => {
+    setPosts(prev => prev.map(p => {
+      if (p.id === postId) {
+        return {
+          ...p,
+          isLiked: !p.isLiked,
+          likes: p.isLiked ? p.likes - 1 : p.likes + 1
+        };
+      }
+      return p;
+    }));
   };
+
+  // 2. SOUMISSION D'UN NOUVEAU POST
+  const handleCreatePostSubmit = () => {
+    if (!newPostText.trim()) {
+      alert("Veuillez saisir le texte de votre publication.");
+      return;
+    }
+
+    const secNames = { cadrage: 'Cadrage', regie: 'Régie', web: 'Web', proj: 'Projection', prod: 'Prod', photo: 'Photo', vente: 'Vente' };
+
+    const newPostObj = {
+      id: `post-${Date.now()}`,
+      author: `${currentUser.prenom} ${currentUser.nom} (${secNames[newPostSection] || 'COM'})`,
+      authorAvatar: currentUser.prenom.charAt(0),
+      sectionId: newPostSection,
+      dateText: 'À l\'instant',
+      isVedette: false,
+      title: `Publication ${secNames[newPostSection] || 'COM'}`,
+      sub: 'Contenu Partagé',
+      caption: newPostText,
+      likes: 1,
+      isLiked: true,
+      comments: []
+    };
+
+    setPosts([newPostObj, ...posts]);
+    setNewPostText('');
+    setIsCreateModalOpen(false);
+    alert("🚀 Publication partagée avec succès dans le feed !");
+  };
+
+  // 3. SOUMISSION D'UN COMMENTAIRE
+  const handleAddCommentSubmit = () => {
+    if (!newCommentText.trim() || !activeCommentPost) return;
+
+    const newC = {
+      id: `c-${Date.now()}`,
+      author: `${currentUser.prenom} ${currentUser.nom.charAt(0)}.`,
+      text: newCommentText
+    };
+
+    setPosts(prev => prev.map(p => {
+      if (p.id === activeCommentPost.id) {
+        return { ...p, comments: [...p.comments, newC] };
+      }
+      return p;
+    }));
+
+    setActiveCommentPost(prev => ({ ...prev, comments: [...prev.comments, newC] }));
+    setNewCommentText('');
+  };
+
+  // 4. PARTAGE WEB
+  const handleSharePost = (post) => {
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      navigator.share({
+        title: post.title,
+        text: post.caption,
+        url: window.location.href,
+      }).catch(() => {});
+    } else {
+      alert("📋 Lien de la publication copié dans le presse-papier !");
+    }
+  };
+
+  // FILTRAGE DES POSTS PAR STORY SÉLECTIONNÉE
+  const filteredPosts = posts.filter(p => {
+    if (selectedStory === 'all') return true;
+    return p.sectionId === selectedStory;
+  });
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
 
-      {/* 1. HEADER INSTAGRAM CLEAN AVEC NOM DE L'UTILISATEUR CONNECTÉ */}
+      {/* HEADER INSTAGRAM CLEAN */}
       <View style={styles.header}>
         <View>
           <Text style={styles.headerSub}>ÉGLISE VASE D'HONNEUR</Text>
@@ -76,20 +206,22 @@ export default function HomeScreen({ currentUser = { prenom: 'Éric', nom: 'Koua
         </View>
 
         <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.iconBtn} onPress={onLogout}>
-            <View style={{width: 32, height: 32, borderRadius: 16, backgroundColor: COLORS.appleBlueLight, justifyContent: 'center', alignItems: 'center'}}>
-              <Text style={{fontWeight: '800', color: COLORS.appleBlue}}>{currentUser.prenom ? currentUser.prenom.charAt(0) : 'U'}</Text>
-            </View>
+          <TouchableOpacity style={styles.iconBtn} onPress={() => setIsCreateModalOpen(true)}>
+            <Svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <Path d="M12 5v14M5 12h14" />
+            </Svg>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.iconBtn}>
-            <CommentIcon color="#000" size={22} />
+          <TouchableOpacity style={styles.iconBtn} onPress={onLogout}>
+            <View style={{width: 30, height: 30, borderRadius: 15, backgroundColor: COLORS.appleBlueLight, justifyContent: 'center', alignItems: 'center'}}>
+              <Text style={{fontWeight: '800', color: COLORS.appleBlue, fontSize: 13}}>{currentUser.prenom ? currentUser.prenom.charAt(0) : 'U'}</Text>
+            </View>
           </TouchableOpacity>
         </View>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.feedScroll}>
-        {/* 2. STORIES CARROUSEL EN HAUT */}
+        {/* STORIES CARROUSEL : 'TOUS' EN 1ÈRE POSITION & BAGUE ACTIVE UNIQUEMENT SI SÉLECTIONNÉ */}
         <View style={styles.storiesContainer}>
           <ScrollView
             horizontal
@@ -97,14 +229,14 @@ export default function HomeScreen({ currentUser = { prenom: 'Éric', nom: 'Koua
             contentContainerStyle={styles.storiesScroll}
           >
             {STORIES_SECTIONS.map(story => {
-              const isSelected = activeStory === story.id;
+              const isSelected = selectedStory === story.id;
               return (
                 <TouchableOpacity
                   key={story.id}
                   style={styles.storyItem}
-                  onPress={() => setActiveStory(story.id)}
+                  onPress={() => setSelectedStory(story.id)}
                 >
-                  <View style={[styles.storyRing, (isSelected || story.active) && styles.storyRingActive]}>
+                  <View style={[styles.storyRing, isSelected && styles.storyRingActive]}>
                     <View style={styles.storyAvatar}>
                       <Text style={styles.storyEmoji}>{story.emoji}</Text>
                     </View>
@@ -118,109 +250,97 @@ export default function HomeScreen({ currentUser = { prenom: 'Éric', nom: 'Koua
           </ScrollView>
         </View>
 
-        {/* 3. POST INSTAGRAM : CARTE BILAN CULTE N°1 */}
-        <View style={styles.postCard}>
-          <View style={styles.postHeader}>
-            <View style={styles.postHeaderLeft}>
-              <View style={styles.postAvatar}>
-                <Text style={styles.postAvatarText}>C</Text>
-              </View>
-              <View>
-                <Text style={styles.postAuthorTitle}>Section Cadrage</Text>
-                <Text style={styles.postAuthorSub}>Dimanche 02 Août 2026 • Culte n°1</Text>
-              </View>
+        {/* FEED OU ÉTAT À VIDE (EMPTY FEED STATE) */}
+        {filteredPosts.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <View style={styles.emptyIconBox}>
+              <CheckIcon color="#007AFF" size={32} />
             </View>
-
-            <View style={styles.goldTrophyBadge}>
-              <Text style={styles.goldTrophyText}>SECTION VEDETTE</Text>
-            </View>
-          </View>
-
-          <View style={styles.postImageContainer}>
-            <View style={styles.postImagePlaceholder}>
-              <Text style={styles.postImageTitle}>Captation Directe Culte n°1</Text>
-              <Text style={styles.postImageSub}>Coulisses & Couverture Technique</Text>
-            </View>
-
-            <View style={styles.scoreOverlayBadge}>
-              <Text style={styles.scoreOverlayText}>4.88 / 5.0</Text>
-            </View>
-          </View>
-
-          <View style={styles.postActionsBar}>
-            <View style={styles.postActionsLeft}>
-              <TouchableOpacity style={styles.socialIconBtn} onPress={() => toggleLike('post-bilan')}>
-                <HeartIcon filled={likedPosts['post-bilan']} size={22} />
-                <Text style={styles.socialCountText}>{likedPosts['post-bilan'] ? '43' : '42'}</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.socialIconBtn}>
-                <CommentIcon size={22} />
-                <Text style={styles.socialCountText}>7</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.socialIconBtn}>
-                <ShareIcon size={22} />
-              </TouchableOpacity>
-            </View>
-
-            <TouchableOpacity>
-              <BookmarkIcon size={22} />
+            <Text style={styles.emptyTitle}>Aucune publication récente</Text>
+            <Text style={styles.emptySub}>
+              Aucun contenu publié pour cette section aujourd'hui. Soyez le premier à partager une publication !
+            </Text>
+            <TouchableOpacity style={[styles.publishBtn, {marginTop: 20, paddingHorizontal: 20, width: 'auto'}]} onPress={() => setIsCreateModalOpen(true)}>
+              <Text style={styles.publishBtnText}>Créer une publication</Text>
             </TouchableOpacity>
           </View>
+        ) : (
+          filteredPosts.map(post => (
+            <View key={post.id} style={styles.postCard}>
+              {/* En-tête Post */}
+              <View style={styles.postHeader}>
+                <View style={styles.postHeaderLeft}>
+                  <View style={styles.postAvatar}>
+                    <Text style={styles.postAvatarText}>{post.authorAvatar}</Text>
+                  </View>
+                  <View>
+                    <Text style={styles.postAuthorTitle}>{post.author}</Text>
+                    <Text style={styles.postAuthorSub}>{post.dateText}</Text>
+                  </View>
+                </View>
 
-          <View style={styles.postCaptionBox}>
-            <Text style={styles.postLikesText}>Aimé par {currentUser.prenom} {currentUser.nom} et 42 autres membres</Text>
-            <Text style={styles.postCaptionText}>
-              <Text style={{fontWeight: '800'}}>Section Cadrage </Text>
-              Bravo à toute l'équipe Cadrage pour la couverture dynamique du 1er culte. Les cadrages serrés et la synchronisation avec la chorale étaient parfaits.
-            </Text>
-            <Text style={styles.postCommentsLink}>Voir les 7 débriefings et remarques...</Text>
-          </View>
-        </View>
-
-        {/* 4. POST INSTAGRAM CLASSIQUE */}
-        <View style={styles.postCard}>
-          <View style={styles.postHeader}>
-            <View style={styles.postHeaderLeft}>
-              <View style={[styles.postAvatar, {backgroundColor: '#5856D6'}]}>
-                <Text style={styles.postAvatarText}>P</Text>
+                {post.isVedette && (
+                  <View style={styles.goldTrophyBadge}>
+                    <Text style={styles.goldTrophyText}>SECTION VEDETTE</Text>
+                  </View>
+                )}
               </View>
-              <View>
-                <Text style={styles.postAuthorTitle}>Sarah Yao (Photo)</Text>
-                <Text style={styles.postAuthorSub}>Il y a 3 heures</Text>
+
+              {/* Zone Visuelle */}
+              <View style={styles.postImageContainer}>
+                <View style={styles.postImagePlaceholder}>
+                  <Text style={styles.postImageTitle}>{post.title}</Text>
+                  <Text style={styles.postImageSub}>{post.sub}</Text>
+                </View>
+
+                {post.scoreText && (
+                  <View style={styles.scoreOverlayBadge}>
+                    <Text style={styles.scoreOverlayText}>{post.scoreText}</Text>
+                  </View>
+                )}
+              </View>
+
+              {/* Barre d'interactions Sociales */}
+              <View style={styles.postActionsBar}>
+                <View style={styles.postActionsLeft}>
+                  <TouchableOpacity style={styles.socialIconBtn} onPress={() => handleToggleLike(post.id)}>
+                    <HeartIcon filled={post.isLiked} size={22} />
+                    <Text style={styles.socialCountText}>{post.likes}</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity style={styles.socialIconBtn} onPress={() => setActiveCommentPost(post)}>
+                    <CommentIcon size={22} />
+                    <Text style={styles.socialCountText}>{post.comments.length}</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity style={styles.socialIconBtn} onPress={() => handleSharePost(post)}>
+                    <ShareIcon size={22} />
+                  </TouchableOpacity>
+                </View>
+
+                <TouchableOpacity>
+                  <BookmarkIcon size={22} />
+                </TouchableOpacity>
+              </View>
+
+              {/* Légende & Comments Preview */}
+              <View style={styles.postCaptionBox}>
+                <Text style={styles.postLikesText}>Aimé par {post.likes} membres</Text>
+                <Text style={styles.postCaptionText}>
+                  <Text style={{fontWeight: '800'}}>{post.author} </Text>
+                  {post.caption}
+                </Text>
+                {post.comments.length > 0 && (
+                  <TouchableOpacity onPress={() => setActiveCommentPost(post)}>
+                    <Text style={styles.postCommentsLink}>Afficher les {post.comments.length} commentaires...</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
-          </View>
+          ))
+        )}
 
-          <View style={[styles.postImageContainer, {height: 200, backgroundColor: '#2C2C2E'}]}>
-            <Text style={styles.postImageTitle}>Album Photos HD</Text>
-            <Text style={styles.postImageSub}>150 Clichés Importés</Text>
-          </View>
-
-          <View style={styles.postActionsBar}>
-            <View style={styles.postActionsLeft}>
-              <TouchableOpacity style={styles.socialIconBtn} onPress={() => toggleLike('post-photo')}>
-                <HeartIcon filled={likedPosts['post-photo']} size={22} />
-                <Text style={styles.socialCountText}>{likedPosts['post-photo'] ? '29' : '28'}</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.socialIconBtn}>
-                <CommentIcon size={22} />
-                <Text style={styles.socialCountText}>4</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <View style={styles.postCaptionBox}>
-            <Text style={styles.postCaptionText}>
-              <Text style={{fontWeight: '800'}}>Sarah Yao </Text>
-              Les 150 clichés HD du Culte n°1 sont prêts et importés sur le serveur du Département.
-            </Text>
-          </View>
-        </View>
-
-        {/* 5. BLOC INSTAGRAM "VOUS ÊTES À JOUR" */}
+        {/* BLOC INSTAGRAM "VOUS ÊTES À JOUR" */}
         <View style={styles.allCaughtUpContainer}>
           <View style={styles.checkCircle}>
             <CheckIcon color="#007AFF" size={24} />
@@ -230,7 +350,72 @@ export default function HomeScreen({ currentUser = { prenom: 'Éric', nom: 'Koua
         </View>
       </ScrollView>
 
-      {/* 6. TAB BAR FIXE INSTAGRAM CLEAN */}
+      {/* MODAL DE CRÉATION DE POST [+] */}
+      <Modal visible={isCreateModalOpen} animationType="slide" transparent={true}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Créer une publication</Text>
+              <TouchableOpacity onPress={() => setIsCreateModalOpen(false)}>
+                <Text style={styles.modalCloseText}>Fermer</Text>
+              </TouchableOpacity>
+            </View>
+
+            <TextInput
+              style={styles.textInput}
+              multiline
+              placeholder="Rédigez votre message pour le département..."
+              value={newPostText}
+              onChangeText={setNewPostText}
+            />
+
+            <TouchableOpacity style={styles.publishBtn} onPress={handleCreatePostSubmit}>
+              <Text style={styles.publishBtnText}>Publier sur le Feed</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* MODAL TIROIR COMMENTAIRES */}
+      <Modal visible={activeCommentPost !== null} animationType="slide" transparent={true}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Commentaires</Text>
+              <TouchableOpacity onPress={() => setActiveCommentPost(null)}>
+                <Text style={styles.modalCloseText}>Fermer</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={{maxHeight: 250, marginBottom: 14}}>
+              {activeCommentPost && activeCommentPost.comments.length > 0 ? (
+                activeCommentPost.comments.map(c => (
+                  <View key={c.id} style={{paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#EFEFEF'}}>
+                    <strong style={{fontSize: 13}}>{c.author}</strong>
+                    <Text style={{fontSize: 13, color: '#333', marginTop: 2}}>{c.text}</Text>
+                  </View>
+                ))
+              ) : (
+                <Text style={{color: '#8E8E93', fontSize: 13, textAlign: 'center', marginVertical: 20}}>Aucun commentaire pour le moment. Soyez le premier !</Text>
+              )}
+            </ScrollView>
+
+            <View style={{flexDirection: 'row', gap: 10}}>
+              <TextInput
+                style={[styles.textInput, {flex: 1, minHeight: 44, marginBottom: 0}]}
+                placeholder="Ajouter un commentaire..."
+                value={newCommentText}
+                onChangeText={setNewCommentText}
+              />
+              <TouchableOpacity style={[styles.publishBtn, {width: 80, height: 44}]} onPress={handleAddCommentSubmit}>
+                <Text style={styles.publishBtnText}>Envoyer</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* TAB BAR FIXE INSTAGRAM CLEAN */}
       <View style={styles.fixedTabBar}>
         <TouchableOpacity style={styles.tabBtn} onPress={() => setActiveTab('home')}>
           <Svg width="22" height="22" viewBox="0 0 24 24" fill={activeTab === 'home' ? '#000' : 'none'} stroke="#000" strokeWidth="1.8">
@@ -244,7 +429,7 @@ export default function HomeScreen({ currentUser = { prenom: 'Éric', nom: 'Koua
           </Svg>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.centerPlusBtn} onPress={() => setActiveTab('debrief')}>
+        <TouchableOpacity style={styles.centerPlusBtn} onPress={() => setIsCreateModalOpen(true)}>
           <Svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFF" strokeWidth="2.2">
             <Path d="M12 5v14M5 12h14" />
           </Svg>
