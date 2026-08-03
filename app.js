@@ -40,8 +40,16 @@
       if (u && u.id) map[u.id] = u;
     });
     (remoteData || []).forEach(function(item) {
-      var u = item.content || item;
-      if (u && u.id) map[u.id] = u;
+      var rUser = item.content || item;
+      if (rUser && rUser.id) {
+        var existing = map[rUser.id] || {};
+        var merged = Object.assign({}, existing, rUser);
+        // Preserve pwd and security credentials if present locally
+        if (existing.pwd && !merged.pwd) merged.pwd = existing.pwd;
+        if (existing.sec_a1 && !merged.sec_a1) merged.sec_a1 = existing.sec_a1;
+        if (existing.sec_a2 && !merged.sec_a2) merged.sec_a2 = existing.sec_a2;
+        map[rUser.id] = merged;
+      }
     });
     return Object.keys(map).map(function(k) { return map[k]; });
   }
@@ -290,6 +298,38 @@
     if (d < 86400) return Math.floor(d/3600) + ' h';
     if (d < 604800) return Math.floor(d/86400) + ' j';
     return new Date(ts).toLocaleDateString('fr-FR', {day:'numeric', month:'short'});
+  }
+
+  
+  // Helper for image compression to avoid LocalStorage QuotaExceededError
+  function compressImage(file, maxWidth, maxHeight, quality, callback) {
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var img = new Image();
+      img.onload = function() {
+        var canvas = document.createElement('canvas');
+        var w = img.width;
+        var h = img.height;
+        if (w > maxWidth) {
+          h = Math.round((h * maxWidth) / w);
+          w = maxWidth;
+        }
+        if (h > maxHeight) {
+          w = Math.round((w * maxHeight) / h);
+          h = maxHeight;
+        }
+        canvas.width = w;
+        canvas.height = h;
+        var ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+        var dataUrl = canvas.toDataURL('image/jpeg', quality || 0.7);
+        callback(dataUrl);
+      };
+      img.onerror = function() { callback(e.target.result); };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
   }
 
   function safeHtml(s) {
@@ -2655,9 +2695,8 @@ toggleParticipation: function(postId, status) {
       var file = e.target.files[0];
       if (file) {
         S.avatarFile = file;
-        var reader = new FileReader();
-        reader.onload = function(evt) {
-          S.avatarPreview = evt.target.result;
+        compressImage(file, 240, 240, 0.75, function(dataUrl) {
+          S.avatarPreview = dataUrl;
           if (!S.editProfileOpen) {
             S.editProfileOpen = true;
             S.editSections = App.getUserSections(S.user).slice();
@@ -2666,20 +2705,18 @@ toggleParticipation: function(postId, status) {
             var el = document.getElementById('editAvatarPreview');
             if (el) {
               var parent = el.parentNode;
-              parent.innerHTML = '<img id="editAvatarPreview" src="' + evt.target.result + '" style="width:100%;height:100%;object-fit:cover;" />';
+              parent.innerHTML = '<img id="editAvatarPreview" src="' + dataUrl + '" style="width:100%;height:100%;object-fit:cover;" />';
             }
           }
-        };
-        reader.readAsDataURL(file);
+        });
       }
     },
     handleCoverSelect: function(e) {
       var file = e.target.files[0];
       if (file) {
         S.coverFile = file;
-        var reader = new FileReader();
-        reader.onload = function(evt) {
-          S.coverPreview = evt.target.result;
+        compressImage(file, 640, 360, 0.75, function(dataUrl) {
+          S.coverPreview = dataUrl;
           if (!S.editProfileOpen) {
             S.editProfileOpen = true;
             S.editSections = App.getUserSections(S.user).slice();
@@ -2687,11 +2724,10 @@ toggleParticipation: function(postId, status) {
           } else {
             var el = document.getElementById('editCoverPreview');
             if (el) {
-              el.innerHTML = '<img src="' + evt.target.result + '" style="width:100%;height:100%;object-fit:cover;" />';
+              el.innerHTML = '<img src="' + dataUrl + '" style="width:100%;height:100%;object-fit:cover;" />';
             }
           }
-        };
-        reader.readAsDataURL(file);
+        });
       }
     },
 
@@ -2835,26 +2871,63 @@ toggleParticipation: function(postId, status) {
 
     // Auth
     nav: function(v) { S.auth = v; render(); },
-    login: function(e) {
+    login: async function(e) {
       e && e.preventDefault();
-      var email = (document.getElementById('loginEmail')||{}).value || '';
-      var pwd = ((document.getElementById('loginPwd')||{}).value||'').trim();
-      if (!email.trim()) { toast('Veuillez saisir votre e-mail.', 'error'); return; }
+      var email = ((document.getElementById('loginEmail')||{}).value || '').trim();
+      var pwd = ((document.getElementById('loginPwd')||{}).value || '').trim();
+      if (!email) { toast('Veuillez saisir votre e-mail.', 'error'); return; }
+      if (!pwd) { toast('Veuillez saisir votre mot de passe.', 'error'); return; }
+
       var users = db(SK.USERS, []);
-      var user = users.find(function(u){ return u.email.toLowerCase() === email.toLowerCase(); });
-      if (!user) {
-        var p = email.split('@')[0]; var parts = p.split('.');
-        user = { id: 'u'+Date.now(), prenom: parts[0]&&parts[0].charAt(0).toUpperCase()+parts[0].slice(1)||'Membre', nom: parts[1]&&parts[1].charAt(0).toUpperCase()+parts[1].slice(1)||'COM', email: email, section_id:'cadrage', section_nom:'Cadrage', role:'RESP_SECTION', is_online:true, last_seen_at:new Date().toISOString(), last_action:'Connexion', avatar_color:'#007AFF' };
-        users.push(user);
-      } else { 
-        if (user.pwd && user.pwd !== pwd) { toast('Mot de passe incorrect.', 'error'); return; }
-        user.is_online = true; user.last_seen_at = new Date().toISOString(); user.last_action = 'Connexion'; 
+      var user = users.find(function(u){ return u.email && u.email.toLowerCase() === email.toLowerCase(); });
+
+      // Supabase Remote Search Fallback if user not found in local cache
+      if (!user && supabase) {
+        try {
+          var res = await supabase.from('kun_com_profiles').select('*');
+          if (res && res.data) {
+            var remoteUsers = res.data.map(function(item){ return item.content || item; });
+            user = remoteUsers.find(function(u){ return u.email && u.email.toLowerCase() === email.toLowerCase(); });
+            if (user) {
+              users.push(user);
+              dbSet(SK.USERS, users);
+            }
+          }
+        } catch(err){}
       }
+
+      if (!user) {
+        toast('Compte introuvable. Veuillez vérifier votre e-mail ou vous inscrire.', 'error');
+        return;
+      }
+
+      if (user.pwd && user.pwd !== pwd) {
+        toast('Mot de passe incorrect.', 'error');
+        return;
+      }
+
+      user.is_online = true;
+      user.last_seen_at = new Date().toISOString();
+      user.last_action = 'Connexion';
+      
+      var uIdx = users.findIndex(function(x){ return x.id === user.id; });
+      if (uIdx !== -1) users[uIdx] = user;
+      else users.push(user);
       dbSet(SK.USERS, users);
-      localStorage.setItem(SK.SESS, JSON.stringify(user));
-      S.user = user; S.auth = 'app';
+
+      try {
+        localStorage.setItem(SK.SESS, JSON.stringify(user));
+      } catch(quotaErr) {
+        var cleanUser = Object.assign({}, user);
+        if (cleanUser.avatar_url && cleanUser.avatar_url.length > 30000) cleanUser.avatar_url = null;
+        if (cleanUser.cover_url && cleanUser.cover_url.length > 30000) cleanUser.cover_url = null;
+        localStorage.setItem(SK.SESS, JSON.stringify(cleanUser));
+      }
+
+      S.user = user;
+      S.auth = 'app';
       render();
-      toast('Connexion réussie ! Bienvenue ' + user.prenom + '.', 'success');
+      toast('Connexion réussie ! Bienvenue ' + user.prenom + '. 🎉', 'success');
     },
     signup: function(e) {
       e && e.preventDefault();
