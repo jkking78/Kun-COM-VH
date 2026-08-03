@@ -1,40 +1,62 @@
-const CACHE_NAME = 'kun-com-pwa-v1';
-const ASSETS_TO_CACHE = [
+// ============================================================
+// SERVICE WORKER — Kun COM VH PWA
+// Stratégie : Stale-While-Revalidate (Chargement 0ms instantané)
+// ============================================================
+
+const CACHE_NAME = 'kun-com-pwa-v5';
+const STATIC_ASSETS = [
+  './',
   './index.html',
+  './app.js',
   './manifest.json'
 ];
 
-// Installation du Service Worker
+// Installation : mise en cache immédiate
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE);
+      return cache.addAll(STATIC_ASSETS).catch((err) => {
+        console.warn('[SW] Cache initial:', err);
+      });
     })
   );
   self.skipWaiting();
 });
 
-// Activation et nettoyage des anciens caches
+// Activation : nettoyage des anciens caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(
-        keys.map((key) => {
-          if (key !== CACHE_NAME) {
-            return caches.delete(key);
-          }
-        })
+        keys.filter((key) => key !== CACHE_NAME)
+            .map((key) => caches.delete(key))
       );
     })
   );
   self.clients.claim();
 });
 
-// Interception des requêtes réseau (Cache First / Network Fallback)
+// Requêtes : Stale-While-Revalidate (chargement 0ms depuis cache + mise à jour en arrière-plan)
 self.addEventListener('fetch', (event) => {
+  if (event.request.method !== 'GET') return;
+
+  const url = new URL(event.request.url);
+  if (url.origin !== self.location.origin) return;
+
   event.respondWith(
-    caches.match(event.request).then((response) => {
-      return response || fetch(event.request);
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.match(event.request).then((cachedResponse) => {
+        // Fetch réseau en arrière-plan pour mettre à jour le cache
+        const fetchPromise = fetch(event.request).then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            cache.put(event.request, networkResponse.clone());
+          }
+          return networkResponse;
+        }).catch(() => cachedResponse);
+
+        // Rendu instantané si disponible en cache, sinon attendre le réseau
+        return cachedResponse || fetchPromise;
+      });
     })
   );
 });

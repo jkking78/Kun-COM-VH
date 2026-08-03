@@ -181,8 +181,19 @@
   <!-- BUNDLE PRINCIPAL (PWA Vanilla JS) -->
   <script src="app.js"></script>
 
-  <!-- SERVICE WORKER PWA -->
+  <!-- DÉBLOCAGE ANTI-SPINNER (Garantie de déblocage 0ms / 400ms max) -->
   <script>
+    (function() {
+      // Déblocage immédiat si le loader est toujours présent
+      function forceUnlock() {
+        var loader = document.getElementById('initialLoader');
+        if (loader && window.App) {
+          try { window.App.tab('home'); } catch(e) {}
+        }
+      }
+      setTimeout(forceUnlock, 400);
+    })();
+
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function() {
         navigator.serviceWorker.register('./sw.js')

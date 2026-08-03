@@ -27,7 +27,7 @@
   // ============================================================
   // DONNÉES PAR DÉFAUT
   // ============================================================
-  if (!localStorage.getItem(SK.USERS)) {
+  if (!db(SK.USERS, null)) {
     var _now = new Date().toISOString();
     dbSet(SK.USERS, [
       {
@@ -85,7 +85,7 @@
     ]);
   }
 
-  if (!localStorage.getItem(SK.POSTS)) {
+  if (!db(SK.POSTS, null)) {
     var now = Date.now();
     dbSet(SK.POSTS, [
       {
