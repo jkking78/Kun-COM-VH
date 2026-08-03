@@ -756,20 +756,58 @@
         '</div>' : '') +
       '</div>';
     } else {
-      // Text-only visual card
-      mediaZone = '<div ondblclick="App.doubleTapLike(\''+post.id+'\')" style="background:linear-gradient(135deg,#1A1A2E,#2D2D44);min-height:160px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;position:relative;">' +
-        '<div style="width:48px;height:48px;border-radius:24px;background:rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center;margin-bottom:12px;font-size:24px;">' + sec.emoji + '</div>' +
-        (post.isVedette ? '<div style="background:linear-gradient(135deg,#FFD700,#FF9500);color:#5D3A00;font-size:10px;font-weight:900;padding:4px 12px;border-radius:20px;letter-spacing:0.8px;margin-bottom:8px;">⭐ SECTION VEDETTE</div>' : '') +
-        (post.scoreText ? '<div style="background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);padding:6px 14px;border-radius:14px;position:absolute;bottom:14px;right:14px;"><strong style="font-size:13px;color:#1C1C1E;">★ ' + post.scoreText + '</strong></div>' : '') +
-      '</div>';
+      // Text-only: only show dark zone for vedette/scored posts
+      if (post.isVedette || post.scoreText) {
+        mediaZone = '<div ondblclick="App.doubleTapLike(\''+post.id+'\')" style="background:linear-gradient(135deg,#1A1A2E,#2D2D44);min-height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;text-align:center;position:relative;">' +
+          '<div style="width:44px;height:44px;border-radius:22px;background:rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center;margin-bottom:8px;font-size:22px;">' + sec.emoji + '</div>' +
+          (post.isVedette ? '<div style="background:linear-gradient(135deg,#FFD700,#FF9500);color:#5D3A00;font-size:10px;font-weight:900;padding:4px 12px;border-radius:20px;letter-spacing:0.8px;margin-bottom:6px;">⭐ SECTION VEDETTE</div>' : '') +
+          (post.scoreText ? '<div style="background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);padding:5px 12px;border-radius:12px;position:absolute;bottom:12px;right:12px;"><strong style="font-size:13px;color:#1C1C1E;">★ ' + post.scoreText + '</strong></div>' : '') +
+        '</div>';
+      } else {
+        // Plain text post — no dark background, just show caption below
+        mediaZone = '';
+      }
     }
 
     var pinnedBadge = post.is_pinned ? '<div style="background:#5856D6;color:#FFF;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:1px;padding:4px 12px;display:flex;align-items:center;gap:6px;"><span style="font-size:12px;">📌</span> ÉPINGLÉ</div>' : '';
 
-      '</div>';
-      
       var contentZone = '';
-      if (post.type === 'EVENT' && post.metadata) {
+      // Handle new-format EVENT posts (created by saveEvent)
+      if (post.type === 'EVENT' && post.eventTitle) {
+         var evDate = post.eventDate ? new Date(post.eventDate + 'T00:00:00') : null;
+         var evMonth = evDate ? evDate.toLocaleDateString('fr-FR', {month:'short'}).toUpperCase() : '';
+         var evDay = evDate ? evDate.getDate() : '';
+         var evSections = (post.eventSections || []).map(function(s){ return '<span style="font-size:12px;font-weight:700;color:#5856D6;">' + s.charAt(0).toUpperCase() + s.slice(1) + '</span>'; }).join(' ');
+         var evStatus = '';
+         var nowDateStr = new Date().toISOString().split('T')[0];
+         var nowTimeStr = new Date().toTimeString().slice(0,5);
+         if (post.eventDate < nowDateStr || (post.eventDate === nowDateStr && post.eventEnd && nowTimeStr > post.eventEnd)) {
+           evStatus = '<span style="background:#F2F2F7;color:#8E8E93;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:800;">✅ Terminé</span>';
+         } else if (post.eventDate === nowDateStr && post.eventStart && nowTimeStr >= post.eventStart) {
+           evStatus = '<span style="background:#E5F4E9;color:#28A347;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:800;">🟢 En cours</span>';
+         } else {
+           evStatus = '<span style="background:#F0EFFF;color:#5856D6;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:800;">🗓 À venir</span>';
+         }
+         contentZone = '<div style="margin:0 14px 10px;padding:16px;background:linear-gradient(145deg,#F9F9FF,#F0F0FA);border-radius:18px;border-left:4px solid #5856D6;">' +
+           '<div style="display:flex;gap:14px;align-items:flex-start;">' +
+             (evDate ? '<div style="background:#FFF;border-radius:12px;overflow:hidden;box-shadow:0 4px 10px rgba(0,0,0,0.08);width:54px;text-align:center;flex-shrink:0;border:1px solid #EFEFFF;">' +
+               '<div style="background:#5856D6;color:#FFF;font-size:9px;font-weight:900;text-transform:uppercase;padding:4px 0;letter-spacing:1px;">' + evMonth + '</div>' +
+               '<div style="font-size:24px;font-weight:900;color:#000;padding:4px 0;">' + evDay + '</div>' +
+             '</div>' : '') +
+             '<div style="flex:1;min-width:0;">' +
+               '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">' +
+                 '<h3 style="font-size:16px;font-weight:900;color:#1C1C1E;margin:0;flex:1;">' + safeHtml(post.eventTitle) + '</h3>' +
+                 evStatus +
+               '</div>' +
+               (evSections ? '<div style="margin-bottom:6px;">' + evSections + '</div>' : '') +
+               '<div style="font-size:13px;color:#8E8E93;display:flex;flex-wrap:wrap;gap:8px;">' +
+                 (post.eventStart ? '<span>🕒 ' + post.eventStart + (post.eventEnd ? ' — ' + post.eventEnd : '') + '</span>' : '') +
+                 (post.eventLocation ? '<span>📍 ' + safeHtml(post.eventLocation) + '</span>' : '') +
+               '</div>' +
+             '</div>' +
+           '</div>' +
+         '</div>';
+      } else if (post.type === 'EVENT' && post.metadata) {
          var participants = Object.keys(post.metadata.participations || {}).filter(function(k) { return post.metadata.participations[k] === 'yes'; });
          var partAvatars = '';
          if (participants.length > 0) {
@@ -816,7 +854,7 @@
             '<button onclick="App.toggleParticipation(\''+post.id+'\',\'no\')" style="flex:1;padding:12px;border-radius:12px;font-size:14px;font-weight:800;border:none;cursor:pointer;background:'+((post.metadata.participations||{})[(S.user||{}).id]==='no'?'linear-gradient(135deg,#FF3B30,#D70015)':'#FFF')+';color:'+((post.metadata.participations||{})[(S.user||{}).id]==='no'?'#FFF':'#000')+';box-shadow:'+((post.metadata.participations||{})[(S.user||{}).id]==='no'?'0 4px 12px rgba(255,59,48,0.3)':'0 2px 6px rgba(0,0,0,0.05)')+';transition:all 0.2s;">' + ((post.metadata.participations||{})[(S.user||{}).id]==='no' ? '❌ Indisponible' : '❌ Non dispo') + '</button>' +
           '</div>' +
         '</div>';
-      } else if (post.type === 'EVALUATION' && post.metadata) {
+      } else if (post.type === 'EVALUATION' && post.metadata && post.metadata.teamName) {
          contentZone = '<div style="margin:10px 14px;padding:18px;background:linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%);border-radius:20px;border:1px solid #E2E8F0;box-shadow:inset 0 2px 4px rgba(255,255,255,0.8), 0 4px 12px rgba(0,0,0,0.03);">' +
           '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">' +
             '<div>' +
@@ -841,7 +879,9 @@
           '<p style="font-size:13px;color:#334155;margin:14px 0 0;line-height:1.4;">' + safeHtml(post.caption||'') + '</p>' +
         '</div>';
       } else {
-         contentZone = captionHtml + mediaZone;
+         // For standard posts: only the media zone goes in contentZone.
+         // The caption is rendered separately in finalHtml below.
+         contentZone = mediaZone;
       }
       
     var finalHtml = '<article id="post-'+post.id+'" style="background:#FFF;margin-bottom:10px;">' +
@@ -891,6 +931,7 @@
       '</div>' +
 
     '</article>';
+    return finalHtml;
   }
 
   // ============================================================
@@ -1523,8 +1564,68 @@
   // APP CONTROLLER — toutes les actions
   // ============================================================
   window.App = {
-    openCreateEvent: function() { S.createEventOpen = true; render(); },
+    openCreateEvent: function() { S.createEventOpen = true; S.eventSections = []; render(); },
     closeCreateEvent: function() { S.createEventOpen = false; render(); },
+    selectDate: function(d) { S.selectedDate = d; render(); },
+    toggleEventSection: function(sec) {
+      var idx = S.eventSections.indexOf(sec);
+      if (idx !== -1) { S.eventSections.splice(idx, 1); }
+      else { S.eventSections.push(sec); }
+      render();
+    },
+    saveEvent: async function(btn) {
+      var titleEl = document.getElementById('eventTitle');
+      var dateEl = document.getElementById('eventDate');
+      var startEl = document.getElementById('eventStart');
+      var endEl = document.getElementById('eventEnd');
+      var locEl = document.getElementById('eventLocation');
+      var descEl = document.getElementById('eventDesc');
+      var pinnedEl = document.getElementById('eventPinned');
+      var title = titleEl ? titleEl.value.trim() : '';
+      var date = dateEl ? dateEl.value : '';
+      var start = startEl ? startEl.value : '';
+      var end = endEl ? endEl.value : '';
+      var loc = locEl ? locEl.value.trim() : '';
+      var desc = descEl ? descEl.value.trim() : '';
+      var pinned = pinnedEl ? pinnedEl.checked : false;
+      if (!title || !date || !start) { toast('Titre, Date et Heure de début requis.', 'error'); return; }
+      if (btn) { btn.textContent = 'Création...'; btn.disabled = true; }
+      var newPost = {
+        id: 'evt_' + Date.now(),
+        userId: S.user.id,
+        author: S.user.prenom + ' ' + S.user.nom,
+        authorAvatar: (S.user.prenom||'M').charAt(0).toUpperCase(),
+        avatarColor: S.user.avatar_color || '#5856D6',
+        avatar_color: S.user.avatar_color || '#5856D6',
+        avatar_url: S.user.avatar_url || null,
+        role: S.user.role,
+        type: 'EVENT',
+        eventTitle: title,
+        eventDate: date,
+        eventStart: start,
+        eventEnd: end,
+        eventLocation: loc,
+        eventSections: (S.eventSections||[]).slice(),
+        caption: desc,
+        is_pinned: pinned,
+        timestamp: Date.now(),
+        likedBy: [],
+        comments: [],
+        mediaUrls: []
+      };
+      var allPosts = db(SK.POSTS, []);
+      allPosts.unshift(newPost);
+      dbSet(SK.POSTS, allPosts);
+      if (supabase) {
+        supabase.from('kun_com_posts').upsert([{ id: newPost.id, content: newPost }], { onConflict: 'id' }).then(function(){});
+      }
+      S.createEventOpen = false;
+      S.selectedDate = date;
+      S.tab = pinned ? 'home' : 'planning';
+      render();
+      setTimeout(function() { window.scrollTo({ top: 0, behavior: 'smooth' }); }, 50);
+      toast('Événement créé avec succès ! 🎉', 'success');
+    },
     submitEvent: function() {
       var title = (document.getElementById('evTitle')||{}).value;
       var dStr = (document.getElementById('evDate')||{}).value;
