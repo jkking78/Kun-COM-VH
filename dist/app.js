@@ -33,7 +33,20 @@
     console.error("Supabase init error:", e);
   }
 
-    function mergePostsWithLocal(remoteData) {
+      function mergeProfilesWithLocal(remoteData) {
+    var localUsers = db(SK.USERS, []);
+    var map = {};
+    (localUsers || []).forEach(function(u) {
+      if (u && u.id) map[u.id] = u;
+    });
+    (remoteData || []).forEach(function(item) {
+      var u = item.content || item;
+      if (u && u.id) map[u.id] = u;
+    });
+    return Object.keys(map).map(function(k) { return map[k]; });
+  }
+
+  function mergePostsWithLocal(remoteData) {
     var localPosts = db(SK.POSTS, []);
     var map = {};
     (localPosts || []).forEach(function(p) {
@@ -60,8 +73,8 @@
       }
       // Fetch profiles
       var resProf = await supabase.from('kun_com_profiles').select('*');
-      if (resProf && resProf.data && resProf.data.length > 0) {
-        var mergedProfiles = resProf.data.map(function(p) { return p.content; });
+      if (resProf && resProf.data) {
+        var mergedProfiles = mergeProfilesWithLocal(resProf.data);
         DB_CACHE[SK.USERS] = mergedProfiles;
         localStorage.setItem(SK.USERS, JSON.stringify(mergedProfiles));
       }
@@ -520,10 +533,11 @@
           renderField('signupNom', 'text', 'Nom', 'Dupont', 'family-name') +
         '</div>' +
         renderField('signupEmail', 'email', 'E-mail', 'jean.dupont@eglise.org', 'email') +
-        '<div><label style="font-size:12px;font-weight:700;color:#3A3A3C;display:block;margin-bottom:5px;">Section</label>' +
-          '<select id="signupSection" style="width:100%;height:48px;border-radius:12px;border:1.5px solid #E5E5EA;background:#FAFAFA;padding:0 14px;font-size:14px;color:#000;box-sizing:border-box;outline:none;cursor:pointer;" onfocus="this.style.borderColor=\'#007AFF\'" onblur="this.style.borderColor=\'#E5E5EA\'">' +
-          SECTIONS.map(function(s){ return '<option value="'+s.id+'">'+s.emoji+' '+s.nom+'</option>'; }).join('') +
-        '</select></div>' +
+        '<div><label style="font-size:12px;font-weight:700;color:#3A3A3C;display:block;margin-bottom:8px;">Sections / Pôles (1 à 2 max) <span style="color:#FF3B30;">*</span></label>' +
+          '<div id="signupSectionBadgesContainer">' +
+            App.renderSectionBadges(S.signupSections, 'toggleSignupSection') +
+          '</div>' +
+        '</div>' +
         renderField('signupPwd', 'password', 'Mot de passe', '8 caractères minimum', 'new-password') +
         '<div style="margin-top:10px;border-top:1px dashed #E5E5EA;padding-top:12px;"><p style="font-size:13px;font-weight:800;margin:0 0 10px;">Questions de sécurité (Récupération)</p>' +
         '<div><label style="font-size:12px;font-weight:700;color:#3A3A3C;display:block;margin-bottom:5px;">Question 1</label>' +
@@ -2440,10 +2454,20 @@ toggleParticipation: function(postId, status) {
       if (users.find(function(u){ return u.email.toLowerCase()===email.toLowerCase(); })) {
         toast('Un compte existe déjà avec cet e-mail.', 'error'); return;
       }
-      var newUser = { id:'u'+Date.now(), prenom:prenom, nom:nom, email:email, sections: S.signupSections.slice(), role:'MEMBRE', is_online:true, last_seen_at:new Date().toISOString(), last_action:'Inscription', avatar_color: ['#007AFF','#FF2D55','#34C759','#FF9500','#5856D6','#AF52DE'][Math.floor(Math.random()*6)], pwd: pwd, sec_q1: q1, sec_a1: a1, sec_q2: q2, sec_a2: a2 };
+      var userSecs = S.signupSections.length > 0 ? S.signupSections.slice() : ['cadrage'];
+      var newUser = { id:'u'+Date.now(), prenom:prenom, nom:nom, email:email, sections: userSecs, role:'MEMBRE', is_online:true, last_seen_at:new Date().toISOString(), last_action:'Inscription', avatar_color: ['#007AFF','#FF2D55','#34C759','#FF9500','#5856D6','#AF52DE'][Math.floor(Math.random()*6)], pwd: pwd, sec_q1: q1, sec_a1: a1, sec_q2: q2, sec_a2: a2 };
       users.push(newUser); dbSet(SK.USERS, users);
       sessionStorage.setItem(SK.SESS, JSON.stringify(newUser));
       S.user = newUser; S.auth = 'app';
+
+      if (supabase) {
+        try {
+          supabase.from('kun_com_profiles').upsert({ id: newUser.id, content: newUser }, { onConflict: 'id' }).then(function(){});
+        } catch(err) {
+          console.warn("Supabase signup sync error:", err);
+        }
+      }
+
       render();
       toast('Bienvenue ' + prenom + ' ! Votre compte a été créé. 🎉', 'success');
     },
@@ -2585,19 +2609,30 @@ toggleParticipation: function(postId, status) {
       for (var i=0;i<SECTIONS.length;i++) {
         if (low.indexOf('#'+SECTIONS[i].id) !== -1 || low.indexOf('#'+SECTIONS[i].nom.toLowerCase()) !== -1) { secId=SECTIONS[i].id; break; }
       }
-      var posts = db(SK.POSTS, []);
-      posts.unshift({
+      var newPost = {
         id: 'p'+Date.now(), userId: S.user.id, timestamp: Date.now(),
         author: S.user.prenom + ' ' + S.user.nom,
         authorAvatar: S.user.prenom.charAt(0).toUpperCase(),
         avatarColor: S.user.avatar_color || '#007AFF',
+        avatar_url: S.user.avatar_url || null,
         sectionId: secId, sectionNom: secNom(secId),
         isVedette: false, scoreText: '',
         caption: txt, mediaUrls: S.pendingMedia.slice(),
         postBg: S.pendingMedia.length === 0 ? (S.postBg || null) : null,
         likes: 0, likedBy: [], comments: []
-      });
+      };
+      var posts = db(SK.POSTS, []);
+      posts.unshift(newPost);
       dbSet(SK.POSTS, posts);
+
+      if (supabase) {
+        try {
+          supabase.from('kun_com_posts').upsert({ id: newPost.id, content: newPost, created_at: new Date().toISOString() }, { onConflict: 'id' }).then(function(){});
+        } catch(err) {
+          console.warn("Supabase submitPost sync error:", err);
+        }
+      }
+
       updateUserActivity('Publication');
       S.createOpen=false; S.pendingMedia=[]; S.hashSuggestions=false; S.postBg=null;
       S.tab = 'home';
