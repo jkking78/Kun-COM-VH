@@ -819,6 +819,23 @@
                  (post.eventStart ? '<span>🕒 ' + post.eventStart + (post.eventEnd ? ' — ' + post.eventEnd : '') + '</span>' : '') +
                  (post.eventLocation ? '<span>📍 ' + safeHtml(post.eventLocation) + '</span>' : '') +
                '</div>' +
+               (post.assignments && post.assignments.length > 0 ? 
+                 '<div style="margin-top:12px;border-top:1px solid rgba(88,86,214,0.15);padding-top:12px;">' +
+                   '<div style="font-size:11px;font-weight:800;color:#5856D6;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Équipe Assignée</div>' +
+                   '<div style="display:flex;flex-direction:column;gap:6px;">' +
+                   post.assignments.map(function(a) {
+                     var isMeAssigned = S.user && S.user.id === a.userId;
+                     var bg = isMeAssigned ? '#E5F4E9' : '#FFF';
+                     var border = isMeAssigned ? '1px solid #34C759' : '1px solid #EFEFFF';
+                     var nameColor = isMeAssigned ? '#28A347' : '#000';
+                     return '<div style="background:' + bg + ';border:' + border + ';border-radius:10px;padding:8px 12px;display:flex;flex-direction:column;">' +
+                       '<span style="font-size:13px;font-weight:800;color:' + nameColor + ';">@' + safeHtml(a.userName) + (isMeAssigned ? ' (Vous)' : '') + '</span>' +
+                       '<span style="font-size:13px;color:#3A3A3C;margin-top:2px;font-weight:500;">' + safeHtml(a.task) + '</span>' +
+                     '</div>';
+                   }).join('') +
+                   '</div>' +
+                 '</div>' 
+               : '') +
              '</div>' +
            '</div>' +
          '</div>';
@@ -1007,6 +1024,34 @@
           '<label style="font-size:13px;color:#8E8E93;font-weight:600;display:block;margin-bottom:8px;">Description / Notes</label>' +
           '<textarea id="eventDesc" placeholder="Ajoutez un briefing ou des notes pour les équipes..." style="width:100%;border:none;font-size:15px;outline:none;resize:none;font-family:inherit;min-height:80px;background:#F8F8F8;padding:12px;border-radius:12px;box-sizing:border-box;"></textarea>' +
         '</div>' +
+        
+        ((S.user && (S.user.role === 'RESP_SECTION' || S.user.role === 'GRAND_RESPONSABLE')) ? 
+        '<div style="background:#FFF;border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px;">' +
+          '<label style="font-size:14px;font-weight:700;color:#000;display:block;margin-bottom:12px;">Assignations (Équipe)</label>' +
+          (S.eventAssignments && S.eventAssignments.length > 0 ? 
+            '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;">' +
+            S.eventAssignments.map(function(a, idx) {
+              return '<div style="display:flex;align-items:center;justify-content:space-between;background:#F2F2F7;padding:8px 12px;border-radius:8px;">' +
+                '<div style="display:flex;flex-direction:column;">' +
+                  '<span style="font-size:13px;font-weight:700;color:#000;">' + safeHtml(a.userName) + '</span>' +
+                  '<span style="font-size:12px;color:#8E8E93;">' + safeHtml(a.task) + '</span>' +
+                '</div>' +
+                '<button onclick="App.removeAssignment(' + idx + ')" style="background:none;border:none;color:#FF3B30;font-size:16px;cursor:pointer;">&times;</button>' +
+              '</div>';
+            }).join('') +
+            '</div>' 
+          : '<div style="font-size:13px;color:#8E8E93;margin-bottom:12px;">Aucun membre assigné.</div>') +
+          '<div style="display:flex;flex-direction:column;gap:8px;border-top:1px solid #E5E5EA;padding-top:12px;">' +
+            '<select id="assignUserSelect" style="width:100%;padding:10px;border-radius:8px;border:1px solid #E5E5EA;font-size:14px;outline:none;background:#F8F8F8;">' +
+              '<option value="">Sélectionner un membre...</option>' +
+              db(SK.USERS, []).map(function(u) { return '<option value="' + u.id + '">' + safeHtml(u.prenom + ' ' + u.nom) + '</option>'; }).join('') +
+            '</select>' +
+            '<div style="display:flex;gap:8px;">' +
+              '<input type="text" id="assignTaskInput" placeholder="Tâche..." style="flex:1;padding:10px;border-radius:8px;border:1px solid #E5E5EA;font-size:14px;outline:none;background:#F8F8F8;" />' +
+              '<button onclick="App.addAssignment()" style="background:#007AFF;color:#FFF;border:none;border-radius:8px;padding:0 16px;font-weight:700;cursor:pointer;">Ajouter</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>' : '') +
         
         '<div style="background:#FFF;border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);display:flex;align-items:center;justify-content:space-between;">' +
           '<div>' +
@@ -1465,6 +1510,34 @@
       STAGIAIRE: '✏️ Stagiaire'
     };
 
+    var ROLE_THEMES = {
+      GRAND_RESPONSABLE: {
+        primary: '#D4AF37', // Gold
+        coverGradient: 'linear-gradient(135deg, #C5A028 0%, #FFDF00 50%, #996515 100%)',
+        badgeBg: 'linear-gradient(135deg, #FFDF00, #D4AF37)',
+        badgeText: '#5A4300'
+      },
+      RESP_SECTION: {
+        primary: '#0B3B60', // Sapphire
+        coverGradient: 'linear-gradient(135deg, #062136 0%, #1A5276 50%, #062136 100%)',
+        badgeBg: 'linear-gradient(135deg, #1A5276, #0B3B60)',
+        badgeText: '#FFF'
+      },
+      MEMBRE: {
+        primary: '#007AFF', // Standard Blue
+        coverGradient: 'linear-gradient(135deg,#1A1A2E 0%,#2D2D5E 50%,#1A1A2E 100%)',
+        badgeBg: '#F2F2F7',
+        badgeText: '#007AFF'
+      },
+      STAGIAIRE: {
+        primary: '#FF9500', // Orange
+        coverGradient: 'linear-gradient(135deg,#FF9500 0%,#FFCC00 50%,#FF9500 100%)',
+        badgeBg: '#FFF5E5',
+        badgeText: '#FF9500'
+      }
+    };
+    var theme = ROLE_THEMES[freshU.role] || ROLE_THEMES['MEMBRE'];
+
     // ---- Stats ----
     var myPosts = posts.filter(function(p){ return p.userId === freshU.id; }).sort(function(a,b){return (b.timestamp||0)-(a.timestamp||0)});
     var photosPosts = myPosts.filter(function(p){ return p.mediaUrls && p.mediaUrls.length > 0; });
@@ -1476,12 +1549,12 @@
     // ---- Avatar ----
     var avatarContent = freshU.avatar_url
       ? '<img src="' + freshU.avatar_url + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />'
-      : '<div style="width:100%;height:100%;border-radius:50%;background:linear-gradient(135deg,'+(freshU.avatar_color||'#007AFF')+',#0040CC);color:#FFF;font-size:34px;font-weight:900;display:flex;align-items:center;justify-content:center;">' + (freshU.prenom||'M').charAt(0).toUpperCase() + '</div>';
+      : '<div style="width:100%;height:100%;border-radius:50%;background:linear-gradient(135deg,'+(theme.primary)+',#000);color:#FFF;font-size:34px;font-weight:900;display:flex;align-items:center;justify-content:center;">' + (freshU.prenom||'M').charAt(0).toUpperCase() + '</div>';
 
     // ---- Cover ----
     var coverBg = freshU.cover_url
       ? 'background:url(\'' + freshU.cover_url + '\') center/cover no-repeat;'
-      : 'background:linear-gradient(135deg,#1A1A2E 0%,#2D2D5E 50%,#1A1A2E 100%);';
+      : 'background:' + theme.coverGradient + ';';
 
     // ---- Sections badges ----
     var uSecs = App.getUserSections(freshU);
@@ -1533,8 +1606,8 @@
         // Follow / Edit buttons
         '<div style="display:flex;gap:8px;">' +
           (isMe
-            ? '<button onclick="App.openEditProfile()" style="background:#007AFF;color:#FFF;border:none;border-radius:20px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;">Modifier</button>'
-            : '<button style="background:#007AFF;color:#FFF;border:none;border-radius:20px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;">Suivre</button>' +
+            ? '<button onclick="App.openEditProfile()" style="background:' + theme.primary + ';color:#FFF;border:none;border-radius:20px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;">Modifier</button>'
+            : '<button style="background:' + theme.primary + ';color:#FFF;border:none;border-radius:20px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;">Suivre</button>' +
               '<button style="background:rgba(255,255,255,0.9);color:#000;border:none;border-radius:20px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;">Message</button>'
           ) +
         '</div>' +
@@ -1546,7 +1619,7 @@
       // Name + role
       '<div style="font-size:22px;font-weight:900;color:#000;letter-spacing:-0.5px;margin-bottom:4px;">' + safeHtml(freshU.prenom + ' ' + freshU.nom) + '</div>' +
       '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;">' +
-        '<span style="font-size:13px;font-weight:700;color:#007AFF;">' + (ROLE_LABELS[freshU.role]||'Membre') + '</span>' +
+        '<span style="font-size:12px;font-weight:800;color:' + theme.badgeText + ';background:' + theme.badgeBg + ';padding:4px 10px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.1);">' + (ROLE_LABELS[freshU.role]||'Membre') + '</span>' +
         (secBadges ? '<span style="color:#D1D1D6;">·</span>' + secBadges : '') +
       '</div>' +
       // Stats row
@@ -1586,7 +1659,7 @@
       '</div>' +
       // Action buttons
       (isMe ? '<div style="display:flex;gap:10px;">' +
-        '<button onclick="App.tab(\'home\');App.openCreate();" style="flex:1;background:#007AFF;color:#FFF;border:none;border-radius:12px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">' +
+        '<button onclick="App.tab(\'home\');App.openCreate();" style="flex:1;background:' + theme.primary + ';color:#FFF;border:none;border-radius:12px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">' +
           '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg> Publier' +
         '</button>' +
         '<button onclick="App.openEditProfile()" style="flex:1;background:#F2F2F7;color:#000;border:none;border-radius:12px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;">✏️ Modifier le profil</button>' +
@@ -1599,7 +1672,7 @@
     var tabBar = '<div style="background:#FFF;display:flex;border-bottom:1px solid #E5E5EA;position:sticky;top:60px;z-index:100;">' +
       tabs.map(function(t) {
         var active = profileTab === t;
-        return '<button onclick="App.setProfileTab(\'' + t + '\')" style="flex:1;background:none;border:none;border-bottom:2.5px solid ' + (active ? '#007AFF' : 'transparent') + ';color:' + (active ? '#007AFF' : '#8E8E93') + ';font-size:14px;font-weight:' + (active ? '800' : '600') + ';padding:12px 0;cursor:pointer;transition:0.2s;">' +
+        return '<button onclick="App.setProfileTab(\'' + t + '\')" style="flex:1;background:none;border:none;border-bottom:2.5px solid ' + (active ? theme.primary : 'transparent') + ';color:' + (active ? theme.primary : '#8E8E93') + ';font-size:14px;font-weight:' + (active ? '800' : '600') + ';padding:12px 0;cursor:pointer;transition:0.2s;">' +
           tabLabels[t] +
         '</button>';
       }).join('') +
@@ -1718,7 +1791,30 @@
   // APP CONTROLLER — toutes les actions
   // ============================================================
   window.App = {
-    openCreateEvent: function() { S.createEventOpen = true; S.eventSections = []; render(); },
+    addAssignment: function() {
+      var select = document.getElementById('assignUserSelect');
+      var taskInput = document.getElementById('assignTaskInput');
+      if (select && select.value && taskInput && taskInput.value.trim()) {
+        var allU = db(SK.USERS, []);
+        var u = allU.find(function(user){ return user.id === select.value; });
+        if (u) {
+          S.eventAssignments = S.eventAssignments || [];
+          S.eventAssignments.push({
+            userId: u.id,
+            userName: u.prenom + ' ' + u.nom,
+            task: taskInput.value.trim()
+          });
+          render();
+        }
+      }
+    },
+    removeAssignment: function(idx) {
+      if (S.eventAssignments) {
+        S.eventAssignments.splice(idx, 1);
+        render();
+      }
+    },
+    openCreateEvent: function() { S.createEventOpen = true; S.eventSections = []; S.eventAssignments = []; render(); },
     closeCreateEvent: function() { S.createEventOpen = false; render(); },
     selectDate: function(d) { S.selectedDate = d; render(); },
     toggleEventSection: function(sec) {
@@ -1760,6 +1856,7 @@
         eventEnd: end,
         eventLocation: loc,
         eventSections: (S.eventSections||[]).slice(),
+        assignments: (S.eventAssignments||[]).slice(),
         caption: desc,
         is_pinned: pinned,
         timestamp: Date.now(),
