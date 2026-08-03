@@ -132,9 +132,6 @@
       render();
     }
   }
-
-}
-
   async function fetchPostsSilently() {
     if (!supabase) return;
     var res = await supabase.from('kun_com_posts').select('*');
@@ -144,8 +141,6 @@
       localStorage.setItem(SK.POSTS, JSON.stringify(mergedPosts));
       render();
     }
-  }
-
   }
 
   function db(key, def) {
