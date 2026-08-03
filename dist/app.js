@@ -1,23 +1,30 @@
 // ==============================================================================
 // APPLICATION WEB PURE PWA - DÉPARTEMENT COMMUNICATION (KUN COM VH)
-// Initialisation Instantanée (< 1s), Rendu Optimiste & Timeout Auth 1.5s
+// Permissions de Suppression de Posts (RBAC) & Contrôle d'Accès Temps Réel
 // ==============================================================================
 
 (function() {
-  console.log("⚡ Initialisation Instantanée de l'Application Kun COM (< 1s)...");
+  console.log("🚀 Lancement du Réseau Social avec Permissions de Suppression RBAC...");
 
   // ETAT GLOBAL DE L'APPLICATION
-  var authView = 'login'; // 'login', 'signup', 'app'
+  var authView = 'login';
   var currentUser = null;
-  var isAppLoading = false; // Initialisé à false immédiatement pour éviter le blocage
 
   var activeTab = 'home';
   var selectedStory = 'all';
+  var searchQuery = '';
+
   var isCreateModalOpen = false;
   var isCommentModalOpen = false;
   var activeCommentPostId = null;
+  var selectedPostOptions = null; // Stocke { post, canDelete }
 
+  var pendingMediaUrls = [];
+  var activeImageIndexes = {};
+
+  var showHashtagSuggestions = false;
   var isCheckedIn = false;
+  var likedCommentIds = {};
   
   // GESTION DES TOASTS
   var activeToast = null;
@@ -35,10 +42,9 @@
     }, 2500);
   }
 
-  // RESTAURATION IMMÉDIATE & TIMEOUT DE SÉCURITÉ DE 1.5s MAX
+  // RESTAURATION SESSION
   var authTimeout = setTimeout(function() {
     if (!currentUser && authView === 'loading') {
-      console.warn("⚠️ Timeout Auth (1.5s) écoulé -> Bascule automatique sur LoginScreen");
       authView = 'login';
       renderAppRoot();
     }
@@ -58,19 +64,34 @@
     clearTimeout(authTimeout);
   }
 
-  // POSTS EN BD DYNAMIQUE
+  var SECTIONS_HASHTAGS = [
+    { id: 'cadrage', tag: '#Cadrage' },
+    { id: 'regie', tag: '#Régie' },
+    { id: 'web', tag: '#Web' },
+    { id: 'proj', tag: '#Projection' },
+    { id: 'prod', tag: '#Prod' },
+    { id: 'photo', tag: '#Photo' },
+    { id: 'vente', tag: '#Vente' },
+    { id: 'culte', tag: '#CulteDuDimanche' },
+    { id: 'chorale', tag: '#Chorale' }
+  ];
+
+  // POSTS EN BD DYNAMIQUE ANTICHRONOLOGIQUE
   var posts = [
     {
       id: 'post-1',
+      userId: 'usr-cadrage-1',
+      timestamp: Date.now() - 1000 * 60 * 30,
       author: 'Section Cadrage',
       authorAvatar: 'C',
       sectionId: 'cadrage',
-      dateText: 'Dimanche 02 Août 2026 • Culte n°1',
+      dateText: 'Il y a 30 min • Culte n°1',
       isVedette: true,
-      title: 'Captation Directe Culte n°1',
+      title: 'Captation Directe Culte n°1 #Cadrage',
       sub: 'Coulisses & Couverture Technique',
       scoreText: '4.88 / 5.0',
-      caption: 'Bravo à toute l\'équipe Cadrage pour la couverture dynamique du 1er culte. Les cadrages serrés et la synchronisation avec la chorale étaient parfaits.',
+      caption: 'Bravo à toute l\'équipe #Cadrage pour la couverture dynamique du 1er culte. #CulteDuDimanche #Chorale',
+      mediaUrls: [],
       likes: 43,
       isLiked: true,
       comments: [
@@ -80,14 +101,17 @@
     },
     {
       id: 'post-2',
+      userId: 'usr-photo-2',
+      timestamp: Date.now() - 1000 * 60 * 180,
       author: 'Sarah Yao (Photo)',
       authorAvatar: 'P',
       sectionId: 'photo',
       dateText: 'Il y a 3 heures',
       isVedette: false,
-      title: 'Album Photos HD',
+      title: 'Album Photos HD #Photo',
       sub: '150 Clichés Importés',
-      caption: 'Les 150 clichés HD du Culte n°1 sont prêts et importés sur le serveur du Département.',
+      caption: 'Les 150 clichés HD du Culte n°1 sont prêts et importés par l\'équipe #Photo sur le serveur. #VaseDHonneur',
+      mediaUrls: [],
       likes: 29,
       isLiked: false,
       comments: [
@@ -105,14 +129,19 @@
     vente: { score: 4, comment: 'Support CD/USB prêts' }
   };
 
-  // ICONES SVG FIL DE FER
-  var heartSvg = function(filled) {
-    return '<svg width="22" height="22" viewBox="0 0 24 24" fill="' + (filled ? '#FF2D55' : 'none') + '" stroke="' + (filled ? '#FF2D55' : '#000000') + '" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>';
+  // ICONES SVG
+  var searchSvg = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>';
+  var moreOptionsSvg = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>';
+  var trashSvg = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FF3B30" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>';
+  var heartSvg = function(filled, size) {
+    size = size || 22;
+    return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="' + (filled ? '#FF2D55' : 'none') + '" stroke="' + (filled ? '#FF2D55' : '#8E8E93') + '" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>';
   };
   var commentSvg = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>';
   var shareSvg = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v13"/></svg>';
   var bookmarkSvg = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>';
   var checkSvg = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#007AFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>';
+  var sendSvg = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#007AFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>';
 
   function renderAppRoot() {
     var root = document.getElementById('root');
@@ -140,7 +169,131 @@
     else root.innerHTML = toastHTML + renderMainApp();
   }
 
-  // HANDLERS AUTHENTIFICATION SANS ALERT
+  function formatCaptionWithHashtags(text) {
+    if (!text) return '';
+    var words = text.split(/(\s+)/);
+    return words.map(function(word) {
+      if (word.startsWith('#') && word.length > 1) {
+        return '<span onclick="window.applySearchTag(\'' + word + '\')" style="color:#007AFF; font-weight:800; cursor:pointer;">' + word + '</span>';
+      }
+      return word;
+    }).join('');
+  }
+
+  window.applySearchTag = function(tagStr) {
+    searchQuery = tagStr;
+    triggerToast("Recherche sur " + tagStr, "success");
+    renderAppRoot();
+  };
+
+  window.setSearchQueryInput = function(val) {
+    searchQuery = val;
+    renderAppRoot();
+  };
+
+  window.clearSearchQuery = function() {
+    searchQuery = '';
+    renderAppRoot();
+  };
+
+  function getTrendingHashtags() {
+    var counts = {};
+    posts.forEach(function(p) {
+      var tags = (p.caption + ' ' + p.title).match(/#[\wéèêàâôûîç]+/gi) || [];
+      tags.forEach(function(t) {
+        counts[t] = (counts[t] || 0) + 1;
+      });
+    });
+    return Object.keys(counts).sort(function(a, b) { return counts[b] - counts[a]; });
+  }
+
+  window.handlePostInputText = function(val) {
+    var words = val.split(/\s/);
+    var lastWord = words[words.length - 1];
+    if (lastWord.startsWith('#')) {
+      showHashtagSuggestions = true;
+    } else {
+      showHashtagSuggestions = false;
+    }
+    renderAppRoot();
+  };
+
+  window.insertHashtagInPost = function(tagStr) {
+    var input = document.getElementById('newPostText');
+    if (!input) return;
+    var words = input.value.split(/\s/);
+    words.pop();
+    input.value = words.concat([tagStr, '']).join(' ');
+    showHashtagSuggestions = false;
+    renderAppRoot();
+  };
+
+  window.handleFileInputChange = function(event) {
+    if (event.target && event.target.files) {
+      var files = Array.from(event.target.files);
+      files.forEach(function(file) {
+        var reader = new FileReader();
+        reader.onloadend = function() {
+          pendingMediaUrls.push(reader.result);
+          renderAppRoot();
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+  };
+
+  window.removePendingMedia = function(idx) {
+    pendingMediaUrls.splice(idx, 1);
+    renderAppRoot();
+  };
+
+  window.handleCarouselScroll = function(postId, el) {
+    var w = el.clientWidth;
+    if (w <= 0) return;
+    var index = Math.round(el.scrollLeft / w);
+    activeImageIndexes[postId] = index;
+    renderAppRoot();
+  };
+
+  // OPEN/CLOSE OPTIONS MODAL (RBAC)
+  window.openPostOptionsMenu = function(postId) {
+    var target = null;
+    for (var i = 0; i < posts.length; i++) {
+      if (posts[i].id === postId) { target = posts[i]; break; }
+    }
+    if (!target) return;
+
+    var canDelete = (currentUser && (currentUser.role === 'GRAND_RESPONSABLE' || target.userId === currentUser.id));
+    selectedPostOptions = { post: target, canDelete: canDelete };
+    renderAppRoot();
+  };
+
+  window.closePostOptionsMenu = function() {
+    selectedPostOptions = null;
+    renderAppRoot();
+  };
+
+  // SUPPRESSION DE POST AVEC VÉRIFICATION DES DROITS
+  window.executeDeletePost = function(postId) {
+    var targetIndex = -1;
+    for (var i = 0; i < posts.length; i++) {
+      if (posts[i].id === postId) { targetIndex = i; break; }
+    }
+    if (targetIndex !== -1) {
+      var p = posts[targetIndex];
+      var canDelete = (currentUser && (currentUser.role === 'GRAND_RESPONSABLE' || p.userId === currentUser.id));
+      if (!canDelete) {
+        triggerToast("Action refusée : Vous n'avez pas l'autorisation de supprimer ce post.", "error");
+        selectedPostOptions = null;
+        return;
+      }
+      posts.splice(targetIndex, 1);
+      selectedPostOptions = null;
+      triggerToast("Publication supprimée avec succès", "success");
+    }
+  };
+
+  // HANDLERS AUTHENTIFICATION
   window.handleLoginSubmit = function(e) {
     if (e) e.preventDefault();
     var email = document.getElementById('loginEmail') ? document.getElementById('loginEmail').value : 'eric.kouame@eglise.org';
@@ -198,7 +351,7 @@
     triggerToast("Vous avez été déconnecté.", "success");
   };
 
-  // HANDLERS INTERACTIFS SANS ALERT
+  // HANDLERS INTERACTIFS
   window.togglePostLike = function(postId) {
     for (var i = 0; i < posts.length; i++) {
       if (posts[i].id === postId) {
@@ -210,44 +363,73 @@
     renderAppRoot();
   };
 
+  window.toggleCommentLike = function(commentId) {
+    likedCommentIds[commentId] = !likedCommentIds[commentId];
+    renderAppRoot();
+  };
+
+  window.appendEmojiToComment = function(emoji) {
+    var input = document.getElementById('newCommentInput');
+    if (input) {
+      input.value = input.value + emoji;
+    }
+  };
+
   window.openCreatePostModal = function() {
     isCreateModalOpen = true;
+    showHashtagSuggestions = false;
+    pendingMediaUrls = [];
     renderAppRoot();
   };
 
   window.closeCreatePostModal = function() {
     isCreateModalOpen = false;
+    showHashtagSuggestions = false;
+    pendingMediaUrls = [];
     renderAppRoot();
   };
 
   window.submitCreatePost = function(e) {
     if (e) e.preventDefault();
     var txt = document.getElementById('newPostText') ? document.getElementById('newPostText').value : '';
-    var secSelect = document.getElementById('newPostSectionSelect') ? document.getElementById('newPostSectionSelect').value : 'cadrage';
-    if (!txt.trim()) {
-      triggerToast("Veuillez saisir un texte.", "error");
+    if (!txt.trim() && pendingMediaUrls.length === 0) {
+      triggerToast("Veuillez ajouter du texte ou une photo.", "error");
       return;
     }
 
-    var secNames = { cadrage: 'Cadrage', regie: 'Régie', web: 'Web', proj: 'Projection', prod: 'Prod', photo: 'Photo', vente: 'Vente' };
+    var detectedSectionId = 'general';
+    var sectionTags = ['cadrage', 'regie', 'web', 'proj', 'prod', 'photo', 'vente'];
+    for (var i = 0; i < sectionTags.length; i++) {
+      if (txt.toLowerCase().indexOf('#' + sectionTags[i]) !== -1) {
+        detectedSectionId = sectionTags[i];
+        break;
+      }
+    }
+
+    var secNames = { cadrage: 'Cadrage', regie: 'Régie', web: 'Web', proj: 'Projection', prod: 'Prod', photo: 'Photo', vente: 'Vente', general: 'Général' };
 
     posts.unshift({
       id: 'post-' + Date.now(),
-      author: currentUser.prenom + ' ' + currentUser.nom + ' (' + (secNames[secSelect] || 'COM') + ')',
+      userId: currentUser ? currentUser.id : 'usr-current',
+      timestamp: Date.now(),
+      author: currentUser.prenom + ' ' + currentUser.nom + ' (' + (secNames[detectedSectionId] || 'COM') + ')',
       authorAvatar: currentUser.prenom.charAt(0),
-      sectionId: secSelect,
+      sectionId: detectedSectionId,
       dateText: 'À l\'instant',
       isVedette: false,
-      title: 'Publication ' + (secNames[secSelect] || 'COM'),
+      title: 'Publication ' + (secNames[detectedSectionId] || 'COM'),
       sub: 'Contenu Partagé',
       caption: txt,
+      mediaUrls: pendingMediaUrls.slice(),
       likes: 1,
       isLiked: true,
       comments: []
     });
 
     isCreateModalOpen = false;
-    triggerToast("Publication partagée sur le Feed !", "success");
+    showHashtagSuggestions = false;
+    pendingMediaUrls = [];
+    triggerToast("Publication partagée avec succès !", "success");
   };
 
   window.openCommentModal = function(postId) {
@@ -315,10 +497,6 @@
     activeTab = 'home';
     renderAppRoot();
   };
-
-  function tabStyle(active) {
-    return 'background:none; border:none; display:flex; align-items:center; justify-content:center; cursor:pointer; padding:8px 16px; opacity:' + (active ? 1 : 0.5) + ';';
-  }
 
   function renderLogin() {
     return `
@@ -405,43 +583,77 @@
     var userPrenom = currentUser ? currentUser.prenom : 'Éric';
     var userInitial = userPrenom.charAt(0);
 
-    var filtered = posts.filter(function(p) {
-      if (selectedStory === 'all') return true;
-      return p.sectionId === selectedStory;
+    var filtered = posts.slice().sort(function(a, b) {
+      return (b.timestamp || 0) - (a.timestamp || 0);
+    }).filter(function(p) {
+      if (selectedStory !== 'all' && p.sectionId !== selectedStory) return false;
+      if (searchQuery.trim().length > 0) {
+        var q = searchQuery.toLowerCase().trim();
+        return (
+          p.caption.toLowerCase().indexOf(q) !== -1 ||
+          p.title.toLowerCase().indexOf(q) !== -1 ||
+          p.author.toLowerCase().indexOf(q) !== -1
+        );
+      }
+      return true;
     });
+
+    var trendingList = getTrendingHashtags();
 
     return `
       <div style="display:flex; flex-direction:column; min-height:100vh; width:100%; position:relative; background-color:#FFFFFF; font-family:-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', sans-serif;">
         
         <div style="flex:1; padding-bottom:80px;">
-          ${renderFeedContent(filtered, userPrenom, userInitial, userSec)}
+          ${renderFeedContent(filtered, trendingList, userPrenom, userInitial, userSec)}
         </div>
 
         ${isCreateModalOpen ? `
-          <div style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.4); z-index:100000; display:flex; justify-content:center; align-items:flex-end;">
+          <div style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.45); z-index:100000; display:flex; justify-content:center; align-items:flex-end;">
             <div style="width:100%; max-width:500px; background:#FFF; border-top-left-radius:24px; border-top-right-radius:24px; padding:20px; box-sizing:border-box;">
-              <div style="display:flex; justify-content:space-between; align-items:center; padding-bottom:14px; border-bottom:1px solid #EFEFEF; margin-bottom:16px;">
+              
+              <div style="display:flex; justify-content:space-between; align-items:center; padding-bottom:14px; border-bottom:1px solid #EFEFEF; margin-bottom:14px;">
                 <h3 style="font-size:18px; font-weight:800; margin:0; color:#000;">Créer une publication</h3>
-                <span onclick="window.closeCreatePostModal()" style="font-size:14px; font-weight:700; color:#007AFF; cursor:pointer;">Fermer</span>
+                <span onclick="window.closeCreatePostModal()" style="font-size:14px; font-weight:700; color:#007AFF; cursor:pointer;">Annuler</span>
               </div>
 
+              ${showHashtagSuggestions ? `
+                <div style="background:#F0F6FF; padding:10px; border-radius:14px; margin-bottom:12px; border:1px solid #D0E3FF;">
+                  <span style="font-size:11px; font-weight:800; color:#007AFF; text-transform:uppercase; display:block; margin-bottom:6px;">Suggestions de Hashtags :</span>
+                  <div style="display:flex; gap:8px; overflow-x:auto;">
+                    ${SECTIONS_HASHTAGS.map(function(s) {
+                      return '<button onclick="window.insertHashtagInPost(\'' + s.tag + '\')" style="background:#007AFF; color:#FFF; border:none; padding:6px 12px; border-radius:14px; font-size:12px; font-weight:800; cursor:pointer; white-space:nowrap;">' + s.tag + '</button>';
+                    }).join('')}
+                  </div>
+                </div>
+              ` : ''}
+
               <form onsubmit="window.submitCreatePost(event)">
-                <div style="margin-bottom:12px;">
-                  <label style="font-size:12px; font-weight:700; display:block; margin-bottom:4px;">Section associée</label>
-                  <select id="newPostSectionSelect" style="width:100%; height:44px; border-radius:10px; border:1px solid #EFEFEF; background:#FAFAFA; padding:0 12px; font-size:13px;">
-                    <option value="cadrage">Cadrage</option>
-                    <option value="regie">Régie</option>
-                    <option value="web">Web</option>
-                    <option value="proj">Projection</option>
-                    <option value="prod">Prod</option>
-                    <option value="photo">Photo</option>
-                    <option value="vente">Vente</option>
-                  </select>
+                <textarea id="newPostText" oninput="window.handlePostInputText(this.value)" placeholder="Rédigez votre message... Tapez # pour identifier une section (ex: #Cadrage, #Chorale)" style="width:100%; height:90px; border-radius:14px; border:1px solid #EFEFEF; background:#FAFAFA; padding:12px; font-size:14px; box-sizing:border-box; font-family:sans-serif; margin-bottom:12px; outline:none;"></textarea>
+
+                ${pendingMediaUrls.length > 0 ? `
+                  <div style="margin-bottom:12px;">
+                    <span style="font-size:12px; font-weight:700; color:#1C1C1E; display:block; margin-bottom:6px;">Photos sélectionnées (${pendingMediaUrls.length}) :</span>
+                    <div style="display:flex; gap:10px; overflow-x:auto;">
+                      ${pendingMediaUrls.map(function(url, idx) {
+                        return `
+                          <div style="position:relative; width:64px; height:64px; border-radius:12px; overflow:hidden; flex-shrink:0;">
+                            <img src="${url}" style="width:100%; height:100%; object-fit:cover;" />
+                            <button type="button" onclick="window.removePendingMedia(${idx})" style="position:absolute; top:3px; right:3px; background:rgba(0,0,0,0.65); color:#FFF; border:none; border-radius:9px; width:18px; height:18px; font-size:10px; font-weight:900; cursor:pointer; display:flex; align-items:center; justify-content:center;">✕</button>
+                          </div>
+                        `;
+                      }).join('')}
+                    </div>
+                  </div>
+                ` : ''}
+
+                <div style="margin-bottom:14px;">
+                  <label style="display:flex; align-items:center; justify-content:center; gap:8px; background:#F0F6FF; color:#007AFF; padding:10px 16px; border-radius:12px; font-size:13.5px; font-weight:700; cursor:pointer; border:1px solid #D0E3FF; width:100%; box-sizing:border-box;">
+                    📷 Ajouter des photos
+                    <input type="file" accept="image/*" multiple onchange="window.handleFileInputChange(event)" style="display:none;" />
+                  </label>
                 </div>
 
-                <textarea id="newPostText" placeholder="Rédigez votre message pour le département..." required style="width:100%; height:90px; border-radius:12px; border:1px solid #EFEFEF; background:#FAFAFA; padding:12px; font-size:14px; box-sizing:border-box; font-family:sans-serif; margin-bottom:14px;"></textarea>
-
-                <button type="submit" style="width:100%; height:48px; background:#007AFF; color:#FFF; border:none; border-radius:12px; font-size:15px; font-weight:800; cursor:pointer;">
+                <button type="submit" style="width:100%; height:48px; background:#007AFF; color:#FFF; border:none; border-radius:14px; font-size:15px; font-weight:800; cursor:pointer; box-shadow:0 4px 12px rgba(0,122,255,0.25);">
                   Publier sur le Feed
                 </button>
               </form>
@@ -449,27 +661,31 @@
           </div>
         ` : ''}
 
-        ${isCommentModalOpen ? `
-          <div style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.4); z-index:100000; display:flex; justify-content:center; align-items:flex-end;">
+        <!-- MODAL OPTIONS CONTRÔLÉ PAR RBAC (3 POINTS) -->
+        ${selectedPostOptions ? `
+          <div style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.45); z-index:100000; display:flex; justify-content:center; align-items:flex-end;">
             <div style="width:100%; max-width:500px; background:#FFF; border-top-left-radius:24px; border-top-right-radius:24px; padding:20px; box-sizing:border-box;">
-              <div style="display:flex; justify-content:space-between; align-items:center; padding-bottom:14px; border-bottom:1px solid #EFEFEF; margin-bottom:14px;">
-                <h3 style="font-size:18px; font-weight:800; margin:0; color:#000;">Commentaires</h3>
-                <span onclick="window.closeCommentModal()" style="font-size:14px; font-weight:700; color:#007AFF; cursor:pointer;">Fermer</span>
-              </div>
-
-              <div style="max-height:220px; overflow-y:auto; margin-bottom:14px;">
-                ${getCommentsListHTML(activeCommentPostId)}
-              </div>
-
-              <form onsubmit="window.submitAddComment(event)" style="display:flex; gap:10px;">
-                <input id="newCommentInput" type="text" placeholder="Ajouter un commentaire..." required style="flex:1; height:44px; border-radius:10px; border:1px solid #EFEFEF; background:#FAFAFA; padding:0 12px; font-size:13px; box-sizing:border-box;">
-                <button type="submit" style="height:44px; padding:0 16px; background:#007AFF; color:#FFF; border:none; border-radius:10px; font-size:13px; font-weight:800; cursor:pointer;">
-                  Envoyer
+              <div onclick="window.closePostOptionsMenu()" style="width:44px; height:5px; border-radius:2.5px; background:#D1D1D6; margin:0 auto 14px; cursor:pointer;"></div>
+              
+              ${selectedPostOptions.canDelete ? `
+                <button onclick="window.executeDeletePost('${selectedPostOptions.post.id}')" style="width:100%; background:none; border:none; border-bottom:1px solid #EFEFEF; padding:14px 0; display:flex; align-items:center; gap:12px; cursor:pointer;">
+                  ${trashSvg}
+                  <span style="font-size:15px; font-weight:800; color:#FF3B30;">Supprimer la publication</span>
                 </button>
-              </form>
+              ` : `
+                <div style="padding:14px 0; border-bottom:1px solid #EFEFEF; text-align:center; color:#8E8E93; font-size:13px;">
+                  Vous n'avez pas l'autorisation de supprimer ce post.
+                </div>
+              `}
+
+              <button onclick="window.closePostOptionsMenu()" style="width:100%; background:none; border:none; padding:14px 0; font-size:15px; font-weight:700; color:#007AFF; cursor:pointer;">
+                Annuler
+              </button>
             </div>
           </div>
         ` : ''}
+
+        ${isCommentModalOpen ? renderInstagramCommentsBottomSheet(activeCommentPostId, userInitial) : ''}
 
         <nav style="position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:500px; height:68px; background:rgba(255,255,255,0.96); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); border-top:1px solid #EFEFEF; display:flex; justify-content:space-around; align-items:center; z-index:99999;">
           <button onclick="window.setTab('home')" style="${tabStyle(activeTab === 'home')}">
@@ -496,27 +712,85 @@
     `;
   }
 
-  function getCommentsListHTML(postId) {
+  function renderInstagramCommentsBottomSheet(postId, userInitial) {
     var target = null;
     for (var i = 0; i < posts.length; i++) {
       if (posts[i].id === postId) { target = posts[i]; break; }
     }
+    if (!target) return '';
 
-    if (!target || target.comments.length === 0) {
-      return '<p style="color:#8E8E93; font-size:13px; text-align:center; padding:16px 0;">Aucun commentaire pour le moment. Soyez le premier !</p>';
+    var commentsListHTML = '';
+    if (target.comments.length === 0) {
+      commentsListHTML = '<div style="text-align:center; padding:30px 0; color:#8E8E93;"><strong style="display:block; font-size:14px; color:#000;">Aucun commentaire pour le moment.</strong><span style="font-size:12px;">Commencez la discussion !</span></div>';
+    } else {
+      commentsListHTML = target.comments.map(function(c) {
+        var isLiked = likedCommentIds[c.id];
+        return `
+          <div style="display:flex; align-items:flex-start; margin-bottom:16px; gap:12px;">
+            <div style="width:38px; height:38px; border-radius:19px; background:#F0F6FF; border:1px solid #E5E5EA; display:flex; align-items:center; justify-content:center; font-weight:800; color:#007AFF; font-size:14px;">
+              ${c.author ? c.author.charAt(0) : 'U'}
+            </div>
+            <div style="flex:1;">
+              <div style="display:flex; align-items:center; gap:6px; margin-bottom:2px;">
+                <strong style="font-size:13.5px; color:#000;">${c.author}</strong>
+                <span style="font-size:11.5px; color:#8E8E93;">• 8 h</span>
+              </div>
+              <p style="font-size:13.5px; color:#1C1C1E; margin:0; line-height:1.35; font-family:sans-serif;">${formatCaptionWithHashtags(c.text)}</p>
+              <span style="font-size:11.5px; font-weight:700; color:#8E8E93; display:inline-block; margin-top:4px; cursor:pointer;">Répondre</span>
+            </div>
+            <div onclick="window.toggleCommentLike('${c.id}')" style="cursor:pointer; padding:4px;">
+              ${heartSvg(isLiked, 16)}
+            </div>
+          </div>
+        `;
+      }).join('');
     }
 
-    return target.comments.map(function(c) {
-      return `
-        <div style="padding:8px 0; border-bottom:1px solid #EFEFEF;">
-          <strong style="font-size:13px; color:#000;">${c.author}</strong>
-          <p style="font-size:13px; color:#333; margin:2px 0 0; font-family:sans-serif;">${c.text}</p>
-        </div>
-      `;
+    var emojisHTML = ['❤️', '👏', '🔥', '🙌', '😢', '😍', '😮', '😂'].map(function(e) {
+      return '<span onclick="window.appendEmojiToComment(\'' + e + '\')" style="font-size:22px; cursor:pointer; padding:2px;">' + e + '</span>';
     }).join('');
+
+    return `
+      <div style="position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.45); z-index:100000; display:flex; justify-content:center; align-items:flex-end;">
+        <div style="width:100%; max-width:500px; background:#FFF; border-top-left-radius:24px; border-top-right-radius:24px; height:80vh; max-height:80vh; display:flex; flex-direction:column; box-sizing:border-box;">
+          
+          <div onclick="window.closeCommentModal()" style="padding:10px 0 4px; display:flex; justify-content:center; cursor:pointer;">
+            <div style="width:44px; height:5px; border-radius:2.5px; background:#D1D1D6;"></div>
+          </div>
+
+          <div style="text-align:center; padding-bottom:12px; border-bottom:1px solid #EFEFEF;">
+            <h3 style="font-size:16px; font-weight:800; margin:0; color:#000;">Commentaires</h3>
+          </div>
+
+          <div style="flex:1; overflow-y:auto; padding:16px; box-sizing:border-box;">
+            ${commentsListHTML}
+          </div>
+
+          <div style="border-top:1px solid #EFEFEF; background:#FFF;">
+            <div style="display:flex; justify-content:space-around; padding:8px 12px; border-bottom:1px solid #FAFAFA;">
+              ${emojisHTML}
+            </div>
+
+            <form onsubmit="window.submitAddComment(event)" style="display:flex; align-items:center; gap:10px; padding:10px 14px;">
+              <div style="width:36px; height:36px; border-radius:18px; background:#007AFF; color:#FFF; font-weight:800; display:flex; align-items:center; justify-content:center; font-size:14px;">
+                ${userInitial}
+              </div>
+
+              <div style="flex:1; height:42px; border-radius:21px; background:#FAFAFA; border:1px solid #EFEFEF; display:flex; align-items:center; padding:0 14px;">
+                <input id="newCommentInput" type="text" placeholder="Ajouter un commentaire..." required style="flex:1; border:none; background:transparent; font-size:13.5px; outline:none; color:#000;">
+                <button type="submit" style="background:none; border:none; padding:0 0 0 6px; cursor:pointer; display:flex; align-items:center;">
+                  ${sendSvg}
+                </button>
+              </div>
+            </form>
+          </div>
+
+        </div>
+      </div>
+    `;
   }
 
-  function renderFeedContent(filtered, userPrenom, userInitial, userSec) {
+  function renderFeedContent(filtered, trendingList, userPrenom, userInitial, userSec) {
     if (activeTab === 'home') {
       return `
         <header style="padding:14px 18px; background:#FFF; border-bottom:1px solid #EFEFEF; display:flex; justify-content:space-between; align-items:center; position:sticky; top:0; z-index:100;">
@@ -534,6 +808,29 @@
           </div>
         </header>
 
+        <!-- BARRE DE RECHERCHE GLOBALE 🔍 -->
+        <div style="padding:8px 16px; background:#FFF; border-bottom:1px solid #EFEFEF;">
+          <div style="display:flex; align-items:center; height:40px; background:#F2F2F7; border-radius:12px; padding:0 12px;">
+            ${searchSvg}
+            <input type="text" value="${searchQuery}" oninput="window.setSearchQueryInput(this.value)" placeholder="Rechercher des posts, des hashtags #..." style="flex:1; height:100%; border:none; background:transparent; font-size:13.5px; color:#000; outline:none; margin-left:8px;">
+            ${searchQuery ? '<span onclick="window.clearSearchQuery()" style="font-size:14px; font-weight:700; color:#8E8E93; cursor:pointer; padding:4px;">✕</span>' : ''}
+          </div>
+        </div>
+
+        <!-- SUJETS TENDANCES -->
+        ${trendingList.length > 0 ? `
+          <div style="padding:10px 16px; background:#F0F6FF; border-bottom:1px solid #D0E3FF;">
+            <span style="font-size:11px; font-weight:800; color:#007AFF; text-transform:uppercase; letter-spacing:1px; display:block; margin-bottom:6px;">Sujets tendances :</span>
+            <div style="display:flex; gap:8px; overflow-x:auto;">
+              ${trendingList.map(function(t) {
+                var isActive = (searchQuery === t);
+                return '<button onclick="window.applySearchTag(\'' + t + '\')" style="background:' + (isActive ? '#007AFF' : '#FFF') + '; color:' + (isActive ? '#FFF' : '#007AFF') + '; border:1px solid #D0E3FF; padding:5px 12px; border-radius:14px; font-size:12px; font-weight:800; cursor:pointer; white-space:nowrap;">' + t + '</button>';
+              }).join('')}
+            </div>
+          </div>
+        ` : ''}
+
+        <!-- CARROUSEL STORIES -->
         <div style="padding:12px 0; border-bottom:1px solid #EFEFEF; background:#FFF; overflow-x:auto; white-space:nowrap; -webkit-overflow-scrolling:touch;">
           <div style="display:flex; gap:14px; padding:0 14px;">
             ${[
@@ -563,6 +860,7 @@
           </div>
         </div>
 
+        <!-- FEED DYNAMIQUE -->
         ${filtered.length === 0 ? `
           <div style="padding:50px 24px; text-align:center; background:#FFF; display:flex; flex-direction:column; align-items:center;">
             <div style="width:64px; height:64px; border-radius:32px; background:#F0F6FF; display:flex; align-items:center; justify-content:center; margin-bottom:14px;">
@@ -570,13 +868,16 @@
             </div>
             <h3 style="font-size:17px; font-weight:800; color:#000; margin:0 0 6px;">Aucune publication récente</h3>
             <p style="font-size:13px; color:#8E8E93; margin:0 0 18px; max-width:280px; line-height:1.4;">
-              Aucun contenu publié pour cette section aujourd'hui. Soyez le premier à partager une publication !
+              ${searchQuery ? 'Aucun résultat pour "' + searchQuery + '".' : 'Soyez le premier à partager une publication !'}
             </p>
             <button onclick="window.openCreatePostModal()" style="padding:10px 20px; background:#007AFF; color:#FFF; border:none; border-radius:12px; font-size:13px; font-weight:800; cursor:pointer;">
               Créer une publication
             </button>
           </div>
         ` : filtered.map(function(post) {
+          var hasMedia = post.mediaUrls && post.mediaUrls.length > 0;
+          var curIndex = activeImageIndexes[post.id] || 0;
+
           return `
             <article style="background:#FFF; border-bottom:8px solid #FAFAFA;">
               <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px;">
@@ -587,24 +888,57 @@
                     <span style="font-size:11px; color:#8E8E93;">${post.dateText}</span>
                   </div>
                 </div>
-                ${post.isVedette ? '<div style="background:#FFFDF0; border:1px solid #E6CA65; padding:5px 10px; border-radius:12px; font-size:10.5px; font-weight:800; color:#B8860B;">SECTION VEDETTE</div>' : ''}
-              </div>
-
-              <div style="width:100%; height:280px; background:#1C1C1E; position:relative; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:20px; text-align:center;">
-                <h2 style="font-size:18px; font-weight:800; color:#FFFFFF; margin:0 0 4px; letter-spacing:-0.4px;">${post.title}</h2>
-                <span style="color:#8E8E93; font-size:12px; font-weight:500;">${post.sub}</span>
-
-                ${post.scoreText ? `
-                  <div style="position:absolute; bottom:14px; right:14px; background:rgba(255,255,255,0.92); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); padding:6px 12px; border-radius:16px; border:1px solid rgba(255,255,255,0.8); box-shadow:0 4px 12px rgba(0,0,0,0.12);">
-                    <strong style="font-size:14px; color:#1C1C1E; font-weight:900;">${post.scoreText}</strong>
+                <div style="display:flex; align-items:center; gap:8px;">
+                  ${post.isVedette ? '<div style="background:#FFFDF0; border:1px solid #E6CA65; padding:5px 10px; border-radius:12px; font-size:10.5px; font-weight:800; color:#B8860B;">SECTION VEDETTE</div>' : ''}
+                  
+                  <!-- BOUTON 3 POINTS (...) -->
+                  <div onclick="window.openPostOptionsMenu('${post.id}')" style="cursor:pointer; padding:4px;">
+                    ${moreOptionsSvg}
                   </div>
-                ` : ''}
+                </div>
               </div>
+
+              <!-- MEDIA AREA -->
+              <div style="width:100%; height:300px; background:#1C1C1E; position:relative; overflow:hidden;">
+                ${hasMedia ? `
+                  ${post.mediaUrls.length > 1 ? `
+                    <div style="position:absolute; top:12px; right:12px; background:rgba(0,0,0,0.65); color:#FFF; padding:4px 10px; border-radius:12px; font-size:11.5px; font-weight:800; z-index:10;">
+                      ${curIndex + 1}/${post.mediaUrls.length}
+                    </div>
+                  ` : ''}
+
+                  <div onscroll="window.handleCarouselScroll('${post.id}', this)" style="width:100%; height:100%; display:flex; overflow-x:auto; scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch;">
+                    ${post.mediaUrls.map(function(url) {
+                      return '<div style="flex:0 0 100%; width:100%; height:100%; scroll-snap-align:start;"><img src="' + url + '" style="width:100%; height:100%; object-fit:cover;" /></div>';
+                    }).join('')}
+                  </div>
+                ` : `
+                  <div style="width:100%; height:100%; background:#2C2C2E; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:20px; text-align:center;">
+                    <h2 style="font-size:18px; font-weight:800; color:#FFFFFF; margin:0 0 4px; letter-spacing:-0.4px;">${formatCaptionWithHashtags(post.title)}</h2>
+                    <span style="color:#8E8E93; font-size:12px; font-weight:500;">${post.sub}</span>
+
+                    ${post.scoreText ? `
+                      <div style="position:absolute; bottom:14px; right:14px; background:rgba(255,255,255,0.92); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); padding:6px 12px; border-radius:16px; border:1px solid rgba(255,255,255,0.8); box-shadow:0 4px 12px rgba(0,0,0,0.12);">
+                        <strong style="font-size:14px; color:#1C1C1E; font-weight:900;">${post.scoreText}</strong>
+                      </div>
+                    ` : ''}
+                  </div>
+                `}
+              </div>
+
+              ${hasMedia && post.mediaUrls.length > 1 ? `
+                <div style="display:flex; justify-content:center; align-items:center; gap:5px; padding:8px 0; background:#FFF;">
+                  ${post.mediaUrls.map(function(_, dotIdx) {
+                    var isAct = (curIndex === dotIdx);
+                    return '<div style="width:' + (isAct ? '7px' : '6px') + '; height:' + (isAct ? '7px' : '6px') + '; border-radius:3.5px; background:' + (isAct ? '#007AFF' : '#C7C7CC') + ';"></div>';
+                  }).join('')}
+                </div>
+              ` : ''}
 
               <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px;">
                 <div style="display:flex; align-items:center; gap:16px;">
                   <button onclick="window.togglePostLike('${post.id}')" style="background:none; border:none; padding:0; display:flex; align-items:center; gap:6px; cursor:pointer;">
-                    ${heartSvg(post.isLiked)}
+                    ${heartSvg(post.isLiked, 22)}
                     <strong style="font-size:13px; color:#000000;">${post.likes}</strong>
                   </button>
 
@@ -628,7 +962,7 @@
                   Aimé par ${post.likes} membres
                 </div>
                 <p style="font-size:13.5px; line-height:1.45; color:#000000; margin:0;">
-                  <strong>${post.author}</strong> ${post.caption}
+                  <strong>${post.author}</strong> ${formatCaptionWithHashtags(post.caption)}
                 </p>
                 ${post.comments.length > 0 ? `
                   <span onclick="window.openCommentModal('${post.id}')" style="font-size:12px; color:#8E8E93; display:block; margin-top:6px; cursor:pointer;">
@@ -812,14 +1146,12 @@
     return '<div>Rendu...</div>';
   }
 
-  // EXECUTION SYNCHRONE IMMÉDIATE SANS DÉLAI
   function executeInstantRender() {
     renderAppRoot();
   }
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', executeInstantRender);
-    // Exécution de sécurité immédiate pour court-circuiter tout retard DOMContentLoaded
     setTimeout(executeInstantRender, 0);
   } else {
     executeInstantRender();

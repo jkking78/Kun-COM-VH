@@ -12,6 +12,8 @@ export const COLORS = {
   goldBorder: '#E6CA65',
   redHeart: '#FF2D55',
   borderLight: '#EFEFEF',
+  dangerRed: '#FF3B30',
+  dangerRedBg: '#FFEBEA',
 };
 
 export const styles = StyleSheet.create({
@@ -24,7 +26,7 @@ export const styles = StyleSheet.create({
   header: {
     paddingTop: Platform.OS === 'ios' ? 48 : 20,
     paddingHorizontal: 18,
-    paddingBottom: 12,
+    paddingBottom: 10,
     backgroundColor: COLORS.cardBg,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.borderLight,
@@ -60,7 +62,79 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  // 2. STORIES INSTAGRAM CARROUSEL
+  // BARRE DE RECHERCHE GLOBALE 🔍
+  searchBarContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: COLORS.cardBg,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.borderLight,
+  },
+  searchBarInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: 40,
+    backgroundColor: '#F2F2F7',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+  },
+  searchInput: {
+    flex: 1,
+    height: '100%',
+    fontSize: 13.5,
+    color: COLORS.textPrimary,
+    marginLeft: 8,
+  },
+  clearSearchBtn: {
+    padding: 4,
+  },
+
+  // SUJETS TENDANCES
+  trendingContainer: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    backgroundColor: COLORS.appleBlueLight,
+    borderBottomWidth: 1,
+    borderBottomColor: '#D0E3FF',
+  },
+  trendingHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 6,
+  },
+  trendingTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: COLORS.appleBlue,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  trendingScroll: {
+    gap: 8,
+  },
+  trendingChip: {
+    backgroundColor: COLORS.cardBg,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#D0E3FF',
+  },
+  trendingChipActive: {
+    backgroundColor: COLORS.appleBlue,
+    borderColor: COLORS.appleBlue,
+  },
+  trendingChipText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: COLORS.appleBlue,
+  },
+  trendingChipTextActive: {
+    color: '#FFF',
+  },
+
+  // STORIES INSTAGRAM
   storiesContainer: {
     paddingVertical: 14,
     borderBottomWidth: 1,
@@ -157,6 +231,14 @@ export const styles = StyleSheet.create({
     fontSize: 11,
     color: COLORS.textSecondary,
   },
+  postHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  moreOptionsBtn: {
+    padding: 6,
+  },
   goldTrophyBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -173,14 +255,59 @@ export const styles = StyleSheet.create({
     color: '#B8860B',
     letterSpacing: 0.4,
   },
-  postImageContainer: {
+
+  // CARROUSEL INSTAGRAM
+  mediaContainer: {
     width: '100%',
-    height: 280,
+    height: 300,
     backgroundColor: '#1C1C1E',
     position: 'relative',
+  },
+  photoCountBadge: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    zIndex: 10,
+  },
+  photoCountText: {
+    color: '#FFFFFF',
+    fontSize: 11.5,
+    fontWeight: '800',
+  },
+  carouselScroll: {
+    width: '100%',
+    height: '100%',
+  },
+  carouselImage: {
+    width: 380,
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  dotsContainer: {
+    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    gap: 5,
+    paddingVertical: 8,
+    backgroundColor: COLORS.cardBg,
   },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#C7C7CC',
+  },
+  activeDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: COLORS.appleBlue,
+  },
+
   postImagePlaceholder: {
     width: '100%',
     height: '100%',
@@ -223,6 +350,7 @@ export const styles = StyleSheet.create({
     fontWeight: '900',
     color: '#1C1C1E',
   },
+
   postActionsBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -266,7 +394,7 @@ export const styles = StyleSheet.create({
     marginTop: 6,
   },
 
-  // 4. ÉTAT À VIDE (EMPTY FEED STATE)
+  // ÉTAT À VIDE
   emptyContainer: {
     paddingVertical: 60,
     paddingHorizontal: 24,
@@ -297,66 +425,7 @@ export const styles = StyleSheet.create({
     lineHeight: 19,
   },
 
-  // 5. MODAL DE CRÉATION DE POST & MODAL COMMENTAIRES
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: COLORS.cardBg,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 20,
-    maxHeight: '85%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingBottom: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.borderLight,
-    marginBottom: 16,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: COLORS.textPrimary,
-  },
-  modalCloseText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: COLORS.appleBlue,
-  },
-  textInput: {
-    width: '100%',
-    minHeight: 80,
-    backgroundColor: COLORS.background,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: COLORS.borderLight,
-    padding: 12,
-    fontSize: 14,
-    color: COLORS.textPrimary,
-    textAlignVertical: 'top',
-    marginBottom: 14,
-  },
-  publishBtn: {
-    width: '100%',
-    height: 48,
-    backgroundColor: COLORS.appleBlue,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  publishBtnText: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#FFF',
-  },
-
-  // 6. FIX TAB BAR INSTAGRAM GLASSMORPHISM
+  // FIX TAB BAR INSTAGRAM GLASSMORPHISM
   fixedTabBar: {
     position: 'absolute',
     bottom: 0,

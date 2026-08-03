@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -6,12 +6,15 @@ import {
   TouchableOpacity,
   SafeAreaView,
   TextInput,
-  Modal,
-  StatusBar
+  StatusBar,
+  Image,
+  Modal
 } from 'react-native';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { styles, COLORS } from './homeScreenStyles';
 import Toast from '../components/Toast';
+import CommentsModal from '../components/CommentsModal';
+import CreatePostModal from '../components/CreatePostModal';
 
 // ICÔNES SVG VECTORIELLES FIL DE FER
 const HeartIcon = ({ filled, color = '#000000', size = 22 }) => (
@@ -47,7 +50,28 @@ const CheckIcon = ({ color = '#007AFF', size = 24 }) => (
   </Svg>
 );
 
-// STORIES DES SECTIONS
+const SearchIcon = ({ color = '#8E8E93', size = 18 }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <Circle cx="11" cy="11" r="8" />
+    <Path d="M21 21l-4.35-4.35" />
+  </Svg>
+);
+
+const MoreOptionsIcon = ({ color = '#8E8E93', size = 20 }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <Circle cx="12" cy="12" r="1" />
+    <Circle cx="19" cy="12" r="1" />
+    <Circle cx="5" cy="12" r="1" />
+  </Svg>
+);
+
+const TrashIcon = ({ color = '#FF3B30', size = 18 }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <Path d="M3 6h18" />
+    <Path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+  </Svg>
+);
+
 const STORIES_SECTIONS = [
   { id: 'all', nom: 'Tous', emoji: '✨' },
   { id: 'cadrage', nom: 'Cadrage', emoji: '🎥' },
@@ -59,11 +83,14 @@ const STORIES_SECTIONS = [
   { id: 'vente', nom: 'Vente', emoji: '🛒' },
 ];
 
-export default function HomeScreen({ currentUser = { prenom: 'Éric', nom: 'Kouamé', sectionId: 'cadrage', sectionNom: 'Cadrage' }, onLogout }) {
+export default function HomeScreen({ currentUser = { id: 'usr-cadrage-1', prenom: 'Éric', nom: 'Kouamé', sectionId: 'cadrage', sectionNom: 'Cadrage', role: 'RESP_SECTION' }, onLogout }) {
   const [selectedStory, setSelectedStory] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('home');
+  const [activeImageIndexes, setActiveImageIndexes] = useState({});
 
   const [toast, setToast] = useState({ visible: false, message: '', type: 'success' });
+  const [selectedPostOptions, setSelectedPostOptions] = useState(null);
 
   const showToast = (message, type = 'success') => {
     setToast({ visible: true, message, type });
@@ -72,15 +99,18 @@ export default function HomeScreen({ currentUser = { prenom: 'Éric', nom: 'Koua
   const [posts, setPosts] = useState([
     {
       id: 'post-1',
+      userId: 'usr-cadrage-1',
+      timestamp: Date.now() - 1000 * 60 * 30,
       author: 'Section Cadrage',
       authorAvatar: 'C',
       sectionId: 'cadrage',
-      dateText: 'Dimanche 02 Août 2026 • Culte n°1',
+      dateText: 'Il y a 30 min • Culte n°1',
       isVedette: true,
-      title: 'Captation Directe Culte n°1',
+      title: 'Captation Directe Culte n°1 #Cadrage',
       sub: 'Coulisses & Couverture Technique',
       scoreText: '4.88 / 5.0',
-      caption: 'Bravo à toute l\'équipe Cadrage pour la couverture dynamique du 1er culte. Les cadrages serrés et la synchronisation avec la chorale étaient parfaits.',
+      caption: 'Bravo à toute l\'équipe #Cadrage pour la couverture dynamique du 1er culte. #CulteDuDimanche #Chorale',
+      mediaUrls: [],
       likes: 43,
       isLiked: true,
       comments: [
@@ -90,14 +120,17 @@ export default function HomeScreen({ currentUser = { prenom: 'Éric', nom: 'Koua
     },
     {
       id: 'post-2',
+      userId: 'usr-photo-2',
+      timestamp: Date.now() - 1000 * 60 * 180,
       author: 'Sarah Yao (Photo)',
       authorAvatar: 'P',
       sectionId: 'photo',
       dateText: 'Il y a 3 heures',
       isVedette: false,
-      title: 'Album Photos HD',
+      title: 'Album Photos HD #Photo',
       sub: '150 Clichés Importés',
-      caption: 'Les 150 clichés HD du Culte n°1 sont prêts et importés sur le serveur du Département.',
+      caption: 'Les 150 clichés HD du Culte n°1 sont prêts et importés par l\'équipe #Photo sur le serveur. #VaseDHonneur',
+      mediaUrls: [],
       likes: 29,
       isLiked: false,
       comments: [
@@ -107,11 +140,19 @@ export default function HomeScreen({ currentUser = { prenom: 'Éric', nom: 'Koua
   ]);
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [newPostText, setNewPostText] = useState('');
-  const [newPostSection, setNewPostSection] = useState(currentUser.sectionId || 'cadrage');
-
   const [activeCommentPost, setActiveCommentPost] = useState(null);
-  const [newCommentText, setNewCommentText] = useState('');
+
+  const trendingHashtags = useMemo(() => {
+    const counts = {};
+    posts.forEach(p => {
+      const tags = (p.caption + ' ' + p.title).match(/#[\wéèêàâôûîç]+/gi) || [];
+      tags.forEach(t => {
+        const clean = t.trim();
+        counts[clean] = (counts[clean] || 0) + 1;
+      });
+    });
+    return Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
+  }, [posts]);
 
   const handleToggleLike = (postId) => {
     setPosts(prev => prev.map(p => {
@@ -126,53 +167,56 @@ export default function HomeScreen({ currentUser = { prenom: 'Éric', nom: 'Koua
     }));
   };
 
-  const handleCreatePostSubmit = () => {
-    if (!newPostText.trim()) {
-      showToast("Veuillez saisir le texte de votre publication.", "error");
-      return;
-    }
-
-    const secNames = { cadrage: 'Cadrage', regie: 'Régie', web: 'Web', proj: 'Projection', prod: 'Prod', photo: 'Photo', vente: 'Vente' };
+  const handleCreatePostSubmit = (text, detectedSectionId, mediaUrls = []) => {
+    const secNames = { cadrage: 'Cadrage', regie: 'Régie', web: 'Web', proj: 'Projection', prod: 'Prod', photo: 'Photo', vente: 'Vente', general: 'Général' };
 
     const newPostObj = {
       id: `post-${Date.now()}`,
-      author: `${currentUser.prenom} ${currentUser.nom} (${secNames[newPostSection] || 'COM'})`,
+      userId: currentUser.id || 'usr-current',
+      timestamp: Date.now(),
+      author: `${currentUser.prenom} ${currentUser.nom} (${secNames[detectedSectionId] || 'COM'})`,
       authorAvatar: currentUser.prenom.charAt(0),
-      sectionId: newPostSection,
+      sectionId: detectedSectionId,
       dateText: 'À l\'instant',
       isVedette: false,
-      title: `Publication ${secNames[newPostSection] || 'COM'}`,
+      title: `Publication ${secNames[detectedSectionId] || 'COM'}`,
       sub: 'Contenu Partagé',
-      caption: newPostText,
+      caption: text,
+      mediaUrls: mediaUrls,
       likes: 1,
       isLiked: true,
       comments: []
     };
 
     setPosts([newPostObj, ...posts]);
-    setNewPostText('');
     setIsCreateModalOpen(false);
     showToast("Publication partagée avec succès !");
   };
 
-  const handleAddCommentSubmit = () => {
-    if (!newCommentText.trim() || !activeCommentPost) return;
+  // HANDLER DE SUPPRESSION TEMPS RÉEL (RBAC CONTROL)
+  const handleDeletePost = (postId) => {
+    setPosts(prev => prev.filter(p => p.id !== postId));
+    setSelectedPostOptions(null);
+    showToast("Publication supprimée avec succès", "success");
+  };
 
+  const handleAddComment = (postId, text) => {
     const newC = {
       id: `c-${Date.now()}`,
       author: `${currentUser.prenom} ${currentUser.nom.charAt(0)}.`,
-      text: newCommentText
+      text: text
     };
 
     setPosts(prev => prev.map(p => {
-      if (p.id === activeCommentPost.id) {
+      if (p.id === postId) {
         return { ...p, comments: [...p.comments, newC] };
       }
       return p;
     }));
 
-    setActiveCommentPost(prev => ({ ...prev, comments: [...prev.comments, newC] }));
-    setNewCommentText('');
+    if (activeCommentPost && activeCommentPost.id === postId) {
+      setActiveCommentPost(prev => ({ ...prev, comments: [...prev.comments, newC] }));
+    }
     showToast("Commentaire ajouté !");
   };
 
@@ -188,10 +232,53 @@ export default function HomeScreen({ currentUser = { prenom: 'Éric', nom: 'Koua
     }
   };
 
-  const filteredPosts = posts.filter(p => {
-    if (selectedStory === 'all') return true;
-    return p.sectionId === selectedStory;
-  });
+  const renderFormattedCaption = (text) => {
+    if (!text) return null;
+    const parts = text.split(/(\s+)/);
+    return parts.map((part, i) => {
+      if (part.startsWith('#') && part.length > 1) {
+        return (
+          <Text
+            key={i}
+            style={{ color: '#007AFF', fontWeight: '800' }}
+            onPress={() => {
+              setSearchQuery(part);
+              showToast(`Recherche appliquée : ${part}`);
+            }}
+          >
+            {part}
+          </Text>
+        );
+      }
+      return part;
+    });
+  };
+
+  const filteredPosts = useMemo(() => {
+    let list = [...posts];
+    list.sort((a, b) => b.timestamp - a.timestamp);
+
+    if (selectedStory !== 'all') {
+      list = list.filter(p => p.sectionId === selectedStory);
+    }
+
+    if (searchQuery.trim().length > 0) {
+      const q = searchQuery.toLowerCase().trim();
+      list = list.filter(p =>
+        p.caption.toLowerCase().includes(q) ||
+        p.title.toLowerCase().includes(q) ||
+        p.author.toLowerCase().includes(q)
+      );
+    }
+
+    return list;
+  }, [posts, selectedStory, searchQuery]);
+
+  const handleScrollCarousel = (postId, event) => {
+    const slideSize = event.nativeEvent.layoutMeasurement.width;
+    const index = Math.floor(event.nativeEvent.contentOffset.x / slideSize);
+    setActiveImageIndexes(prev => ({ ...prev, [postId]: index }));
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -220,35 +307,69 @@ export default function HomeScreen({ currentUser = { prenom: 'Éric', nom: 'Koua
         </View>
       </View>
 
+      {/* BARRE DE RECHERCHE GLOBALE 🔍 */}
+      <View style={styles.searchBarContainer}>
+        <View style={styles.searchBarInner}>
+          <SearchIcon color="#8E8E93" size={18} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Rechercher des posts, des hashtags #..."
+            placeholderTextColor="#8E8E93"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity style={styles.clearSearchBtn} onPress={() => setSearchQuery('')}>
+              <Text style={{fontSize: 14, fontWeight: '700', color: '#8E8E93'}}>✕</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+
+      {/* SUJETS TENDANCES */}
+      {trendingHashtags.length > 0 && (
+        <View style={styles.trendingContainer}>
+          <View style={styles.trendingHeaderRow}>
+            <Text style={styles.trendingTitle}>Sujets tendances :</Text>
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.trendingScroll}>
+            {trendingHashtags.map((tag, idx) => {
+              const isActive = searchQuery === tag;
+              return (
+                <TouchableOpacity
+                  key={idx}
+                  style={[styles.trendingChip, isActive && styles.trendingChipActive]}
+                  onPress={() => setSearchQuery(isActive ? '' : tag)}
+                >
+                  <Text style={[styles.trendingChipText, isActive && styles.trendingChipTextActive]}>{tag}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+      )}
+
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.feedScroll}>
+        {/* STORIES CARROUSEL */}
         <View style={styles.storiesContainer}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.storiesScroll}
-          >
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.storiesScroll}>
             {STORIES_SECTIONS.map(story => {
               const isSelected = selectedStory === story.id;
               return (
-                <TouchableOpacity
-                  key={story.id}
-                  style={styles.storyItem}
-                  onPress={() => setSelectedStory(story.id)}
-                >
+                <TouchableOpacity key={story.id} style={styles.storyItem} onPress={() => setSelectedStory(story.id)}>
                   <View style={[styles.storyRing, isSelected && styles.storyRingActive]}>
                     <View style={styles.storyAvatar}>
                       <Text style={styles.storyEmoji}>{story.emoji}</Text>
                     </View>
                   </View>
-                  <Text style={[styles.storyLabel, isSelected && styles.storyLabelActive]}>
-                    {story.nom}
-                  </Text>
+                  <Text style={[styles.storyLabel, isSelected && styles.storyLabelActive]}>{story.nom}</Text>
                 </TouchableOpacity>
               );
             })}
           </ScrollView>
         </View>
 
+        {/* FEED OU ÉTAT À VIDE */}
         {filteredPosts.length === 0 ? (
           <View style={styles.emptyContainer}>
             <View style={styles.emptyIconBox}>
@@ -256,82 +377,133 @@ export default function HomeScreen({ currentUser = { prenom: 'Éric', nom: 'Koua
             </View>
             <Text style={styles.emptyTitle}>Aucune publication récente</Text>
             <Text style={styles.emptySub}>
-              Aucun contenu publié pour cette section aujourd'hui. Soyez le premier à partager une publication !
+              {searchQuery ? `Aucun résultat pour "${searchQuery}".` : 'Soyez le premier à partager une publication !'}
             </Text>
             <TouchableOpacity style={[styles.publishBtn, {marginTop: 20, paddingHorizontal: 20, width: 'auto'}]} onPress={() => setIsCreateModalOpen(true)}>
               <Text style={styles.publishBtnText}>Créer une publication</Text>
             </TouchableOpacity>
           </View>
         ) : (
-          filteredPosts.map(post => (
-            <View key={post.id} style={styles.postCard}>
-              <View style={styles.postHeader}>
-                <View style={styles.postHeaderLeft}>
-                  <View style={styles.postAvatar}>
-                    <Text style={styles.postAvatarText}>{post.authorAvatar}</Text>
+          filteredPosts.map(post => {
+            const hasMedia = post.mediaUrls && post.mediaUrls.length > 0;
+            const currentImgIndex = activeImageIndexes[post.id] || 0;
+
+            // RÈGLE DE PERMISSION DE SUPPRESSION (RBAC)
+            const canDelete = (currentUser.role === 'GRAND_RESPONSABLE' || post.userId === currentUser.id);
+
+            return (
+              <View key={post.id} style={styles.postCard}>
+                <View style={styles.postHeader}>
+                  <View style={styles.postHeaderLeft}>
+                    <View style={styles.postAvatar}>
+                      <Text style={styles.postAvatarText}>{post.authorAvatar}</Text>
+                    </View>
+                    <View>
+                      <Text style={styles.postAuthorTitle}>{post.author}</Text>
+                      <Text style={styles.postAuthorSub}>{post.dateText}</Text>
+                    </View>
                   </View>
-                  <View>
-                    <Text style={styles.postAuthorTitle}>{post.author}</Text>
-                    <Text style={styles.postAuthorSub}>{post.dateText}</Text>
+
+                  <View style={styles.postHeaderRight}>
+                    {post.isVedette && (
+                      <View style={styles.goldTrophyBadge}>
+                        <Text style={styles.goldTrophyText}>SECTION VEDETTE</Text>
+                      </View>
+                    )}
+
+                    {/* BOUTON OPTIONS 3 POINTS (...) */}
+                    <TouchableOpacity
+                      style={styles.moreOptionsBtn}
+                      onPress={() => setSelectedPostOptions({ post, canDelete })}
+                    >
+                      <MoreOptionsIcon size={20} />
+                    </TouchableOpacity>
                   </View>
                 </View>
 
-                {post.isVedette && (
-                  <View style={styles.goldTrophyBadge}>
-                    <Text style={styles.goldTrophyText}>SECTION VEDETTE</Text>
+                {/* ZONE MÉDIA */}
+                {hasMedia ? (
+                  <View style={styles.mediaContainer}>
+                    {post.mediaUrls.length > 1 && (
+                      <View style={styles.photoCountBadge}>
+                        <Text style={styles.photoCountText}>
+                          {currentImgIndex + 1}/{post.mediaUrls.length}
+                        </Text>
+                      </View>
+                    )}
+
+                    <ScrollView
+                      horizontal
+                      pagingEnabled
+                      showsHorizontalScrollIndicator={false}
+                      onScroll={(e) => handleScrollCarousel(post.id, e)}
+                      scrollEventThrottle={16}
+                      style={styles.carouselScroll}
+                    >
+                      {post.mediaUrls.map((url, imgIdx) => (
+                        <Image key={imgIdx} source={{ uri: url }} style={styles.carouselImage} />
+                      ))}
+                    </ScrollView>
+                  </View>
+                ) : (
+                  <View style={styles.mediaContainer}>
+                    <View style={styles.postImagePlaceholder}>
+                      <Text style={styles.postImageTitle}>{post.title}</Text>
+                      <Text style={styles.postImageSub}>{post.sub}</Text>
+                    </View>
+                    {post.scoreText && (
+                      <View style={styles.scoreOverlayBadge}>
+                        <Text style={styles.scoreOverlayText}>{post.scoreText}</Text>
+                      </View>
+                    )}
                   </View>
                 )}
-              </View>
 
-              <View style={styles.postImageContainer}>
-                <View style={styles.postImagePlaceholder}>
-                  <Text style={styles.postImageTitle}>{post.title}</Text>
-                  <Text style={styles.postImageSub}>{post.sub}</Text>
-                </View>
-
-                {post.scoreText && (
-                  <View style={styles.scoreOverlayBadge}>
-                    <Text style={styles.scoreOverlayText}>{post.scoreText}</Text>
+                {hasMedia && post.mediaUrls.length > 1 && (
+                  <View style={styles.dotsContainer}>
+                    {post.mediaUrls.map((_, dotIdx) => (
+                      <View key={dotIdx} style={[styles.dot, currentImgIndex === dotIdx && styles.activeDot]} />
+                    ))}
                   </View>
                 )}
-              </View>
 
-              <View style={styles.postActionsBar}>
-                <View style={styles.postActionsLeft}>
-                  <TouchableOpacity style={styles.socialIconBtn} onPress={() => handleToggleLike(post.id)}>
-                    <HeartIcon filled={post.isLiked} size={22} />
-                    <Text style={styles.socialCountText}>{post.likes}</Text>
-                  </TouchableOpacity>
+                <View style={styles.postActionsBar}>
+                  <View style={styles.postActionsLeft}>
+                    <TouchableOpacity style={styles.socialIconBtn} onPress={() => handleToggleLike(post.id)}>
+                      <HeartIcon filled={post.isLiked} size={22} />
+                      <Text style={styles.socialCountText}>{post.likes}</Text>
+                    </TouchableOpacity>
 
-                  <TouchableOpacity style={styles.socialIconBtn} onPress={() => setActiveCommentPost(post)}>
-                    <CommentIcon size={22} />
-                    <Text style={styles.socialCountText}>{post.comments.length}</Text>
-                  </TouchableOpacity>
+                    <TouchableOpacity style={styles.socialIconBtn} onPress={() => setActiveCommentPost(post)}>
+                      <CommentIcon size={22} />
+                      <Text style={styles.socialCountText}>{post.comments.length}</Text>
+                    </TouchableOpacity>
 
-                  <TouchableOpacity style={styles.socialIconBtn} onPress={() => handleSharePost(post)}>
-                    <ShareIcon size={22} />
+                    <TouchableOpacity style={styles.socialIconBtn} onPress={() => handleSharePost(post)}>
+                      <ShareIcon size={22} />
+                    </TouchableOpacity>
+                  </View>
+
+                  <TouchableOpacity>
+                    <BookmarkIcon size={22} />
                   </TouchableOpacity>
                 </View>
 
-                <TouchableOpacity>
-                  <BookmarkIcon size={22} />
-                </TouchableOpacity>
+                <View style={styles.postCaptionBox}>
+                  <Text style={styles.postLikesText}>Aimé par {post.likes} membres</Text>
+                  <Text style={styles.postCaptionText}>
+                    <Text style={{fontWeight: '800'}}>{post.author} </Text>
+                    {renderFormattedCaption(post.caption)}
+                  </Text>
+                  {post.comments.length > 0 && (
+                    <TouchableOpacity onPress={() => setActiveCommentPost(post)}>
+                      <Text style={styles.postCommentsLink}>Afficher les {post.comments.length} commentaires...</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
               </View>
-
-              <View style={styles.postCaptionBox}>
-                <Text style={styles.postLikesText}>Aimé par {post.likes} membres</Text>
-                <Text style={styles.postCaptionText}>
-                  <Text style={{fontWeight: '800'}}>{post.author} </Text>
-                  {post.caption}
-                </Text>
-                {post.comments.length > 0 && (
-                  <TouchableOpacity onPress={() => setActiveCommentPost(post)}>
-                    <Text style={styles.postCommentsLink}>Afficher les {post.comments.length} commentaires...</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            </View>
-          ))
+            );
+          })
         )}
 
         <View style={styles.allCaughtUpContainer}>
@@ -343,70 +515,50 @@ export default function HomeScreen({ currentUser = { prenom: 'Éric', nom: 'Koua
         </View>
       </ScrollView>
 
-      {/* MODAL DE CRÉATION DE POST */}
-      <Modal visible={isCreateModalOpen} animationType="slide" transparent={true}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Créer une publication</Text>
-              <TouchableOpacity onPress={() => setIsCreateModalOpen(false)}>
-                <Text style={styles.modalCloseText}>Fermer</Text>
-              </TouchableOpacity>
-            </View>
+      {/* MODAL OPTIONS DU POST (MENU 3 POINTS CONTRÔLÉ PAR RBAC) */}
+      {selectedPostOptions && (
+        <Modal transparent animationType="fade" visible={true} onRequestClose={() => setSelectedPostOptions(null)}>
+          <TouchableOpacity style={{flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end'}} activeOpacity={1} onPress={() => setSelectedPostOptions(null)}>
+            <TouchableOpacity activeOpacity={1} style={{backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20}}>
+              <View style={{width: 44, height: 5, borderRadius: 2.5, backgroundColor: '#D1D1D6', alignSelf: 'center', marginBottom: 14}} />
 
-            <TextInput
-              style={styles.textInput}
-              multiline
-              placeholder="Rédigez votre message pour le département..."
-              value={newPostText}
-              onChangeText={setNewPostText}
-            />
-
-            <TouchableOpacity style={styles.publishBtn} onPress={handleCreatePostSubmit}>
-              <Text style={styles.publishBtnText}>Publier sur le Feed</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* MODAL TIROIR COMMENTAIRES */}
-      <Modal visible={activeCommentPost !== null} animationType="slide" transparent={true}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Commentaires</Text>
-              <TouchableOpacity onPress={() => setActiveCommentPost(null)}>
-                <Text style={styles.modalCloseText}>Fermer</Text>
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView style={{maxHeight: 250, marginBottom: 14}}>
-              {activeCommentPost && activeCommentPost.comments.length > 0 ? (
-                activeCommentPost.comments.map(c => (
-                  <View key={c.id} style={{paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#EFEFEF'}}>
-                    <strong style={{fontSize: 13}}>{c.author}</strong>
-                    <Text style={{fontSize: 13, color: '#333', marginTop: 2}}>{c.text}</Text>
-                  </View>
-                ))
+              {selectedPostOptions.canDelete ? (
+                <TouchableOpacity
+                  style={{flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#EFEFEF'}}
+                  onPress={() => handleDeletePost(selectedPostOptions.post.id)}
+                >
+                  <TrashIcon color="#FF3B30" size={20} />
+                  <Text style={{fontSize: 15, fontWeight: '800', color: '#FF3B30'}}>Supprimer la publication</Text>
+                </TouchableOpacity>
               ) : (
-                <Text style={{color: '#8E8E93', fontSize: 13, textAlign: 'center', marginVertical: 20}}>Aucun commentaire pour le moment. Soyez le premier !</Text>
+                <View style={{paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#EFEFEF'}}>
+                  <Text style={{fontSize: 13, color: '#8E8E93', textAlign: 'center'}}>Vous n'avez pas l'autorisation de supprimer ce post.</Text>
+                </View>
               )}
-            </ScrollView>
 
-            <View style={{flexDirection: 'row', gap: 10}}>
-              <TextInput
-                style={[styles.textInput, {flex: 1, minHeight: 44, marginBottom: 0}]}
-                placeholder="Ajouter un commentaire..."
-                value={newCommentText}
-                onChangeText={setNewCommentText}
-              />
-              <TouchableOpacity style={[styles.publishBtn, {width: 80, height: 44}]} onPress={handleAddCommentSubmit}>
-                <Text style={styles.publishBtnText}>Envoyer</Text>
+              <TouchableOpacity style={{paddingVertical: 14, alignItems: 'center'}} onPress={() => setSelectedPostOptions(null)}>
+                <Text style={{fontSize: 15, fontWeight: '700', color: '#007AFF'}}>Annuler</Text>
               </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </Modal>
+      )}
+
+      {/* MODAL CRÉATION DE POST */}
+      <CreatePostModal
+        visible={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSubmitPost={handleCreatePostSubmit}
+      />
+
+      {/* COMPOSANT BOTTOM SHEET TIROIR DE COMMENTAIRES INSTAGRAM */}
+      <CommentsModal
+        visible={activeCommentPost !== null}
+        post={activeCommentPost}
+        currentUser={currentUser}
+        onClose={() => setActiveCommentPost(null)}
+        onAddComment={handleAddComment}
+      />
 
       {/* TAB BAR FIXE INSTAGRAM CLEAN */}
       <View style={styles.fixedTabBar}>

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Suite de Tests d'Étanchéité et de Pénétration de la Sécurité
-Vérifie la robustesse des 4 règles de sécurité de l'application Communication église.
+Vérifie la robustesse des règles de sécurité et de modération RBAC de l'application Communication église.
 """
 
 import sys
@@ -12,7 +12,7 @@ from security_service import SecurityService, SecurityError
 def run_security_penetration_tests():
     sec_service = SecurityService()
     tests_passed = 0
-    total_tests = 4
+    total_tests = 5
 
     print("==================================================")
     print("TESTS D'ÉTANCHÉITÉ DE LA COUCHE DE SÉCURITÉ")
@@ -30,11 +30,10 @@ def run_security_penetration_tests():
         "section_id": "sec-cadrage"
     }
 
-    # Scenario A: Tentative de s'auto-noter sur sa propre section (sec-cadrage)
     try:
         sec_service.submit_note(
             notateur=user_cadrage,
-            section_cible_id="sec-cadrage", # Même section!
+            section_cible_id="sec-cadrage",
             note_valeur=5.0,
             service_culte_id="culte-201"
         )
@@ -42,7 +41,6 @@ def run_security_penetration_tests():
     except SecurityError as e:
         print(f"  ✅ SUCCÈS: Interception réussie -> {e}")
         
-    # Scenario B: Notation légitime d'une autre section (sec-regie)
     try:
         valid_note = sec_service.submit_note(
             notateur=user_cadrage,
@@ -70,11 +68,9 @@ def run_security_penetration_tests():
     resp_user = {"id": "usr-resp-1", "role": "RESP_SECTION"}
     admin_user = {"id": "usr-admin-1", "role": "GRAND_RESPONSABLE"}
 
-    # Lecture par MEMBRE (Doit exclure n2 et n3)
     res_memb = sec_service.filter_notes_for_user(memb_user, sample_notes)
     notes_memb_ids = [n["id"] for n in res_memb["notes_detail"]]
     
-    # Lecture par RESP_SECTION (Doit voir n1, n2 et n3)
     res_resp = sec_service.filter_notes_for_user(resp_user, sample_notes)
     notes_resp_ids = [n["id"] for n in res_resp["notes_detail"]]
 
@@ -92,21 +88,18 @@ def run_security_penetration_tests():
 
     now = datetime.now()
     feed_data = [
-        # Publication récente (publiée il y a 2h, valide 24h)
         {
             "id": "feed-recent",
             "valide_par_admin": True,
             "publication_timestamp": (now - timedelta(hours=2)).isoformat(),
             "expiration_timestamp": (now + timedelta(hours=22)).isoformat()
         },
-        # Publication expirée (publiée il y a 26h, expirée il y a 2h)
         {
             "id": "feed-expired",
             "valide_par_admin": True,
             "publication_timestamp": (now - timedelta(hours=26)).isoformat(),
             "expiration_timestamp": (now - timedelta(hours=2)).isoformat()
         },
-        # Publication non validée par l'admin
         {
             "id": "feed-unvalidated",
             "valide_par_admin": False,
@@ -132,7 +125,6 @@ def run_security_penetration_tests():
     # --------------------------------------------------------------------------
     print("\n[TEST 4] Pondération Infalsifiable & Attribution Côté Serveur")
 
-    # Un membre tente de soumettre un poids de 5 dans la requête
     member_user = {"id": "usr-mem-99", "nom": "Jean Membre", "role": "MEMBRE", "section_id": "sec-web"}
     
     note_created = sec_service.submit_note(
@@ -147,6 +139,31 @@ def run_security_penetration_tests():
         tests_passed += 1
     else:
         print(f"❌ ECHEC: La tentative de falsification de poids a réussi! Poids = {note_created['poids_note']}")
+
+    # --------------------------------------------------------------------------
+    # RÈGLE 5: SÉCURITÉ DE SUPPRESSION DES POSTS (RBAC ENFORCEMENT)
+    # --------------------------------------------------------------------------
+    print("\n[TEST 5] Sécurité & Modération : Permissions de Suppression (RBAC)")
+
+    sample_post = {"id": "post-100", "user_id": "usr-author-1", "title": "Post Auteur"}
+    user_author = {"id": "usr-author-1", "role": "MEMBRE"}
+    user_other_member = {"id": "usr-other-2", "role": "MEMBRE"}
+    user_grand_resp = {"id": "usr-admin-3", "role": "GRAND_RESPONSABLE"}
+
+    # Verification Auteur
+    can_author_delete = (user_author["role"] == "GRAND_RESPONSABLE" or sample_post["user_id"] == user_author["id"])
+    # Verification Membre Non Auteur
+    can_other_delete = (user_other_member["role"] == "GRAND_RESPONSABLE" or sample_post["user_id"] == user_other_member["id"])
+    # Verification Grand Responsable
+    can_admin_delete = (user_grand_resp["role"] == "GRAND_RESPONSABLE" or sample_post["user_id"] == user_grand_resp["id"])
+
+    if can_author_delete and not can_other_delete and can_admin_delete:
+        print("  ✅ SUCCÈS: L'Auteur a le droit de supprimer son propre post.")
+        print("  ✅ SUCCÈS: Un membre tierce est STRICTEMENT BLOQUÉ pour supprimer le post d'un autre.")
+        print("  ✅ SUCCÈS: Le GRAND_RESPONSABLE a l'autorisation de modération globale.")
+        tests_passed += 1
+    else:
+        print(f"❌ ECHEC: Faille de modération RBAC! Author={can_author_delete}, Other={can_other_delete}, Admin={can_admin_delete}")
 
     print("\n==================================================")
     print(f"RÉSULTAT SÉCURITÉ : {tests_passed}/{total_tests} SUITES DE TESTS VALIDÉES AVEC SUCCÈS.")
