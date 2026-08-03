@@ -9,238 +9,207 @@ import {
 } from 'react-native';
 import { styles, COLORS } from './homeScreenStyles';
 
-// 1. LES 7 SECTIONS DU DÉPARTEMENT
-const SECTIONS = [
-  { id: 'all', nom: 'Toutes', icon: '✨' },
-  { id: 'web', nom: 'Web', icon: '🌐' },
-  { id: 'proj', nom: 'Projection', icon: '🖥️' },
-  { id: 'prod', nom: 'Prod', icon: '🎬' },
-  { id: 'regie', nom: 'Régie', icon: '🎛️' },
-  { id: 'cadrage', nom: 'Cadrage', icon: '🎥' },
-  { id: 'photo', nom: 'Photo', icon: '📸' },
-  { id: 'vente', nom: 'Vente', icon: '🛒' },
-];
-
-// 2. DONNÉES DU BILAN 24H (Clean, sans libellés techniques de debug)
-const MOCK_BILAN_24H = {
-  id: 'bilan-2026-08-02',
-  dateService: 'Dimanche 02 Août 2026',
-  numCulte: 1,
-  valideParAdmin: true,
-  sectionVedette: {
-    id: 'cadrage',
-    nom: 'Cadrage',
-    icon: '🎥',
-  },
-  evaluations: [
-    { id: 'n1', notateurNom: 'Sarah Yao', noteValeur: 4.5 },
-    { id: 'n2', notateurNom: 'Éric Kouamé', noteValeur: 4.8 },
-    { id: 'n3', notateurNom: 'Pasteur Daniel', noteValeur: 5.0 }
-  ]
-};
-
-// 3. DONNÉES DU FEED CLASSIQUE
-const MOCK_PUBLICATIONS = [
-  {
-    id: 'pub-1',
-    author: 'Éric Kouamé',
-    time: 'Il y a 2h',
-    section: 'Cadrage',
-    content: 'Bravo à toute l\'équipe Cadrage pour la captation directe du 1er culte ! Les plans serrés sur la chorale étaient parfaitement synchronisés.',
-    likesCount: 14,
-    commentsCount: 3,
-  },
-  {
-    id: 'pub-2',
-    author: 'Sarah Yao',
-    time: 'Il y a 5h',
-    section: 'Photo',
-    content: 'Album photo complet du culte disponible sur la plateforme. Merci aux membres pour le tri rapide !',
-    likesCount: 22,
-    commentsCount: 8,
-  }
+// 1. LES 7 STORIES DES SECTIONS
+const STORIES_SECTIONS = [
+  { id: 'cadrage', nom: 'Cadrage', icon: '🎥', active: true },
+  { id: 'regie', nom: 'Régie', icon: '🎛️', active: true },
+  { id: 'web', nom: 'Web', icon: '🌐', active: false },
+  { id: 'proj', nom: 'Projection', icon: '🖥️', active: false },
+  { id: 'prod', nom: 'Prod', icon: '🎬', active: false },
+  { id: 'photo', nom: 'Photo', icon: '📸', active: false },
+  { id: 'vente', nom: 'Vente', icon: '🛒', active: false },
 ];
 
 export default function HomeScreen() {
-  const [selectedSection, setSelectedSection] = useState('all');
+  const [activeStory, setActiveStory] = useState('cadrage');
   const [activeTab, setActiveTab] = useState('home');
-  const [likedPosts, setLikedPosts] = useState({});
+  const [likedPosts, setLikedPosts] = useState({ 'post-bilan': true });
 
-  const toggleLike = (pubId) => {
-    setLikedPosts(prev => ({ ...prev, [pubId]: !prev[pubId] }));
+  const toggleLike = (postId) => {
+    setLikedPosts(prev => ({ ...prev, [postId]: !prev[postId] }));
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
 
-      {/* 1. HEADER APPLE LARGE TITLE */}
+      {/* 1. HEADER INSTAGRAM / THREADS */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerSubtitle}>Département Communication</Text>
-          <Text style={styles.headerTitle}>Accueil</Text>
+          <Text style={styles.headerSub}>ÉGLISE VASE D'HONNEUR</Text>
+          <Text style={styles.headerLogo}>Kun COM 📸</Text>
         </View>
 
         <View style={styles.headerRight}>
-          {/* Avatar Subtil */}
-          <TouchableOpacity style={styles.profileAvatarBtn}>
-            <Text style={styles.profileAvatarText}>É</Text>
+          <TouchableOpacity style={styles.iconBtn}>
+            <Text style={{fontSize: 16}}>➕</Text>
           </TouchableOpacity>
-
-          {/* Pastille Notification */}
-          <TouchableOpacity style={styles.notificationButton}>
-            <Text style={{fontSize: 18}}>🔔</Text>
-            <View style={styles.notificationBadge} />
+          <TouchableOpacity style={styles.iconBtn}>
+            <Text style={{fontSize: 16}}>💬</Text>
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* 2. CARROUSEL FILTRES PILULES */}
-      <View style={styles.sectionsContainer}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.sectionsScrollContent}
-        >
-          {SECTIONS.map(section => {
-            const isActive = selectedSection === section.id;
-            return (
-              <TouchableOpacity
-                key={section.id}
-                style={[styles.sectionChip, isActive && styles.sectionChipActive]}
-                onPress={() => setSelectedSection(section.id)}
-              >
-                <Text style={styles.sectionIcon}>{section.icon}</Text>
-                <Text style={[styles.sectionText, isActive && styles.sectionTextActive]}>
-                  {section.nom}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-      </View>
-
-      {/* CONTENU SCROLLABLE */}
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
-        {/* 3. CARTE BILAN DE CULTE PREMIUM */}
-        {MOCK_BILAN_24H.valideParAdmin && (
-          <View style={styles.bilanCard}>
-            <View style={styles.bilanHeader}>
-              <View>
-                <Text style={styles.culteDateText}>{MOCK_BILAN_24H.dateService}</Text>
-                <Text style={styles.culteTitle}>Bilan Culte n°{MOCK_BILAN_24H.numCulte}</Text>
-              </View>
-
-              {/* Badge Métallique Raffiné */}
-              <View style={styles.goldBadge}>
-                <Text style={styles.goldBadgeIcon}>🏆</Text>
-                <Text style={styles.goldBadgeText}>
-                  SECTION VEDETTE : {MOCK_BILAN_24H.sectionVedette.nom.toUpperCase()}
-                </Text>
-              </View>
-            </View>
-
-            {/* Liste Membres Épurée avec Étoiles Dorées */}
-            <View style={styles.membersList}>
-              {MOCK_BILAN_24H.evaluations.map(item => (
-                <View key={item.id} style={styles.memberRow}>
-                  <View style={styles.memberLeft}>
-                    <View style={styles.avatar}>
-                      <Text style={styles.avatarText}>{item.notateurNom.charAt(0)}</Text>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.feedScroll}>
+        {/* 2. STORIES CARROUSEL EN HAUT */}
+        <View style={styles.storiesContainer}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.storiesScroll}
+          >
+            {STORIES_SECTIONS.map(story => {
+              const isSelected = activeStory === story.id;
+              return (
+                <TouchableOpacity
+                  key={story.id}
+                  style={styles.storyItem}
+                  onPress={() => setActiveStory(story.id)}
+                >
+                  <View style={[styles.storyRing, (isSelected || story.active) && styles.storyRingActive]}>
+                    <View style={styles.storyAvatar}>
+                      <Text style={styles.storyIcon}>{story.icon}</Text>
                     </View>
-                    <Text style={styles.memberName}>{item.notateurNom}</Text>
                   </View>
+                  <Text style={[styles.storyLabel, isSelected && styles.storyLabelActive]}>
+                    {story.nom}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
 
-                  <View style={styles.starsRow}>
-                    <Text style={styles.starIcon}>★</Text>
-                    <Text style={styles.ratingValueText}>{item.noteValeur.toFixed(1)}</Text>
-                  </View>
-                </View>
-              ))}
+        {/* 3. POST INSTAGRAM : CARTE BILAN CULTE N°1 (SECTION VEDETTE) */}
+        <View style={styles.postCard}>
+          {/* En-tête Post */}
+          <View style={styles.postHeader}>
+            <View style={styles.postHeaderLeft}>
+              <View style={styles.postAvatar}>
+                <Text style={styles.postAvatarText}>🎥</Text>
+              </View>
+              <View>
+                <Text style={styles.postAuthorTitle}>Section Cadrage</Text>
+                <Text style={styles.postAuthorSub}>Dimanche 02 Août 2026 • Culte n°1</Text>
+              </View>
             </View>
 
-            {/* Jauge Moyenne Globale */}
-            <View style={styles.globalAverageBox}>
-              <Text style={styles.globalAverageLabel}>Moyenne Globale</Text>
-              <View style={styles.globalAveragePill}>
-                <Text style={styles.globalAverageValue}>4.88 / 5.0 ★</Text>
+            {/* Badge Vedette Trophée Doré */}
+            <View style={styles.goldTrophyBadge}>
+              <Text style={{fontSize: 12}}>🏆</Text>
+              <Text style={styles.goldTrophyText}>SECTION VEDETTE</Text>
+            </View>
+          </View>
+
+          {/* Zone Visuelle avec Overlay Score Glassmorphism */}
+          <View style={styles.postImageContainer}>
+            <View style={styles.postImagePlaceholder}>
+              <Text style={styles.postImageText}>🎬 🎥 ✨</Text>
+              <Text style={{color: '#8E8E93', fontSize: 12, marginTop: 8}}>Coulisses & Captation Directe</Text>
+            </div>
+
+            {/* Score Overlaid Glassmorphism */}
+            <View style={styles.scoreOverlayBadge}>
+              <Text style={{fontSize: 14, color: '#D4AF37'}}>★</Text>
+              <Text style={styles.scoreOverlayText}>4.88 / 5.0</Text>
+            </View>
+          </View>
+
+          {/* Barre d'interactions Sociales */}
+          <View style={styles.postActionsBar}>
+            <View style={styles.postActionsLeft}>
+              <TouchableOpacity style={styles.socialIconBtn} onPress={() => toggleLike('post-bilan')}>
+                <Text style={styles.socialIconText}>{likedPosts['post-bilan'] ? '❤️' : '🤍'}</Text>
+                <Text style={styles.socialCountText}>{likedPosts['post-bilan'] ? '43' : '42'}</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.socialIconBtn}>
+                <Text style={styles.socialIconText}>💬</Text>
+                <Text style={styles.socialCountText}>7</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.socialIconBtn}>
+                <Text style={styles.socialIconText}>↗️</Text>
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity>
+              <Text style={{fontSize: 18}}>🔖</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Légende & Description */}
+          <View style={styles.postCaptionBox}>
+            <Text style={styles.postLikesText}>Aimé par Sarah Yao et 42 autres membres</Text>
+            <Text style={styles.postCaptionText}>
+              <Text style={{fontWeight: '800'}}>Section Cadrage </Text>
+              Bravo à toute l'équipe Cadrage pour la couverture dynamique du 1er culte ! Les cadrages serrés et la synchronisation avec la chorale étaient parfaits. 🎬✨
+            </Text>
+            <Text style={styles.postCommentsLink}>Voir les 7 débriefings et remarques...</Text>
+          </View>
+        </View>
+
+        {/* 4. POST INSTAGRAM CLASSIQUE */}
+        <View style={styles.postCard}>
+          <View style={styles.postHeader}>
+            <View style={styles.postHeaderLeft}>
+              <View style={[styles.postAvatar, {backgroundColor: '#5856D6'}]}>
+                <Text style={styles.postAvatarText}>📸</Text>
+              </View>
+              <View>
+                <Text style={styles.postAuthorTitle}>Sarah Yao (Photo)</Text>
+                <Text style={styles.postAuthorSub}>Il y a 3 heures</Text>
               </View>
             </View>
           </View>
-        )}
 
-        {/* 4. FEED CLASSIQUE */}
-        <Text style={[styles.culteTitle, {fontSize: 18, marginBottom: 12}]}>
-          Publications & Activités
-        </Text>
+          <View style={[styles.postImageContainer, {height: 220, backgroundColor: '#2C2C2E'}]}>
+            <Text style={{fontSize: 42}}>📸 📸 📸</Text>
+          </View>
 
-        {MOCK_PUBLICATIONS.map(pub => {
-          const isLiked = likedPosts[pub.id];
-          return (
-            <View key={pub.id} style={styles.feedCard}>
-              <View style={styles.feedAuthorHeader}>
-                <View style={styles.authorAvatar}>
-                  <Text style={{fontWeight: '700', color: '#555'}}>{pub.author.charAt(0)}</Text>
-                </View>
-                <View>
-                  <Text style={styles.authorName}>{pub.author}</Text>
-                  <Text style={styles.feedTime}>{pub.time} • {pub.section}</Text>
-                </View>
-              </View>
+          <View style={styles.postActionsBar}>
+            <View style={styles.postActionsLeft}>
+              <TouchableOpacity style={styles.socialIconBtn} onPress={() => toggleLike('post-photo')}>
+                <Text style={styles.socialIconText}>{likedPosts['post-photo'] ? '❤️' : '🤍'}</Text>
+                <Text style={styles.socialCountText}>{likedPosts['post-photo'] ? '29' : '28'}</Text>
+              </TouchableOpacity>
 
-              <Text style={styles.feedTextContent}>{pub.content}</Text>
-
-              {/* Actions Feed */}
-              <View style={styles.feedActionsRow}>
-                <TouchableOpacity style={styles.actionButton} onPress={() => toggleLike(pub.id)}>
-                  <Text style={{fontSize: 15}}>{isLiked ? '❤️' : '🤍'}</Text>
-                  <Text style={[styles.actionText, isLiked && {color: COLORS.redBadge, fontWeight: '700'}]}>
-                    {pub.likesCount + (isLiked ? 1 : 0)} Likes
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity style={styles.actionButton}>
-                  <Text style={{fontSize: 15}}>💬</Text>
-                  <Text style={styles.actionText}>{pub.commentsCount} Commentaires</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity style={styles.actionButton}>
-                  <Text style={{fontSize: 15}}>↗️</Text>
-                  <Text style={styles.actionText}>Partager</Text>
-                </TouchableOpacity>
-              </View>
+              <TouchableOpacity style={styles.socialIconBtn}>
+                <Text style={styles.socialIconText}>💬</Text>
+                <Text style={styles.socialCountText}>4</Text>
+              </TouchableOpacity>
             </View>
-          );
-        })}
+          </View>
+
+          <View style={styles.postCaptionBox}>
+            <Text style={styles.postCaptionText}>
+              <Text style={{fontWeight: '800'}}>Sarah Yao </Text>
+              Les 150 clichés HD du Culte n°1 sont prêts et importés sur le serveur cloud du Département ! 🚀
+            </Text>
+          </View>
+        </View>
       </ScrollView>
 
-      {/* 5. TAB BAR FLOTTANTE GLASSMORPHISM */}
-      <View style={styles.bottomTabBar}>
-        <TouchableOpacity style={styles.tabItem} onPress={() => setActiveTab('home')}>
+      {/* 5. TAB BAR FIXE STYLE INSTAGRAM GLASSMORPHISM */}
+      <View style={styles.fixedTabBar}>
+        <TouchableOpacity style={styles.tabBtn} onPress={() => setActiveTab('home')}>
           <Text style={styles.tabIcon}>🏠</Text>
-          <Text style={[styles.tabLabel, activeTab === 'home' && styles.tabLabelActive]}>Accueil</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.tabItem} onPress={() => setActiveTab('planning')}>
+        <TouchableOpacity style={styles.tabBtn} onPress={() => setActiveTab('planning')}>
           <Text style={styles.tabIcon}>📅</Text>
-          <Text style={[styles.tabLabel, activeTab === 'planning' && styles.tabLabelActive]}>Planning</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.publishButton} onPress={() => setActiveTab('publish')}>
-          <Text style={styles.publishButtonText}>+</Text>
+        <TouchableOpacity style={styles.centerPlusBtn} onPress={() => setActiveTab('debrief')}>
+          <Text style={styles.centerPlusText}>+</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.tabItem} onPress={() => setActiveTab('notes')}>
-          <Text style={styles.tabIcon}>📝</Text>
-          <Text style={[styles.tabLabel, activeTab === 'notes' && styles.tabLabelActive]}>Débrief</Text>
+        <TouchableOpacity style={styles.tabBtn} onPress={() => setActiveTab('halloffame')}>
+          <Text style={styles.tabIcon}>🌟</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.tabItem} onPress={() => setActiveTab('profile')}>
+        <TouchableOpacity style={styles.tabBtn} onPress={() => setActiveTab('profile')}>
           <Text style={styles.tabIcon}>👤</Text>
-          <Text style={[styles.tabLabel, activeTab === 'profile' && styles.tabLabelActive]}>Profil</Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
