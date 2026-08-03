@@ -1188,7 +1188,7 @@
         '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 18px 10px;border-bottom:0.5px solid #F2F2F7;">' +
           '<span onclick="App.closeEditPost()" style="font-size:15px;color:#007AFF;cursor:pointer;font-weight:600;">Annuler</span>' +
           '<h3 style="font-size:16px;font-weight:800;margin:0;color:#000;">Modifier la publication</h3>' +
-          '<button type="button" onclick="App.saveEditPost('' + post.id + '')" style="font-size:15px;color:#007AFF;font-weight:800;background:none;border:none;cursor:pointer;">Enregistrer</button>' +
+          '<button type="button" onclick="App.saveEditPost(\'' + post.id + '\')" style="font-size:15px;color:#007AFF;font-weight:800;background:none;border:none;cursor:pointer;">Enregistrer</button>' +
         '</div>' +
 
         '<div style="overflow-y:auto;flex:1;padding:16px;">' +
@@ -1200,8 +1200,8 @@
           '<div style="background:#FAFAFA;border-radius:16px;padding:14px;margin-bottom:14px;border:1px solid #E5E5EA;">' +
             '<label style="font-size:13px;font-weight:800;color:#000;display:block;margin-bottom:8px;">🔒 Qui peut voir cette publication ?</label>' +
             '<div style="display:flex;gap:8px;margin-bottom:10px;">' +
-              '<button type="button" onclick="App.setPostVisibility('all')" style="flex:1;padding:8px;border-radius:10px;font-size:12px;font-weight:700;border:none;cursor:pointer;background:' + (vis==='all'?'#007AFF':'#FFF') + ';color:' + (vis==='all'?'#FFF':'#3A3A3C') + ';box-shadow:0 1px 3px rgba(0,0,0,0.1);">🌍 Tout le monde</button>' +
-              '<button type="button" onclick="App.setPostVisibility('sections')" style="flex:1;padding:8px;border-radius:10px;font-size:12px;font-weight:700;border:none;cursor:pointer;background:' + (vis==='sections'?'#007AFF':'#FFF') + ';color:' + (vis==='sections'?'#FFF':'#3A3A3C') + ';box-shadow:0 1px 3px rgba(0,0,0,0.1);">🔒 Sections ciblées</button>' +
+              '<button type="button" onclick="App.setPostVisibility(\'all\')" style="flex:1;padding:8px;border-radius:10px;font-size:12px;font-weight:700;border:none;cursor:pointer;background:' + (vis==='all'?'#007AFF':'#FFF') + ';color:' + (vis==='all'?'#FFF':'#3A3A3C') + ';box-shadow:0 1px 3px rgba(0,0,0,0.1);">🌍 Tout le monde</button>' +
+              '<button type="button" onclick="App.setPostVisibility(\'sections\')" style="flex:1;padding:8px;border-radius:10px;font-size:12px;font-weight:700;border:none;cursor:pointer;background:' + (vis==='sections'?'#007AFF':'#FFF') + ';color:' + (vis==='sections'?'#FFF':'#3A3A3C') + ';box-shadow:0 1px 3px rgba(0,0,0,0.1);">🔒 Sections ciblées</button>' +
             '</div>' +
             (vis === 'sections' 
               ? '<div style="margin-top:10px;">' +
@@ -1369,7 +1369,7 @@
 
         (step === 'code'
           ? '<form onsubmit="App.verifyRoleCode(event)" style="display:flex;flex-direction:column;gap:14px;">' +
-              '<p style="font-size:13px;color:#8E8E93;margin:0;line-height:1.4;">Entrez le code secret de fonction pour débloquer votre rôle de responsable ou d'administration.</p>' +
+              '<p style="font-size:13px;color:#8E8E93;margin:0;line-height:1.4;">Entrez le code secret de fonction pour débloquer votre rôle de responsable ou d\'administration.</p>' +
               '<input id="roleSecretCode" type="password" placeholder="Code secret (ex: RESP2026)" required style="width:100%;height:48px;border-radius:14px;border:1.5px solid #E5E5EA;background:#FAFAFA;padding:0 14px;font-size:15px;box-sizing:border-box;outline:none;text-align:center;letter-spacing:2px;font-weight:800;" />' +
               '<button type="submit" style="width:100%;height:48px;background:linear-gradient(135deg,#007AFF,#0040CC);color:#FFF;border:none;border-radius:14px;font-size:14px;font-weight:800;cursor:pointer;">Valider le code</button>' +
               '<button type="button" onclick="App.resetToMemberRole()" style="background:none;border:none;color:#FF3B30;font-size:12.5px;font-weight:700;cursor:pointer;margin-top:4px;">🔄 Réinitialiser en Membre simple</button>' +
@@ -1380,7 +1380,7 @@
                 SECTIONS.map(function(s){ return '<option value="'+s.id+'">'+s.emoji+' '+s.nom+'</option>'; }).join('') +
               '</select>' +
               '<button type="submit" style="width:100%;height:48px;background:linear-gradient(135deg,#0B3B60,#062136);color:#FFF;border:none;border-radius:14px;font-size:14px;font-weight:800;cursor:pointer;">Activer Responsable</button>' +
-              '<button type="button" onclick="S.unlockStep='code';render();" style="background:none;border:none;color:#8E8E93;font-size:12.5px;font-weight:600;cursor:pointer;">Retour</button>' +
+              '<button type="button" onclick="S.unlockStep=\'code\';render();" style="background:none;border:none;color:#8E8E93;font-size:12.5px;font-weight:600;cursor:pointer;">Retour</button>' +
             '</form>'
         ) +
 
