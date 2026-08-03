@@ -20,12 +20,81 @@
   };
 
   var DB_CACHE = {};
+
+  // ============================================================
+  // SUPABASE REALTIME CLIENT
+  // ============================================================
+  var SUPABASE_URL = 'https://yugkryhikrfsxbuyxacl.supabase.co';
+  var SUPABASE_KEY = 'sb_publishable_CMnVxHYsKJIP51J0zDRX6w_hdLgiHR7';
+  var supabase = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+
+  async function syncSupabaseToLocal() {
+    if (!supabase) return;
+    try {
+      // Fetch posts
+      var res = await supabase.from('kun_com_posts').select('*');
+      if (res && res.data && res.data.length > 0) {
+        var mergedPosts = res.data.map(function(p) { return p.content; });
+        mergedPosts.sort(function(a,b) { return new Date(b.created_at || 0) - new Date(a.created_at || 0); });
+        DB_CACHE[SK.POSTS] = mergedPosts;
+        localStorage.setItem(SK.POSTS, JSON.stringify(mergedPosts));
+      }
+      // Fetch profiles
+      var resProf = await supabase.from('kun_com_profiles').select('*');
+      if (resProf && resProf.data && resProf.data.length > 0) {
+        var mergedProfiles = resProf.data.map(function(p) { return p.content; });
+        DB_CACHE[SK.USERS] = mergedProfiles;
+        localStorage.setItem(SK.USERS, JSON.stringify(mergedProfiles));
+      }
+      
+      // Setup Realtime
+      supabase.channel('public:kun_com_posts')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'kun_com_posts' }, function(payload) {
+           console.log('Realtime post update:', payload);
+           fetchPostsSilently();
+        })
+        .subscribe();
+        
+      if (window.App && window.App.tab) {
+         render(); 
+      }
+    } catch(e) {
+      console.warn("Supabase Sync Error:", e);
+    }
+  }
+  
+  async function fetchPostsSilently() {
+    if (!supabase) return;
+    var res = await supabase.from('kun_com_posts').select('*');
+    if (res && res.data && res.data.length > 0) {
+      var mergedPosts = res.data.map(function(p) { return p.content; });
+      mergedPosts.sort(function(a,b) { return new Date(b.created_at || 0) - new Date(a.created_at || 0); });
+      DB_CACHE[SK.POSTS] = mergedPosts;
+      localStorage.setItem(SK.POSTS, JSON.stringify(mergedPosts));
+      render();
+    }
+  }
+
+  function dbSetSupabase(key, val) {
+    if (!supabase) return;
+    if (key === SK.POSTS && Array.isArray(val)) {
+       val.forEach(async function(post) {
+         await supabase.from('kun_com_posts').upsert({ id: post.id, content: post }, { onConflict: 'id' });
+       });
+    } else if (key === SK.USERS && Array.isArray(val)) {
+       val.forEach(async function(user) {
+         await supabase.from('kun_com_profiles').upsert({ id: user.id, content: user }, { onConflict: 'id' });
+       });
+    }
+  }
+
   function db(key, def) {
     if (DB_CACHE[key] !== undefined) return DB_CACHE[key];
     try { var r = localStorage.getItem(key); var parsed = r ? JSON.parse(r) : def; DB_CACHE[key] = parsed; return parsed; } catch(e) { return def; }
   }
   function dbSet(key, val) {
     DB_CACHE[key] = val;
+    dbSetSupabase(key, val);
     try { localStorage.setItem(key, JSON.stringify(val)); } catch(e) {}
   }
 
@@ -1512,6 +1581,7 @@
   // INIT
   // ============================================================
   function init() {
+    syncSupabaseToLocal();
     injectCSS();
     render();
   }
