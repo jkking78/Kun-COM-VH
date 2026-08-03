@@ -493,7 +493,9 @@
         if (S.q.trim()) {
           var q = S.q.toLowerCase();
           return (p.caption||'').toLowerCase().indexOf(q) !== -1 ||
-                 (p.author||'').toLowerCase().indexOf(q) !== -1;
+                 (p.author||'').toLowerCase().indexOf(q) !== -1 ||
+                 (p.sectionNom||'').toLowerCase().indexOf(q) !== -1 ||
+                 (p.hashtags && p.hashtags.some(function(h){ return h.toLowerCase().indexOf(q) !== -1; }));
         }
         return true;
       });
@@ -624,10 +626,10 @@
         '<div style="font-size:52px;margin-bottom:16px;">📭</div>' +
         '<h3 style="font-size:18px;font-weight:800;color:#000;margin:0 0 8px;">' + (S.q ? 'Aucun résultat' : 'Aucune publication') + '</h3>' +
         '<p style="font-size:13.5px;color:#8E8E93;margin:0 0 22px;max-width:240px;line-height:1.5;">' +
-          (S.q ? 'Aucun post ne correspond à "' + safeHtml(S.q) + '"' : 'Soyez le premier à partager quelque chose !') +
+          (S.q ? 'Aucun résultat trouvé pour "' + safeHtml(S.q) + '"' : 'Soyez le premier à partager quelque chose !') +
         '</p>' +
         (S.q
-          ? '<button onclick="App.search(\'\')" style="' + btnStyle('#007AFF') + 'height:44px;width:auto;padding:0 22px;font-size:14px;">Voir tout</button>'
+          ? '<button onclick="App.search(\'\')" style="' + btnStyle('#007AFF') + 'height:44px;width:auto;padding:0 22px;font-size:14px;">Réinitialiser la recherche</button>'
           : '<button onclick="App.openCreate()" style="' + btnStyle('#007AFF') + 'height:44px;width:auto;padding:0 22px;font-size:14px;">Créer un post</button>') +
       '</div>';
     } else {
