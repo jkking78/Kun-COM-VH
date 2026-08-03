@@ -1352,52 +1352,67 @@
       ? '<img id="editAvatarPreview" src="' + freshU.avatar_url + '" style="width:100%;height:100%;object-fit:cover;" />'
       : '<div id="editAvatarPreview" style="width:100%;height:100%;background:linear-gradient(135deg,'+(freshU.avatar_color||'#007AFF')+',#0040CC);color:#FFF;font-size:32px;font-weight:900;display:flex;align-items:center;justify-content:center;">' + (freshU.prenom||'M').charAt(0).toUpperCase() + '</div>';
 
+    var coverContent = freshU.cover_url
+      ? '<img src="' + freshU.cover_url + '" style="width:100%;height:100%;object-fit:cover;" />'
+      : '';
+
     return '<div style="position:fixed;inset:0;background:#FFF;z-index:10000;display:flex;flex-direction:column;animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
-      '<header style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #E5E5EA;">' +
+      '<header style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #E5E5EA;background:#FFF;z-index:2;">' +
         '<button onclick="App.closeEditProfile()" style="background:none;border:none;font-size:16px;color:#000;cursor:pointer;">Annuler</button>' +
         '<div style="font-weight:700;font-size:16px;">Modifier le profil</div>' +
         '<button onclick="App.saveProfile(this)" style="background:none;border:none;font-size:16px;font-weight:700;color:#007AFF;cursor:pointer;">Terminer</button>' +
       '</header>' +
-      '<div style="flex:1;overflow-y:auto;padding:16px;">' +
+      '<div style="flex:1;overflow-y:auto;background:#FAFAFA;">' +
         
-        '<div style="display:flex;flex-direction:column;align-items:center;margin-bottom:24px;">' +
-          '<div style="position:relative;width:80px;height:80px;border-radius:40px;overflow:hidden;background:#F2F2F7;margin-bottom:12px;">' +
-             avatarContent +
-          '</div>' +
-          '<label style="color:#007AFF;font-weight:700;font-size:14px;cursor:pointer;">' +
-            'Modifier la photo' +
-            '<input type="file" id="editAvatarInput" accept="image/*" style="display:none;" onchange="App.handleAvatarSelect(event)" />' +
+        '<!-- Cover Area -->' +
+        '<div style="position:relative;width:100%;height:140px;background:linear-gradient(135deg, #E5E5EA 0%, #D1D1D6 100%);">' +
+          '<div id="editCoverPreview" style="width:100%;height:100%;">' + coverContent + '</div>' +
+          '<label style="position:absolute;bottom:12px;right:12px;width:32px;height:32px;border-radius:16px;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);color:#FFF;display:flex;align-items:center;justify-content:center;cursor:pointer;">' +
+            '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>' +
+            '<input type="file" id="editCoverInput" accept="image/*" style="display:none;" onchange="App.handleCoverSelect(event)" />' +
           '</label>' +
         '</div>' +
+        
+        '<!-- Avatar Area -->' +
+        '<div style="display:flex;justify-content:center;margin-top:-45px;margin-bottom:20px;">' +
+          '<div style="position:relative;">' +
+            '<div style="width:90px;height:90px;border-radius:45px;border:4px solid #FAFAFA;overflow:hidden;background:#FFF;">' +
+               avatarContent +
+            '</div>' +
+            '<label style="position:absolute;bottom:0;right:0;width:28px;height:28px;border-radius:14px;background:#007AFF;border:2px solid #FAFAFA;color:#FFF;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 5px rgba(0,0,0,0.2);">' +
+              '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>' +
+              '<input type="file" id="editAvatarInput" accept="image/*" style="display:none;" onchange="App.handleAvatarSelect(event)" />' +
+            '</label>' +
+          '</div>' +
+        '</div>' +
 
-        '<div style="display:flex;flex-direction:column;gap:16px;">' +
-          '<div style="display:flex;align-items:center;border-bottom:1px solid #E5E5EA;padding-bottom:8px;">' +
-            '<label style="width:100px;font-size:14px;color:#000;">Prénom</label>' +
-            '<input type="text" id="editPrenom" value="' + safeHtml(freshU.prenom) + '" style="flex:1;border:none;font-size:16px;outline:none;" />' +
+        '<div style="padding:0 16px 30px;">' +
+          '<div style="background:#FFF;border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px;">' +
+            '<div style="display:flex;flex-direction:column;gap:16px;">' +
+              '<div style="display:flex;flex-direction:column;gap:4px;">' +
+                '<label style="font-size:13px;color:#8E8E93;font-weight:600;">Prénom</label>' +
+                '<input type="text" id="editPrenom" value="' + safeHtml(freshU.prenom) + '" style="border:none;border-bottom:1px solid #E5E5EA;font-size:16px;outline:none;padding-bottom:8px;border-radius:0;" />' +
+              '</div>' +
+              '<div style="display:flex;flex-direction:column;gap:4px;">' +
+                '<label style="font-size:13px;color:#8E8E93;font-weight:600;">Nom</label>' +
+                '<input type="text" id="editNom" value="' + safeHtml(freshU.nom) + '" style="border:none;border-bottom:1px solid #E5E5EA;font-size:16px;outline:none;padding-bottom:8px;border-radius:0;" />' +
+              '</div>' +
+              '<div style="display:flex;flex-direction:column;gap:4px;">' +
+                '<label style="font-size:13px;color:#8E8E93;font-weight:600;">Bio</label>' +
+                '<textarea id="editBio" style="border:none;font-size:16px;outline:none;resize:none;font-family:inherit;min-height:60px;background:#F8F8F8;padding:12px;border-radius:12px;">' + safeHtml(freshU.bio||'') + '</textarea>' +
+              '</div>' +
+            '</div>' +
           '</div>' +
-          
-          '<div style="display:flex;align-items:center;border-bottom:1px solid #E5E5EA;padding-bottom:8px;">' +
-            '<label style="width:100px;font-size:14px;color:#000;">Nom</label>' +
-            '<input type="text" id="editNom" value="' + safeHtml(freshU.nom) + '" style="flex:1;border:none;font-size:16px;outline:none;" />' +
-          '</div>' +
-          
-          '<div style="display:flex;align-items:flex-start;border-bottom:1px solid #E5E5EA;padding-bottom:8px;">' +
-            '<label style="width:100px;font-size:14px;color:#000;margin-top:2px;">Bio</label>' +
-            '<textarea id="editBio" style="flex:1;border:none;font-size:16px;outline:none;resize:none;font-family:inherit;min-height:60px;">' + safeHtml(freshU.bio||'') + '</textarea>' +
-          '</div>' +
-          
-          '<div style="display:flex;align-items:center;border-bottom:1px solid #E5E5EA;padding-bottom:8px;">' +
-            '<label style="width:100px;font-size:14px;color:#000;">Section</label>' +
-            '<select id="editSection" style="flex:1;border:none;font-size:16px;outline:none;background:#FFF;appearance:none;color:#007AFF;">' +
-              SECTIONS.map(function(s){ return '<option value="'+s.id+'" '+(s.id===freshU.section_id?'selected':'')+'>'+s.emoji+' '+s.nom+'</option>'; }).join('') +
-            '</select>' +
+
+          '<div style="background:#FFF;border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);">' +
+            '<label style="font-size:14px;font-weight:700;color:#000;display:block;margin-bottom:12px;">Sections (2 max)</label>' +
+            App.renderSectionBadges(S.editSections, 'toggleEditSection') + 
           '</div>' +
         '</div>' +
 
       '</div>' +
     '</div>';
   }
-
   function renderPostOptionsModal(post) {
     if (!post) return '';
     var isMine = S.user && S.user.id === post.userId;
@@ -1611,8 +1626,8 @@ toggleParticipation: function(postId, status) {
       render();
     },
 
-    openEditProfile: function() { S.editProfileOpen = true; S.avatarFile = null; render(); },
-    closeEditProfile: function() { S.editProfileOpen = false; S.avatarFile = null; render(); },
+    openEditProfile: function() { S.editProfileOpen = true; S.avatarFile = null; S.coverFile = null; S.editSections = App.getUserSections(S.user).slice(); render(); },
+    closeEditProfile: function() { S.editProfileOpen = false; S.avatarFile = null; S.coverFile = null; render(); },
     handleAvatarSelect: function(e) {
       var file = e.target.files[0];
       if (file) {
@@ -1628,56 +1643,91 @@ toggleParticipation: function(postId, status) {
         reader.readAsDataURL(file);
       }
     },
+    handleCoverSelect: function(e) {
+      var file = e.target.files[0];
+      if (file) {
+        S.coverFile = file;
+        var reader = new FileReader();
+        reader.onload = function(evt) {
+          var el = document.getElementById('editCoverPreview');
+          if (el) {
+            el.innerHTML = '<img src="' + evt.target.result + '" style="width:100%;height:100%;object-fit:cover;" />';
+          }
+        };
+        reader.readAsDataURL(file);
+      }
+    },
+
     saveProfile: async function(btn) {
       if (btn) { btn.innerHTML = 'Enregistrement...'; btn.disabled = true; }
       var u = S.user;
       var prenom = document.getElementById('editPrenom').value.trim();
       var nom = document.getElementById('editNom').value.trim();
       var bio = document.getElementById('editBio').value.trim();
-      var section_id = document.getElementById('editSection').value;
-      var section_nom = SECTIONS.find(function(s){return s.id===section_id;}).nom;
+      
+      if (S.editSections.length === 0) {
+        toast('Veuillez sélectionner au moins 1 section.', 'error');
+        if (btn) { btn.innerHTML = 'Terminer'; btn.disabled = false; }
+        return;
+      }
       
       var avatar_url = u.avatar_url;
+      var cover_url = u.cover_url;
       
-      if (S.avatarFile && supabase) {
-        try {
+      try {
+        if (S.avatarFile && supabase) {
           var ext = S.avatarFile.name.split('.').pop();
           var fileName = 'avatar_' + u.id + '_' + Date.now() + '.' + ext;
           var res = await supabase.storage.from('avatars').upload(fileName, S.avatarFile);
           if (res.error) throw res.error;
           var urlRes = supabase.storage.from('avatars').getPublicUrl(fileName);
           avatar_url = urlRes.data.publicUrl;
-        } catch(e) {
-          console.error('Avatar upload error:', e);
-          toast('Erreur lors de\'upload de la photo', 'error');
         }
+        
+        if (S.coverFile && supabase) {
+          var ext2 = S.coverFile.name.split('.').pop();
+          var fileName2 = 'cover_' + u.id + '_' + Date.now() + '.' + ext2;
+          // You could use a 'covers' bucket or just 'avatars'. Assuming 'avatars' bucket is available.
+          var res2 = await supabase.storage.from('avatars').upload(fileName2, S.coverFile);
+          if (res2.error) throw res2.error;
+          var urlRes2 = supabase.storage.from('avatars').getPublicUrl(fileName2);
+          cover_url = urlRes2.data.publicUrl;
+        }
+      } catch(e) {
+        console.error('Upload error:', e);
+        toast('Erreur lors de l\'upload de l\'image', 'error');
       }
       
       var updatedUser = Object.assign({}, u, {
         prenom: prenom,
         nom: nom,
         bio: bio,
-        section_id: section_id,
-        section_nom: section_nom,
-        avatar_url: avatar_url
+        sections: S.editSections.slice(),
+        avatar_url: avatar_url,
+        cover_url: cover_url
       });
+      delete updatedUser.section_id;
+      delete updatedUser.section_nom;
       
       S.user = updatedUser;
       sessionStorage.setItem(SK.SESS, JSON.stringify(updatedUser));
       
-      var allProfiles = db(SK.USERS, []);
-      var idx = allProfiles.findIndex(function(p){ return p.id === u.id; });
+      var users = db(SK.USERS, []);
+      var idx = users.findIndex(function(x){ return x.id === u.id; });
       if (idx !== -1) {
-         allProfiles[idx] = updatedUser;
+        users[idx] = updatedUser;
       } else {
-         allProfiles.push(updatedUser);
+        users.push(updatedUser);
       }
-      dbSet(SK.USERS, allProfiles);
+      dbSet(SK.USERS, users);
+      
+      if (supabase) {
+        await supabase.from('kun_com_profiles').upsert({ id: updatedUser.id, content: updatedUser }, { onConflict: 'id' });
+      }
       
       S.editProfileOpen = false;
       render();
-      toast('Profil mis à jour !', 'success');
-    },
+      toast('Profil mis à jour !', 'success');    },
     openPostOptions: function(id) { S.selectedPostId = id; S.postOptionsOpen = true; render(); },
     closePostOptions: function() { S.postOptionsOpen = false; S.selectedPostId = null; render(); },
     viewPost: function(id) {
