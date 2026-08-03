@@ -26,7 +26,12 @@
   // ============================================================
   var SUPABASE_URL = 'https://yugkryhikrfsxbuyxacl.supabase.co';
   var SUPABASE_KEY = 'sb_publishable_CMnVxHYsKJIP51J0zDRX6w_hdLgiHR7';
-  var supabase = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+  var supabase = null;
+  try {
+    supabase = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+  } catch(e) {
+    console.error("Supabase init error:", e);
+  }
 
   async function syncSupabaseToLocal() {
     if (!supabase) return;
