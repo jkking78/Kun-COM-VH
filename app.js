@@ -243,7 +243,9 @@
     viewUserProfileId: null,
     loadingUserProfile: false,
     createEventOpen: false,
-    forgotUser: null
+    forgotUser: null,
+    signupSections: [],
+    editSections: []
 };
 
   // ============================================================
@@ -1482,7 +1484,53 @@
       render();
     },
     
-    checkForgotEmail: function(e) {
+    
+    getUserSections: function(u) {
+      if (!u) return [];
+      if (Array.isArray(u.sections) && u.sections.length > 0) return u.sections;
+      if (u.section_id) return [u.section_id];
+      return [];
+    },
+    toggleSignupSection: function(sec) {
+      var idx = S.signupSections.indexOf(sec);
+      if (idx !== -1) { S.signupSections.splice(idx, 1); }
+      else {
+        if (S.signupSections.length >= 2) { toast('Maximum 2 sections autorisées.', 'error'); return; }
+        S.signupSections.push(sec);
+      }
+      render();
+    },
+    toggleEditSection: function(sec) {
+      var idx = S.editSections.indexOf(sec);
+      if (idx !== -1) { S.editSections.splice(idx, 1); }
+      else {
+        if (S.editSections.length >= 2) { toast('Maximum 2 sections autorisées.', 'error'); return; }
+        S.editSections.push(sec);
+      }
+      render();
+    },
+    renderSectionBadges: function(selected, toggleFnName) {
+      var sections = [
+        {id:'cadrage', label:'Cadrage', icon:'🎥'},
+        {id:'regie', label:'Régie', icon:'🎛️'},
+        {id:'montage', label:'Montage', icon:'🎬'},
+        {id:'web', label:'Web', icon:'🌐'},
+        {id:'son', label:'Son', icon:'🎧'},
+        {id:'photo', label:'Photo', icon:'📷'},
+        {id:'light', label:'Lumière', icon:'💡'},
+        {id:'proj', label:'Proj', icon:'🖥️'}
+      ];
+      var html = '<div style="display:flex;flex-wrap:wrap;gap:8px;">';
+      sections.forEach(function(s) {
+        var isSel = selected.indexOf(s.id) !== -1;
+        var bg = isSel ? '#007AFF' : '#F2F2F7';
+        var color = isSel ? '#FFF' : '#3A3A3C';
+        html += '<div onclick="App.' + toggleFnName + '(\'' + s.id + '\')" style="background:' + bg + ';color:' + color + ';padding:6px 12px;border-radius:16px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:4px;transition:0.2s;">' + s.icon + ' ' + s.label + '</div>';
+      });
+      html += '</div>';
+      return html;
+    },
+checkForgotEmail: function(e) {
       e && e.preventDefault();
       var email = ((document.getElementById('forgotEmail')||{}).value||'').trim();
       var users = db(SK.USERS, []);
@@ -1697,18 +1745,19 @@ toggleParticipation: function(postId, status) {
       var prenom = ((document.getElementById('signupPrenom')||{}).value||'').trim();
       var nom = ((document.getElementById('signupNom')||{}).value||'').trim();
       var email = ((document.getElementById('signupEmail')||{}).value||'').trim();
-      var sec = ((document.getElementById('signupSection')||{}).value)||'cadrage';
       var pwd = ((document.getElementById('signupPwd')||{}).value||'').trim();
       var q1 = ((document.getElementById('signupQ1')||{}).value||'');
       var a1 = ((document.getElementById('signupA1')||{}).value||'').trim().toLowerCase();
       var q2 = ((document.getElementById('signupQ2')||{}).value||'');
       var a2 = ((document.getElementById('signupA2')||{}).value||'').trim().toLowerCase();
       if (!prenom||!nom||!email||!pwd||!a1||!a2) { toast('Veuillez remplir tous les champs et questions de sécurité.', 'error'); return; }
+      if (S.signupSections.length === 0) { toast('Veuillez choisir au moins 1 section.', 'error'); return; }
+
       var users = db(SK.USERS, []);
       if (users.find(function(u){ return u.email.toLowerCase()===email.toLowerCase(); })) {
         toast('Un compte existe déjà avec cet e-mail.', 'error'); return;
       }
-      var newUser = { id:'u'+Date.now(), prenom:prenom, nom:nom, email:email, section_id:sec, section_nom:secNom(sec), role:'MEMBRE', is_online:true, last_seen_at:new Date().toISOString(), last_action:'Inscription', avatar_color: ['#007AFF','#FF2D55','#34C759','#FF9500','#5856D6','#AF52DE'][Math.floor(Math.random()*6)], pwd: pwd, sec_q1: q1, sec_a1: a1, sec_q2: q2, sec_a2: a2 };
+      var newUser = { id:'u'+Date.now(), prenom:prenom, nom:nom, email:email, sections: S.signupSections.slice(), role:'MEMBRE', is_online:true, last_seen_at:new Date().toISOString(), last_action:'Inscription', avatar_color: ['#007AFF','#FF2D55','#34C759','#FF9500','#5856D6','#AF52DE'][Math.floor(Math.random()*6)], pwd: pwd, sec_q1: q1, sec_a1: a1, sec_q2: q2, sec_a2: a2 };
       users.push(newUser); dbSet(SK.USERS, users);
       sessionStorage.setItem(SK.SESS, JSON.stringify(newUser));
       S.user = newUser; S.auth = 'app';
