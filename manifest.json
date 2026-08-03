@@ -1,0 +1,22 @@
+{
+  "short_name": "Kun COM",
+  "name": "Kun COM VH - Département Communication Église",
+  "description": "Application mobile de gestion et de suivi pour le Département Communication d'Église",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "./index.html",
+  "background_color": "#F2F2F7",
+  "theme_color": "#007AFF",
+  "display": "standalone",
+  "orientation": "portrait"
+}
