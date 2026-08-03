@@ -1025,7 +1025,7 @@
         
         '<div style="background:#FFF;border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px;">' +
           '<label style="font-size:14px;font-weight:700;color:#000;display:block;margin-bottom:12px;">Pôles concernés</label>' +
-          App.renderSectionBadges(S.eventSections, 'toggleEventSection') + 
+          '<div id="eventSectionBadgesContainer">' + App.renderSectionBadges(S.eventSections, 'toggleEventSection') + '</div>' + 
         '</div>' +
         
         '<div style="background:#FFF;border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px;">' +
@@ -1036,19 +1036,7 @@
         ((S.user && (S.user.role === 'RESP_SECTION' || S.user.role === 'GRAND_RESPONSABLE')) ? 
         '<div style="background:#FFF;border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px;">' +
           '<label style="font-size:14px;font-weight:700;color:#000;display:block;margin-bottom:12px;">Assignations (Équipe)</label>' +
-          (S.eventAssignments && S.eventAssignments.length > 0 ? 
-            '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;">' +
-            S.eventAssignments.map(function(a, idx) {
-              return '<div style="display:flex;align-items:center;justify-content:space-between;background:#F2F2F7;padding:8px 12px;border-radius:8px;">' +
-                '<div style="display:flex;flex-direction:column;">' +
-                  '<span style="font-size:13px;font-weight:700;color:#000;">' + safeHtml(a.userName) + '</span>' +
-                  '<span style="font-size:12px;color:#8E8E93;">' + safeHtml(a.task) + '</span>' +
-                '</div>' +
-                '<button onclick="App.removeAssignment(' + idx + ')" style="background:none;border:none;color:#FF3B30;font-size:16px;cursor:pointer;">&times;</button>' +
-              '</div>';
-            }).join('') +
-            '</div>' 
-          : '<div style="font-size:13px;color:#8E8E93;margin-bottom:12px;">Aucun membre assigné.</div>') +
+'<div id="eventAssignmentsList">' + App.renderAssignmentsList() + '</div>' +
           '<div style="display:flex;flex-direction:column;gap:8px;border-top:1px solid #E5E5EA;padding-top:12px;">' +
             '<select id="assignUserSelect" style="width:100%;padding:10px;border-radius:8px;border:1px solid #E5E5EA;font-size:14px;outline:none;background:#F8F8F8;">' +
               '<option value="">Sélectionner un membre...</option>' +
@@ -1785,7 +1773,7 @@
 
           '<div style="background:#FFF;border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);">' +
             '<label style="font-size:14px;font-weight:700;color:#000;display:block;margin-bottom:12px;">Sections (2 max)</label>' +
-            App.renderSectionBadges(S.editSections, 'toggleEditSection') + 
+            '<div id="editSectionBadgesContainer">' + App.renderSectionBadges(S.editSections, 'toggleEditSection') + '</div>' + 
           '</div>' +
         '</div>' +
 
@@ -1810,8 +1798,23 @@
   // APP CONTROLLER — toutes les actions
   // ============================================================
   window.App = {
+    renderAssignmentsList: function() {
+      if (!S.eventAssignments || S.eventAssignments.length === 0) {
+        return '<div style="font-size:13px;color:#8E8E93;margin-bottom:12px;">Aucun membre assigné.</div>';
+      }
+      return '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;">' +
+        S.eventAssignments.map(function(a, idx) {
+          return '<div style="display:flex;align-items:center;justify-content:space-between;background:#F2F2F7;padding:8px 12px;border-radius:8px;">' +
+            '<div style="display:flex;flex-direction:column;">' +
+              '<span style="font-size:13px;font-weight:700;color:#000;">' + safeHtml(a.userName) + '</span>' +
+              '<span style="font-size:12px;color:#8E8E93;">' + safeHtml(a.task) + '</span>' +
+            '</div>' +
+            '<button type="button" onclick="App.removeAssignment(' + idx + ')" style="background:none;border:none;color:#FF3B30;font-size:16px;cursor:pointer;">&times;</button>' +
+          '</div>';
+        }).join('') +
+      '</div>';
+    },
     addAssignment: function() {
-      App.syncCreateEventData();
       var select = document.getElementById('assignUserSelect');
       var taskInput = document.getElementById('assignTaskInput');
       if (select && select.value && taskInput && taskInput.value.trim()) {
@@ -1824,15 +1827,26 @@
             userName: u.prenom + ' ' + u.nom,
             task: taskInput.value.trim()
           });
-          render();
+          select.value = '';
+          taskInput.value = '';
+          var container = document.getElementById('eventAssignmentsList');
+          if (container) {
+            container.innerHTML = App.renderAssignmentsList();
+          } else {
+            render();
+          }
         }
       }
     },
     removeAssignment: function(idx) {
-      App.syncCreateEventData();
       if (S.eventAssignments) {
         S.eventAssignments.splice(idx, 1);
-        render();
+        var container = document.getElementById('eventAssignmentsList');
+        if (container) {
+          container.innerHTML = App.renderAssignmentsList();
+        } else {
+          render();
+        }
       }
     },
     syncCreateEventData: function() {
@@ -1871,11 +1885,15 @@
     closeCreateEvent: function() { S.createEventOpen = false; S.createEventData = null; render(); },
     selectDate: function(d) { S.selectedDate = d; render(); },
     toggleEventSection: function(sec) {
-      App.syncCreateEventData();
       var idx = S.eventSections.indexOf(sec);
       if (idx !== -1) { S.eventSections.splice(idx, 1); }
       else { S.eventSections.push(sec); }
-      render();
+      var container = document.getElementById('eventSectionBadgesContainer');
+      if (container) {
+        container.innerHTML = '<div id="eventSectionBadgesContainer">' + App.renderSectionBadges(S.eventSections, 'toggleEventSection') + '</div>';
+      } else {
+        render();
+      }
     },
     saveEvent: async function(btn) {
       var titleEl = document.getElementById('eventTitle');
@@ -2003,14 +2021,18 @@
       render();
     },
     toggleEditSection: function(sec) {
-      App.syncEditProfileData();
       var idx = S.editSections.indexOf(sec);
       if (idx !== -1) { S.editSections.splice(idx, 1); }
       else {
         if (S.editSections.length >= 2) { toast('Maximum 2 sections autorisées.', 'error'); return; }
         S.editSections.push(sec);
       }
-      render();
+      var container = document.getElementById('editSectionBadgesContainer');
+      if (container) {
+        container.innerHTML = '<div id="editSectionBadgesContainer">' + App.renderSectionBadges(S.editSections, 'toggleEditSection') + '</div>';
+      } else {
+        render();
+      }
     },
     renderSectionBadges: function(selected, toggleFnName) {
       var sections = [
