@@ -19,10 +19,15 @@
     LIKED_COMMENTS: 'kc_liked_comments'
   };
 
+  var DB_CACHE = {};
   function db(key, def) {
-    try { var r = localStorage.getItem(key); return r ? JSON.parse(r) : def; } catch(e) { return def; }
+    if (DB_CACHE[key] !== undefined) return DB_CACHE[key];
+    try { var r = localStorage.getItem(key); var parsed = r ? JSON.parse(r) : def; DB_CACHE[key] = parsed; return parsed; } catch(e) { return def; }
   }
-  function dbSet(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch(e) {} }
+  function dbSet(key, val) {
+    DB_CACHE[key] = val;
+    try { localStorage.setItem(key, JSON.stringify(val)); } catch(e) {}
+  }
 
   // ============================================================
   // DONNÉES PAR DÉFAUT
