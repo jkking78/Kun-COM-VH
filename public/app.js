@@ -754,6 +754,24 @@
   // ============================================================
   // HOME TAB
   // ============================================================
+  
+  function renderScreenHeader(title, subtitle, rightActionHtml) {
+    var u = S.user || {};
+    var initial = (u.prenom || 'M').charAt(0).toUpperCase();
+    return '<header style="position:sticky;top:0;z-index:200;background:rgba(255,255,255,0.96);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:0.5px solid rgba(0,0,0,0.1);padding:13px 16px 12px;">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+        '<div>' +
+          '<div style="font-size:10px;font-weight:800;color:#007AFF;text-transform:uppercase;letter-spacing:1.5px;">' + (subtitle||"Église Vase d'Honneur") + '</div>' +
+          '<h1 style="font-size:22px;font-weight:900;color:#000;margin:0;letter-spacing:-0.5px;">' + title + '</h1>' +
+        '</div>' +
+        '<div style="display:flex;gap:8px;align-items:center;">' +
+          (rightActionHtml || '') +
+          (u.avatar_url ? '<button onclick="App.tab(\'profile\')" style="width:34px;height:34px;border-radius:17px;border:none;cursor:pointer;padding:0;overflow:hidden;flex-shrink:0;"><img src="' + u.avatar_url + '" style="width:100%;height:100%;object-fit:cover;" /></button>' : '<button onclick="App.tab(\'profile\')" style="width:34px;height:34px;border-radius:17px;background:linear-gradient(135deg,' + (u.avatar_color||'#007AFF') + ',#0040CC);border:none;cursor:pointer;color:#FFF;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;">' + initial + '</button>') +
+        '</div>' +
+      '</div>' +
+    '</header>';
+  }
+
   function renderHome(filtered, initial, u) {
     var trends = trendingTags();
 
@@ -1563,12 +1581,8 @@
 
     var canCreate = S.user && (S.user.role === 'RESP_SECTION' || S.user.role === 'GRAND_RESPONSABLE');
     
-    var header = '<header style="padding:16px 16px 0;background:#FFF;display:flex;justify-content:space-between;align-items:center;">' +
-        '<div>' +
-          '<h1 style="font-size:28px;font-weight:900;color:#000;margin:0;letter-spacing:-0.5px;">Planning</h1>' +
-        '</div>' +
-        (canCreate ? '<button onclick="App.openCreateEvent()" style="background:#000;color:#FFF;border:none;border-radius:20px;padding:8px 16px;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:6px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg> Événement</button>' : '') +
-      '</header>';
+    var rightBtn = canCreate ? '<button onclick="App.openCreateEvent()" style="background:#007AFF;color:#FFF;border:none;border-radius:17px;padding:6px 14px;font-size:12.5px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:5px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg> Événement</button>' : '';
+    var header = renderScreenHeader('Planning & Cultes', 'Département COM', rightBtn);
 
     // Date Slider
     var slider = '<div style="background:#FFF;padding:16px;border-bottom:1px solid #E5E5EA;display:flex;gap:12px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;">' +
@@ -1642,7 +1656,14 @@
                 safeHtml(ev.eventLocation || 'Non défini') +
               '</div>' +
               (ev.caption ? '<p style="font-size:13px;color:#3A3A3C;margin:0 0 16px;line-height:1.4;">' + safeHtml(ev.caption) + '</p>' : '') +
-              '<button onclick="toast(\'Participation enregistrée !\', \'success\')" style="width:100%;background:' + (status==='closed'?'#F2F2F7':'#E5F0FF') + ';color:' + (status==='closed'?'#8E8E93':'#007AFF') + ';border:none;border-radius:10px;padding:10px;font-size:14px;font-weight:700;cursor:pointer;">' + (status==='closed'?'Terminé':'Je participe 👍') + '</button>' +
+              (function(){
+                var isPart = S.user && Array.isArray(ev.likedBy) && ev.likedBy.indexOf(S.user.id) !== -1;
+                var count = Array.isArray(ev.likedBy) ? ev.likedBy.length : 0;
+                if (status === 'closed') {
+                  return '<button disabled style="width:100%;background:#F2F2F7;color:#8E8E93;border:none;border-radius:12px;padding:11px;font-size:13.5px;font-weight:700;">Terminé (' + count + ' participants)</button>';
+                }
+                return '<button onclick="App.toggleEventParticipation(\'' + ev.id + '\')" style="width:100%;background:' + (isPart ? 'linear-gradient(135deg,#34C759,#28A347)' : 'linear-gradient(135deg,#007AFF,#0055CC)') + ';color:#FFF;border:none;border-radius:12px;padding:11px;font-size:13.5px;font-weight:800;cursor:pointer;box-shadow:' + (isPart ? '0 4px 12px rgba(52,199,89,0.3)' : '0 4px 12px rgba(0,122,255,0.3)') + ';">' + (isPart ? '✓ Participation Confirmée (' + count + ')' : '+ Je participe 👍 (' + count + ')') + '</button>';
+              })() +
             '</div>' +
           '</div>' +
         '</div>';
@@ -1659,10 +1680,7 @@
   function renderDebrief(u) {
     var userSec = (u && u.section_id) || '';
 
-    return '<header style="padding:16px 18px;background:#FFF;border-bottom:0.5px solid #F2F2F7;">' +
-        '<div style="font-size:11px;font-weight:800;color:#007AFF;text-transform:uppercase;letter-spacing:1.3px;margin-bottom:3px;">Évaluation Inter-Sections</div>' +
-        '<h1 style="font-size:24px;font-weight:900;color:#000;margin:0;">Notation & Débrief</h1>' +
-      '</header>' +
+    return renderScreenHeader('Notation & Débrief', 'Évaluation Inter-Sections', '') +
 
       '<div style="padding:16px;">' +
         '<p style="font-size:13.5px;color:#8E8E93;margin:0 0 16px;line-height:1.5;">Notez les performances des autres sections pour un événement. La notation de votre propre section est interdite.</p>' +
