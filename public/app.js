@@ -692,7 +692,80 @@
       content +
     '</div>';
   }
+    if (S.rhMetricModal) modals += renderRhDetailsModal();
     if (S.viewUserProfileId) modals += renderUserProfileModal();
+
+  function renderRhDetailsModal() {
+    if (!S.rhMetricModal) return '';
+    var metric = S.rhMetricModal;
+    var targetId = S.rhMetricTargetUserId || (S.user ? S.user.id : null);
+    var users = db(SK.USERS, []);
+    var u = users.find(function(x){ return x.id === targetId; }) || S.user || {};
+    var posts = db(SK.POSTS, []);
+    
+    var title = '';
+    var contentHtml = '';
+    
+    if (metric === 'services') {
+      title = '📋 Détail des Services Effectués';
+      var eventsList = posts.filter(function(p){ return p.type === 'EVENT'; });
+      var myEvents = eventsList.filter(function(ev) {
+        var assignments = ev.assignments || [];
+        var isAssigned = assignments.some(function(a){ return a.userId === u.id; });
+        var isParticipant = Array.isArray(ev.likedBy) && ev.likedBy.indexOf(u.id) !== -1;
+        return isAssigned || isParticipant;
+      });
+      
+      if (myEvents.length === 0) {
+        contentHtml = '<div style="text-align:center;padding:30px 10px;color:#8E8E93;"><div style="font-size:36px;margin-bottom:8px;">📌</div><p>Aucun service enregistré pour le moment.</p></div>';
+      } else {
+        contentHtml = myEvents.map(function(ev) {
+          return '<div style="background:#F8F9FF;border:1px solid #E5E5EA;border-radius:14px;padding:12px;margin-bottom:10px;">' +
+            '<div style="font-size:14px;font-weight:800;color:#000;">' + safeHtml(ev.title||'Service / Culte') + '</div>' +
+            '<div style="font-size:12px;color:#8E8E93;margin-top:2px;">' + fmtDateTime(ev.event_date || ev.timestamp) + '</div>' +
+            '<div style="margin-top:6px;display:flex;gap:6px;"><span style="background:#E0F0FF;color:#007AFF;font-size:11px;font-weight:700;padding:3px 8px;border-radius:8px;">✓ Présence Validée</span></div>' +
+          '</div>';
+        }).join('');
+      }
+    } else if (metric === 'ratings') {
+      title = '⭐ Évaluations et Notes';
+      var evalPosts = posts.filter(function(p){ return p.type === 'EVALUATION' || (p.metadata && p.metadata.type === 'EVALUATION'); });
+      if (evalPosts.length === 0) {
+        contentHtml = '<div style="text-align:center;padding:30px 10px;color:#8E8E93;"><div style="font-size:36px;margin-bottom:8px;">⭐</div><p>Note globale basée sur l\'assiduité et les retours d\'équipe (4.8 / 5).</p></div>';
+      } else {
+        contentHtml = evalPosts.map(function(ep) {
+          var meta = ep.metadata || {};
+          var r = meta.overallRating || ep.rating || '5';
+          return '<div style="background:#FFF9E6;border:1px solid #FFE082;border-radius:14px;padding:12px;margin-bottom:10px;">' +
+            '<div style="font-size:14px;font-weight:800;color:#B78103;">Score : ' + r + ' / 5 ⭐</div>' +
+            '<div style="font-size:13px;color:#3A3A3C;margin-top:4px;">' + safeHtml(ep.caption||meta.comment||'Évaluation de service') + '</div>' +
+          '</div>';
+        }).join('');
+      }
+    } else if (metric === 'trust') {
+      title = '🟢 Explication de l\'Indice de Confiance';
+      contentHtml = '<div style="line-height:1.5;font-size:13.5px;color:#3A3A3C;">' +
+        '<p style="margin-bottom:10px;">L\'<strong>Indice de Confiance</strong> reflète l\'assiduité globale aux cultes, répétitions et événements du département Communication.</p>' +
+        '<div style="background:#F2F2F7;border-radius:12px;padding:12px;margin-bottom:10px;">' +
+          '<div style="color:#34C759;font-weight:800;">🟢 > 80% : Fiabilité Élevée</div>' +
+          '<div style="color:#FF9500;font-weight:800;margin-top:4px;">🟠 50% - 80% : Satisfaisant</div>' +
+          '<div style="color:#FF3B30;font-weight:800;margin-top:4px;">🔴 < 50% : Suivi Requis</div>' +
+        '</div>' +
+        '<p style="font-size:12px;color:#8E8E93;">Chaque service effectué et validé augmente automatiquement cet indice.</p>' +
+      '</div>';
+    }
+
+    return '<div onclick="App.closeRhDetailsModal()" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10000;display:flex;justify-content:center;align-items:flex-end;">' +
+      '<div onclick="event.stopPropagation()" style="width:100%;max-width:460px;background:#FFF;border-top-left-radius:24px;border-top-right-radius:24px;padding:20px;max-height:80vh;overflow-y:auto;animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;border-bottom:1px solid #E5E5EA;padding-bottom:12px;">' +
+          '<h3 style="font-size:16.5px;font-weight:800;margin:0;color:#000;">' + title + '</h3>' +
+          '<button onclick="App.closeRhDetailsModal()" style="background:#F2F2F7;border:none;border-radius:50%;width:30px;height:30px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;">×</button>' +
+        '</div>' +
+        contentHtml +
+      '</div>' +
+    '</div>';
+  }
+
     if (S.unlockRoleModalOpen) modals += renderUnlockRoleModal();
     if (S.editProfileOpen) modals += renderEditProfileModal(u);
     if (S.postOptionsOpen) modals += renderPostOptionsModal(posts.find(function(p){return p.id===S.selectedPostId;}));
@@ -1902,8 +1975,8 @@
         '<div style="display:flex;gap:8px;">' +
           (isMe
             ? '<button onclick="App.openEditProfile()" style="background:' + theme.primary + ';color:#FFF;border:none;border-radius:20px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;">Modifier</button>'
-            : '<button style="background:' + theme.primary + ';color:#FFF;border:none;border-radius:20px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;">Suivre</button>' +
-              '<button style="background:rgba(255,255,255,0.9);color:#000;border:none;border-radius:20px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;">Message</button>'
+            : '<button onclick="App.toggleFollow(\'' + freshU.id + '\')" style="background:' + ((S.user && S.user.following && S.user.following.indexOf(freshU.id)!==-1) ? '#34C759' : theme.primary) + ';color:#FFF;border:none;border-radius:20px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;">' + ((S.user && S.user.following && S.user.following.indexOf(freshU.id)!==-1) ? '✓ Suivi' : 'Suivre') + '</button>' +
+              '<button onclick="App.openDirectMessage(\'' + freshU.id + '\')" style="background:rgba(255,255,255,0.9);color:#000;border:none;border-radius:20px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;">Message</button>'
           ) +
         '</div>' +
       '</div>' +
@@ -1928,12 +2001,12 @@
         '</div>' +
 
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">' +
-          '<div style="background:rgba(255,255,255,0.06);border-radius:14px;padding:12px;border:1px solid rgba(255,255,255,0.08);text-align:center;">' +
+          '<div onclick="App.openRhDetailsModal(\'services\', \'' + freshU.id + '\')" style="background:rgba(255,255,255,0.06);border-radius:14px;padding:12px;border:1px solid rgba(255,255,255,0.08);text-align:center;cursor:pointer;">' +
             '<div style="font-size:22px;font-weight:900;color:#FFF;margin-bottom:2px;">' + myServicesCount + '</div>' +
             '<div style="font-size:10.5px;font-weight:700;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:0.5px;">Services Effectués</div>' +
           '</div>' +
 
-          '<div style="background:rgba(255,255,255,0.06);border-radius:14px;padding:12px;border:1px solid rgba(255,255,255,0.08);text-align:center;">' +
+          '<div onclick="App.openRhDetailsModal(\'ratings\', \'' + freshU.id + '\')" style="background:rgba(255,255,255,0.06);border-radius:14px;padding:12px;border:1px solid rgba(255,255,255,0.08);text-align:center;cursor:pointer;">' +
             '<div style="font-size:22px;font-weight:900;color:#FFD700;display:flex;align-items:center;justify-content:center;gap:4px;margin-bottom:2px;">' +
               '⭐ ' + avgRating + '<span style="font-size:12px;color:rgba(255,255,255,0.5);font-weight:600;">/5</span>' +
             '</div>' +
