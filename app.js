@@ -164,6 +164,15 @@
     ]);
   }
 
+    // Initial cleanup of old EVALUATION posts
+  try {
+    var initPosts = db(SK.POSTS, []);
+    var filteredPosts = initPosts.filter(function(p){ return p.type !== 'EVALUATION'; });
+    if (filteredPosts.length !== initPosts.length) {
+      dbSet(SK.POSTS, filteredPosts);
+    }
+  } catch(e){}
+
   if (!db(SK.POSTS, null)) {
     var now = Date.now();
     dbSet(SK.POSTS, [
@@ -887,7 +896,11 @@
           '</div>' +
         '</div>';
       } else if (post.type === 'EVALUATION' && post.metadata && post.metadata.teamName) {
+         var evBadge = post.metadata.eventTitle 
+            ? '<div style="font-size:12.5px;font-weight:800;color:#5856D6;background:rgba(88,86,214,0.08);padding:6px 12px;border-radius:10px;margin-bottom:12px;display:flex;align-items:center;gap:6px;"><span>🗓️ Événement :</span> <span>' + safeHtml(post.metadata.eventTitle) + '</span></div>'
+            : '';
          contentZone = '<div style="margin:10px 14px;padding:18px;background:linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%);border-radius:20px;border:1px solid #E2E8F0;box-shadow:inset 0 2px 4px rgba(255,255,255,0.8), 0 4px 12px rgba(0,0,0,0.03);">' +
+          evBadge +
           '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">' +
             '<div>' +
               '<div style="display:inline-flex;align-items:center;gap:4px;background:#FFF;padding:4px 8px;border-radius:8px;font-size:10px;font-weight:800;color:#64748B;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05);"><span>📊</span> Évaluation</div>' +
@@ -1413,7 +1426,23 @@
       '</header>' +
 
       '<div style="padding:16px;">' +
-        '<p style="font-size:13.5px;color:#8E8E93;margin:0 0 16px;line-height:1.5;">Notez les performances des autres sections. La notation de votre propre section est interdite.</p>' +
+        '<p style="font-size:13.5px;color:#8E8E93;margin:0 0 16px;line-height:1.5;">Notez les performances des autres sections pour un événement. La notation de votre propre section est interdite.</p>' +
+
+        (function(){
+          var eventPosts = db(SK.POSTS, []).filter(function(p){ return p.type === 'EVENT'; });
+          return '<div style="background:#FFF;border-radius:18px;padding:16px;margin-bottom:14px;border:1px solid #EFEFEF;box-shadow:0 2px 8px rgba(0,0,0,0.04);">' +
+            '<label style="font-size:13px;font-weight:800;color:#000;display:block;margin-bottom:8px;">📍 Événement concerné <span style="color:#FF3B30;">*</span></label>' +
+            '<select id="evalEventSelect" onchange="S.evalEventId=this.value" style="width:100%;height:44px;border-radius:12px;border:1.5px solid #E5E5EA;background:#FAFAFA;padding:0 12px;font-size:14px;color:#000;outline:none;font-weight:600;">' +
+              '<option value="">Sélectionner l\'événement à évaluer...</option>' +
+              eventPosts.map(function(ev){
+                var evTitle = ev.eventTitle || (ev.metadata && ev.metadata.title) || 'Événement';
+                var evDate = ev.eventDate || (ev.metadata && ev.metadata.date) || '';
+                var sel = S.evalEventId === ev.id ? ' selected' : '';
+                return '<option value="' + ev.id + '"' + sel + '>' + safeHtml(evTitle) + (evDate ? ' (' + evDate + ')' : '') + '</option>';
+              }).join('') +
+            '</select>' +
+          '</div>';
+        })() +
 
         SECTIONS.map(function(sec) {
           var blocked = sec.id === userSec;
@@ -2663,7 +2692,16 @@ toggleParticipation: function(postId, status) {
     },
     publishBilan: function() {
       if (!S.user) return;
+      var eventSelect = document.getElementById('evalEventSelect');
+      var eventId = S.evalEventId || (eventSelect ? eventSelect.value : '');
+      if (!eventId) {
+        toast("Veuillez sélectionner l'événement à évaluer.", 'error');
+        return;
+      }
       var posts = db(SK.POSTS, []);
+      var selectedEv = posts.find(function(p){ return p.id === eventId; });
+      var eventTitle = selectedEv ? (selectedEv.eventTitle || (selectedEv.metadata && selectedEv.metadata.title) || 'Événement') : 'Événement';
+
       var hasRatings = false;
       var ts = Date.now();
       
@@ -2675,7 +2713,6 @@ toggleParticipation: function(postId, status) {
           var tNom = targetSec ? targetSec.nom : secId;
           
           var globalScore = r.score;
-          // Simulate criteria based on global score
           var crit = {
              "Ponctualité": Math.min(5, Math.max(1, globalScore + (Math.random()>0.5?1:0))),
              "Technique": globalScore,
@@ -2688,9 +2725,12 @@ toggleParticipation: function(postId, status) {
             author: S.user.prenom + ' ' + S.user.nom,
             authorAvatar: S.user.prenom.charAt(0).toUpperCase(),
             avatarColor: S.user.avatar_color || '#007AFF',
+            avatar_url: S.user.avatar_url || null,
             sectionId: S.user.section_id || 'general', sectionNom: secNom(S.user.section_id || 'general'),
             type: 'EVALUATION',
             metadata: {
+               eventId: eventId,
+               eventTitle: eventTitle,
                teamName: tNom,
                globalScore: globalScore,
                criteria: crit
@@ -2709,6 +2749,7 @@ toggleParticipation: function(postId, status) {
       
       dbSet(SK.POSTS, posts); 
       S.ratings = {};
+      S.evalEventId = null;
       S.tab='home'; 
       S.q = ''; // Reset search
       render();
