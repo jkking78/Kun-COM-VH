@@ -1,10 +1,10 @@
 // ==============================================================================
 // APPLICATION WEB PURE PWA - DÉPARTEMENT COMMUNICATION (KUN COM VH)
-// Refonte Totale Instagram / Threads & Layout Web Responsive 100% Fluide
+// Style Instagram Clean & Minimaliste (Zero Emoji & SVG fil de fer)
 // ==============================================================================
 
 (function() {
-  console.log("🚀 Lancement de l'application Web (Style Instagram / Threads)...");
+  console.log("🚀 Lancement de l'application Web (Style Instagram Clean)...");
 
   // ETAT GLOBAL
   var activeTab = 'home';
@@ -22,6 +22,15 @@
     vente: { score: 4, comment: 'Support CD/USB prêts' }
   };
 
+  // ICONES SVG FIL DE FER (STROKE)
+  var heartSvg = function(filled) {
+    return '<svg width="22" height="22" viewBox="0 0 24 24" fill="' + (filled ? '#FF2D55' : 'none') + '" stroke="' + (filled ? '#FF2D55' : '#000000') + '" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>';
+  };
+  var commentSvg = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>';
+  var shareSvg = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><path d="M16 6l-4-4-4 4"/><path d="M12 2v13"/></svg>';
+  var bookmarkSvg = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>';
+  var checkSvg = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#007AFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg>';
+
   function initApp() {
     var root = document.getElementById('root');
     if (!root) return;
@@ -38,27 +47,26 @@
           </div>
 
           <!-- TAB BAR FIXE STYLE INSTAGRAM GLASSMORPHISM -->
-          <nav style="position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:500px; height:68px; background:rgba(255,255,255,0.94); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); border-top:1px solid #F2F2F7; display:flex; justify-content:space-around; align-items:center; z-index:99999;">
+          <nav style="position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:500px; height:68px; background:rgba(255,255,255,0.96); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); border-top:1px solid #EFEFEF; display:flex; justify-content:space-around; align-items:center; z-index:99999;">
             <button onclick="window.setTab('home')" style="${tabStyle(activeTab === 'home')}">
-              <span style="font-size:22px;">🏠</span>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="${activeTab === 'home' ? '#000' : 'none'}" stroke="#000" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
             </button>
 
             <button onclick="window.setTab('planning')" style="${tabStyle(activeTab === 'planning')}">
-              <span style="font-size:22px;">📅</span>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="1.8"><path d="M19 4H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zM16 2v4M8 2v4M3 10h18"/></svg>
             </button>
 
             <!-- BOUTON CENTRAL + SURÉLEVÉ -->
-            <button onclick="window.setTab('debrief')" style="width:48px; height:48px; border-radius:24px; background-color:#007AFF; color:#FFF; border:none; font-size:24px; display:flex; align-items:center; justify-content:center; margin-top:-20px; box-shadow:0 6px 16px rgba(0,122,255,0.35); cursor:pointer;">
-              +
+            <button onclick="window.setTab('debrief')" style="width:44px; height:44px; border-radius:22px; background-color:#007AFF; color:#FFF; border:none; display:flex; align-items:center; justify-content:center; margin-top:-18px; box-shadow:0 4px 12px rgba(0,122,255,0.3); cursor:pointer;">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>
             </button>
 
             <button onclick="window.setTab('halloffame')" style="${tabStyle(activeTab === 'halloffame')}">
-              <span style="font-size:22px;">🌟</span>
-              <span style="position:absolute; top:12px; right:20%; width:6px; height:6px; border-radius:3px; background:#FF2D55;"></span>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="1.8"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
             </button>
 
             <button onclick="window.setTab('profile')" style="${tabStyle(activeTab === 'profile')}">
-              <span style="font-size:22px;">👤</span>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="1.8"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
             </button>
           </nav>
         </div>
@@ -75,66 +83,68 @@
     };
     window.doCheckIn = function() {
       isCheckedIn = true;
-      alert("✅ Présence validée pour le Culte !");
+      alert("Presence validee pour le Culte.");
       render();
     };
     window.setRatingScore = function(secId, score) {
       if (secId === 'cadrage') {
-        alert("🔒 Action Interdite : Vous ne pouvez pas noter votre propre section !");
+        alert("Action Interdite : Vous ne pouvez pas noter votre propre section.");
         return;
       }
       ratings[secId].score = score;
       render();
     };
     window.publishBilanFeed24h = function() {
-      alert("🚀 Bilan de Culte Validé et Publié sur le Feed Instagram (24h) !\n\n🏆 Section Vedette attribuée : Cadrage 🎥 (4.88 / 5.0)");
+      alert("Bilan de Culte Valide et Publie sur le Feed (24h).\n\nSection Vedette attribuee : Cadrage (4.88 / 5.0)");
       activeTab = 'home';
       render();
     };
 
     function tabStyle(active) {
-      return 'background:none; border:none; display:flex; align-items:center; justify-content:center; cursor:pointer; padding:8px 16px; opacity:' + (active ? 1 : 0.5) + '; position:relative;';
+      return 'background:none; border:none; display:flex; align-items:center; justify-content:center; cursor:pointer; padding:8px 16px; opacity:' + (active ? 1 : 0.5) + ';';
     }
 
-    // RENDU DES 5 ÉCRANS INSTAGRAM / THREADS
+    // RENDU DES 5 ÉCRANS INSTAGRAM CLEAN
     function renderScreen() {
       if (activeTab === 'home') {
         return `
           <!-- 1. HEADER INSTAGRAM TOP -->
-          <header style="padding:14px 18px; background:#FFF; border-bottom:1px solid #F2F2F7; display:flex; justify-content:space-between; align-items:center; sticky:top; top:0; z-index:100;">
+          <header style="padding:14px 18px; background:#FFF; border-bottom:1px solid #EFEFEF; display:flex; justify-content:space-between; align-items:center; position:sticky; top:0; z-index:100;">
             <div>
-              <p style="font-size:10px; font-weight:800; color:#007AFF; text-transform:uppercase; letter-spacing:1.2px; margin:0 0 1px;">ÉGLISE VASE D'HONNEUR</p>
-              <h1 style="font-size:22px; font-weight:900; color:#1C1C1E; margin:0; letter-spacing:-0.6px;">Kun COM 📸</h1>
+              <p style="font-size:10px; font-weight:800; color:#007AFF; text-transform:uppercase; letter-spacing:1.2px; margin:0 0 1px;">EGLISE VASE D'HONNEUR</p>
+              <h1 style="font-size:22px; font-weight:900; color:#000000; margin:0; letter-spacing:-0.6px;">Kun COM</h1>
             </div>
-            <div style="display:flex; gap:12px; align-items:center;">
-              <div style="width:36px; height:36px; border-radius:18px; background:#F8F9FA; display:flex; align-items:center; justify-content:center; cursor:pointer;">➕</div>
-              <div style="width:36px; height:36px; border-radius:18px; background:#F8F9FA; display:flex; align-items:center; justify-content:center; cursor:pointer; position:relative;">
-                💬<span style="position:absolute; top:6px; right:6px; width:7px; height:7px; border-radius:4px; background:#FF2D55;"></span>
+            <div style="display:flex; gap:14px; align-items:center;">
+              <div style="cursor:pointer;">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+              </div>
+              <div style="cursor:pointer;">
+                ${commentSvg}
               </div>
             </div>
           </header>
 
           <!-- 2. CARROUSEL STORIES EN BULLES CIRCULAIRES -->
-          <div style="padding:12px 0; border-bottom:1px solid #F2F2F7; background:#FFF; overflow-x:auto; white-space:nowrap; -webkit-overflow-scrolling:touch;">
+          <div style="padding:12px 0; border-bottom:1px solid #EFEFEF; background:#FFF; overflow-x:auto; white-space:nowrap; -webkit-overflow-scrolling:touch;">
             <div style="display:flex; gap:14px; padding:0 14px;">
               ${[
-                { id: 'cadrage', nom: 'Cadrage', icon: '🎥', active: true },
-                { id: 'regie', nom: 'Régie', icon: '🎛️', active: true },
-                { id: 'web', nom: 'Web', icon: '🌐', active: false },
-                { id: 'proj', nom: 'Projection', icon: '🖥️', active: false },
-                { id: 'prod', nom: 'Prod', icon: '🎬', active: false },
-                { id: 'photo', nom: 'Photo', icon: '📸', active: false },
-                { id: 'vente', nom: 'Vente', icon: '🛒', active: false }
+                { id: 'cadrage', nom: 'Cadrage', initial: 'C', active: true },
+                { id: 'regie', nom: 'Régie', initial: 'R', active: true },
+                { id: 'web', nom: 'Web', initial: 'W', active: false },
+                { id: 'proj', nom: 'Projection', initial: 'P', active: false },
+                { id: 'prod', nom: 'Prod', initial: 'PR', active: false },
+                { id: 'photo', nom: 'Photo', initial: 'PH', active: false },
+                { id: 'vente', nom: 'Vente', initial: 'V', active: false }
               ].map(function(story) {
                 var isSel = activeStory === story.id;
                 return `
                   <div onclick="window.setStory('${story.id}')" style="display:inline-flex; flex-direction:column; align-items:center; cursor:pointer; width:66px;">
                     <div style="width:62px; height:62px; border-radius:31px; padding:2px; border:2px solid ${isSel || story.active ? '#D4AF37' : '#E5E5EA'}; display:flex; align-items:center; justify-content:center; background:#FFF;">
-                      <div style="width:100%; height:100%; border-radius:27px; background:#E5F1FF; display:flex; align-items:center; justify-content:center; font-size:24px;">
-                        ${story.icon}
+                      <div style="width:100%; height:100%; border-radius:27px; background:#F0F6FF; color:#007AFF; font-weight:800; font-size:15px; display:flex; align-items:center; justify-content:center;">
+                        ${story.initial}
                       </div>
                     </div>
-                    <span style="font-size:11px; font-weight:${isSel ? '800' : '600'}; color:${isSel ? '#1C1C1E' : '#8E8E93'}; margin-top:4px; text-align:center;">
+                    <span style="font-size:11px; font-weight:${isSel ? '700' : '500'}; color:${isSel ? '#000000' : '#8E8E93'}; margin-top:4px; text-align:center;">
                       ${story.nom}
                     </span>
                   </div>
@@ -144,30 +154,29 @@
           </div>
 
           <!-- 3. POST INSTAGRAM : CARTE BILAN DE CULTE -->
-          <article style="background:#FFF; border-bottom:8px solid #F8F9FA;">
+          <article style="background:#FFF; border-bottom:8px solid #FAFAFA;">
             <!-- En-tête Post -->
             <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px;">
               <div style="display:flex; align-items:center; gap:10px;">
-                <div style="width:38px; height:38px; border-radius:19px; background:#007AFF; color:#FFF; font-size:18px; display:flex; align-items:center; justify-content:center;">🎥</div>
+                <div style="width:38px; height:38px; border-radius:19px; background:#007AFF; color:#FFF; font-size:15px; font-weight:800; display:flex; align-items:center; justify-content:center;">C</div>
                 <div>
-                  <h3 style="font-size:14px; font-weight:800; margin:0; color:#1C1C1E;">Section Cadrage</h3>
+                  <h3 style="font-size:14px; font-weight:700; margin:0; color:#000000;">Section Cadrage</h3>
                   <span style="font-size:11px; color:#8E8E93;">Dimanche 02 Août 2026 • Culte n°1</span>
                 </div>
               </div>
-              <div style="background:#FFFDF0; border:1px solid #E6CA65; padding:5px 10px; border-radius:12px; font-size:10.5px; font-weight:800; color:#B8860B; display:flex; align-items:center; gap:4px;">
-                🏆 SECTION VEDETTE
+              <div style="background:#FFFDF0; border:1px solid #E6CA65; padding:5px 10px; border-radius:12px; font-size:10.5px; font-weight:800; color:#B8860B;">
+                SECTION VEDETTE
               </div>
             </div>
 
             <!-- Zone Visuelle Coulisses + Overlay Score Glassmorphism -->
-            <div style="width:100%; height:280px; background:linear-gradient(135deg, #1C1C1E 0%, #2C2C2E 100%); position:relative; display:flex; flex-direction:column; justify-content:center; align-items:center;">
-              <span style="font-size:52px; margin-bottom:8px;">🎬 🎥 ✨</span>
-              <span style="color:rgba(255,255,255,0.7); font-size:12px; font-weight:600;">Coulisses & Captation Directe du Culte</span>
+            <div style="width:100%; height:280px; background:#1C1C1E; position:relative; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:20px; text-align:center;">
+              <h2 style="font-size:18px; font-weight:800; color:#FFFFFF; margin:0 0 4px; letter-spacing:-0.4px;">Captation Directe Culte n°1</h2>
+              <span style="color:#8E8E93; font-size:12px; font-weight:500;">Coulisses & Couverture Technique</span>
 
               <!-- Overlay Score Glassmorphism -->
-              <div style="position:absolute; bottom:14px; right:14px; background:rgba(255,255,255,0.9); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); padding:6px 12px; border-radius:16px; border:1px solid rgba(255,255,255,0.8); display:flex; align-items:center; gap:5px; box-shadow:0 4px 12px rgba(0,0,0,0.15);">
-                <span style="color:#D4AF37; font-size:14px;">★</span>
-                <strong style="font-size:14px; color:#1C1C1E;">4.88 / 5.0</strong>
+              <div style="position:absolute; bottom:14px; right:14px; background:rgba(255,255,255,0.92); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); padding:6px 12px; border-radius:16px; border:1px solid rgba(255,255,255,0.8); box-shadow:0 4px 12px rgba(0,0,0,0.12);">
+                <strong style="font-size:14px; color:#1C1C1E; font-weight:900;">4.88 / 5.0</strong>
               </div>
             </div>
 
@@ -175,30 +184,32 @@
             <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px;">
               <div style="display:flex; align-items:center; gap:16px;">
                 <button onclick="window.toggleBilanLike()" style="background:none; border:none; padding:0; display:flex; align-items:center; gap:6px; cursor:pointer;">
-                  <span style="font-size:20px;">${isLikedBilan ? '❤️' : '🤍'}</span>
-                  <strong style="font-size:13px; color:#1C1C1E;">${likesBilanCount}</strong>
+                  ${heartSvg(isLikedBilan)}
+                  <strong style="font-size:13px; color:#000000;">${likesBilanCount}</strong>
                 </button>
 
                 <button style="background:none; border:none; padding:0; display:flex; align-items:center; gap:6px; cursor:pointer;">
-                  <span style="font-size:20px;">💬</span>
-                  <strong style="font-size:13px; color:#1C1C1E;">7</strong>
+                  ${commentSvg}
+                  <strong style="font-size:13px; color:#000000;">7</strong>
                 </button>
 
                 <button style="background:none; border:none; padding:0; cursor:pointer;">
-                  <span style="font-size:20px;">↗️</span>
+                  ${shareSvg}
                 </button>
               </div>
 
-              <span style="font-size:18px; cursor:pointer;">🔖</span>
+              <button style="background:none; border:none; padding:0; cursor:pointer;">
+                ${bookmarkSvg}
+              </button>
             </div>
 
             <!-- Légende & Story Text -->
             <div style="padding:0 16px 14px;">
-              <div style="font-size:13px; font-weight:800; color:#1C1C1E; margin-bottom:4px;">
+              <div style="font-size:13px; font-weight:700; color:#000000; margin-bottom:4px;">
                 Aimé par Sarah Yao et ${likesBilanCount - 1} autres membres
               </div>
-              <p style="font-size:13.5px; line-height:1.45; color:#1C1C1E; margin:0;">
-                <strong>Section Cadrage</strong> Bravo à toute l'équipe Cadrage pour la couverture dynamique du 1er culte ! Les cadrages serrés et la synchronisation avec la chorale étaient parfaits. 🎬✨
+              <p style="font-size:13.5px; line-height:1.45; color:#000000; margin:0;">
+                <strong>Section Cadrage</strong> Bravo à toute l'équipe Cadrage pour la couverture dynamique du 1er culte. Les cadrages serrés et la synchronisation avec la chorale étaient parfaits.
               </p>
               <span style="font-size:12px; color:#8E8E93; display:block; margin-top:6px; cursor:pointer;">
                 Voir les 7 débriefings et remarques des responsables...
@@ -207,54 +218,66 @@
           </article>
 
           <!-- 4. POST INSTAGRAM CLASSIQUE -->
-          <article style="background:#FFF; border-bottom:8px solid #F8F9FA;">
+          <article style="background:#FFF; border-bottom:8px solid #FAFAFA;">
             <div style="display:flex; align-items:center; gap:10px; padding:12px 16px;">
-              <div style="width:38px; height:38px; border-radius:19px; background:#5856D6; color:#FFF; font-size:18px; display:flex; align-items:center; justify-content:center;">📸</div>
+              <div style="width:38px; height:38px; border-radius:19px; background:#5856D6; color:#FFF; font-size:15px; font-weight:800; display:flex; align-items:center; justify-content:center;">P</div>
               <div>
-                <h3 style="font-size:14px; font-weight:800; margin:0; color:#1C1C1E;">Sarah Yao (Photo)</h3>
+                <h3 style="font-size:14px; font-weight:700; margin:0; color:#000000;">Sarah Yao (Photo)</h3>
                 <span style="font-size:11px; color:#8E8E93;">Il y a 3 heures</span>
               </div>
             </div>
 
-            <div style="width:100%; height:220px; background:#2C2C2E; display:flex; align-items:center; justify-content:center; color:#FFF; font-size:42px;">
-              📸 📸 📸
+            <div style="width:100%; height:200px; background:#2C2C2E; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#FFF;">
+              <strong style="font-size:16px; font-weight:800;">Album Photos HD</strong>
+              <span style="font-size:12px; color:#8E8E93; margin-top:2px;">150 Clichés Importés</span>
             </div>
 
             <div style="padding:12px 16px;">
-              <div style="display:flex; gap:16px; margin-bottom:8px;">
-                <span style="font-size:20px; cursor:pointer;">❤️ 29</span>
-                <span style="font-size:20px; cursor:pointer;">💬 4</span>
+              <div style="display:flex; gap:16px; margin-bottom:8px; align-items:center;">
+                <span style="display:flex; align-items:center; gap:6px;">${heartSvg(false)} <strong style="font-size:13px;">29</strong></span>
+                <span style="display:flex; align-items:center; gap:6px;">${commentSvg} <strong style="font-size:13px;">4</strong></span>
               </div>
-              <p style="font-size:13.5px; margin:0; line-height:1.4;">
-                <strong>Sarah Yao</strong> Les 150 clichés HD du Culte n°1 sont prêts et importés sur le serveur cloud du Département ! 🚀
+              <p style="font-size:13.5px; margin:0; line-height:1.4; color:#000000;">
+                <strong>Sarah Yao</strong> Les 150 clichés HD du Culte n°1 sont prêts et importés sur le serveur du Département.
               </p>
             </div>
           </article>
+
+          <!-- 5. BLOC INSTAGRAM "VOUS ÊTES À JOUR" -->
+          <div style="padding:36px 20px; text-align:center; background:#FFF; border-top:1px solid #EFEFEF; display:flex; flex-direction:column; align-items:center;">
+            <div style="width:48px; height:48px; border-radius:24px; background:#F0F6FF; display:flex; align-items:center; justify-content:center; margin-bottom:10px;">
+              ${checkSvg}
+            </div>
+            <h3 style="font-size:16px; font-weight:800; color:#000000; margin:0;">Vous êtes à jour</h3>
+            <p style="font-size:12px; color:#8E8E93; margin:4px 0 0; max-width:280px; line-height:1.4;">
+              Vous avez vu toutes les nouvelles publications du Département Communication.
+            </p>
+          </div>
         `;
       }
 
       if (activeTab === 'planning') {
         return `
-          <header style="padding:16px 20px; background:#FFF; border-bottom:1px solid #F2F2F7;">
+          <header style="padding:16px 20px; background:#FFF; border-bottom:1px solid #EFEFEF;">
             <p style="font-size:11px; font-weight:800; color:#5856D6; text-transform:uppercase; letter-spacing:1.2px; margin:0 0 2px;">Dimanche 02 Août 2026</p>
-            <h1 style="font-size:24px; font-weight:900; color:#1C1C1E; margin:0;">Planning Cultes 📅</h1>
+            <h1 style="font-size:24px; font-weight:900; color:#000000; margin:0;">Planning Cultes</h1>
           </header>
 
           <div style="padding:16px;">
             <div style="background:#FFF4E5; border-radius:20px; padding:16px; margin-bottom:16px; border:1.5px solid #FF9500;">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                <strong style="color:#FF9500; font-size:15px;">⏳ Transition Culte 1 ➜ Culte 2</strong>
+                <strong style="color:#FF9500; font-size:15px;">Transition Culte 1 vers Culte 2</strong>
                 <span style="background:#FF9500; color:#FFF; padding:4px 9px; border-radius:10px; font-size:13px; font-weight:800;">15:00 min</span>
               </div>
               <p style="font-size:12px; color:#1C1C1E; margin-bottom:12px;">Pause technique de 15 minutes (09h00 à 09h15).</p>
               
               <div style="background:#FFF; padding:12px; border-radius:14px; display:flex; justify-content:space-between; align-items:center;">
                 <div>
-                  <strong style="font-size:13px; display:block;">📍 Check-in Rapide</strong>
+                  <strong style="font-size:13px; display:block;">Check-in Rapide</strong>
                   <span style="font-size:11px; color:#8E8E93;">Validez votre arrivée pour Culte 2</span>
                 </div>
                 <button onclick="window.doCheckIn()" style="background:${isCheckedIn ? '#34C759' : '#007AFF'}; color:#FFF; border:none; padding:8px 14px; border-radius:12px; font-size:12px; font-weight:800; cursor:pointer;">
-                  ${isCheckedIn ? '✓ Présent' : 'Valider'}
+                  ${isCheckedIn ? 'Present' : 'Valider'}
                 </button>
               </div>
             </div>
@@ -262,14 +285,14 @@
             <div style="background:#FFF; border-radius:18px; padding:16px; margin-bottom:12px; border:1px solid #E5E5EA;">
               <div style="display:flex; justify-content:space-between; align-items:center;">
                 <div><h3 style="font-size:16px; margin:0;">Culte 1</h3><span style="font-size:12px; color:#8E8E93;">07h00 - 09h00</span></div>
-                <span style="background:#E5E5EA; color:#8E8E93; padding:4px 8px; border-radius:8px; font-size:11px; font-weight:800;">✓ CLÔTURÉ</span>
+                <span style="background:#E5E5EA; color:#8E8E93; padding:4px 8px; border-radius:8px; font-size:11px; font-weight:800;">CLÔTURÉ</span>
               </div>
             </div>
 
             <div style="background:#FFF; border-radius:18px; padding:16px; margin-bottom:12px; border:1.5px solid #007AFF;">
               <div style="display:flex; justify-content:space-between; align-items:center;">
                 <div><h3 style="font-size:16px; margin:0;">Culte 2</h3><span style="font-size:12px; color:#8E8E93;">09h15 - 11h15</span></div>
-                <span style="background:#FFF4E5; color:#FF9500; padding:4px 8px; border-radius:8px; font-size:11px; font-weight:800;">⏳ EN TRANSITION</span>
+                <span style="background:#FFF4E5; color:#FF9500; padding:4px 8px; border-radius:8px; font-size:11px; font-weight:800;">EN TRANSITION</span>
               </div>
             </div>
 
@@ -285,9 +308,9 @@
 
       if (activeTab === 'debrief') {
         return `
-          <header style="padding:16px 20px; background:#FFF; border-bottom:1px solid #F2F2F7;">
+          <header style="padding:16px 20px; background:#FFF; border-bottom:1px solid #EFEFEF;">
             <p style="font-size:11px; font-weight:800; color:#007AFF; text-transform:uppercase; letter-spacing:1.2px; margin:0 0 2px;">Culte du Dimanche 02 Août</p>
-            <h1 style="font-size:24px; font-weight:900; color:#1C1C1E; margin:0;">Notation & Débrief 📝</h1>
+            <h1 style="font-size:24px; font-weight:900; color:#000000; margin:0;">Notation & Débrief</h1>
           </header>
 
           <div style="padding:16px;">
@@ -296,25 +319,25 @@
             <!-- CADRAGE BLOQUÉ -->
             <div style="background:#F8F8FA; border-radius:16px; padding:14px; margin-bottom:10px; border:1px solid #E1E1E6;">
               <div style="display:flex; justify-content:space-between; align-items:center;">
-                <strong style="font-size:14px;">🎥 Section Cadrage</strong>
-                <span style="background:#FFEBEA; color:#FF3B30; padding:4px 8px; border-radius:8px; font-size:11px; font-weight:800;">🔒 Auto-notation interdite</span>
+                <strong style="font-size:14px;">Section Cadrage</strong>
+                <span style="background:#FFEBEA; color:#FF3B30; padding:4px 8px; border-radius:8px; font-size:11px; font-weight:800;">Auto-notation interdite</span>
               </div>
             </div>
 
             <!-- AUTRES SECTIONS -->
             ${[
-              { id: 'web', nom: 'Web', icon: '🌐' },
-              { id: 'proj', nom: 'Projection', icon: '🖥️' },
-              { id: 'prod', nom: 'Prod', icon: '🎬' },
-              { id: 'regie', nom: 'Régie', icon: '🎛️' },
-              { id: 'photo', nom: 'Photo', icon: '📸' },
-              { id: 'vente', nom: 'Vente', icon: '🛒' }
+              { id: 'web', nom: 'Web' },
+              { id: 'proj', nom: 'Projection' },
+              { id: 'prod', nom: 'Prod' },
+              { id: 'regie', nom: 'Régie' },
+              { id: 'photo', nom: 'Photo' },
+              { id: 'vente', nom: 'Vente' }
             ].map(function(sec) {
               var r = ratings[sec.id] || { score: 4, comment: '' };
               return `
                 <div style="background:#FFF; border-radius:16px; padding:14px; margin-bottom:10px; border:1px solid #E5E5EA;">
                   <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                    <strong style="font-size:14px;">${sec.icon} Section ${sec.nom}</strong>
+                    <strong style="font-size:14px;">Section ${sec.nom}</strong>
                     <div style="display:flex; gap:4px;">
                       ${[1,2,3,4,5].map(function(star) {
                         return `<span onclick="window.setRatingScore('${sec.id}', ${star})" style="font-size:18px; cursor:pointer; color:${star <= r.score ? '#FFD700' : '#D1D1D6'};">★</span>`;
@@ -327,10 +350,10 @@
             }).join('')}
 
             <div style="background:#FFFDF0; border-radius:20px; padding:18px; margin-top:16px; border:1.5px solid #E6CA65;">
-              <h3 style="color:#B8860B; margin:0 0 4px; font-size:16px;">👑 Synthèse & Validation</h3>
+              <h3 style="color:#B8860B; margin:0 0 4px; font-size:16px;">Synthèse & Validation</h3>
               <p style="font-size:11px; color:#666; margin-bottom:12px;">Validez et publiez le Bilan 24h sur le Feed Instagram.</p>
               <button onclick="window.publishBilanFeed24h()" style="width:100%; background:#34C759; color:#FFF; border:none; padding:14px; border-radius:14px; font-size:14px; font-weight:900; cursor:pointer;">
-                🚀 Valider et Publier le Bilan sur le Feed (24h)
+                Valider et Publier le Bilan sur le Feed (24h)
               </button>
             </div>
           </div>
@@ -339,9 +362,9 @@
 
       if (activeTab === 'halloffame') {
         return `
-          <header style="padding:16px 20px; background:#FFF; border-bottom:1px solid #F2F2F7;">
+          <header style="padding:16px 20px; background:#FFF; border-bottom:1px solid #EFEFEF;">
             <p style="font-size:11px; font-weight:800; color:#B8860B; text-transform:uppercase; letter-spacing:1.2px; margin:0 0 2px;">Archives Permanentes</p>
-            <h1 style="font-size:24px; font-weight:900; color:#1C1C1E; margin:0;">Espace Vedettes 🌟</h1>
+            <h1 style="font-size:24px; font-weight:900; color:#000000; margin:0;">Espace Vedettes</h1>
           </header>
 
           <div style="padding:16px;">
@@ -349,15 +372,14 @@
               <span style="font-size:11px; font-weight:700; color:#8E8E93;">DIMANCHE 02 AOÛT 2026</span>
               <h3 style="font-size:16px; margin:4px 0 10px;">Culte n°1 — Section Vedette</h3>
               <div style="background:#FFFDF0; padding:10px; border-radius:12px; display:flex; justify-content:space-between; align-items:center; border:1px solid #E6CA65;">
-                <span>🎥 <strong>Section Cadrage</strong></span>
+                <span><strong>Section Cadrage</strong></span>
                 <strong style="color:#B8860B;">★ 4.88 / 5.0</strong>
               </div>
             </div>
 
             <div style="background:#1C1C1E; color:#FFF; border-radius:22px; padding:22px; text-align:center; margin-top:16px;">
-              <span style="font-size:46px; display:block; margin-bottom:6px;">🏆</span>
               <span style="font-size:11px; font-weight:800; color:#FFD700; text-transform:uppercase; letter-spacing:1.5px;">TROPHÉE ANNUEL 2025-2026</span>
-              <h2 style="font-size:22px; margin:6px 0;">🎛️ Section Régie Technique</h2>
+              <h2 style="font-size:22px; margin:6px 0;">Section Régie Technique</h2>
               <p style="font-size:12px; color:rgba(255,255,255,0.75);">Meilleure section de l'année (4.96/5.0 de moyenne).</p>
             </div>
           </div>
@@ -366,14 +388,14 @@
 
       if (activeTab === 'profile') {
         return `
-          <header style="padding:16px 20px; background:#FFF; border-bottom:1px solid #F2F2F7;">
+          <header style="padding:16px 20px; background:#FFF; border-bottom:1px solid #EFEFEF;">
             <p style="font-size:11px; font-weight:800; color:#007AFF; text-transform:uppercase; letter-spacing:1.2px; margin:0 0 2px;">Département Communication</p>
-            <h1 style="font-size:24px; font-weight:900; color:#1C1C1E; margin:0;">Mon Profil 👤</h1>
+            <h1 style="font-size:24px; font-weight:900; color:#000000; margin:0;">Mon Profil</h1>
           </header>
 
           <div style="padding:16px;">
             <div style="background:#FFF; border-radius:22px; padding:20px; text-align:center; margin-bottom:16px; border:1px solid #E5E5EA;">
-              <div style="width:72px; height:72px; border-radius:36px; background:#E5F1FF; color:#007AFF; font-size:30px; font-weight:800; display:flex; align-items:center; justify-content:center; margin:0 auto 10px; border:3px solid #007AFF;">É</div>
+              <div style="width:72px; height:72px; border-radius:36px; background:#F0F6FF; color:#007AFF; font-size:30px; font-weight:800; display:flex; align-items:center; justify-content:center; margin:0 auto 10px; border:3px solid #007AFF;">É</div>
               <h2 style="font-size:20px; margin:0;">Éric Kouamé</h2>
               <p style="font-size:13px; color:#8E8E93; margin-top:2px;">RESP_SECTION • Section Cadrage</p>
             </div>
@@ -387,18 +409,18 @@
                   <span style="font-size:9px; color:#34C759; font-weight:800;">Fiabilité</span>
                 </div>
                 <div style="display:flex; flex-direction:column; gap:8px;">
-                  <div style="background:#F2F2F7; padding:8px 12px; border-radius:10px; font-size:13px;">
+                  <div style="background:#FAFAFA; padding:8px 12px; border-radius:10px; font-size:13px;">
                     <strong>45 Services</strong> <span style="font-size:11px; color:#8E8E93;">effectués</span>
                   </div>
-                  <div style="background:#F2F2F7; padding:8px 12px; border-radius:10px; font-size:13px;">
+                  <div style="background:#FAFAFA; padding:8px 12px; border-radius:10px; font-size:13px;">
                     <strong>4.88 / 5.0 ★</strong> <span style="font-size:11px; color:#8E8E93;">note moyenne</span>
                   </div>
                 </div>
               </div>
             </div>
 
-            <button onclick="alert('📅 Agenda du téléphone synchronisé avec les 3 prochains cultes !')" style="width:100%; background:#007AFF; color:#FFF; border:none; padding:14px; border-radius:14px; font-size:13.5px; font-weight:800; cursor:pointer;">
-              📅 Synchroniser avec l'agenda du téléphone
+            <button onclick="alert('Agenda du téléphone synchronisé avec les 3 prochains cultes.')" style="width:100%; background:#007AFF; color:#FFF; border:none; padding:14px; border-radius:14px; font-size:13.5px; font-weight:800; cursor:pointer;">
+              Synchroniser avec l'agenda du téléphone
             </button>
           </div>
         `;

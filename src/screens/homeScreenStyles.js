@@ -1,19 +1,17 @@
-import { StyleSheet, Dimensions, Platform } from 'react-native';
-
-const { width } = Dimensions.get('window');
+import { StyleSheet, Platform } from 'react-native';
 
 export const COLORS = {
-  background: '#F8F9FA',
+  background: '#FAFAFA',
   cardBg: '#FFFFFF',
-  textPrimary: '#1C1C1E',
+  textPrimary: '#000000',
   textSecondary: '#8E8E93',
   appleBlue: '#007AFF',
-  appleBlueLight: '#E5F1FF',
+  appleBlueLight: '#F0F6FF',
   goldBadge: '#D4AF37',
-  goldBadgeBg: 'rgba(255, 253, 240, 0.95)',
+  goldBadgeBg: '#FFFDF0',
   goldBorder: '#E6CA65',
   redHeart: '#FF2D55',
-  borderLight: '#F2F2F7',
+  borderLight: '#EFEFEF',
 };
 
 export const styles = StyleSheet.create({
@@ -22,7 +20,7 @@ export const styles = StyleSheet.create({
     backgroundColor: COLORS.cardBg,
   },
 
-  // 1. HEADER INSTAGRAM / THREADS
+  // 1. HEADER INSTAGRAM CLEAN
   header: {
     paddingTop: Platform.OS === 'ios' ? 48 : 20,
     paddingHorizontal: 18,
@@ -51,13 +49,13 @@ export const styles = StyleSheet.create({
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 14,
   },
   iconBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: COLORS.background,
+    backgroundColor: COLORS.cardBg,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -98,12 +96,14 @@ export const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  storyIcon: {
-    fontSize: 24,
+  storyAvatarText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: COLORS.appleBlue,
   },
   storyLabel: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '500',
     color: COLORS.textSecondary,
     marginTop: 4,
     textAlign: 'center',
@@ -118,7 +118,7 @@ export const styles = StyleSheet.create({
     paddingBottom: 90,
   },
 
-  // 3. CARTE POST INSTAGRAM (BILAN DE CULTE & POSTS)
+  // 3. CARTE POST INSTAGRAM
   postCard: {
     backgroundColor: COLORS.cardBg,
     borderBottomWidth: 8,
@@ -147,12 +147,13 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
   },
   postAvatarText: {
-    fontSize: 18,
+    fontSize: 15,
+    fontWeight: '800',
     color: '#FFF',
   },
   postAuthorTitle: {
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: '700',
     color: COLORS.textPrimary,
   },
   postAuthorSub: {
@@ -160,12 +161,11 @@ export const styles = StyleSheet.create({
     color: COLORS.textSecondary,
   },
   
-  // Badge Vedette Doré Trophée
+  // Badge Vedette Doré Minimaliste
   goldTrophyBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#FFFDF0',
+    backgroundColor: COLORS.goldBadgeBg,
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 12,
@@ -176,9 +176,10 @@ export const styles = StyleSheet.create({
     fontSize: 10.5,
     fontWeight: '800',
     color: '#B8860B',
+    letterSpacing: 0.4,
   },
 
-  // Zone Visuelle (Image Coulisses)
+  // Zone Visuelle (Image Coulisses Minimaliste)
   postImageContainer: {
     width: '100%',
     height: 280,
@@ -193,9 +194,19 @@ export const styles = StyleSheet.create({
     backgroundColor: '#2C2C2E',
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 20,
   },
-  postImageText: {
-    fontSize: 50,
+  postImageTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -0.4,
+  },
+  postImageSub: {
+    color: '#8E8E93',
+    fontSize: 12,
+    marginTop: 4,
+    fontWeight: '500',
   },
 
   // Glassmorphic Score Overlay
@@ -203,7 +214,7 @@ export const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 14,
     right: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    backgroundColor: 'rgba(255, 255, 255, 0.92)',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
@@ -211,10 +222,9 @@ export const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.8)',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.12,
     shadowRadius: 8,
   },
   scoreOverlayText: {
@@ -239,10 +249,7 @@ export const styles = StyleSheet.create({
   socialIconBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-  },
-  socialIconText: {
-    fontSize: 20,
+    gap: 6,
   },
   socialCountText: {
     fontSize: 13,
@@ -257,7 +264,7 @@ export const styles = StyleSheet.create({
   },
   postLikesText: {
     fontSize: 13,
-    fontWeight: '800',
+    fontWeight: '700',
     color: COLORS.textPrimary,
     marginBottom: 4,
   },
@@ -272,7 +279,37 @@ export const styles = StyleSheet.create({
     marginTop: 6,
   },
 
-  // 4. FIX TAB BAR INSTAGRAM GLASSMORPHISM
+  // 4. BLOC "VOUS ÊTES À JOUR" (INSTAGRAM STYLE)
+  allCaughtUpContainer: {
+    paddingVertical: 36,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    backgroundColor: COLORS.cardBg,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.borderLight,
+  },
+  checkCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: COLORS.appleBlueLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  allCaughtUpTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: COLORS.textPrimary,
+  },
+  allCaughtUpSub: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    marginTop: 4,
+    textAlign: 'center',
+  },
+
+  // 5. FIX TAB BAR INSTAGRAM GLASSMORPHISM
   fixedTabBar: {
     position: 'absolute',
     bottom: 0,
@@ -292,13 +329,10 @@ export const styles = StyleSheet.create({
     justifyContent: 'center',
     flex: 1,
   },
-  tabIcon: {
-    fontSize: 22,
-  },
   centerPlusBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: COLORS.appleBlue,
     justifyContent: 'center',
     alignItems: 'center',
@@ -307,9 +341,4 @@ export const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
   },
-  centerPlusText: {
-    fontSize: 24,
-    color: '#FFF',
-    fontWeight: '400',
-  }
 });
