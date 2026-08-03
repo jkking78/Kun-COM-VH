@@ -245,7 +245,9 @@
     createEventOpen: false,
     forgotUser: null,
     signupSections: [],
-    editSections: []
+    editSections: [],
+    eventSections: [],
+    selectedDate: null
 };
 
   // ============================================================
@@ -591,6 +593,7 @@
     if (S.viewUserProfileId) modals += renderUserProfileModal();
     if (S.editProfileOpen) modals += renderEditProfileModal(u);
     if (S.postOptionsOpen) modals += renderPostOptionsModal(posts.find(function(p){return p.id===S.selectedPostId;}));
+    if (S.createEventOpen) modals += renderCreateEventModal();
     if (S.createOpen) modals += renderCreateModal(u);
     if (S.optionsOpen && S.optionsPost) modals += renderOptionsModal();
     if (S.commentOpen && S.commentPostId) modals += renderCommentsModal(posts, initial);
@@ -908,6 +911,73 @@
   // ============================================================
   // CREATE POST MODAL
   // ============================================================
+
+  function renderCreateEventModal() {
+    var today = new Date().toISOString().split('T')[0];
+    return '<div style="position:fixed;inset:0;background:#FFF;z-index:10000;display:flex;flex-direction:column;animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
+      '<header style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #E5E5EA;background:#FFF;z-index:2;">' +
+        '<button onclick="App.closeCreateEvent()" style="background:none;border:none;font-size:16px;color:#000;cursor:pointer;">Annuler</button>' +
+        '<div style="font-weight:700;font-size:16px;">Nouvel Événement</div>' +
+        '<button onclick="App.saveEvent(this)" style="background:none;border:none;font-size:16px;font-weight:700;color:#007AFF;cursor:pointer;">Créer</button>' +
+      '</header>' +
+      '<div style="flex:1;overflow-y:auto;background:#FAFAFA;padding:16px;">' +
+        
+        '<div style="background:#FFF;border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px;">' +
+          '<div style="display:flex;flex-direction:column;gap:16px;">' +
+            '<div style="display:flex;flex-direction:column;gap:4px;">' +
+              '<label style="font-size:13px;color:#8E8E93;font-weight:600;">Titre de l\'événement</label>' +
+              '<input type="text" id="eventTitle" placeholder="Ex: Culte de Dimanche" style="border:none;border-bottom:1px solid #E5E5EA;font-size:16px;outline:none;padding-bottom:8px;border-radius:0;font-weight:600;" />' +
+            '</div>' +
+            '<div style="display:flex;flex-direction:column;gap:4px;">' +
+              '<label style="font-size:13px;color:#8E8E93;font-weight:600;">Lieu / Salle</label>' +
+              '<input type="text" id="eventLocation" placeholder="Ex: Salle Principale" style="border:none;border-bottom:1px solid #E5E5EA;font-size:16px;outline:none;padding-bottom:8px;border-radius:0;" />' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        
+        '<div style="background:#FFF;border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px;">' +
+          '<div style="display:flex;flex-direction:column;gap:16px;">' +
+            '<div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #E5E5EA;padding-bottom:12px;">' +
+              '<label style="font-size:15px;color:#000;font-weight:600;">Date</label>' +
+              '<input type="date" id="eventDate" value="' + today + '" style="border:none;font-size:16px;outline:none;background:transparent;color:#007AFF;font-weight:600;" />' +
+            '</div>' +
+            '<div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #E5E5EA;padding-bottom:12px;">' +
+              '<label style="font-size:15px;color:#000;font-weight:600;">Heure de début</label>' +
+              '<input type="time" id="eventStart" value="09:00" style="border:none;font-size:16px;outline:none;background:transparent;color:#007AFF;font-weight:600;" />' +
+            '</div>' +
+            '<div style="display:flex;align-items:center;justify-content:space-between;">' +
+              '<label style="font-size:15px;color:#000;font-weight:600;">Heure de fin</label>' +
+              '<input type="time" id="eventEnd" value="11:30" style="border:none;font-size:16px;outline:none;background:transparent;color:#007AFF;font-weight:600;" />' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        
+        '<div style="background:#FFF;border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px;">' +
+          '<label style="font-size:14px;font-weight:700;color:#000;display:block;margin-bottom:12px;">Pôles concernés</label>' +
+          App.renderSectionBadges(S.eventSections, 'toggleEventSection') + 
+        '</div>' +
+        
+        '<div style="background:#FFF;border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px;">' +
+          '<label style="font-size:13px;color:#8E8E93;font-weight:600;display:block;margin-bottom:8px;">Description / Notes</label>' +
+          '<textarea id="eventDesc" placeholder="Ajoutez un briefing ou des notes pour les équipes..." style="width:100%;border:none;font-size:15px;outline:none;resize:none;font-family:inherit;min-height:80px;background:#F8F8F8;padding:12px;border-radius:12px;box-sizing:border-box;"></textarea>' +
+        '</div>' +
+        
+        '<div style="background:#FFF;border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);display:flex;align-items:center;justify-content:space-between;">' +
+          '<div>' +
+            '<div style="font-size:15px;font-weight:600;color:#000;">Épingler en haut du Feed</div>' +
+            '<div style="font-size:12px;color:#8E8E93;margin-top:2px;">Rend l\'événement très visible</div>' +
+          '</div>' +
+          '<label style="position:relative;display:inline-block;width:50px;height:30px;">' +
+            '<input type="checkbox" id="eventPinned" style="opacity:0;width:0;height:0;" onchange="this.nextElementSibling.style.background=this.checked?\'#34C759\':\'#E5E5EA\'; this.nextElementSibling.children[0].style.transform=this.checked?\'translateX(20px)\':\'translateX(0)\';">' +
+            '<span style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:#E5E5EA;transition:.3s;border-radius:30px;">' +
+              '<span style="position:absolute;content:\'\';height:26px;width:26px;left:2px;bottom:2px;background-color:white;transition:.3s;border-radius:50%;box-shadow:0 2px 4px rgba(0,0,0,0.2);"></span>' +
+            '</span>' +
+          '</label>' +
+        '</div>' +
+
+      '</div>' +
+    '</div>';
+  }
   function renderCreateModal(u) {
     var previewHtml = '';
     if (S.pendingMedia.length > 0) {
@@ -1079,73 +1149,110 @@
   // PLANNING TAB
   // ============================================================
   function renderPlanning() {
-    var now = new Date();
-    var dateStr = now.toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
-    dateStr = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
-
-    function culteCard(name, hours, status) {
-      var configs = {
-        closed:   { label:'Clôturé',     bg:'#E5E5EA', color:'#8E8E93',  border:'#E5E5EA'  },
-        active:   { label:'En cours',    bg:'#E5F1FF', color:'#007AFF',  border:'#007AFF'  },
-        upcoming: { label:'À venir',     bg:'#F0EFFF', color:'#5856D6',  border:'#EFEFFF'  }
-      };
-      var cfg = configs[status] || configs.upcoming;
-      return '<div style="background:#FFF;border-radius:18px;padding:16px;margin-bottom:10px;border:1.5px solid ' + cfg.border + ';box-shadow:' + (status==='active'?'0 4px 14px rgba(0,122,255,0.12)':'none') + ';">' +
-        '<div style="display:flex;justify-content:space-between;align-items:center;">' +
-          '<div>' +
-            '<h3 style="font-size:17px;font-weight:800;margin:0;color:#000;">' + name + '</h3>' +
-            '<span style="font-size:12.5px;color:#8E8E93;">' + hours + '</span>' +
-          '</div>' +
-          '<span style="background:' + cfg.bg + ';color:' + cfg.color + ';padding:6px 12px;border-radius:20px;font-size:11.5px;font-weight:800;">' + cfg.label + '</span>' +
-        '</div>' +
-      '</div>';
+    if (!S.selectedDate) {
+      S.selectedDate = new Date().toISOString().split('T')[0];
+    }
+    
+    var baseDate = new Date(); // Today
+    var dates = [];
+    for(var i = -1; i < 6; i++) {
+      var d = new Date(baseDate);
+      d.setDate(baseDate.getDate() + i);
+      dates.push(d);
     }
 
     var canCreate = S.user && (S.user.role === 'RESP_SECTION' || S.user.role === 'GRAND_RESPONSABLE');
-    return '<header style="padding:16px 18px;background:#FFF;border-bottom:0.5px solid #F2F2F7;display:flex;justify-content:space-between;align-items:center;">' +
+    
+    var header = '<header style="padding:16px 16px 0;background:#FFF;display:flex;justify-content:space-between;align-items:center;">' +
         '<div>' +
-          '<div style="font-size:11px;font-weight:800;color:#5856D6;text-transform:uppercase;letter-spacing:1.3px;margin-bottom:3px;">' + dateStr + '</div>' +
-          '<h1 style="font-size:24px;font-weight:900;color:#000;margin:0;">Planning Cultes</h1>' +
+          '<h1 style="font-size:28px;font-weight:900;color:#000;margin:0;letter-spacing:-0.5px;">Planning</h1>' +
         '</div>' +
-        (canCreate ? '<button onclick="App.openCreateEvent()" style="background:#5856D6;color:#FFF;border:none;border-radius:20px;padding:8px 16px;font-size:13px;font-weight:800;cursor:pointer;">+ Événement</button>' : '') +
-      '</header>' +
+        (canCreate ? '<button onclick="App.openCreateEvent()" style="background:#000;color:#FFF;border:none;border-radius:20px;padding:8px 16px;font-size:14px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:6px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg> Événement</button>' : '') +
+      '</header>';
 
-      '<div style="padding:16px;">' +
+    // Date Slider
+    var slider = '<div style="background:#FFF;padding:16px;border-bottom:1px solid #E5E5EA;display:flex;gap:12px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;">' +
+      dates.map(function(d) {
+        var iso = d.toISOString().split('T')[0];
+        var isSel = (iso === S.selectedDate);
+        var dayName = d.toLocaleDateString('fr-FR', {weekday:'short'}).toUpperCase();
+        var dayNum = d.getDate();
+        var bg = isSel ? '#000' : '#F2F2F7';
+        var col = isSel ? '#FFF' : '#8E8E93';
+        var numCol = isSel ? '#FFF' : '#000';
+        return '<div onclick="App.selectDate(\''+iso+'\')" style="min-width:54px;height:70px;border-radius:16px;background:'+bg+';display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:0.2s;">' +
+          '<span style="font-size:11px;font-weight:700;color:'+col+';margin-bottom:4px;">'+dayName+'</span>' +
+          '<span style="font-size:20px;font-weight:800;color:'+numCol+';">'+dayNum+'</span>' +
+        '</div>';
+      }).join('') +
+    '</div>';
 
-        '<div style="background:linear-gradient(135deg,#FFF8EE,#FFFCF5);border:1.5px solid #FF9500;border-radius:22px;padding:18px;margin-bottom:16px;">' +
-          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">' +
-            '<div style="display:flex;align-items:center;gap:8px;">' +
-              '<div style="width:8px;height:8px;border-radius:4px;background:#FF9500;box-shadow:0 0 0 4px rgba(255,149,0,0.2);"></div>' +
-              '<strong style="font-size:15px;color:#D4700A;">Transition en cours</strong>' +
-            '</div>' +
-            '<span style="background:#FF9500;color:#FFF;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:800;">15 min</span>' +
-          '</div>' +
-          '<p style="font-size:13px;color:#7A4A00;margin:0 0 12px;line-height:1.4;">Pause technique : 09h00 → 09h15. Préparez votre check-in pour le Culte 2.</p>' +
-          '<div style="background:#FFF;border-radius:14px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;">' +
-            '<div><strong style="font-size:13.5px;display:block;color:#000;">Check-in Culte 2</strong><span style="font-size:11.5px;color:#8E8E93;">Validez votre présence</span></div>' +
-            '<button id="checkInBtn" onclick="App.checkIn()" style="background:' + (S.checkedIn ? 'linear-gradient(135deg,#34C759,#28A347)' : 'linear-gradient(135deg,#007AFF,#0040CC)') + ';color:#FFF;border:none;padding:9px 16px;border-radius:12px;font-size:13px;font-weight:800;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,0.15);">' + (S.checkedIn ? '✓ Présent' : 'Valider') + '</button>' +
-          '</div>' +
-        '</div>' +
+    var allPosts = db(SK.POSTS, []);
+    var dayEvents = allPosts.filter(function(p) { 
+      return p.type === 'EVENT' && p.eventDate === S.selectedDate;
+    }).sort(function(a,b) {
+      if (a.eventStart && b.eventStart) return a.eventStart.localeCompare(b.eventStart);
+      return 0;
+    });
 
-        culteCard('Culte 1', '07h00 — 09h00', 'closed') +
-        culteCard('Culte 2', '09h15 — 11h15', 'active') +
-        culteCard('Culte 3', '11h30 — 13h30', 'upcoming') +
-
-        '<div style="background:#FFF;border-radius:20px;padding:18px;margin-top:6px;border:0.5px solid #EFEFEF;">' +
-          '<h3 style="font-size:15px;font-weight:800;color:#000;margin:0 0 14px;">Équipes du Jour</h3>' +
-          '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">' +
-          SECTIONS.map(function(s) {
-            return '<div style="background:linear-gradient(135deg,' + s.color + '15,' + s.color + '08);border:1px solid ' + s.color + '30;border-radius:16px;padding:12px;text-align:center;">' +
-              '<div style="font-size:26px;margin-bottom:4px;">' + s.emoji + '</div>' +
-              '<p style="font-size:11px;font-weight:700;color:' + s.color + ';margin:0;">' + s.nom + '</p>' +
-            '</div>';
-          }).join('') +
-          '</div>' +
-        '</div>' +
-
+    var timeline = '<div style="padding:20px 16px;min-height:50vh;background:#FAFAFA;">';
+    
+    if (dayEvents.length === 0) {
+      timeline += '<div style="text-align:center;padding:40px 20px;color:#8E8E93;">' +
+        '<div style="font-size:40px;margin-bottom:12px;">📅</div>' +
+        '<div style="font-size:18px;font-weight:700;color:#000;">Aucun événement</div>' +
+        '<div style="font-size:14px;margin-top:4px;">Rien de prévu pour cette date.</div>' +
       '</div>';
-  }
+    } else {
+      var nowIso = new Date().toISOString().split('T')[0];
+      var nowTime = new Date().toTimeString().slice(0,5); // HH:MM
+      
+      dayEvents.forEach(function(ev) {
+        var status = 'upcoming';
+        var statusHtml = '';
+        if (ev.eventDate < nowIso) status = 'closed';
+        else if (ev.eventDate === nowIso) {
+          if (nowTime >= ev.eventStart && nowTime <= ev.eventEnd) status = 'active';
+          else if (nowTime > ev.eventEnd) status = 'closed';
+        }
 
+        if (status === 'active') {
+          statusHtml = '<div style="display:inline-flex;align-items:center;gap:4px;background:#E5F4E9;color:#28A347;padding:4px 8px;border-radius:8px;font-size:11px;font-weight:800;margin-bottom:8px;"><div style="width:6px;height:6px;border-radius:3px;background:#28A347;animation:blink 1.5s infinite;"></div>En cours</div>';
+        } else if (status === 'closed') {
+          statusHtml = '<div style="display:inline-block;background:#F2F2F7;color:#8E8E93;padding:4px 8px;border-radius:8px;font-size:11px;font-weight:800;margin-bottom:8px;">✅ Terminé</div>';
+        }
+
+        var secTags = (ev.eventSections || []).map(function(s){
+          return '<span style="font-size:12px;font-weight:700;color:#007AFF;">' + secNom(s) + '</span>';
+        }).join('<span style="color:#D1D1D6;margin:0 4px;">•</span>');
+
+        timeline += '<div style="display:flex;margin-bottom:24px;">' +
+          '<div style="width:60px;flex-shrink:0;text-align:right;padding-right:12px;padding-top:2px;">' +
+            '<div style="font-size:14px;font-weight:800;color:#000;">' + (ev.eventStart||'--:--') + '</div>' +
+            '<div style="font-size:12px;font-weight:600;color:#8E8E93;margin-top:2px;">' + (ev.eventEnd||'--:--') + '</div>' +
+          '</div>' +
+          '<div style="position:relative;padding-left:16px;border-left:2px solid ' + (status==='active'?'#28A347':(status==='closed'?'#E5E5EA':'#000')) + ';flex:1;">' +
+            '<div style="position:absolute;left:-6px;top:4px;width:10px;height:10px;border-radius:5px;background:' + (status==='active'?'#28A347':(status==='closed'?'#E5E5EA':'#000')) + ';border:2px solid #FAFAFA;"></div>' +
+            '<div style="background:#FFF;border-radius:16px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,0.04);border:1px solid #F2F2F7;">' +
+              statusHtml +
+              '<h3 style="font-size:17px;font-weight:800;color:#000;margin:0 0 6px;">' + safeHtml(ev.eventTitle) + '</h3>' +
+              (secTags ? '<div style="margin-bottom:8px;">' + secTags + '</div>' : '') +
+              '<div style="display:flex;align-items:center;gap:6px;font-size:13px;color:#8E8E93;margin-bottom:12px;font-weight:600;">' +
+                '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>' +
+                safeHtml(ev.eventLocation || 'Non défini') +
+              '</div>' +
+              (ev.caption ? '<p style="font-size:13px;color:#3A3A3C;margin:0 0 16px;line-height:1.4;">' + safeHtml(ev.caption) + '</p>' : '') +
+              '<button onclick="toast(\'Participation enregistrée !\', \'success\')" style="width:100%;background:' + (status==='closed'?'#F2F2F7':'#E5F0FF') + ';color:' + (status==='closed'?'#8E8E93':'#007AFF') + ';border:none;border-radius:10px;padding:10px;font-size:14px;font-weight:700;cursor:pointer;">' + (status==='closed'?'Terminé':'Je participe 👍') + '</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      });
+    }
+    
+    timeline += '</div>';
+
+    return header + slider + timeline;
+  }
   // ============================================================
   // DEBRIEF TAB
   // ============================================================
