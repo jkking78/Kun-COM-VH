@@ -33,6 +33,26 @@
     console.error("Supabase init error:", e);
   }
 
+  // Password hashing utility (SHA-256)
+  async function hashPassword(pwd) {
+    try {
+      var encoder = new TextEncoder();
+      var data = encoder.encode(pwd + '_kun_salt_2026');
+      var hash = await crypto.subtle.digest('SHA-256', data);
+      var arr = Array.from(new Uint8Array(hash));
+      return arr.map(function(b){ return b.toString(16).padStart(2, '0'); }).join('');
+    } catch(e) {
+      // Fallback: simple hash for older browsers
+      var h = 0;
+      for (var i = 0; i < pwd.length; i++) {
+        var c = pwd.charCodeAt(i);
+        h = ((h << 5) - h) + c;
+        h |= 0;
+      }
+      return 'h_' + Math.abs(h).toString(36);
+    }
+  }
+
       function mergeProfilesWithLocal(remoteData) {
     var localUsers = db(SK.USERS, []);
     var map = {};
@@ -62,7 +82,24 @@
     });
     (remoteData || []).forEach(function(item) {
       var p = item.content || item;
-      if (p && p.id) map[p.id] = p;
+      if (p && p.id) {
+        var local = map[p.id];
+        if (local) {
+          // Smart merge: keep whichever has more comments/likes (most recent data)
+          var localComments = (local.comments || []).length;
+          var remoteComments = (p.comments || []).length;
+          var localLikes = (local.likedBy || []).length;
+          var remoteLikes = (p.likedBy || []).length;
+          if (localComments > remoteComments || localLikes > remoteLikes) {
+            // Local has newer interactions, keep local but merge remote metadata
+            map[p.id] = Object.assign({}, p, local);
+          } else {
+            map[p.id] = p;
+          }
+        } else {
+          map[p.id] = p;
+        }
+      }
     });
     var merged = Object.keys(map).map(function(k) { return map[k]; });
     merged.sort(function(a, b) { return (b.timestamp || 0) - (a.timestamp || 0); });
@@ -106,6 +143,22 @@
         })
         .subscribe();
         
+      // Clean up expired ephemeral posts
+      var allP = db(SK.POSTS, []);
+      var now = Date.now();
+      var cleanPosts = allP.filter(function(p) {
+        if (p.is_ephemeral && p.ephemeral_expiry && p.ephemeral_expiry < now) return false;
+        return true;
+      });
+      if (cleanPosts.length < allP.length) {
+        dbSet(SK.POSTS, cleanPosts);
+        // Also delete from Supabase
+        var expired = allP.filter(function(p) { return p.is_ephemeral && p.ephemeral_expiry && p.ephemeral_expiry < now; });
+        expired.forEach(function(ep) {
+          supabase.from('kun_com_posts').delete().eq('id', ep.id).then(function(){}).catch(function(){});
+        });
+      }
+
       if (window.App && window.App.tab) {
          render(); 
       }
@@ -117,6 +170,7 @@
   
   async function fetchProfilesSilently() {
     if (!supabase) return;
+    try {
     var resProf = await supabase.from('kun_com_profiles').select('*');
     if (resProf && resProf.data) {
       var mergedProfiles = mergeProfilesWithLocal(resProf.data);
@@ -131,9 +185,11 @@
       }
       render();
     }
+    } catch(e) { console.warn('fetchProfilesSilently error:', e); }
   }
   async function fetchPostsSilently() {
     if (!supabase) return;
+    try {
     var res = await supabase.from('kun_com_posts').select('*');
     if (res && res.data) {
       var mergedPosts = mergePostsWithLocal(res.data);
@@ -141,6 +197,7 @@
       localStorage.setItem(SK.POSTS, JSON.stringify(mergedPosts));
       render();
     }
+    } catch(e) { console.warn('fetchPostsSilently error:', e); }
   }
 
   function db(key, def) {
@@ -1801,7 +1858,7 @@
     users[idx].last_seen_at = now;
     users[idx].is_online = true;
     S.user = users[idx];
-    localStorage.setItem(SK.SESS, JSON.stringify(S.user));
+    try { localStorage.setItem(SK.SESS, JSON.stringify(S.user)); } catch(e) {}
     dbSet(SK.USERS, users);
   }
 
@@ -2570,7 +2627,8 @@ checkForgotEmail: function(e) {
       var users = db(SK.USERS, []);
       var idx = users.findIndex(function(x){ return x.id === S.forgotUser.id; });
       if (idx !== -1) {
-        users[idx].pwd = newPwd;
+        var hashedNewPwd = await hashPassword(newPwd);
+        users[idx].pwd = hashedNewPwd;
         dbSet(SK.USERS, users);
         if (supabase) supabase.from('kun_com_profiles').upsert({ id: users[idx].id, content: users[idx] }, { onConflict: 'id' }).then(function(){});
       }
@@ -2679,7 +2737,7 @@ toggleParticipation: function(postId, status) {
         users[idx].sections = [secId];
         S.user = users[idx];
         dbSet(SK.USERS, users);
-        localStorage.setItem(SK.SESS, JSON.stringify(S.user));
+        try { localStorage.setItem(SK.SESS, JSON.stringify(S.user)); } catch(e) {}
       }
 
       if (supabase) {
@@ -2701,7 +2759,7 @@ toggleParticipation: function(postId, status) {
         users[idx].role = 'GRAND_RESPONSABLE';
         S.user = users[idx];
         dbSet(SK.USERS, users);
-        localStorage.setItem(SK.SESS, JSON.stringify(S.user));
+        try { localStorage.setItem(SK.SESS, JSON.stringify(S.user)); } catch(e) {}
       }
 
       if (supabase) {
@@ -2723,7 +2781,7 @@ toggleParticipation: function(postId, status) {
         users[idx].role = 'MEMBRE';
         S.user = users[idx];
         dbSet(SK.USERS, users);
-        localStorage.setItem(SK.SESS, JSON.stringify(S.user));
+        try { localStorage.setItem(SK.SESS, JSON.stringify(S.user)); } catch(e) {}
       }
 
       if (supabase) {
@@ -2962,7 +3020,9 @@ toggleParticipation: function(postId, status) {
         return;
       }
 
-      if (user.pwd && user.pwd !== pwd) {
+      var hashedLoginPwd = await hashPassword(pwd);
+      // Support both old plaintext and new hashed passwords
+      if (user.pwd && user.pwd !== pwd && user.pwd !== hashedLoginPwd) {
         toast('Mot de passe incorrect.', 'error');
         return;
       }
@@ -3008,7 +3068,8 @@ toggleParticipation: function(postId, status) {
         toast('Un compte existe déjà avec cet e-mail.', 'error'); return;
       }
       var userSecs = S.signupSections.length > 0 ? S.signupSections.slice() : ['cadrage'];
-      var newUser = { id:'u'+Date.now(), prenom:prenom, nom:nom, email:email, sections: userSecs, role:'MEMBRE', is_online:true, last_seen_at:new Date().toISOString(), last_action:'Inscription', avatar_color: ['#007AFF','#FF2D55','#34C759','#FF9500','#5856D6','#AF52DE'][Math.floor(Math.random()*6)], pwd: pwd, sec_q1: q1, sec_a1: a1, sec_q2: q2, sec_a2: a2 };
+      var hashedPwd = await hashPassword(pwd);
+      var newUser = { id:'u'+Date.now(), prenom:prenom, nom:nom, email:email, sections: userSecs, role:'MEMBRE', is_online:true, last_seen_at:new Date().toISOString(), last_action:'Inscription', avatar_color: ['#007AFF','#FF2D55','#34C759','#FF9500','#5856D6','#AF52DE'][Math.floor(Math.random()*6)], pwd: hashedPwd, sec_q1: q1, sec_a1: a1, sec_q2: q2, sec_a2: a2 };
       users.push(newUser); dbSet(SK.USERS, users);
       localStorage.setItem(SK.SESS, JSON.stringify(newUser));
       S.user = newUser; S.auth = 'app';
