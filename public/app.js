@@ -77,6 +77,13 @@
         var mergedProfiles = mergeProfilesWithLocal(resProf.data);
         DB_CACHE[SK.USERS] = mergedProfiles;
         localStorage.setItem(SK.USERS, JSON.stringify(mergedProfiles));
+        if (S.user) {
+          var freshMe = mergedProfiles.find(function(x){ return x.id === S.user.id; });
+          if (freshMe) {
+            S.user = freshMe;
+            localStorage.setItem(SK.SESS, JSON.stringify(freshMe));
+          }
+        }
       }
       
       // Setup Realtime
@@ -292,8 +299,15 @@
   // ============================================================
   (function restoreSession() {
     try {
-      var u = sessionStorage.getItem(SK.SESS);
-      if (u) { S.user = JSON.parse(u); S.auth = 'app'; }
+      var uStr = localStorage.getItem(SK.SESS) || sessionStorage.getItem(SK.SESS);
+      if (uStr) {
+        var parsedU = JSON.parse(uStr);
+        var users = db(SK.USERS, []);
+        var freshU = users.find(function(x){ return x.id === parsedU.id; }) || parsedU;
+        S.user = freshU;
+        S.auth = 'app';
+        localStorage.setItem(SK.SESS, JSON.stringify(freshU));
+      }
     } catch(e) {}
     // Restore saved posts
     S.savedPosts = db(SK.SAVED, {});
@@ -1522,7 +1536,7 @@
     users[idx].last_seen_at = now;
     users[idx].is_online = true;
     S.user = users[idx];
-    sessionStorage.setItem(SK.SESS, JSON.stringify(S.user));
+    localStorage.setItem(SK.SESS, JSON.stringify(S.user));
     dbSet(SK.USERS, users);
   }
 
@@ -2345,7 +2359,7 @@ toggleParticipation: function(postId, status) {
       delete updatedUser.section_nom;
       
       S.user = updatedUser;
-      sessionStorage.setItem(SK.SESS, JSON.stringify(updatedUser));
+      localStorage.setItem(SK.SESS, JSON.stringify(updatedUser));
       
       var users = db(SK.USERS, []);
       var idx = users.findIndex(function(x){ return x.id === u.id; });
@@ -2432,7 +2446,7 @@ toggleParticipation: function(postId, status) {
         user.is_online = true; user.last_seen_at = new Date().toISOString(); user.last_action = 'Connexion'; 
       }
       dbSet(SK.USERS, users);
-      sessionStorage.setItem(SK.SESS, JSON.stringify(user));
+      localStorage.setItem(SK.SESS, JSON.stringify(user));
       S.user = user; S.auth = 'app';
       render();
       toast('Connexion réussie ! Bienvenue ' + user.prenom + '.', 'success');
@@ -2457,7 +2471,7 @@ toggleParticipation: function(postId, status) {
       var userSecs = S.signupSections.length > 0 ? S.signupSections.slice() : ['cadrage'];
       var newUser = { id:'u'+Date.now(), prenom:prenom, nom:nom, email:email, sections: userSecs, role:'MEMBRE', is_online:true, last_seen_at:new Date().toISOString(), last_action:'Inscription', avatar_color: ['#007AFF','#FF2D55','#34C759','#FF9500','#5856D6','#AF52DE'][Math.floor(Math.random()*6)], pwd: pwd, sec_q1: q1, sec_a1: a1, sec_q2: q2, sec_a2: a2 };
       users.push(newUser); dbSet(SK.USERS, users);
-      sessionStorage.setItem(SK.SESS, JSON.stringify(newUser));
+      localStorage.setItem(SK.SESS, JSON.stringify(newUser));
       S.user = newUser; S.auth = 'app';
 
       if (supabase) {
@@ -2476,7 +2490,7 @@ toggleParticipation: function(postId, status) {
         var users = db(SK.USERS, []); var idx = users.findIndex(function(u){ return u.id===S.user.id; });
         if (idx !== -1) { users[idx].is_online=false; users[idx].last_action='Déconnexion'; dbSet(SK.USERS, users); }
       }
-      sessionStorage.removeItem(SK.SESS); S.user=null; S.auth='login'; S.tab='home'; render();
+      localStorage.removeItem(SK.SESS); sessionStorage.removeItem(SK.SESS); S.user=null; S.auth='login'; S.tab='home'; render();
     },
 
     // Navigation
