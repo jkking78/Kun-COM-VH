@@ -44,7 +44,7 @@ const CheckIcon = ({ color = '#007AFF', size = 24 }) => (
   </Svg>
 );
 
-// 2. LES 7 STORIES DES SECTIONS (ÉMOJIS UNIQUEMENT DANS LES BULLES)
+// 2. LES 7 STORIES DES SECTIONS
 const STORIES_SECTIONS = [
   { id: 'cadrage', nom: 'Cadrage', emoji: '🎥', active: true },
   { id: 'regie', nom: 'Régie', emoji: '🎛️', active: true },
@@ -55,8 +55,8 @@ const STORIES_SECTIONS = [
   { id: 'vente', nom: 'Vente', emoji: '🛒', active: false },
 ];
 
-export default function HomeScreen() {
-  const [activeStory, setActiveStory] = useState('cadrage');
+export default function HomeScreen({ currentUser = { prenom: 'Éric', nom: 'Kouamé', sectionId: 'cadrage', sectionNom: 'Cadrage' }, onLogout }) {
+  const [activeStory, setActiveStory] = useState(currentUser.sectionId || 'cadrage');
   const [activeTab, setActiveTab] = useState('home');
   const [likedPosts, setLikedPosts] = useState({ 'post-bilan': true });
 
@@ -68,7 +68,7 @@ export default function HomeScreen() {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
 
-      {/* 1. HEADER INSTAGRAM CLEAN (SANS EMOJI) */}
+      {/* 1. HEADER INSTAGRAM CLEAN AVEC NOM DE L'UTILISATEUR CONNECTÉ */}
       <View style={styles.header}>
         <View>
           <Text style={styles.headerSub}>ÉGLISE VASE D'HONNEUR</Text>
@@ -76,10 +76,10 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.iconBtn}>
-            <Svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <Path d="M12 5v14M5 12h14" />
-            </Svg>
+          <TouchableOpacity style={styles.iconBtn} onPress={onLogout}>
+            <View style={{width: 32, height: 32, borderRadius: 16, backgroundColor: COLORS.appleBlueLight, justifyContent: 'center', alignItems: 'center'}}>
+              <Text style={{fontWeight: '800', color: COLORS.appleBlue}}>{currentUser.prenom ? currentUser.prenom.charAt(0) : 'U'}</Text>
+            </View>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.iconBtn}>
@@ -89,7 +89,7 @@ export default function HomeScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.feedScroll}>
-        {/* 2. STORIES CARROUSEL EN HAUT (ÉMOJIS DANS LES BULLES UNIQUEMENT) */}
+        {/* 2. STORIES CARROUSEL EN HAUT */}
         <View style={styles.storiesContainer}>
           <ScrollView
             horizontal
@@ -118,9 +118,8 @@ export default function HomeScreen() {
           </ScrollView>
         </View>
 
-        {/* 3. POST INSTAGRAM : CARTE BILAN CULTE N°1 (TEXTE SANS EMOJI) */}
+        {/* 3. POST INSTAGRAM : CARTE BILAN CULTE N°1 */}
         <View style={styles.postCard}>
-          {/* En-tête Post */}
           <View style={styles.postHeader}>
             <View style={styles.postHeaderLeft}>
               <View style={styles.postAvatar}>
@@ -132,26 +131,22 @@ export default function HomeScreen() {
               </View>
             </View>
 
-            {/* Badge Vedette Minimaliste */}
             <View style={styles.goldTrophyBadge}>
               <Text style={styles.goldTrophyText}>SECTION VEDETTE</Text>
             </View>
           </View>
 
-          {/* Zone Visuelle avec Overlay Score Glassmorphism */}
           <View style={styles.postImageContainer}>
             <View style={styles.postImagePlaceholder}>
               <Text style={styles.postImageTitle}>Captation Directe Culte n°1</Text>
               <Text style={styles.postImageSub}>Coulisses & Couverture Technique</Text>
             </View>
 
-            {/* Score Overlaid Glassmorphism */}
             <View style={styles.scoreOverlayBadge}>
               <Text style={styles.scoreOverlayText}>4.88 / 5.0</Text>
             </View>
           </View>
 
-          {/* Barre d'interactions Sociales (SVG fil de fer) */}
           <View style={styles.postActionsBar}>
             <View style={styles.postActionsLeft}>
               <TouchableOpacity style={styles.socialIconBtn} onPress={() => toggleLike('post-bilan')}>
@@ -174,9 +169,8 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Légende & Description (Texte Pur sans émoji) */}
           <View style={styles.postCaptionBox}>
-            <Text style={styles.postLikesText}>Aimé par Sarah Yao et 42 autres membres</Text>
+            <Text style={styles.postLikesText}>Aimé par {currentUser.prenom} {currentUser.nom} et 42 autres membres</Text>
             <Text style={styles.postCaptionText}>
               <Text style={{fontWeight: '800'}}>Section Cadrage </Text>
               Bravo à toute l'équipe Cadrage pour la couverture dynamique du 1er culte. Les cadrages serrés et la synchronisation avec la chorale étaient parfaits.
@@ -226,7 +220,7 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* 5. BLOC INSTAGRAM "VOUS ÊTES À JOUR" (SANS EMOJI) */}
+        {/* 5. BLOC INSTAGRAM "VOUS ÊTES À JOUR" */}
         <View style={styles.allCaughtUpContainer}>
           <View style={styles.checkCircle}>
             <CheckIcon color="#007AFF" size={24} />
