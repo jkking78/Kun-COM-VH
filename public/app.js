@@ -1958,8 +1958,12 @@
     posts.forEach(function(p){ myCommentsCount += (p.comments||[]).filter(function(c){ return c.userId === freshU.id; }).length; });
 
     // ---- Avatar ----
-        // ---- Dynamic RH Metrics ----
-    var eventsList = posts.filter(function(p){ return p.type === 'EVENT'; });
+        // ---- Dynamic RH Metrics (15-day cycle) ----
+    var now = new Date();
+    // Cycle de 15 jours: du 1er au 15, puis du 16 à la fin du mois
+    var currentCycleStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() <= 15 ? 1 : 16).getTime();
+
+    var eventsList = posts.filter(function(p){ return p.type === 'EVENT' && (p.timestamp || 0) >= currentCycleStart; });
     var myServicesCount = 0;
     eventsList.forEach(function(ev) {
       var assignments = ev.assignments || [];
@@ -1967,23 +1971,23 @@
       var isParticipant = Array.isArray(ev.likedBy) && ev.likedBy.indexOf(freshU.id) !== -1;
       if (isAssigned || isParticipant) myServicesCount++;
     });
-    if (freshU.services_count && freshU.services_count > myServicesCount) {
-      myServicesCount = freshU.services_count;
-    }
 
-    var evalPosts = posts.filter(function(p){ return p.type === 'EVALUATION' || (p.metadata && p.metadata.type === 'EVALUATION'); });
-    var sumStars = 0;
+    var evalPosts = posts.filter(function(p){ 
+      var isEval = p.type === 'EVALUATION' || (p.metadata && p.metadata.type === 'EVALUATION');
+      return isEval && (p.timestamp || 0) >= currentCycleStart; 
+    });
+    var sumScores = 0;
     var evalCount = 0;
     evalPosts.forEach(function(ep) {
       var meta = ep.metadata || {};
-      // Check if this evaluation involves the user's section or team
       var r = parseFloat(meta.globalScore || meta.overallRating || meta.rating || ep.rating || 0);
       if (r > 0) {
-        sumStars += r;
+        if (r <= 5.0) { r = r * 4; } // Conversion automatique sur 20 pour l'historique/anciennes données
+        sumScores += r;
         evalCount++;
       }
     });
-    var avgRating = evalCount > 0 ? (sumStars / evalCount).toFixed(1) : (freshU.rating ? freshU.rating.toFixed(1) : '—');
+    var avgRating = evalCount > 0 ? (sumScores / evalCount).toFixed(1) : '—';
 
     // Calculate real trust score based on event participation ratio
     var totalEvents = eventsList.length;
@@ -2081,7 +2085,7 @@
               '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 20V10M18 20V4M6 20v-4"/></svg>' +
               'Performances & Suivi' +
             '</div>' +
-            '<div style="font-size:12px;color:#8E8E93;margin-top:2px;">Basé sur ton activité réelle sur 90 jours</div>' +
+            '<div style="font-size:12px;color:#8E8E93;margin-top:2px;">Basé sur l\'activité du cycle en cours (15 jours)</div>' +
           '</div>' +
           '<div style="font-size:12px;font-weight:700;color:#007AFF;cursor:pointer;display:flex;align-items:center;gap:4px;">Tableau RH <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17l9.2-9.2M17 17V7H7"/></svg></div>' +
         '</div>' +
@@ -2113,18 +2117,18 @@
                 '<div style="background:rgba(251,191,36,0.15);color:#F59E0B;width:32px;height:32px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:16px;">🏆</div>' +
               '</div>' +
               '<div style="font-size:12.5px;font-weight:700;color:#4B5563;">Prestations & Cultes</div>' +
-              '<div style="font-size:11px;color:#9CA3AF;margin-top:4px;">Depuis 90 jours</div>' +
+              '<div style="font-size:11px;color:#9CA3AF;margin-top:4px;">Cette quinzaine</div>' +
             '</div>' +
 
             // Note Moyenne
             '<div onclick="App.openRhDetailsModal(\'ratings\', \'' + freshU.id + '\')" style="background:#FFF;border:1px solid #F2F2F7;border-radius:16px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,0.04);cursor:pointer;animation:fadeIn 0.6s ease-out;transition:transform 0.2s;">' +
               '<div style="display:flex;align-items:flex-end;gap:4px;margin-bottom:8px;">' +
                 '<div style="font-size:28px;font-weight:900;color:#111827;line-height:1;">' + (avgRating === '—' ? '-' : avgRating) + '</div>' +
-                '<div style="font-size:14px;font-weight:700;color:#9CA3AF;margin-bottom:2px;">/ 5.0</div>' +
+                '<div style="font-size:14px;font-weight:700;color:#9CA3AF;margin-bottom:2px;">/ 20</div>' +
               '</div>' +
               '<div style="display:flex;gap:2px;margin-bottom:8px;">' +
                 (avgRating !== '—' 
-                  ? '<span style="color:#FBBF24;font-size:14px;">⭐</span><span style="color:#FBBF24;font-size:14px;">⭐</span><span style="color:#FBBF24;font-size:14px;">⭐</span><span style="color:#FBBF24;font-size:14px;">⭐</span><span style="color:#FBBF24;font-size:14px;">⭐</span>'
+                  ? '<span style="color:#FBBF24;font-size:14px;">⭐</span><span style="font-size:13px;color:#9CA3AF;font-weight:600;margin-left:4px;">Sur 20 points</span>'
                   : '<span style="font-size:13px;color:#9CA3AF;">Pas d\'éval</span>') +
               '</div>' +
               '<div style="font-size:12.5px;font-weight:700;color:#4B5563;">Note Globale</div>' +
@@ -2232,9 +2236,13 @@
     var freshU = db(SK.USERS, []).find(function(p){ return p.id === u.id; }) || u;
     
     var displayAvatar = S.avatarPreview || freshU.avatar_url;
-        // ---- Dynamic RH Metrics ----
+        // ---- Dynamic RH Metrics (15-day cycle) ----
     var posts = db(SK.POSTS, []);
-    var eventsList = posts.filter(function(p){ return p.type === 'EVENT'; });
+    var now = new Date();
+    // Cycle de 15 jours: du 1er au 15, puis du 16 à la fin du mois
+    var currentCycleStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() <= 15 ? 1 : 16).getTime();
+
+    var eventsList = posts.filter(function(p){ return p.type === 'EVENT' && (p.timestamp || 0) >= currentCycleStart; });
     var myServicesCount = 0;
     eventsList.forEach(function(ev) {
       var assignments = ev.assignments || [];
@@ -2242,23 +2250,23 @@
       var isParticipant = Array.isArray(ev.likedBy) && ev.likedBy.indexOf(freshU.id) !== -1;
       if (isAssigned || isParticipant) myServicesCount++;
     });
-    if (freshU.services_count && freshU.services_count > myServicesCount) {
-      myServicesCount = freshU.services_count;
-    }
 
-    var evalPosts = posts.filter(function(p){ return p.type === 'EVALUATION' || (p.metadata && p.metadata.type === 'EVALUATION'); });
-    var sumStars = 0;
+    var evalPosts = posts.filter(function(p){ 
+      var isEval = p.type === 'EVALUATION' || (p.metadata && p.metadata.type === 'EVALUATION');
+      return isEval && (p.timestamp || 0) >= currentCycleStart; 
+    });
+    var sumScores = 0;
     var evalCount = 0;
     evalPosts.forEach(function(ep) {
       var meta = ep.metadata || {};
-      // Check if this evaluation involves the user's section or team
       var r = parseFloat(meta.globalScore || meta.overallRating || meta.rating || ep.rating || 0);
       if (r > 0) {
-        sumStars += r;
+        if (r <= 5.0) { r = r * 4; } // Conversion automatique sur 20
+        sumScores += r;
         evalCount++;
       }
     });
-    var avgRating = evalCount > 0 ? (sumStars / evalCount).toFixed(1) : (freshU.rating ? freshU.rating.toFixed(1) : '—');
+    var avgRating = evalCount > 0 ? (sumScores / evalCount).toFixed(1) : '—';
 
     // Calculate real trust score based on event participation ratio
     var totalEvents = eventsList.length;
