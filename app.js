@@ -1198,10 +1198,8 @@
 
       // Caption (hidden for bg posts — text is shown on the card itself)
       (!post.postBg ? '<div style="padding:0 14px 10px;">' +
-        (post.type === 'REPOST' && post.originalCaption ? '<p style="font-size:14px;color:#000;margin:0 0 4px;line-height:1.45;"><strong>' + safeHtml(post.originalAuthor || '') + '</strong> ' + safeHtml(post.originalCaption) + '</p>' : '') +
-        '<p style="font-size:14px;color:#000;margin:0;line-height:1.45;">' +
-          '<strong>' + safeHtml(post.author||'') + '</strong> ' + captionHtml +
-        '</p>' +
+        (post.type === 'REPOST' && post.originalCaption && !post.originalPostBg ? '<p style="font-size:14px;color:#000;margin:0 0 4px;line-height:1.45;"><strong>' + safeHtml(post.originalAuthor || '') + '</strong> ' + safeHtml(post.originalCaption) + '</p>' : '') +
+        (captionHtml ? '<p style="font-size:14px;color:#000;margin:0;line-height:1.45;"><strong>' + safeHtml(post.author||'') + '</strong> ' + captionHtml + '</p>' : '') +
         ((post.comments || []).length > 0
           ? '<button onclick="App.openComments(\''+post.id+'\')" style="background:none;border:none;padding:0;margin-top:5px;font-size:13.5px;color:#8E8E93;cursor:pointer;">Voir les '+(post.comments || []).length+' commentaire'+((post.comments || []).length>1?'s':'')+'</button>'
           : '<button onclick="App.openComments(\''+post.id+'\')" style="background:none;border:none;padding:0;margin-top:5px;font-size:13.5px;color:#8E8E93;cursor:pointer;">Ajouter un commentaire…</button>'
