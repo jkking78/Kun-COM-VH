@@ -115,6 +115,13 @@
         var mergedPosts = mergePostsWithLocal(res.data);
         DB_CACHE[SK.POSTS] = mergedPosts;
         localStorage.setItem(SK.POSTS, JSON.stringify(mergedPosts));
+        // Retroactively push local posts, likes & comments to Supabase
+        var remotePostIds = (res.data || []).map(function(item){ return item.id; });
+        mergedPosts.forEach(function(post) {
+          if (post && post.id) {
+            supabase.from('kun_com_posts').upsert({ id: post.id, content: post }, { onConflict: 'id' }).catch(function(e){ console.warn('Push post error:', e); });
+          }
+        });
       }
       // Fetch profiles
       var resProf = await supabase.from('kun_com_profiles').select('*');
