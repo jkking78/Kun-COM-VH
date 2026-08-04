@@ -129,6 +129,13 @@
             localStorage.setItem(SK.SESS, JSON.stringify(freshMe));
           }
         }
+        // Retroactively push local users to Supabase if any exist locally but not remotely
+        var remoteIds = (resProf.data || []).map(function(item){ return item.id; });
+        mergedProfiles.forEach(function(u) {
+          if (u && u.id && remoteIds.indexOf(u.id) === -1) {
+            supabase.from('kun_com_profiles').upsert({ id: u.id, content: u }, { onConflict: 'id' }).catch(function(e){ console.warn('Push profile error:', e); });
+          }
+        });
       }
       
       // Setup Supabase Realtime for Posts, Profiles & Events
@@ -3134,9 +3141,12 @@ toggleParticipation: function(postId, status) {
 
       if (supabase) {
         try {
-          supabase.from('kun_com_profiles').upsert({ id: newUser.id, content: newUser }, { onConflict: 'id' }).then(function(){});
+          var syncRes = await supabase.from('kun_com_profiles').upsert({ id: newUser.id, content: newUser }, { onConflict: 'id' });
+          if (syncRes.error) {
+            console.error("Supabase profile save error:", syncRes.error);
+          }
         } catch(err) {
-          console.warn("Supabase signup sync error:", err);
+          console.warn("Supabase signup sync exception:", err);
         }
       }
 
