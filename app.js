@@ -3464,7 +3464,7 @@ toggleParticipation: function(postId, status) {
     // Comments
     openComments: function(postId) {
       S.commentPostId=postId; S.commentOpen=true; render();
-      setTimeout(function(){ var i=document.getElementById('commentInput'); if(i) i.focus(); },150);
+      window.setTimeout(function(){ var i=document.getElementById('commentInput'); if(i) i.focus(); },150);
     },
     closeComments: function() { S.commentOpen=false; S.commentPostId=null; render(); },
     addEmoji: function(e) { var i=document.getElementById('commentInput'); if(i){i.value+=e;i.focus();} },
@@ -3476,7 +3476,7 @@ toggleParticipation: function(postId, status) {
       var posts = db(SK.POSTS, []);
       var post = posts.find(function(p){ return p.id===S.commentPostId; });
       if (!post) return;
-      var newC = { id:'c'+Date.now(), userId:S.user.id, author:S.user.prenom+' '+S.user.nom.charAt(0)+'.', avatarColor:S.user.avatar_color||'#007AFF', text:txt, timestamp:Date.now() };
+      var newC = { id:'c'+Date.now(), userId:S.user.id, author:(S.user.prenom||'User')+' '+(S.user.nom?S.user.nom.charAt(0):'')+'.', avatarColor:S.user.avatar_color||'#007AFF', text:txt, timestamp:Date.now() };
       if (!Array.isArray(post.comments)) post.comments = [];
       post.comments.push(newC); dbSet(SK.POSTS, posts);
       if (supabase && post) supabase.from('kun_com_posts').upsert({ id: post.id, content: post }, { onConflict: 'id' }).catch(function(e){});
