@@ -3180,11 +3180,11 @@ toggleParticipation: function(postId, status) {
       if (supabase && post) {
         supabase.from('kun_com_posts').upsert({ id: post.id, content: post }, { onConflict: 'id' }).catch(function(e){ console.warn(e); });
       }
-      // DOM update only (no full re-render)
+      
+      render(); // Force full UI update instantly
+      
       var btn = document.getElementById('likeBtn-'+postId);
-      if (btn) { btn.innerHTML = SVG.heart(nowLiked, 26); btn.style.animation='heartPop 0.35s'; window.setTimeout(function(){btn.style.animation='';},350); }
-      var countEl = document.getElementById('likeCount-'+postId);
-      if (countEl) countEl.textContent = likeCount > 0 ? likeCount + ' j\'aime' : 'Soyez le premier à aimer';
+      if (btn && nowLiked) { btn.style.animation='heartPop 0.35s'; window.setTimeout(function(){btn.style.animation='';},350); }
     },
     doubleTapLike: function(postId) {
       this.like(postId);
