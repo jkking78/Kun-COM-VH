@@ -1,9 +1,9 @@
 // ============================================================
-// SERVICE WORKER — Kun COM VH PWA (v19)
+// SERVICE WORKER — Kun COM VH PWA (v20)
 // Stratégie : Network-First pour JS/HTML (Garantie de mise à jour instantanée)
 // ============================================================
 
-const CACHE_NAME = 'kun-com-pwa-v19';
+const CACHE_NAME = 'kun-com-pwa-v20';
 const STATIC_ASSETS = [
   './',
   './index.html',
