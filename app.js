@@ -1202,15 +1202,15 @@
         '<p style="font-size:14px;color:#000;margin:0;line-height:1.45;">' +
           '<strong>' + safeHtml(post.author||'') + '</strong> ' + captionHtml +
         '</p>' +
-        (post.comments && post.comments.length > 0
-          ? '<button onclick="App.openComments(\''+post.id+'\')" style="background:none;border:none;padding:0;margin-top:5px;font-size:13.5px;color:#8E8E93;cursor:pointer;">Voir les '+post.comments.length+' commentaire'+(post.comments.length>1?'s':'')+'</button>'
+        ((post.comments || []).length > 0
+          ? '<button onclick="App.openComments(\''+post.id+'\')" style="background:none;border:none;padding:0;margin-top:5px;font-size:13.5px;color:#8E8E93;cursor:pointer;">Voir les '+(post.comments || []).length+' commentaire'+((post.comments || []).length>1?'s':'')+'</button>'
           : '<button onclick="App.openComments(\''+post.id+'\')" style="background:none;border:none;padding:0;margin-top:5px;font-size:13.5px;color:#8E8E93;cursor:pointer;">Ajouter un commentaire…</button>'
         ) +
         '<div style="font-size:11px;color:#C7C7CC;margin-top:4px;text-transform:uppercase;letter-spacing:0.5px;">' + ago + '</div>' +
       '</div>' : '') +
       // For bg posts: show timestamp and comment button below the card
       (post.postBg ? '<div style="padding:2px 14px 10px;display:flex;justify-content:space-between;align-items:center;">' +
-        '<button onclick="App.openComments(\'' + post.id + '\')" style="background:none;border:none;padding:0;font-size:13.5px;color:#8E8E93;cursor:pointer;">' + (post.comments&&post.comments.length>0?'Voir les '+post.comments.length+' commentaire'+(post.comments.length>1?'s':''):' Ajouter un commentaire…') + '</button>' +
+        '<button onclick="App.openComments(\'' + post.id + '\')" style="background:none;border:none;padding:0;font-size:13.5px;color:#8E8E93;cursor:pointer;">' + ((post.comments || []).length>0?'Voir les '+(post.comments || []).length+' commentaire'+((post.comments || []).length>1?'s':''):' Ajouter un commentaire…') + '</button>' +
         '<div style="font-size:11px;color:#C7C7CC;text-transform:uppercase;letter-spacing:0.5px;">' + ago + '</div>' +
       '</div>' : '') +
 
@@ -1600,7 +1600,7 @@
     if (!post) return '';
     var u = S.user || {};
 
-    var commentItems = post.comments && post.comments.length > 0
+    var commentItems = (post.comments || []).length > 0
       ? post.comments.map(function(c) { return renderCommentItem(c); }).join('')
       : '<div style="display:flex;flex-direction:column;align-items:center;padding:44px 20px;text-align:center;"><div style="font-size:44px;margin-bottom:10px;">💬</div><strong style="font-size:15px;color:#000;">Aucun commentaire</strong><p style="font-size:13px;color:#8E8E93;margin:4px 0 0;">Soyez le premier à commenter !</p></div>';
 
@@ -1615,7 +1615,7 @@
 
         '<div style="text-align:center;padding-bottom:12px;border-bottom:0.5px solid #F2F2F7;">' +
           '<h3 style="font-size:16px;font-weight:800;margin:0;color:#000;">Commentaires</h3>' +
-          (post.comments && post.comments.length > 0 ? '<p style="font-size:12px;color:#8E8E93;margin:2px 0 0;">'+post.comments.length+' commentaire'+(post.comments.length>1?'s':'')+'</p>' : '') +
+          ((post.comments || []).length > 0 ? '<p style="font-size:12px;color:#8E8E93;margin:2px 0 0;">'+(post.comments || []).length+' commentaire'+((post.comments || []).length>1?'s':'')+'</p>' : '') +
         '</div>' +
 
         '<div id="commentsList" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 14px;">' +
@@ -3154,7 +3154,7 @@ toggleParticipation: function(postId, status) {
       }
       // DOM update only (no full re-render)
       var btn = document.getElementById('likeBtn-'+postId);
-      if (btn) { btn.innerHTML = SVG.heart(nowLiked, 26); btn.style.animation='heartPop 0.35s'; setTimeout(function(){btn.style.animation='';},350); }
+      if (btn) { btn.innerHTML = SVG.heart(nowLiked, 26); btn.style.animation='heartPop 0.35s'; window.setTimeout(function(){btn.style.animation='';},350); }
       var countEl = document.getElementById('likeCount-'+postId);
       if (countEl) countEl.textContent = likeCount > 0 ? likeCount + ' j\'aime' : 'Soyez le premier à aimer';
     },
@@ -3477,6 +3477,7 @@ toggleParticipation: function(postId, status) {
       var post = posts.find(function(p){ return p.id===S.commentPostId; });
       if (!post) return;
       var newC = { id:'c'+Date.now(), userId:S.user.id, author:S.user.prenom+' '+S.user.nom.charAt(0)+'.', avatarColor:S.user.avatar_color||'#007AFF', text:txt, timestamp:Date.now() };
+      if (!Array.isArray(post.comments)) post.comments = [];
       post.comments.push(newC); dbSet(SK.POSTS, posts);
       if (supabase && post) supabase.from('kun_com_posts').upsert({ id: post.id, content: post }, { onConflict: 'id' }).catch(function(e){});
       updateUserActivity('Commentaire');
