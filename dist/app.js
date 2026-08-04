@@ -2459,6 +2459,14 @@
     feed += '</div>';
 
     return topBar + hero + infoBlock + tabBar + feed;
+    } catch(profileErr) {
+      console.error("Profile Screen render error:", profileErr);
+      return '<div style="padding:40px;text-align:center;min-height:60vh;display:flex;flex-direction:column;align-items:center;justify-content:center;">' +
+        '<div style="font-size:16px;font-weight:700;color:#000;margin-bottom:8px;">Impossible d\'afficher le profil</div>' +
+        '<p style="font-size:13px;color:#8E8E93;margin-bottom:16px;">Une erreur temporaire d\'affichage est survenue.</p>' +
+        '<button onclick="App.tab(\'profile\')" style="background:#007AFF;color:#FFF;border:none;padding:10px 20px;border-radius:12px;font-size:13px;font-weight:700;cursor:pointer;">Réessayer</button>' +
+      '</div>';
+    }
   }
 
     function renderEditProfileModal(u) {
