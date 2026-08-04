@@ -1628,7 +1628,7 @@
               return '<span onclick="App.addEmoji(\''+e+'\')" style="font-size:22px;cursor:pointer;padding:3px 2px;-webkit-tap-highlight-color:transparent;">'+e+'</span>';
             }).join('') +
           '</div>' +
-          '<form onsubmit="App.submitComment(event)" style="display:flex;align-items:center;gap:10px;padding:10px 14px;">' +
+          '<form onsubmit="event.preventDefault(); App.submitComment(event);" style="display:flex;align-items:center;gap:10px;padding:10px 14px;">' +
             (u.avatar_url ? '<img src="' + u.avatar_url + '" style="width:34px;height:34px;border-radius:17px;object-fit:cover;flex-shrink:0;" />' : '<div style="width:34px;height:34px;border-radius:17px;background:linear-gradient(135deg,' + (u.avatar_color||'#007AFF') + ',#0040CC);color:#FFF;font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + userInitial + '</div>') +
             '<div style="flex:1;display:flex;align-items:center;background:#F2F2F7;border-radius:22px;height:40px;padding:0 14px;">' +
               '<input id="commentInput" type="text" placeholder="Ajouter un commentaire…" style="flex:1;border:none;background:transparent;font-size:14px;color:#000;outline:none;" required>' +
@@ -1708,19 +1708,18 @@
     }
 
     var baseDate = new Date();
+    var todayIso = baseDate.toISOString().split('T')[0];
     var dateMap = {};
-    for(var i = -1; i < 6; i++) {
+    // Add today + next 6 days automatically
+    for(var i = 0; i < 7; i++) {
       var d = new Date(baseDate);
       d.setDate(baseDate.getDate() + i);
       dateMap[d.toISOString().split('T')[0]] = d;
     }
     
-    var maxBaseDate = new Date(baseDate);
-    maxBaseDate.setDate(baseDate.getDate() + 5);
-    var maxBaseIso = maxBaseDate.toISOString().split('T')[0];
-    
+    // Add any future dates that have events
     allPosts.forEach(function(p) {
-      if (p.type === 'EVENT' && p.eventDate && p.eventDate > maxBaseIso) {
+      if (p.type === 'EVENT' && p.eventDate && p.eventDate >= todayIso) {
          if (!dateMap[p.eventDate]) dateMap[p.eventDate] = new Date(p.eventDate);
       }
     });
@@ -1996,47 +1995,40 @@
     // ---- Avatar ----
         // ---- Dynamic RH Metrics (15-day cycle) ----
     var now = new Date();
-    // Cycle de 15 jours: du 1er au 15, puis du 16 à la fin du mois
+    var cycleStr = now.getDate() <= 15 ? "1er - 15 " + now.toLocaleDateString('fr-FR', {month:'short'}) : "16 - Fin " + now.toLocaleDateString('fr-FR', {month:'short'});
     var currentCycleStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() <= 15 ? 1 : 16).getTime();
 
+    // Calcul Historique Global
     var eventsList = posts.filter(function(p){ return p.type === 'EVENT' && (p.timestamp || 0) >= currentCycleStart; });
     var myServicesCount = 0;
     eventsList.forEach(function(ev) {
-      var assignments = ev.assignments || [];
-      var isAssigned = assignments.some(function(a){ return a.userId === freshU.id; });
-      var isParticipant = Array.isArray(ev.likedBy) && ev.likedBy.indexOf(freshU.id) !== -1;
+      var isParticipant = (ev.metadata && ev.metadata.participations && ev.metadata.participations[freshU.id] === 'yes');
+      var isAssigned = (ev.assignments || []).some(function(a){ return a.userId === freshU.id; });
       if (isAssigned || isParticipant) myServicesCount++;
     });
 
+    var totalEvents = eventsList.length;
+    var baseScore = 20;
+    var missedEvents = Math.max(0, totalEvents - myServicesCount);
+    // Minus 2 points per missed event in the cycle
+    var currentScore = Math.max(0, baseScore - (missedEvents * 2));
+    
     var evalPosts = posts.filter(function(p){ 
       var isEval = p.type === 'EVALUATION' || (p.metadata && p.metadata.type === 'EVALUATION');
       return isEval && (p.timestamp || 0) >= currentCycleStart; 
     });
-    var sumScores = 0;
-    var evalCount = 0;
+    
+    // Add bonus points for great evaluations
     evalPosts.forEach(function(ep) {
       var meta = ep.metadata || {};
-      var r = parseFloat(meta.globalScore || meta.overallRating || meta.rating || ep.rating || 0);
-      if (r > 0) {
-        if (r <= 5.0) { r = r * 4; } // Conversion automatique sur 20 pour l'historique/anciennes données
-        sumScores += r;
-        evalCount++;
-      }
+      var r = parseFloat(meta.globalScore || 0);
+      if (r >= 4) currentScore = Math.min(20, currentScore + 1); // +1 bonus for good eval
+      if (r <= 2 && r > 0) currentScore = Math.max(0, currentScore - 1); // -1 penalty for bad eval
     });
-    var avgRating = evalCount > 0 ? (sumScores / evalCount).toFixed(1) : '—';
 
-    // Calculate real trust score based on event participation ratio
-    var totalEvents = eventsList.length;
-    var trustScore;
-    if (freshU.trust_score !== undefined) {
-      trustScore = freshU.trust_score;
-    } else if (totalEvents > 0) {
-      trustScore = Math.round((myServicesCount / totalEvents) * 100);
-    } else {
-      trustScore = myServicesCount > 0 ? 100 : 0;
-    }
-    var trustColor = trustScore < 50 ? '#FF3B30' : (trustScore <= 80 ? '#FF9500' : '#34C759');
-    var trustLabel = trustScore < 50 ? 'Suivi Requis' : (trustScore <= 80 ? 'Assiduité Satisfaisante' : 'Fiabilité Élevée 🌟');
+    var scoreColor = currentScore < 10 ? '#EF4444' : (currentScore < 15 ? '#F59E0B' : '#10B981');
+    var scoreLabel = currentScore < 10 ? 'Critique' : (currentScore < 15 ? 'Moyen' : 'Excellent 🌟');
+
 
     var avatarContent = freshU.avatar_url
       ? '<img src="' + freshU.avatar_url + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />'
