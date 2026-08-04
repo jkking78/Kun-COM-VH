@@ -2229,6 +2229,20 @@
     var scoreColor = currentScore < 10 ? '#EF4444' : (currentScore < 15 ? '#F59E0B' : '#10B981');
     var scoreLabel = currentScore < 10 ? 'Critique' : (currentScore < 15 ? 'Moyen' : 'Excellent 🌟');
 
+    var evalCount = evalPosts.length;
+    var avgRating = '—';
+    if (evalCount > 0) {
+      var sumRating = 0;
+      evalPosts.forEach(function(ep){
+        var meta = ep.metadata || {};
+        sumRating += parseFloat(meta.globalScore || 0);
+      });
+      avgRating = (sumRating / evalCount).toFixed(1);
+    }
+    var trustScore = Math.round((currentScore / 20) * 100);
+    var trustColor = scoreColor;
+    var trustLabel = scoreLabel;
+
 
     var avatarContent = freshU.avatar_url
       ? '<img src="' + freshU.avatar_url + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />'
