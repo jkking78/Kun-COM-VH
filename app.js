@@ -2615,7 +2615,7 @@ checkForgotEmail: function(e) {
       S.forgotUser = u;
       render();
     },
-    resetPassword: function(e) {
+    resetPassword: async function(e) {
       e && e.preventDefault();
       if (!S.forgotUser) return;
       var a1 = ((document.getElementById('forgotA1')||{}).value||'').trim().toLowerCase();
@@ -3050,7 +3050,7 @@ toggleParticipation: function(postId, status) {
       render();
       toast('Connexion réussie ! Bienvenue ' + user.prenom + '. 🎉', 'success');
     },
-    signup: function(e) {
+    signup: async function(e) {
       e && e.preventDefault();
       var prenom = ((document.getElementById('signupPrenom')||{}).value||'').trim();
       var nom = ((document.getElementById('signupNom')||{}).value||'').trim();
