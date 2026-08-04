@@ -3,7 +3,7 @@
 // Stratégie : Stale-While-Revalidate (Chargement 0ms instantané)
 // ============================================================
 
-const CACHE_NAME = 'kun-com-pwa-v14';
+const CACHE_NAME = 'kun-com-pwa-v15';
 const STATIC_ASSETS = [
   './',
   './index.html',

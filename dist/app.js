@@ -2236,8 +2236,8 @@
     // ---- Sticky top bar ----
     var topBar = '<div style="position:sticky;top:0;z-index:200;background:rgba(0,0,0,0.72);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);display:flex;align-items:center;justify-content:space-between;padding:12px 16px;">' +
       (isMe
-        ? '<button onclick="App.logout()" style="background:rgba(255,255,255,0.15);border:none;width:36px;height:36px;border-radius:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
-            '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>' +
+        ? '<button onclick="App.tab(\'home\')" style="background:rgba(255,255,255,0.15);border:none;width:36px;height:36px;border-radius:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
+            '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>' +
           '</button>'
         : '<button onclick="App.closeUserProfile()" style="background:rgba(255,255,255,0.15);border:none;width:36px;height:36px;border-radius:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
             '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>' +
@@ -2381,8 +2381,9 @@
           '</button>' +
           '<button onclick="App.openEditProfile()" style="flex:1;background:#F2F2F7;color:#000;border:none;border-radius:12px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;">✏️ Modifier le profil</button>' +
         '</div>' +
-        '<div style="text-align:center;margin-top:2px;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">' +
           '<button onclick="App.openUnlockRoleModal()" style="background:none;border:none;color:#8E8E93;font-size:12.5px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">🔐 Code de Fonction</button>' +
+          '<button onclick="App.logout()" style="background:#FEE2E2;color:#EF4444;border:none;border-radius:10px;padding:8px 14px;font-size:12.5px;font-weight:800;cursor:pointer;">Se déconnecter 🚪</button>' +
         '</div>' +
       '</div>' : '') +
     '</div>';
