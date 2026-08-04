@@ -651,7 +651,7 @@
         '<p style="font-size:14px;color:#8E8E93;margin:6px 0 0;">Département Communication</p>' +
       '</div>' +
 
-      '<form onsubmit="App.login(event)" style="display:flex;flex-direction:column;gap:14px;">' +
+      '<form onsubmit="event.preventDefault(); App.login(event);" style="display:flex;flex-direction:column;gap:14px;">' +
         renderField('loginEmail', 'email', 'Adresse e-mail', 'votre.email@eglise.org', 'email') +
         renderField('loginPwd', 'password', 'Mot de passe', '••••••••', 'current-password') +
         '<button type="submit" style="' + btnStyle('#007AFF') + '">Se connecter →</button>' +
@@ -677,7 +677,7 @@
             '<div><h1 style="font-size:22px;font-weight:900;color:#000;margin:0;">Mot de passe oublié</h1></div>' +
           '</div>' +
           '<p style="font-size:14px;color:#8E8E93;margin-bottom:24px;">Saisissez votre adresse e-mail pour retrouver votre compte et répondre à vos questions de sécurité.</p>' +
-          '<form onsubmit="App.checkForgotEmail(event)" style="display:flex;flex-direction:column;gap:14px;">' +
+          '<form onsubmit="event.preventDefault(); App.checkForgotEmail(event);" style="display:flex;flex-direction:column;gap:14px;">' +
             renderField('forgotEmail', 'email', 'E-mail', 'jean.dupont@eglise.org', 'email') +
             '<button type="submit" style="' + btnStyle('#007AFF') + '">Suivant →</button>' +
           '</form>' +
@@ -692,7 +692,7 @@
             '<div><h1 style="font-size:22px;font-weight:900;color:#000;margin:0;">Réinitialisation</h1></div>' +
           '</div>' +
           '<p style="font-size:14px;color:#8E8E93;margin-bottom:20px;">Répondez aux deux questions de sécurité que vous avez définies lors de votre inscription.</p>' +
-          '<form onsubmit="App.resetPassword(event)" style="display:flex;flex-direction:column;gap:14px;">' +
+          '<form onsubmit="event.preventDefault(); App.resetPassword(event);" style="display:flex;flex-direction:column;gap:14px;">' +
             '<div><label style="font-size:12px;font-weight:700;color:#3A3A3C;display:block;margin-bottom:5px;">Q1: ' + (S.forgotUser.sec_q1||'Question 1') + '</label>' +
             '<input id="forgotA1" type="text" placeholder="Votre réponse secrète" required style="width:100%;height:48px;border-radius:12px;border:1.5px solid #E5E5EA;background:#FAFAFA;padding:0 14px;font-size:14px;box-sizing:border-box;outline:none;" /></div>' +
             '<div><label style="font-size:12px;font-weight:700;color:#3A3A3C;display:block;margin-bottom:5px;">Q2: ' + (S.forgotUser.sec_q2||'Question 2') + '</label>' +
@@ -716,7 +716,7 @@
         '<h1 style="font-size:22px;font-weight:900;color:#000;margin:0;">Rejoindre Kun COM</h1></div>' +
       '</div>' +
 
-      '<form onsubmit="App.signup(event)" style="display:flex;flex-direction:column;gap:12px;">' +
+      '<form onsubmit="event.preventDefault(); App.signup(event);" style="display:flex;flex-direction:column;gap:12px;">' +
         '<div style="display:flex;gap:10px;">' +
           renderField('signupPrenom', 'text', 'Prénom', 'Jean', 'given-name') +
           renderField('signupNom', 'text', 'Nom', 'Dupont', 'family-name') +
@@ -3351,8 +3351,10 @@ toggleParticipation: function(postId, status) {
 
       S.user = user;
       S.auth = 'app';
+      S.tab = 'home';
+      try { localStorage.setItem(SK.SESS, JSON.stringify(user)); } catch(e){}
       render();
-      toast('Connexion réussie ! Bienvenue ' + user.prenom + '. 🎉', 'success');
+      toast('Connexion réussie ! Bienvenue ' + (user.prenom||'Membre') + '. 🎉', 'success');
     },
     signup: async function(e) {
       e && e.preventDefault();
