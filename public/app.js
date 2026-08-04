@@ -2136,7 +2136,12 @@
   // PROFILE TAB
   // ============================================================
   function renderProfile(u, posts) {
-    if (!u) return '<div style="padding:40px;text-align:center;">Chargement...</div>';
+    if (!u || !u.id) {
+      return '<div style="min-height:70vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:40px;text-align:center;">' +
+        '<div style="width:36px;height:36px;border:3px solid #E5E5EA;border-top-color:#007AFF;border-radius:50%;animation:spin 0.8s linear infinite;margin-bottom:12px;"></div>' +
+        '<div style="font-size:14px;font-weight:700;color:#1C1C1E;">Chargement du profil...</div>' +
+      '</div>';
+    }
     var allProfiles = db(SK.USERS, []);
     var freshU = allProfiles.find(function(p){ return p.id === u.id; }) || u;
 
