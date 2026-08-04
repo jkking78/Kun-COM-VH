@@ -1601,7 +1601,7 @@
     var u = S.user || {};
 
     var commentItems = post.comments && post.comments.length > 0
-      ? post.comments.map(function(c) { return App.renderCommentItem(c); }).join('')
+      ? post.comments.map(function(c) { return renderCommentItem(c); }).join('')
       : '<div style="display:flex;flex-direction:column;align-items:center;padding:44px 20px;text-align:center;"><div style="font-size:44px;margin-bottom:10px;">💬</div><strong style="font-size:15px;color:#000;">Aucun commentaire</strong><p style="font-size:13px;color:#8E8E93;margin:4px 0 0;">Soyez le premier à commenter !</p></div>';
 
     var emojis = ['❤️','👏','🔥','🙌','😍','😂','😮','💪'];
@@ -1640,7 +1640,7 @@
     '</div>';
   }
 
-  App.renderCommentItem = function(c) {
+  function renderCommentItem(c) {
     var likedComments = db(SK.LIKED_COMMENTS, {});
     var isLiked = !!likedComments[c.id];
     var allU = db(SK.USERS, []);
@@ -3477,7 +3477,7 @@ toggleParticipation: function(postId, status) {
       if (list) {
         var div = document.createElement('div');
         div.style.cssText = 'animation:fadeIn 0.3s;';
-        div.innerHTML = App.renderCommentItem(newC);
+        div.innerHTML = renderCommentItem(newC);
         list.appendChild(div);
       } else { render(); }
       // Update comment count on post card (outside modal)
