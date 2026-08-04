@@ -145,6 +145,13 @@
         });
       }
       
+      // Automatic fast polling fallback (3s) for instant updates across devices
+      if (!window._postsPollInterval) {
+        window._postsPollInterval = setInterval(function() {
+          fetchPostsSilently();
+        }, 3000);
+      }
+
       // Setup Supabase Realtime for Posts, Profiles & Events
       supabase.channel('public:kun_com_realtime')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'kun_com_posts' }, function(payload) {
@@ -201,16 +208,26 @@
     }
     } catch(e) { console.warn('fetchProfilesSilently error:', e); }
   }
+  var _lastPostsJson = '';
   async function fetchPostsSilently() {
     if (!supabase) return;
     try {
-    var res = await supabase.from('kun_com_posts').select('*');
-    if (res && res.data) {
-      var mergedPosts = mergePostsWithLocal(res.data);
-      DB_CACHE[SK.POSTS] = mergedPosts;
-      localStorage.setItem(SK.POSTS, JSON.stringify(mergedPosts));
-      render();
-    }
+      var res = await supabase.from('kun_com_posts').select('*');
+      if (res && res.data) {
+        var mergedPosts = mergePostsWithLocal(res.data);
+        var newJson = JSON.stringify(mergedPosts);
+        if (newJson !== _lastPostsJson) {
+          _lastPostsJson = newJson;
+          DB_CACHE[SK.POSTS] = mergedPosts;
+          localStorage.setItem(SK.POSTS, JSON.stringify(mergedPosts));
+          
+          var activeEl = document.activeElement;
+          var isTyping = activeEl && (activeEl.id === 'commentInput' || activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA');
+          if (!isTyping) {
+            render();
+          }
+        }
+      }
     } catch(e) { console.warn('fetchPostsSilently error:', e); }
   }
 
@@ -540,7 +557,7 @@
       '</div>' +
 
       '<form onsubmit="App.login(event)" style="display:flex;flex-direction:column;gap:14px;">' +
-        renderField('loginEmail', 'email', 'Adresse e-mail', 'eric.kouame@eglise.org', 'email') +
+        renderField('loginEmail', 'email', 'Adresse e-mail', 'votre.email@eglise.org', 'email') +
         renderField('loginPwd', 'password', 'Mot de passe', '••••••••', 'current-password') +
         '<button type="submit" style="' + btnStyle('#007AFF') + '">Se connecter →</button>' +
       '</form>' +
@@ -549,10 +566,7 @@
         'Pas encore de compte ? <span onclick="App.nav(\'signup\')" style="color:#007AFF;font-weight:700;cursor:pointer;">S\'inscrire</span>' +
       '</p>' +
 
-      '<div style="margin-top:20px;padding:14px 16px;background:#F0F6FF;border-radius:16px;border:1px solid #CCDEFF;">' +
-        '<p style="font-size:11px;font-weight:700;color:#007AFF;margin:0 0 5px;">Démo rapide :</p>' +
-        '<p style="font-size:11.5px;color:#3A3A3C;margin:0;line-height:1.6;">eric.kouame@eglise.org<br>admin@eglise.org <span style="color:#B8860B;">(Grand Responsable)</span></p>' +
-      '</div>' +
+
     '</div></div>';
   }
 
@@ -648,7 +662,7 @@
   function renderField(id, type, label, placeholder, autocomplete) {
     return '<div style="flex:1;">' +
       '<label style="font-size:12px;font-weight:700;color:#3A3A3C;display:block;margin-bottom:5px;">' + label + '</label>' +
-      '<input id="' + id + '" type="' + type + '"' + (type==='email' && id==='loginEmail' ? ' value="eric.kouame@eglise.org"' : '') + ' placeholder="' + placeholder + '" autocomplete="' + (autocomplete||'off') + '" required ' +
+      '<input id="' + id + '" type="' + type + '"' + '' + ' placeholder="' + placeholder + '" autocomplete="' + (autocomplete||'off') + '" required ' +
       'style="width:100%;height:50px;border-radius:14px;border:1.5px solid #E5E5EA;background:#FAFAFA;padding:0 16px;font-size:14.5px;color:#000;box-sizing:border-box;outline:none;transition:border-color 0.2s;" ' +
       'onfocus="this.style.borderColor=\'#007AFF\'" onblur="this.style.borderColor=\'#E5E5EA\'">' +
     '</div>';
