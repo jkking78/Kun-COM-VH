@@ -485,6 +485,13 @@
     reader.readAsDataURL(file);
   }
 
+    function getUserSections(u) {
+    if (!u) return [];
+    if (Array.isArray(u.sections) && u.sections.length > 0) return u.sections;
+    if (u.section_id) return [u.section_id];
+    return [];
+  }
+
   function safeHtml(s) {
     return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
@@ -788,7 +795,7 @@
         // Privacy / Targeted sections filter
         if (p.visibility === 'sections' && Array.isArray(p.targetSections) && p.targetSections.length > 0) {
           if (u.role !== 'GRAND_RESPONSABLE' && p.userId !== u.id) {
-            var mySecs = App.getUserSections(u);
+            var mySecs = getUserSections(u);
             var hasAccess = p.targetSections.some(function(sec) { return mySecs.indexOf(sec) !== -1; });
             if (!hasAccess) return false;
           }
@@ -2227,7 +2234,7 @@
       : 'background:' + theme.coverGradient + ';';
 
     // ---- Sections badges ----
-    var uSecs = App.getUserSections(freshU);
+    var uSecs = getUserSections(freshU);
     var secBadges = uSecs.map(function(s){
       var sc = secColor(s) || '#007AFF';
       return '<span style="background:' + sc + '22;color:' + sc + ';padding:4px 10px;border-radius:12px;font-size:12px;font-weight:800;">' + secNom(s) + '</span>';
@@ -3043,7 +3050,7 @@ toggleParticipation: function(postId, status) {
       render();
       toast('Réinitialisé en Membre simple.', 'success');
     },
-    openEditProfile: function() { S.editProfileOpen = true; S.avatarFile = null; S.coverFile = null; S.avatarPreview = null; S.coverPreview = null; S.editProfileData = null; S.editSections = App.getUserSections(S.user).slice(); render(); },
+    openEditProfile: function() { S.editProfileOpen = true; S.avatarFile = null; S.coverFile = null; S.avatarPreview = null; S.coverPreview = null; S.editProfileData = null; S.editSections = getUserSections(S.user).slice(); render(); },
     closeEditProfile: function() { S.editProfileOpen = false; S.avatarFile = null; S.coverFile = null; S.avatarPreview = null; S.coverPreview = null; S.editProfileData = null; render(); },
     handleAvatarSelect: function(e) {
       var file = e.target.files[0];
@@ -3053,7 +3060,7 @@ toggleParticipation: function(postId, status) {
           S.avatarPreview = dataUrl;
           if (!S.editProfileOpen) {
             S.editProfileOpen = true;
-            S.editSections = App.getUserSections(S.user).slice();
+            S.editSections = getUserSections(S.user).slice();
             render();
           } else {
             var el = document.getElementById('editAvatarPreview');
@@ -3073,7 +3080,7 @@ toggleParticipation: function(postId, status) {
           S.coverPreview = dataUrl;
           if (!S.editProfileOpen) {
             S.editProfileOpen = true;
-            S.editSections = App.getUserSections(S.user).slice();
+            S.editSections = getUserSections(S.user).slice();
             render();
           } else {
             var el = document.getElementById('editCoverPreview');
