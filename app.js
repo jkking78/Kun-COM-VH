@@ -22,6 +22,101 @@
   var DB_CACHE = {};
 
   // ============================================================
+  // INSTAGRAM-STYLE TARGETED NOTIFICATION SYSTEM
+  // ============================================================
+  function sendNotificationToUser(targetUserId, notifData) {
+    if (!targetUserId) return;
+    var allUsers = db(SK.USERS, []);
+    var targetUser = allUsers.find(function(u){ return u.id === targetUserId; });
+    if (!targetUser) return;
+    
+    if (!Array.isArray(targetUser.notifications)) targetUser.notifications = [];
+    
+    // Prevent duplicate
+    var exists = targetUser.notifications.find(function(n){ 
+      return n.targetId === notifData.targetId && n.type === notifData.type && n.senderId === (S.user ? S.user.id : 'system'); 
+    });
+    if (exists) return;
+    
+    var newNotif = {
+      id: 'n_' + Date.now() + '_' + Math.floor(Math.random()*1000),
+      senderId: S.user ? S.user.id : 'system',
+      senderName: S.user ? (S.user.prenom + ' ' + (S.user.nom?S.user.nom.charAt(0)+'.':'')) : 'Système',
+      senderAvatar: S.user ? S.user.avatar_url : null,
+      senderColor: S.user ? (S.user.avatar_color || '#007AFF') : '#007AFF',
+      type: notifData.type,
+      title: notifData.title,
+      text: notifData.text,
+      targetId: notifData.targetId,
+      timestamp: Date.now(),
+      read: false
+    };
+    
+    targetUser.notifications.unshift(newNotif);
+    if (targetUser.notifications.length > 50) {
+      targetUser.notifications = targetUser.notifications.slice(0, 50);
+    }
+    
+    var uIdx = allUsers.findIndex(function(u){ return u.id === targetUserId; });
+    if (uIdx !== -1) allUsers[uIdx] = targetUser;
+    dbSet(SK.USERS, allUsers);
+    
+    if (S.user && S.user.id === targetUserId) {
+      S.user = targetUser;
+      try { localStorage.setItem(SK.SESS, JSON.stringify(targetUser)); } catch(e){}
+    }
+    
+    if (supabase) {
+      supabase.from('kun_com_profiles').upsert({ id: targetUser.id, content: targetUser }, { onConflict: 'id' }).catch(function(e){});
+    }
+    
+    if (S.user && S.user.id === targetUserId) {
+      toast('🔔 ' + notifData.title + ': ' + notifData.text, 'info');
+      if ('Notification' in window && Notification.permission === 'granted') {
+        try { new Notification(notifData.title, { body: notifData.text }); } catch(e){}
+      }
+    }
+  }
+
+  function sendTargetedEventNotifications(post) {
+    if (!post || post.type !== 'EVENT') return;
+    var allUsers = db(SK.USERS, []);
+    var assignedUserIds = (post.assignments || []).map(function(a){ return a.userId; });
+    
+    // Direct assignments
+    (post.assignments || []).forEach(function(a) {
+      if (a.userId && a.userId !== (S.user ? S.user.id : '')) {
+        sendNotificationToUser(a.userId, {
+          type: 'EVENT_ASSIGNED',
+          title: '🗓️ Service assigné',
+          text: 'Vous avez été convoqué(e) (' + a.task + ') pour ' + post.eventTitle,
+          targetId: post.id
+        });
+      }
+    });
+    
+    // Section members
+    var evSections = post.eventSections || [];
+    if (evSections.length > 0) {
+      allUsers.forEach(function(u) {
+        if (u.id === (S.user ? S.user.id : '')) return;
+        if (assignedUserIds.indexOf(u.id) !== -1) return;
+        var uSecs = u.sections || [];
+        var match = evSections.some(function(s){ return uSecs.indexOf(s) !== -1; });
+        if (match) {
+          sendNotificationToUser(u.id, {
+            type: 'EVENT_SECTION',
+            title: '🗓️ Événement de Pôle',
+            text: 'Un nouvel événement "' + post.eventTitle + '" concerne votre pôle.',
+            targetId: post.id
+          });
+        }
+      });
+    }
+  }
+
+
+  // ============================================================
   // SUPABASE REALTIME CLIENT
   // ============================================================
   var SUPABASE_URL = 'https://yugkryhikrfsxbuyxacl.supabase.co';
@@ -812,6 +907,7 @@
     '</div>';
   }
 
+    if (S.notificationsOpen) modals += renderNotificationsModal(u);
     if (S.unlockRoleModalOpen) modals += renderUnlockRoleModal();
     if (S.editProfileOpen) modals += renderEditProfileModal(u);
     if (S.postOptionsOpen) modals += renderPostOptionsModal(posts.find(function(p){return p.id===S.selectedPostId;}));
@@ -879,6 +975,13 @@
           '<h1 style="font-size:22px;font-weight:900;color:#000;margin:0;letter-spacing:-0.5px;">Kun COM</h1>' +
         '</div>' +
         '<div style="display:flex;gap:8px;align-items:center;">' +
+          (function(){
+            var unreadCount = (u && Array.isArray(u.notifications)) ? u.notifications.filter(function(n){ return !n.read; }).length : 0;
+            return '<button onclick="App.openNotifications()" style="position:relative;width:34px;height:34px;border-radius:17px;background:#F2F2F7;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
+              '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>' +
+              (unreadCount > 0 ? '<span style="position:absolute;top:-3px;right:-3px;background:#FF3B30;color:#FFF;font-size:9.5px;font-weight:900;padding:2px 5px;border-radius:10px;border:2px solid #FFF;line-height:1;">' + (unreadCount > 99 ? '99+' : unreadCount) + '</span>' : '') +
+            '</button>';
+          })() +
           '<button onclick="App.openCreate()" style="width:34px;height:34px;border-radius:17px;background:#F0F6FF;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
             '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#007AFF" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg>' +
           '</button>' +
@@ -1247,6 +1350,64 @@
   // ============================================================
   // CREATE POST MODAL
   // ============================================================
+
+  
+  function renderNotificationsModal(u) {
+    var notifs = (u && Array.isArray(u.notifications)) ? u.notifications : [];
+    var unreadCount = notifs.filter(function(n){ return !n.read; }).length;
+
+    var itemsHtml = '';
+    if (notifs.length === 0) {
+      itemsHtml = '<div style="padding:50px 20px;text-align:center;color:#8E8E93;">' +
+        '<div style="font-size:48px;margin-bottom:12px;">🔔</div>' +
+        '<div style="font-size:16px;font-weight:800;color:#1C1C1E;margin-bottom:6px;">Aucune notification</div>' +
+        '<div style="font-size:13px;color:#8E8E93;">Vous êtes à jour ! Aucune nouvelle activité.</div>' +
+      '</div>';
+    } else {
+      itemsHtml = notifs.map(function(n) {
+        var icon = n.type === 'LIKE' ? '❤️' : n.type === 'COMMENT' ? '💬' : n.type === 'EVALUATION' ? '📊' : '🗓️';
+        var bgIcon = n.type === 'LIKE' ? '#FF2D55' : n.type === 'COMMENT' ? '#007AFF' : n.type === 'EVALUATION' ? '#FF9500' : '#5856D6';
+        var timeAgoStr = timeAgo(n.timestamp || Date.now());
+        var isUnread = !n.read;
+
+        var avatarHtml = n.senderAvatar
+          ? '<img src="' + n.senderAvatar + '" style="width:44px;height:44px;border-radius:22px;object-fit:cover;flex-shrink:0;" />'
+          : '<div style="width:44px;height:44px;border-radius:22px;background:linear-gradient(135deg,' + (n.senderColor||'#007AFF') + ',#0040CC);color:#FFF;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + (n.senderName||'S').charAt(0).toUpperCase() + '</div>';
+
+        return '<div onclick="App.clickNotification(\'' + n.id + '\', \'' + (n.targetId||'') + '\')" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:0.5px solid #F2F2F7;background:' + (isUnread ? '#F0F6FF' : '#FFF') + ';cursor:pointer;transition:background 0.2s;position:relative;">' +
+          '<div style="position:relative;flex-shrink:0;">' +
+            avatarHtml +
+            '<div style="position:absolute;bottom:-2px;right:-2px;width:18px;height:18px;border-radius:9px;background:' + bgIcon + ';color:#FFF;font-size:10px;display:flex;align-items:center;justify-content:center;border:1.5px solid #FFF;">' + icon + '</div>' +
+          '</div>' +
+          '<div style="flex:1;min-width:0;">' +
+            '<div style="font-size:13.5px;color:#1C1C1E;line-height:1.35;word-break:break-word;">' +
+              '<strong>' + safeHtml(n.senderName || 'Membre') + '</strong> ' + safeHtml(n.text || '') +
+            '</div>' +
+            '<div style="font-size:11px;color:#8E8E93;margin-top:3px;">' + timeAgoStr + '</div>' +
+          '</div>' +
+          (isUnread ? '<div style="width:8px;height:8px;border-radius:4px;background:#007AFF;flex-shrink:0;"></div>' : '') +
+        '</div>';
+      }).join('');
+    }
+
+    return '<div onclick="App.closeNotifications()" style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:10000;display:flex;justify-content:center;align-items:flex-end;">' +
+      '<div onclick="event.stopPropagation()" style="width:100%;max-width:460px;background:#FFF;border-top-left-radius:28px;border-top-right-radius:28px;max-height:85vh;display:flex;flex-direction:column;animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
+        '<div style="display:flex;justify-content:center;padding:10px 0 0;cursor:pointer;" onclick="App.closeNotifications()">' +
+          '<div style="width:40px;height:4px;background:#D1D1D6;border-radius:2px;"></div>' +
+        '</div>' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px 12px;border-bottom:0.5px solid #E5E5EA;">' +
+          '<div style="display:flex;align-items:center;gap:8px;">' +
+            '<h2 style="font-size:19px;font-weight:900;color:#000;margin:0;">Notifications</h2>' +
+            (unreadCount > 0 ? '<span style="background:#FF3B30;color:#FFF;font-size:11px;font-weight:900;padding:2px 8px;border-radius:10px;">' + unreadCount + '</span>' : '') +
+          '</div>' +
+          (unreadCount > 0 ? '<button onclick="App.markAllNotificationsRead()" style="background:none;border:none;color:#007AFF;font-size:13px;font-weight:700;cursor:pointer;">Tout lire</button>' : '') +
+        '</div>' +
+        '<div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;">' +
+          itemsHtml +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
 
   function renderCreateEventModal() {
     var today = new Date().toISOString().split('T')[0];
@@ -2566,6 +2727,7 @@
       var allPosts = db(SK.POSTS, []);
       allPosts.unshift(newPost);
       dbSet(SK.POSTS, allPosts);
+      sendTargetedEventNotifications(newPost);
       if (supabase) {
         try {
           await supabase.from('kun_com_posts').upsert({ id: newPost.id, content: newPost, created_at: new Date().toISOString() }, { onConflict: 'id' });
@@ -3075,6 +3237,61 @@ toggleParticipation: function(postId, status) {
 
 
     // Auth
+
+    // Notifications System
+    openNotifications: function() {
+      S.notificationsOpen = true;
+      if ('Notification' in window && Notification.permission === 'default') {
+        try { Notification.requestPermission(); } catch(e){}
+      }
+      render();
+    },
+    closeNotifications: function() {
+      S.notificationsOpen = false;
+      render();
+    },
+    markAllNotificationsRead: function() {
+      if (!S.user || !Array.isArray(S.user.notifications)) return;
+      S.user.notifications.forEach(function(n){ n.read = true; });
+      var allUsers = db(SK.USERS, []);
+      var uIdx = allUsers.findIndex(function(u){ return u.id === S.user.id; });
+      if (uIdx !== -1) allUsers[uIdx] = S.user;
+      dbSet(SK.USERS, allUsers);
+      try { localStorage.setItem(SK.SESS, JSON.stringify(S.user)); } catch(e){}
+      if (supabase) supabase.from('kun_com_profiles').upsert({ id: S.user.id, content: S.user }, { onConflict: 'id' }).catch(function(e){});
+      render();
+    },
+    clickNotification: function(notifId, targetId) {
+      if (!S.user || !Array.isArray(S.user.notifications)) return;
+      var notif = S.user.notifications.find(function(n){ return n.id === notifId; });
+      if (notif) notif.read = true;
+      var allUsers = db(SK.USERS, []);
+      var uIdx = allUsers.findIndex(function(u){ return u.id === S.user.id; });
+      if (uIdx !== -1) allUsers[uIdx] = S.user;
+      dbSet(SK.USERS, allUsers);
+      try { localStorage.setItem(SK.SESS, JSON.stringify(S.user)); } catch(e){}
+      if (supabase) supabase.from('kun_com_profiles').upsert({ id: S.user.id, content: S.user }, { onConflict: 'id' }).catch(function(e){});
+      
+      S.notificationsOpen = false;
+      render();
+      
+      if (targetId) {
+        var posts = db(SK.POSTS, []);
+        var targetPost = posts.find(function(p){ return p.id === targetId; });
+        if (targetPost) {
+          if (targetPost.type === 'EVENT') {
+            S.tab = 'calendar';
+            render();
+          } else {
+            S.tab = 'home';
+            render();
+            var el = document.getElementById('post-' + targetId);
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }
+      }
+    },
+
     nav: function(v) { S.auth = v; render(); },
     login: async function(e) {
       e && e.preventDefault();
@@ -3208,6 +3425,14 @@ toggleParticipation: function(postId, status) {
       dbSet(SK.POSTS, posts);
       if (supabase && post) {
         supabase.from('kun_com_posts').upsert({ id: post.id, content: post }, { onConflict: 'id' }).catch(function(e){ console.warn(e); });
+      }
+      if (nowLiked && post.userId && post.userId !== S.user.id) {
+        sendNotificationToUser(post.userId, {
+          type: 'LIKE',
+          title: "❤️ Nouveau J'aime",
+          text: (S.user.prenom + ' ' + (S.user.nom||'')) + ' a aimé votre publication.',
+          targetId: post.id
+        });
       }
       
       render(); // Force full UI update instantly
@@ -3537,6 +3762,14 @@ toggleParticipation: function(postId, status) {
       if (!Array.isArray(post.comments)) post.comments = [];
       post.comments.push(newC); dbSet(SK.POSTS, posts);
       if (supabase && post) supabase.from('kun_com_posts').upsert({ id: post.id, content: post }, { onConflict: 'id' }).catch(function(e){});
+      if (post.userId && post.userId !== S.user.id) {
+        sendNotificationToUser(post.userId, {
+          type: 'COMMENT',
+          title: '💬 Nouveau Commentaire',
+          text: S.user.prenom + ' : "' + txt.slice(0, 40) + '"',
+          targetId: post.id
+        });
+      }
       updateUserActivity('Commentaire');
       // DOM update: append to list without full re-render
       var list = document.getElementById('commentsList');
