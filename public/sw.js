@@ -1,9 +1,9 @@
 // ============================================================
-// SERVICE WORKER — Kun COM VH PWA
-// Stratégie : Stale-While-Revalidate (Chargement 0ms instantané)
+// SERVICE WORKER — Kun COM VH PWA (v18)
+// Stratégie : Network-First pour JS/HTML (Garantie de mise à jour instantanée)
 // ============================================================
 
-const CACHE_NAME = 'kun-com-pwa-v17';
+const CACHE_NAME = 'kun-com-pwa-v18';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -11,7 +11,6 @@ const STATIC_ASSETS = [
   './manifest.json'
 ];
 
-// Installation : mise en cache immédiate
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
@@ -23,7 +22,6 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
-// Activation : nettoyage des anciens caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
@@ -36,17 +34,32 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Requêtes : Stale-While-Revalidate (chargement 0ms depuis cache + mise à jour en arrière-plan)
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
 
+  // Network-First pour les scripts et pages HTML : garantie d'affichage direct des mises à jour
+  if (url.pathname.endsWith('.js') || url.pathname.endsWith('.html') || url.pathname === '/' || url.pathname.endsWith('/')) {
+    event.respondWith(
+      fetch(event.request).then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200) {
+          const responseClone = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
+        }
+        return networkResponse;
+      }).catch(() => {
+        return caches.match(event.request);
+      })
+    );
+    return;
+  }
+
+  // Stale-While-Revalidate pour les autres ressources statiques
   event.respondWith(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.match(event.request).then((cachedResponse) => {
-        // Fetch réseau en arrière-plan pour mettre à jour le cache
         const fetchPromise = fetch(event.request).then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
             cache.put(event.request, networkResponse.clone());
@@ -54,7 +67,6 @@ self.addEventListener('fetch', (event) => {
           return networkResponse;
         }).catch(() => cachedResponse);
 
-        // Rendu instantané si disponible en cache, sinon attendre le réseau
         return cachedResponse || fetchPromise;
       });
     })
