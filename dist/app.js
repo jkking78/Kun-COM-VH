@@ -2210,6 +2210,7 @@
     
     var displayAvatar = S.avatarPreview || freshU.avatar_url;
         // ---- Dynamic RH Metrics ----
+    var posts = db(SK.POSTS, []);
     var eventsList = posts.filter(function(p){ return p.type === 'EVENT'; });
     var myServicesCount = 0;
     eventsList.forEach(function(ev) {
