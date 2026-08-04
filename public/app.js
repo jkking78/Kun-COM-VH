@@ -2073,41 +2073,64 @@
         '<span style="font-size:12px;font-weight:800;color:' + theme.badgeText + ';background:' + theme.badgeBg + ';padding:4px 10px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.1);">' + (ROLE_LABELS[freshU.role]||'Membre') + '</span>' +
         (secBadges ? '<span style="color:#D1D1D6;">·</span>' + secBadges : '') +
       '</div>' +
-      // ---- Tableau de Bord RH: Performances & Suivi ----
-      '<div style="background:linear-gradient(135deg, #1C1C1E, #2C2C2E);border-radius:20px;padding:16px;margin:12px 0 16px;color:#FFF;box-shadow:0 6px 20px rgba(0,0,0,0.15);">' +
-        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;border-bottom:1px solid rgba(255,255,255,0.1);padding-bottom:10px;">' +
-          '<div style="display:flex;align-items:center;gap:8px;">' +
-            '<span style="font-size:16px;">📊</span>' +
-            '<span style="font-size:14px;font-weight:800;letter-spacing:0.3px;color:#FFF;">Performances & Suivi</span>' +
-          '</div>' +
-          '<span style="font-size:11px;font-weight:700;color:rgba(255,255,255,0.7);background:rgba(255,255,255,0.12);padding:3px 10px;border-radius:12px;">Tableau RH</span>' +
-        '</div>' +
-
-        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">' +
-          '<div onclick="App.openRhDetailsModal(\'services\', \'' + freshU.id + '\')" style="background:rgba(255,255,255,0.06);border-radius:14px;padding:12px;border:1px solid rgba(255,255,255,0.08);text-align:center;cursor:pointer;">' +
-            '<div style="font-size:22px;font-weight:900;color:#FFF;margin-bottom:2px;">' + myServicesCount + '</div>' +
-            '<div style="font-size:10.5px;font-weight:700;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:0.5px;">Services Effectués</div>' +
-          '</div>' +
-
-          '<div onclick="App.openRhDetailsModal(\'ratings\', \'' + freshU.id + '\')" style="background:rgba(255,255,255,0.06);border-radius:14px;padding:12px;border:1px solid rgba(255,255,255,0.08);text-align:center;cursor:pointer;">' +
-            '<div style="font-size:22px;font-weight:900;color:#FFD700;display:flex;align-items:center;justify-content:center;gap:4px;margin-bottom:2px;">' +
-              '⭐ ' + avgRating + '<span style="font-size:12px;color:rgba(255,255,255,0.5);font-weight:600;">/5</span>' +
+      // ---- Tableau de Bord RH: Performances & Suivi (Redesign Moderne) ----
+      '<div style="margin:16px 0;">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">' +
+          '<div>' +
+            '<div style="font-size:18px;font-weight:700;color:#000;display:flex;align-items:center;gap:6px;">' +
+              '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 20V10M18 20V4M6 20v-4"/></svg>' +
+              'Performances & Suivi' +
             '</div>' +
-            '<div style="font-size:10.5px;font-weight:700;color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:0.5px;">Note Moyenne</div>' +
+            '<div style="font-size:12px;color:#8E8E93;margin-top:2px;">Basé sur ton activité réelle sur 90 jours</div>' +
           '</div>' +
+          '<div style="font-size:12px;font-weight:700;color:#007AFF;cursor:pointer;display:flex;align-items:center;gap:4px;">Tableau RH <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 17l9.2-9.2M17 17V7H7"/></svg></div>' +
         '</div>' +
 
-        '<div>' +
-          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
-            '<span style="font-size:12px;font-weight:700;color:rgba(255,255,255,0.9);">Indice de Confiance & Assiduité</span>' +
-            '<span style="font-size:12px;font-weight:900;color:' + trustColor + ';">' + trustScore + '%</span>' +
+        '<div style="display:flex;flex-direction:column;gap:12px;">' +
+          
+          // 1. Indice de Confiance
+          '<div onclick="App.openRhDetailsModal(\'services\', \'' + freshU.id + '\')" style="background:linear-gradient(to right, #111827, #1F2937);border-radius:16px;padding:16px;display:flex;align-items:center;gap:16px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,0.1);animation:fadeIn 0.4s ease-out;transition:transform 0.2s; -webkit-tap-highlight-color:transparent;">' +
+            '<div style="width:60px;height:60px;border-radius:30px;background:conic-gradient(' + trustColor + ' ' + trustScore + '%, rgba(255,255,255,0.1) 0);display:flex;align-items:center;justify-content:center;position:relative;">' +
+              '<div style="width:48px;height:48px;background:#1F2937;border-radius:24px;display:flex;align-items:center;justify-content:center;">' +
+                '<span style="font-size:14px;font-weight:800;color:#FFF;">' + trustScore + '<span style="font-size:10px;">%</span></span>' +
+              '</div>' +
+            '</div>' +
+            '<div style="flex:1;">' +
+              '<div style="font-size:15px;font-weight:700;color:#FFF;margin-bottom:4px;">Indice de Confiance</div>' +
+              '<div style="font-size:13px;color:#9CA3AF;">Présences & fidélité</div>' +
+              '<div style="font-size:11px;font-weight:700;color:' + trustColor + ';margin-top:4px;">' + trustLabel + '</div>' +
+            '</div>' +
           '</div>' +
-          '<div style="width:100%;height:10px;background:rgba(255,255,255,0.12);border-radius:5px;overflow:hidden;position:relative;">' +
-            '<div style="width:' + trustScore + '%;height:100%;background:' + trustColor + ';border-radius:5px;transition:width 0.5s ease;"></div>' +
-          '</div>' +
-          '<div style="display:flex;justify-content:space-between;margin-top:6px;font-size:10.5px;color:rgba(255,255,255,0.5);font-weight:600;">' +
-            '<span>Présences & cultes validés</span>' +
-            '<span style="color:' + trustColor + ';font-weight:700;">' + trustLabel + '</span>' +
+
+          // 2. Compteur & Note Moyenne Grid
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
+            
+            // Compteur de Services
+            '<div onclick="App.openRhDetailsModal(\'services\', \'' + freshU.id + '\')" style="background:#FFF;border:1px solid #F2F2F7;border-radius:16px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,0.04);cursor:pointer;position:relative;overflow:hidden;animation:fadeIn 0.5s ease-out;transition:transform 0.2s;">' +
+              '<div style="position:absolute;top:-10px;right:-10px;font-size:60px;opacity:0.05;">🏆</div>' +
+              '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">' +
+                '<div style="font-size:32px;font-weight:900;color:#111827;line-height:1;">' + myServicesCount + '</div>' +
+                '<div style="background:rgba(251,191,36,0.15);color:#F59E0B;width:32px;height:32px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:16px;">🏆</div>' +
+              '</div>' +
+              '<div style="font-size:12.5px;font-weight:700;color:#4B5563;">Prestations & Cultes</div>' +
+              '<div style="font-size:11px;color:#9CA3AF;margin-top:4px;">Depuis 90 jours</div>' +
+            '</div>' +
+
+            // Note Moyenne
+            '<div onclick="App.openRhDetailsModal(\'ratings\', \'' + freshU.id + '\')" style="background:#FFF;border:1px solid #F2F2F7;border-radius:16px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,0.04);cursor:pointer;animation:fadeIn 0.6s ease-out;transition:transform 0.2s;">' +
+              '<div style="display:flex;align-items:flex-end;gap:4px;margin-bottom:8px;">' +
+                '<div style="font-size:28px;font-weight:900;color:#111827;line-height:1;">' + (avgRating === '—' ? '-' : avgRating) + '</div>' +
+                '<div style="font-size:14px;font-weight:700;color:#9CA3AF;margin-bottom:2px;">/ 5.0</div>' +
+              '</div>' +
+              '<div style="display:flex;gap:2px;margin-bottom:8px;">' +
+                (avgRating !== '—' 
+                  ? '<span style="color:#FBBF24;font-size:14px;">⭐</span><span style="color:#FBBF24;font-size:14px;">⭐</span><span style="color:#FBBF24;font-size:14px;">⭐</span><span style="color:#FBBF24;font-size:14px;">⭐</span><span style="color:#FBBF24;font-size:14px;">⭐</span>'
+                  : '<span style="font-size:13px;color:#9CA3AF;">Pas d\'éval</span>') +
+              '</div>' +
+              '<div style="font-size:12.5px;font-weight:700;color:#4B5563;">Note Globale</div>' +
+              '<div style="font-size:11px;color:#9CA3AF;margin-top:4px;">' + (evalCount > 0 ? evalCount + ' évaluation(s)' : 'En attente') + '</div>' +
+            '</div>' +
+
           '</div>' +
         '</div>' +
       '</div>' +
