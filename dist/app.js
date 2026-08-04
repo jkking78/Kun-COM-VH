@@ -22,6 +22,101 @@
   var DB_CACHE = {};
 
   // ============================================================
+  // INSTAGRAM-STYLE TARGETED NOTIFICATION SYSTEM
+  // ============================================================
+  function sendNotificationToUser(targetUserId, notifData) {
+    if (!targetUserId) return;
+    var allUsers = db(SK.USERS, []);
+    var targetUser = allUsers.find(function(u){ return u.id === targetUserId; });
+    if (!targetUser) return;
+    
+    if (!Array.isArray(targetUser.notifications)) targetUser.notifications = [];
+    
+    // Prevent duplicate
+    var exists = targetUser.notifications.find(function(n){ 
+      return n.targetId === notifData.targetId && n.type === notifData.type && n.senderId === (S.user ? S.user.id : 'system'); 
+    });
+    if (exists) return;
+    
+    var newNotif = {
+      id: 'n_' + Date.now() + '_' + Math.floor(Math.random()*1000),
+      senderId: S.user ? S.user.id : 'system',
+      senderName: S.user ? (S.user.prenom + ' ' + (S.user.nom?S.user.nom.charAt(0)+'.':'')) : 'Système',
+      senderAvatar: S.user ? S.user.avatar_url : null,
+      senderColor: S.user ? (S.user.avatar_color || '#007AFF') : '#007AFF',
+      type: notifData.type,
+      title: notifData.title,
+      text: notifData.text,
+      targetId: notifData.targetId,
+      timestamp: Date.now(),
+      read: false
+    };
+    
+    targetUser.notifications.unshift(newNotif);
+    if (targetUser.notifications.length > 50) {
+      targetUser.notifications = targetUser.notifications.slice(0, 50);
+    }
+    
+    var uIdx = allUsers.findIndex(function(u){ return u.id === targetUserId; });
+    if (uIdx !== -1) allUsers[uIdx] = targetUser;
+    dbSet(SK.USERS, allUsers);
+    
+    if (S.user && S.user.id === targetUserId) {
+      S.user = targetUser;
+      try { localStorage.setItem(SK.SESS, JSON.stringify(targetUser)); } catch(e){}
+    }
+    
+    if (supabase) {
+      supabase.from('kun_com_profiles').upsert({ id: targetUser.id, content: targetUser }, { onConflict: 'id' }).catch(function(e){});
+    }
+    
+    if (S.user && S.user.id === targetUserId) {
+      toast('🔔 ' + notifData.title + ': ' + notifData.text, 'info');
+      if ('Notification' in window && Notification.permission === 'granted') {
+        try { new Notification(notifData.title, { body: notifData.text }); } catch(e){}
+      }
+    }
+  }
+
+  function sendTargetedEventNotifications(post) {
+    if (!post || post.type !== 'EVENT') return;
+    var allUsers = db(SK.USERS, []);
+    var assignedUserIds = (post.assignments || []).map(function(a){ return a.userId; });
+    
+    // Direct assignments
+    (post.assignments || []).forEach(function(a) {
+      if (a.userId && a.userId !== (S.user ? S.user.id : '')) {
+        sendNotificationToUser(a.userId, {
+          type: 'EVENT_ASSIGNED',
+          title: '🗓️ Service assigné',
+          text: 'Vous avez été convoqué(e) (' + a.task + ') pour ' + post.eventTitle,
+          targetId: post.id
+        });
+      }
+    });
+    
+    // Section members
+    var evSections = post.eventSections || [];
+    if (evSections.length > 0) {
+      allUsers.forEach(function(u) {
+        if (u.id === (S.user ? S.user.id : '')) return;
+        if (assignedUserIds.indexOf(u.id) !== -1) return;
+        var uSecs = u.sections || [];
+        var match = evSections.some(function(s){ return uSecs.indexOf(s) !== -1; });
+        if (match) {
+          sendNotificationToUser(u.id, {
+            type: 'EVENT_SECTION',
+            title: '🗓️ Événement de Pôle',
+            text: 'Un nouvel événement "' + post.eventTitle + '" concerne votre pôle.',
+            targetId: post.id
+          });
+        }
+      });
+    }
+  }
+
+
+  // ============================================================
   // SUPABASE REALTIME CLIENT
   // ============================================================
   var SUPABASE_URL = 'https://yugkryhikrfsxbuyxacl.supabase.co';
@@ -115,6 +210,13 @@
         var mergedPosts = mergePostsWithLocal(res.data);
         DB_CACHE[SK.POSTS] = mergedPosts;
         localStorage.setItem(SK.POSTS, JSON.stringify(mergedPosts));
+        // Retroactively push local posts, likes & comments to Supabase
+        var remotePostIds = (res.data || []).map(function(item){ return item.id; });
+        mergedPosts.forEach(function(post) {
+          if (post && post.id) {
+            supabase.from('kun_com_posts').upsert({ id: post.id, content: post }, { onConflict: 'id' }).catch(function(e){ console.warn('Push post error:', e); });
+          }
+        });
       }
       // Fetch profiles
       var resProf = await supabase.from('kun_com_profiles').select('*');
@@ -129,8 +231,22 @@
             localStorage.setItem(SK.SESS, JSON.stringify(freshMe));
           }
         }
+        // Retroactively push local users to Supabase if any exist locally but not remotely
+        var remoteIds = (resProf.data || []).map(function(item){ return item.id; });
+        mergedProfiles.forEach(function(u) {
+          if (u && u.id && remoteIds.indexOf(u.id) === -1) {
+            supabase.from('kun_com_profiles').upsert({ id: u.id, content: u }, { onConflict: 'id' }).catch(function(e){ console.warn('Push profile error:', e); });
+          }
+        });
       }
       
+      // Automatic fast polling fallback (3s) for instant updates across devices
+      if (!window._postsPollInterval) {
+        window._postsPollInterval = setInterval(function() {
+          fetchPostsSilently();
+        }, 3000);
+      }
+
       // Setup Supabase Realtime for Posts, Profiles & Events
       supabase.channel('public:kun_com_realtime')
         .on('postgres_changes', { event: '*', schema: 'public', table: 'kun_com_posts' }, function(payload) {
@@ -187,16 +303,26 @@
     }
     } catch(e) { console.warn('fetchProfilesSilently error:', e); }
   }
+  var _lastPostsJson = '';
   async function fetchPostsSilently() {
     if (!supabase) return;
     try {
-    var res = await supabase.from('kun_com_posts').select('*');
-    if (res && res.data) {
-      var mergedPosts = mergePostsWithLocal(res.data);
-      DB_CACHE[SK.POSTS] = mergedPosts;
-      localStorage.setItem(SK.POSTS, JSON.stringify(mergedPosts));
-      render();
-    }
+      var res = await supabase.from('kun_com_posts').select('*');
+      if (res && res.data) {
+        var mergedPosts = mergePostsWithLocal(res.data);
+        var newJson = JSON.stringify(mergedPosts);
+        if (newJson !== _lastPostsJson) {
+          _lastPostsJson = newJson;
+          DB_CACHE[SK.POSTS] = mergedPosts;
+          localStorage.setItem(SK.POSTS, JSON.stringify(mergedPosts));
+          
+          var activeEl = document.activeElement;
+          var isTyping = activeEl && (activeEl.id === 'commentInput' || activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA');
+          if (!isTyping) {
+            render();
+          }
+        }
+      }
     } catch(e) { console.warn('fetchPostsSilently error:', e); }
   }
 
@@ -526,7 +652,7 @@
       '</div>' +
 
       '<form onsubmit="App.login(event)" style="display:flex;flex-direction:column;gap:14px;">' +
-        renderField('loginEmail', 'email', 'Adresse e-mail', 'eric.kouame@eglise.org', 'email') +
+        renderField('loginEmail', 'email', 'Adresse e-mail', 'votre.email@eglise.org', 'email') +
         renderField('loginPwd', 'password', 'Mot de passe', '••••••••', 'current-password') +
         '<button type="submit" style="' + btnStyle('#007AFF') + '">Se connecter →</button>' +
       '</form>' +
@@ -535,10 +661,7 @@
         'Pas encore de compte ? <span onclick="App.nav(\'signup\')" style="color:#007AFF;font-weight:700;cursor:pointer;">S\'inscrire</span>' +
       '</p>' +
 
-      '<div style="margin-top:20px;padding:14px 16px;background:#F0F6FF;border-radius:16px;border:1px solid #CCDEFF;">' +
-        '<p style="font-size:11px;font-weight:700;color:#007AFF;margin:0 0 5px;">Démo rapide :</p>' +
-        '<p style="font-size:11.5px;color:#3A3A3C;margin:0;line-height:1.6;">eric.kouame@eglise.org<br>admin@eglise.org <span style="color:#B8860B;">(Grand Responsable)</span></p>' +
-      '</div>' +
+
     '</div></div>';
   }
 
@@ -634,7 +757,7 @@
   function renderField(id, type, label, placeholder, autocomplete) {
     return '<div style="flex:1;">' +
       '<label style="font-size:12px;font-weight:700;color:#3A3A3C;display:block;margin-bottom:5px;">' + label + '</label>' +
-      '<input id="' + id + '" type="' + type + '"' + (type==='email' && id==='loginEmail' ? ' value="eric.kouame@eglise.org"' : '') + ' placeholder="' + placeholder + '" autocomplete="' + (autocomplete||'off') + '" required ' +
+      '<input id="' + id + '" type="' + type + '"' + '' + ' placeholder="' + placeholder + '" autocomplete="' + (autocomplete||'off') + '" required ' +
       'style="width:100%;height:50px;border-radius:14px;border:1.5px solid #E5E5EA;background:#FAFAFA;padding:0 16px;font-size:14.5px;color:#000;box-sizing:border-box;outline:none;transition:border-color 0.2s;" ' +
       'onfocus="this.style.borderColor=\'#007AFF\'" onblur="this.style.borderColor=\'#E5E5EA\'">' +
     '</div>';
@@ -784,6 +907,7 @@
     '</div>';
   }
 
+    if (S.notificationsOpen) modals += renderNotificationsModal(u);
     if (S.unlockRoleModalOpen) modals += renderUnlockRoleModal();
     if (S.editProfileOpen) modals += renderEditProfileModal(u);
     if (S.postOptionsOpen) modals += renderPostOptionsModal(posts.find(function(p){return p.id===S.selectedPostId;}));
@@ -851,6 +975,13 @@
           '<h1 style="font-size:22px;font-weight:900;color:#000;margin:0;letter-spacing:-0.5px;">Kun COM</h1>' +
         '</div>' +
         '<div style="display:flex;gap:8px;align-items:center;">' +
+          (function(){
+            var unreadCount = (u && Array.isArray(u.notifications)) ? u.notifications.filter(function(n){ return !n.read; }).length : 0;
+            return '<button onclick="App.openNotifications()" style="position:relative;width:34px;height:34px;border-radius:17px;background:#F2F2F7;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
+              '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>' +
+              (unreadCount > 0 ? '<span style="position:absolute;top:-3px;right:-3px;background:#FF3B30;color:#FFF;font-size:9.5px;font-weight:900;padding:2px 5px;border-radius:10px;border:2px solid #FFF;line-height:1;">' + (unreadCount > 99 ? '99+' : unreadCount) + '</span>' : '') +
+            '</button>';
+          })() +
           '<button onclick="App.openCreate()" style="width:34px;height:34px;border-radius:17px;background:#F0F6FF;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
             '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#007AFF" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg>' +
           '</button>' +
@@ -1198,19 +1329,17 @@
 
       // Caption (hidden for bg posts — text is shown on the card itself)
       (!post.postBg ? '<div style="padding:0 14px 10px;">' +
-        (post.type === 'REPOST' && post.originalCaption ? '<p style="font-size:14px;color:#000;margin:0 0 4px;line-height:1.45;"><strong>' + safeHtml(post.originalAuthor || '') + '</strong> ' + safeHtml(post.originalCaption) + '</p>' : '') +
-        '<p style="font-size:14px;color:#000;margin:0;line-height:1.45;">' +
-          '<strong>' + safeHtml(post.author||'') + '</strong> ' + captionHtml +
-        '</p>' +
-        (post.comments && post.comments.length > 0
-          ? '<button onclick="App.openComments(\''+post.id+'\')" style="background:none;border:none;padding:0;margin-top:5px;font-size:13.5px;color:#8E8E93;cursor:pointer;">Voir les '+post.comments.length+' commentaire'+(post.comments.length>1?'s':'')+'</button>'
+        (post.type === 'REPOST' && post.originalCaption && !post.originalPostBg ? '<p style="font-size:14px;color:#000;margin:0 0 4px;line-height:1.45;"><strong>' + safeHtml(post.originalAuthor || '') + '</strong> ' + safeHtml(post.originalCaption) + '</p>' : '') +
+        (captionHtml ? '<p style="font-size:14px;color:#000;margin:0;line-height:1.45;"><strong>' + safeHtml(post.author||'') + '</strong> ' + captionHtml + '</p>' : '') +
+        ((post.comments || []).length > 0
+          ? '<button onclick="App.openComments(\''+post.id+'\')" style="background:none;border:none;padding:0;margin-top:5px;font-size:13.5px;color:#8E8E93;cursor:pointer;">Voir les '+(post.comments || []).length+' commentaire'+((post.comments || []).length>1?'s':'')+'</button>'
           : '<button onclick="App.openComments(\''+post.id+'\')" style="background:none;border:none;padding:0;margin-top:5px;font-size:13.5px;color:#8E8E93;cursor:pointer;">Ajouter un commentaire…</button>'
         ) +
         '<div style="font-size:11px;color:#C7C7CC;margin-top:4px;text-transform:uppercase;letter-spacing:0.5px;">' + ago + '</div>' +
       '</div>' : '') +
       // For bg posts: show timestamp and comment button below the card
       (post.postBg ? '<div style="padding:2px 14px 10px;display:flex;justify-content:space-between;align-items:center;">' +
-        '<button onclick="App.openComments(\'' + post.id + '\')" style="background:none;border:none;padding:0;font-size:13.5px;color:#8E8E93;cursor:pointer;">' + (post.comments&&post.comments.length>0?'Voir les '+post.comments.length+' commentaire'+(post.comments.length>1?'s':''):' Ajouter un commentaire…') + '</button>' +
+        '<button onclick="App.openComments(\'' + post.id + '\')" style="background:none;border:none;padding:0;font-size:13.5px;color:#8E8E93;cursor:pointer;">' + ((post.comments || []).length>0?'Voir les '+(post.comments || []).length+' commentaire'+((post.comments || []).length>1?'s':''):' Ajouter un commentaire…') + '</button>' +
         '<div style="font-size:11px;color:#C7C7CC;text-transform:uppercase;letter-spacing:0.5px;">' + ago + '</div>' +
       '</div>' : '') +
 
@@ -1221,6 +1350,64 @@
   // ============================================================
   // CREATE POST MODAL
   // ============================================================
+
+  
+  function renderNotificationsModal(u) {
+    var notifs = (u && Array.isArray(u.notifications)) ? u.notifications : [];
+    var unreadCount = notifs.filter(function(n){ return !n.read; }).length;
+
+    var itemsHtml = '';
+    if (notifs.length === 0) {
+      itemsHtml = '<div style="padding:50px 20px;text-align:center;color:#8E8E93;">' +
+        '<div style="font-size:48px;margin-bottom:12px;">🔔</div>' +
+        '<div style="font-size:16px;font-weight:800;color:#1C1C1E;margin-bottom:6px;">Aucune notification</div>' +
+        '<div style="font-size:13px;color:#8E8E93;">Vous êtes à jour ! Aucune nouvelle activité.</div>' +
+      '</div>';
+    } else {
+      itemsHtml = notifs.map(function(n) {
+        var icon = n.type === 'LIKE' ? '❤️' : n.type === 'COMMENT' ? '💬' : n.type === 'EVALUATION' ? '📊' : '🗓️';
+        var bgIcon = n.type === 'LIKE' ? '#FF2D55' : n.type === 'COMMENT' ? '#007AFF' : n.type === 'EVALUATION' ? '#FF9500' : '#5856D6';
+        var timeAgoStr = timeAgo(n.timestamp || Date.now());
+        var isUnread = !n.read;
+
+        var avatarHtml = n.senderAvatar
+          ? '<img src="' + n.senderAvatar + '" style="width:44px;height:44px;border-radius:22px;object-fit:cover;flex-shrink:0;" />'
+          : '<div style="width:44px;height:44px;border-radius:22px;background:linear-gradient(135deg,' + (n.senderColor||'#007AFF') + ',#0040CC);color:#FFF;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + (n.senderName||'S').charAt(0).toUpperCase() + '</div>';
+
+        return '<div onclick="App.clickNotification(\'' + n.id + '\', \'' + (n.targetId||'') + '\')" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:0.5px solid #F2F2F7;background:' + (isUnread ? '#F0F6FF' : '#FFF') + ';cursor:pointer;transition:background 0.2s;position:relative;">' +
+          '<div style="position:relative;flex-shrink:0;">' +
+            avatarHtml +
+            '<div style="position:absolute;bottom:-2px;right:-2px;width:18px;height:18px;border-radius:9px;background:' + bgIcon + ';color:#FFF;font-size:10px;display:flex;align-items:center;justify-content:center;border:1.5px solid #FFF;">' + icon + '</div>' +
+          '</div>' +
+          '<div style="flex:1;min-width:0;">' +
+            '<div style="font-size:13.5px;color:#1C1C1E;line-height:1.35;word-break:break-word;">' +
+              '<strong>' + safeHtml(n.senderName || 'Membre') + '</strong> ' + safeHtml(n.text || '') +
+            '</div>' +
+            '<div style="font-size:11px;color:#8E8E93;margin-top:3px;">' + timeAgoStr + '</div>' +
+          '</div>' +
+          (isUnread ? '<div style="width:8px;height:8px;border-radius:4px;background:#007AFF;flex-shrink:0;"></div>' : '') +
+        '</div>';
+      }).join('');
+    }
+
+    return '<div onclick="App.closeNotifications()" style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:10000;display:flex;justify-content:center;align-items:flex-end;">' +
+      '<div onclick="event.stopPropagation()" style="width:100%;max-width:460px;background:#FFF;border-top-left-radius:28px;border-top-right-radius:28px;max-height:85vh;display:flex;flex-direction:column;animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
+        '<div style="display:flex;justify-content:center;padding:10px 0 0;cursor:pointer;" onclick="App.closeNotifications()">' +
+          '<div style="width:40px;height:4px;background:#D1D1D6;border-radius:2px;"></div>' +
+        '</div>' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px 12px;border-bottom:0.5px solid #E5E5EA;">' +
+          '<div style="display:flex;align-items:center;gap:8px;">' +
+            '<h2 style="font-size:19px;font-weight:900;color:#000;margin:0;">Notifications</h2>' +
+            (unreadCount > 0 ? '<span style="background:#FF3B30;color:#FFF;font-size:11px;font-weight:900;padding:2px 8px;border-radius:10px;">' + unreadCount + '</span>' : '') +
+          '</div>' +
+          (unreadCount > 0 ? '<button onclick="App.markAllNotificationsRead()" style="background:none;border:none;color:#007AFF;font-size:13px;font-weight:700;cursor:pointer;">Tout lire</button>' : '') +
+        '</div>' +
+        '<div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;">' +
+          itemsHtml +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
 
   function renderCreateEventModal() {
     var today = new Date().toISOString().split('T')[0];
@@ -1600,7 +1787,7 @@
     if (!post) return '';
     var u = S.user || {};
 
-    var commentItems = post.comments && post.comments.length > 0
+    var commentItems = (post.comments || []).length > 0
       ? post.comments.map(function(c) { return renderCommentItem(c); }).join('')
       : '<div style="display:flex;flex-direction:column;align-items:center;padding:44px 20px;text-align:center;"><div style="font-size:44px;margin-bottom:10px;">💬</div><strong style="font-size:15px;color:#000;">Aucun commentaire</strong><p style="font-size:13px;color:#8E8E93;margin:4px 0 0;">Soyez le premier à commenter !</p></div>';
 
@@ -1615,7 +1802,7 @@
 
         '<div style="text-align:center;padding-bottom:12px;border-bottom:0.5px solid #F2F2F7;">' +
           '<h3 style="font-size:16px;font-weight:800;margin:0;color:#000;">Commentaires</h3>' +
-          (post.comments && post.comments.length > 0 ? '<p style="font-size:12px;color:#8E8E93;margin:2px 0 0;">'+post.comments.length+' commentaire'+(post.comments.length>1?'s':'')+'</p>' : '') +
+          ((post.comments || []).length > 0 ? '<p style="font-size:12px;color:#8E8E93;margin:2px 0 0;">'+(post.comments || []).length+' commentaire'+((post.comments || []).length>1?'s':'')+'</p>' : '') +
         '</div>' +
 
         '<div id="commentsList" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 14px;">' +
@@ -1628,7 +1815,7 @@
               return '<span onclick="App.addEmoji(\''+e+'\')" style="font-size:22px;cursor:pointer;padding:3px 2px;-webkit-tap-highlight-color:transparent;">'+e+'</span>';
             }).join('') +
           '</div>' +
-          '<form onsubmit="App.submitComment(event)" style="display:flex;align-items:center;gap:10px;padding:10px 14px;">' +
+          '<form onsubmit="event.preventDefault(); App.submitComment(event);" style="display:flex;align-items:center;gap:10px;padding:10px 14px;">' +
             (u.avatar_url ? '<img src="' + u.avatar_url + '" style="width:34px;height:34px;border-radius:17px;object-fit:cover;flex-shrink:0;" />' : '<div style="width:34px;height:34px;border-radius:17px;background:linear-gradient(135deg,' + (u.avatar_color||'#007AFF') + ',#0040CC);color:#FFF;font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + userInitial + '</div>') +
             '<div style="flex:1;display:flex;align-items:center;background:#F2F2F7;border-radius:22px;height:40px;padding:0 14px;">' +
               '<input id="commentInput" type="text" placeholder="Ajouter un commentaire…" style="flex:1;border:none;background:transparent;font-size:14px;color:#000;outline:none;" required>' +
@@ -1673,24 +1860,58 @@
   // PLANNING TAB
   // ============================================================
   function renderPlanning() {
-    if (!S.selectedDate) {
-      S.selectedDate = new Date().toISOString().split('T')[0];
-    }
+    if (!S.selectedDate) S.selectedDate = new Date().toISOString().split('T')[0];
+    if (!S.planningMode) S.planningMode = 'upcoming';
     
-    var baseDate = new Date(); // Today
-    var dates = [];
-    for(var i = -1; i < 6; i++) {
-      var d = new Date(baseDate);
-      d.setDate(baseDate.getDate() + i);
-      dates.push(d);
-    }
-
     var canCreate = S.user && (S.user.role === 'RESP_SECTION' || S.user.role === 'GRAND_RESPONSABLE');
-    
     var rightBtn = canCreate ? '<button onclick="App.openCreateEvent()" style="background:#007AFF;color:#FFF;border:none;border-radius:17px;padding:6px 14px;font-size:12.5px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:5px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg> Événement</button>' : '';
     var header = renderScreenHeader('Planning & Cultes', 'Département COM', rightBtn);
 
-    // Date Slider
+    var modeSwitch = '<div style="background:#FFF;padding:10px 16px;display:flex;gap:10px;border-bottom:1px solid #E5E5EA;">' +
+      '<button onclick="S.planningMode=\'upcoming\';render()" style="flex:1;padding:10px;border-radius:12px;font-weight:800;font-size:13.5px;border:none;cursor:pointer;transition:0.2s;' + (S.planningMode==='upcoming' ? 'background:#000;color:#FFF;' : 'background:#F2F2F7;color:#8E8E93;') + '">À venir</button>' +
+      '<button onclick="S.planningMode=\'history\';render()" style="flex:1;padding:10px;border-radius:12px;font-weight:800;font-size:13.5px;border:none;cursor:pointer;transition:0.2s;' + (S.planningMode==='history' ? 'background:#000;color:#FFF;' : 'background:#F2F2F7;color:#8E8E93;') + '">Historique</button>' +
+    '</div>';
+
+    var allPosts = db(SK.POSTS, []);
+    var todayIso = new Date().toISOString().split('T')[0];
+
+    if (S.planningMode === 'history') {
+      var pastEvents = allPosts.filter(function(p) { return p.type === 'EVENT' && p.eventDate < todayIso; });
+      pastEvents.sort(function(a,b) { return b.eventDate.localeCompare(a.eventDate); });
+      var historyHtml = '<div style="padding:20px 16px;min-height:50vh;background:#FAFAFA;">';
+      if (pastEvents.length === 0) {
+         historyHtml += '<div style="text-align:center;padding:40px 20px;color:#8E8E93;"><div style="font-size:40px;margin-bottom:12px;">🕰️</div><div style="font-size:18px;font-weight:700;color:#000;">Aucun historique</div><div style="font-size:14px;margin-top:4px;">Les événements passés s\'afficheront ici.</div></div>';
+      } else {
+         pastEvents.forEach(function(ev) {
+            historyHtml += '<div style="background:#FFF;border-radius:16px;padding:16px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.04);border:1px solid #EFEFEF;">' +
+              '<div style="font-size:12px;font-weight:800;color:#8E8E93;margin-bottom:6px;">📅 ' + (new Date(ev.eventDate).toLocaleDateString('fr-FR')) + '</div>' +
+              '<h3 style="font-size:17px;font-weight:800;color:#000;margin:0 0 12px;">' + safeHtml(ev.eventTitle) + '</h3>' +
+              '<button onclick="S.evalEventId=\''+ev.id+'\';S.tab=\'debrief\';render()" style="width:100%;background:linear-gradient(135deg,#FF9500,#FF3B30);color:#FFF;border:none;border-radius:12px;padding:10px;font-size:13.5px;font-weight:800;cursor:pointer;box-shadow:0 4px 12px rgba(255,59,48,0.3);">✍️ Évaluer / Débriefer</button>' +
+            '</div>';
+         });
+      }
+      historyHtml += '</div>';
+      return header + modeSwitch + historyHtml;
+    }
+
+    var baseDate = new Date();
+    var todayIso = baseDate.toISOString().split('T')[0];
+    var dateMap = {};
+    // Add today + next 6 days automatically
+    for(var i = 0; i < 7; i++) {
+      var d = new Date(baseDate);
+      d.setDate(baseDate.getDate() + i);
+      dateMap[d.toISOString().split('T')[0]] = d;
+    }
+    
+    // Add any future dates that have events
+    allPosts.forEach(function(p) {
+      if (p.type === 'EVENT' && p.eventDate && p.eventDate >= todayIso) {
+         if (!dateMap[p.eventDate]) dateMap[p.eventDate] = new Date(p.eventDate);
+      }
+    });
+    var dates = Object.keys(dateMap).sort().map(function(k){ return dateMap[k]; });
+
     var slider = '<div style="background:#FFF;padding:16px;border-bottom:1px solid #E5E5EA;display:flex;gap:12px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;">' +
       dates.map(function(d) {
         var iso = d.toISOString().split('T')[0];
@@ -1700,14 +1921,16 @@
         var bg = isSel ? '#000' : '#F2F2F7';
         var col = isSel ? '#FFF' : '#8E8E93';
         var numCol = isSel ? '#FFF' : '#000';
-        return '<div onclick="App.selectDate(\''+iso+'\')" style="min-width:54px;height:70px;border-radius:16px;background:'+bg+';display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:0.2s;">' +
-          '<span style="font-size:11px;font-weight:700;color:'+col+';margin-bottom:4px;">'+dayName+'</span>' +
-          '<span style="font-size:20px;font-weight:800;color:'+numCol+';">'+dayNum+'</span>' +
+        var hasEv = allPosts.some(function(p){ return p.type==='EVENT' && p.eventDate===iso; });
+        var dot = hasEv ? '<div style="width:4px;height:4px;border-radius:2px;background:'+(isSel?'#FFF':'#FF3B30')+';margin-top:2px;"></div>' : '<div style="height:6px;"></div>';
+        return '<div onclick="App.selectDate(\''+iso+'\')" style="min-width:54px;height:74px;border-radius:16px;background:'+bg+';display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:0.2s;">' +
+          '<span style="font-size:11px;font-weight:700;color:'+col+';margin-bottom:2px;">'+dayName+'</span>' +
+          '<span style="font-size:20px;font-weight:800;color:'+numCol+';line-height:1;">'+dayNum+'</span>' +
+          dot +
         '</div>';
       }).join('') +
     '</div>';
 
-    var allPosts = db(SK.POSTS, []);
     var dayEvents = allPosts.filter(function(p) { 
       return p.type === 'EVENT' && p.eventDate === S.selectedDate;
     }).sort(function(a,b) {
@@ -1724,14 +1947,13 @@
         '<div style="font-size:14px;margin-top:4px;">Rien de prévu pour cette date.</div>' +
       '</div>';
     } else {
-      var nowIso = new Date().toISOString().split('T')[0];
-      var nowTime = new Date().toTimeString().slice(0,5); // HH:MM
+      var nowTime = new Date().toTimeString().slice(0,5);
       
       dayEvents.forEach(function(ev) {
         var status = 'upcoming';
         var statusHtml = '';
-        if (ev.eventDate < nowIso) status = 'closed';
-        else if (ev.eventDate === nowIso) {
+        if (ev.eventDate < todayIso) status = 'closed';
+        else if (ev.eventDate === todayIso) {
           if (nowTime >= ev.eventStart && nowTime <= ev.eventEnd) status = 'active';
           else if (nowTime > ev.eventEnd) status = 'closed';
         }
@@ -1778,7 +2000,7 @@
     
     timeline += '</div>';
 
-    return header + slider + timeline;
+    return header + modeSwitch + slider + timeline;
   }
   // ============================================================
   // DEBRIEF TAB
@@ -1960,47 +2182,40 @@
     // ---- Avatar ----
         // ---- Dynamic RH Metrics (15-day cycle) ----
     var now = new Date();
-    // Cycle de 15 jours: du 1er au 15, puis du 16 à la fin du mois
+    var cycleStr = now.getDate() <= 15 ? "1er - 15 " + now.toLocaleDateString('fr-FR', {month:'short'}) : "16 - Fin " + now.toLocaleDateString('fr-FR', {month:'short'});
     var currentCycleStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() <= 15 ? 1 : 16).getTime();
 
+    // Calcul Historique Global
     var eventsList = posts.filter(function(p){ return p.type === 'EVENT' && (p.timestamp || 0) >= currentCycleStart; });
     var myServicesCount = 0;
     eventsList.forEach(function(ev) {
-      var assignments = ev.assignments || [];
-      var isAssigned = assignments.some(function(a){ return a.userId === freshU.id; });
-      var isParticipant = Array.isArray(ev.likedBy) && ev.likedBy.indexOf(freshU.id) !== -1;
+      var isParticipant = (ev.metadata && ev.metadata.participations && ev.metadata.participations[freshU.id] === 'yes');
+      var isAssigned = (ev.assignments || []).some(function(a){ return a.userId === freshU.id; });
       if (isAssigned || isParticipant) myServicesCount++;
     });
 
+    var totalEvents = eventsList.length;
+    var baseScore = 20;
+    var missedEvents = Math.max(0, totalEvents - myServicesCount);
+    // Minus 2 points per missed event in the cycle
+    var currentScore = Math.max(0, baseScore - (missedEvents * 2));
+    
     var evalPosts = posts.filter(function(p){ 
       var isEval = p.type === 'EVALUATION' || (p.metadata && p.metadata.type === 'EVALUATION');
       return isEval && (p.timestamp || 0) >= currentCycleStart; 
     });
-    var sumScores = 0;
-    var evalCount = 0;
+    
+    // Add bonus points for great evaluations
     evalPosts.forEach(function(ep) {
       var meta = ep.metadata || {};
-      var r = parseFloat(meta.globalScore || meta.overallRating || meta.rating || ep.rating || 0);
-      if (r > 0) {
-        if (r <= 5.0) { r = r * 4; } // Conversion automatique sur 20 pour l'historique/anciennes données
-        sumScores += r;
-        evalCount++;
-      }
+      var r = parseFloat(meta.globalScore || 0);
+      if (r >= 4) currentScore = Math.min(20, currentScore + 1); // +1 bonus for good eval
+      if (r <= 2 && r > 0) currentScore = Math.max(0, currentScore - 1); // -1 penalty for bad eval
     });
-    var avgRating = evalCount > 0 ? (sumScores / evalCount).toFixed(1) : '—';
 
-    // Calculate real trust score based on event participation ratio
-    var totalEvents = eventsList.length;
-    var trustScore;
-    if (freshU.trust_score !== undefined) {
-      trustScore = freshU.trust_score;
-    } else if (totalEvents > 0) {
-      trustScore = Math.round((myServicesCount / totalEvents) * 100);
-    } else {
-      trustScore = myServicesCount > 0 ? 100 : 0;
-    }
-    var trustColor = trustScore < 50 ? '#FF3B30' : (trustScore <= 80 ? '#FF9500' : '#34C759');
-    var trustLabel = trustScore < 50 ? 'Suivi Requis' : (trustScore <= 80 ? 'Assiduité Satisfaisante' : 'Fiabilité Élevée 🌟');
+    var scoreColor = currentScore < 10 ? '#EF4444' : (currentScore < 15 ? '#F59E0B' : '#10B981');
+    var scoreLabel = currentScore < 10 ? 'Critique' : (currentScore < 15 ? 'Moyen' : 'Excellent 🌟');
+
 
     var avatarContent = freshU.avatar_url
       ? '<img src="' + freshU.avatar_url + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />'
@@ -2512,6 +2727,7 @@
       var allPosts = db(SK.POSTS, []);
       allPosts.unshift(newPost);
       dbSet(SK.POSTS, allPosts);
+      sendTargetedEventNotifications(newPost);
       if (supabase) {
         try {
           await supabase.from('kun_com_posts').upsert({ id: newPost.id, content: newPost, created_at: new Date().toISOString() }, { onConflict: 'id' });
@@ -3021,6 +3237,61 @@ toggleParticipation: function(postId, status) {
 
 
     // Auth
+
+    // Notifications System
+    openNotifications: function() {
+      S.notificationsOpen = true;
+      if ('Notification' in window && Notification.permission === 'default') {
+        try { Notification.requestPermission(); } catch(e){}
+      }
+      render();
+    },
+    closeNotifications: function() {
+      S.notificationsOpen = false;
+      render();
+    },
+    markAllNotificationsRead: function() {
+      if (!S.user || !Array.isArray(S.user.notifications)) return;
+      S.user.notifications.forEach(function(n){ n.read = true; });
+      var allUsers = db(SK.USERS, []);
+      var uIdx = allUsers.findIndex(function(u){ return u.id === S.user.id; });
+      if (uIdx !== -1) allUsers[uIdx] = S.user;
+      dbSet(SK.USERS, allUsers);
+      try { localStorage.setItem(SK.SESS, JSON.stringify(S.user)); } catch(e){}
+      if (supabase) supabase.from('kun_com_profiles').upsert({ id: S.user.id, content: S.user }, { onConflict: 'id' }).catch(function(e){});
+      render();
+    },
+    clickNotification: function(notifId, targetId) {
+      if (!S.user || !Array.isArray(S.user.notifications)) return;
+      var notif = S.user.notifications.find(function(n){ return n.id === notifId; });
+      if (notif) notif.read = true;
+      var allUsers = db(SK.USERS, []);
+      var uIdx = allUsers.findIndex(function(u){ return u.id === S.user.id; });
+      if (uIdx !== -1) allUsers[uIdx] = S.user;
+      dbSet(SK.USERS, allUsers);
+      try { localStorage.setItem(SK.SESS, JSON.stringify(S.user)); } catch(e){}
+      if (supabase) supabase.from('kun_com_profiles').upsert({ id: S.user.id, content: S.user }, { onConflict: 'id' }).catch(function(e){});
+      
+      S.notificationsOpen = false;
+      render();
+      
+      if (targetId) {
+        var posts = db(SK.POSTS, []);
+        var targetPost = posts.find(function(p){ return p.id === targetId; });
+        if (targetPost) {
+          if (targetPost.type === 'EVENT') {
+            S.tab = 'calendar';
+            render();
+          } else {
+            S.tab = 'home';
+            render();
+            var el = document.getElementById('post-' + targetId);
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }
+      }
+    },
+
     nav: function(v) { S.auth = v; render(); },
     login: async function(e) {
       e && e.preventDefault();
@@ -3108,9 +3379,12 @@ toggleParticipation: function(postId, status) {
 
       if (supabase) {
         try {
-          supabase.from('kun_com_profiles').upsert({ id: newUser.id, content: newUser }, { onConflict: 'id' }).then(function(){});
+          var syncRes = await supabase.from('kun_com_profiles').upsert({ id: newUser.id, content: newUser }, { onConflict: 'id' });
+          if (syncRes.error) {
+            console.error("Supabase profile save error:", syncRes.error);
+          }
         } catch(err) {
-          console.warn("Supabase signup sync error:", err);
+          console.warn("Supabase signup sync exception:", err);
         }
       }
 
@@ -3152,11 +3426,19 @@ toggleParticipation: function(postId, status) {
       if (supabase && post) {
         supabase.from('kun_com_posts').upsert({ id: post.id, content: post }, { onConflict: 'id' }).catch(function(e){ console.warn(e); });
       }
-      // DOM update only (no full re-render)
+      if (nowLiked && post.userId && post.userId !== S.user.id) {
+        sendNotificationToUser(post.userId, {
+          type: 'LIKE',
+          title: "❤️ Nouveau J'aime",
+          text: (S.user.prenom + ' ' + (S.user.nom||'')) + ' a aimé votre publication.',
+          targetId: post.id
+        });
+      }
+      
+      render(); // Force full UI update instantly
+      
       var btn = document.getElementById('likeBtn-'+postId);
-      if (btn) { btn.innerHTML = SVG.heart(nowLiked, 26); btn.style.animation='heartPop 0.35s'; setTimeout(function(){btn.style.animation='';},350); }
-      var countEl = document.getElementById('likeCount-'+postId);
-      if (countEl) countEl.textContent = likeCount > 0 ? likeCount + ' j\'aime' : 'Soyez le premier à aimer';
+      if (btn && nowLiked) { btn.style.animation='heartPop 0.35s'; window.setTimeout(function(){btn.style.animation='';},350); }
     },
     doubleTapLike: function(postId) {
       this.like(postId);
@@ -3464,7 +3746,7 @@ toggleParticipation: function(postId, status) {
     // Comments
     openComments: function(postId) {
       S.commentPostId=postId; S.commentOpen=true; render();
-      setTimeout(function(){ var i=document.getElementById('commentInput'); if(i) i.focus(); },150);
+      window.setTimeout(function(){ var i=document.getElementById('commentInput'); if(i) i.focus(); },150);
     },
     closeComments: function() { S.commentOpen=false; S.commentPostId=null; render(); },
     addEmoji: function(e) { var i=document.getElementById('commentInput'); if(i){i.value+=e;i.focus();} },
@@ -3476,9 +3758,18 @@ toggleParticipation: function(postId, status) {
       var posts = db(SK.POSTS, []);
       var post = posts.find(function(p){ return p.id===S.commentPostId; });
       if (!post) return;
-      var newC = { id:'c'+Date.now(), userId:S.user.id, author:S.user.prenom+' '+S.user.nom.charAt(0)+'.', avatarColor:S.user.avatar_color||'#007AFF', text:txt, timestamp:Date.now() };
+      var newC = { id:'c'+Date.now(), userId:S.user.id, author:(S.user.prenom||'User')+' '+(S.user.nom?S.user.nom.charAt(0):'')+'.', avatarColor:S.user.avatar_color||'#007AFF', text:txt, timestamp:Date.now() };
+      if (!Array.isArray(post.comments)) post.comments = [];
       post.comments.push(newC); dbSet(SK.POSTS, posts);
       if (supabase && post) supabase.from('kun_com_posts').upsert({ id: post.id, content: post }, { onConflict: 'id' }).catch(function(e){});
+      if (post.userId && post.userId !== S.user.id) {
+        sendNotificationToUser(post.userId, {
+          type: 'COMMENT',
+          title: '💬 Nouveau Commentaire',
+          text: S.user.prenom + ' : "' + txt.slice(0, 40) + '"',
+          targetId: post.id
+        });
+      }
       updateUserActivity('Commentaire');
       // DOM update: append to list without full re-render
       var list = document.getElementById('commentsList');
