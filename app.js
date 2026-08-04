@@ -1673,24 +1673,59 @@
   // PLANNING TAB
   // ============================================================
   function renderPlanning() {
-    if (!S.selectedDate) {
-      S.selectedDate = new Date().toISOString().split('T')[0];
-    }
+    if (!S.selectedDate) S.selectedDate = new Date().toISOString().split('T')[0];
+    if (!S.planningMode) S.planningMode = 'upcoming';
     
-    var baseDate = new Date(); // Today
-    var dates = [];
-    for(var i = -1; i < 6; i++) {
-      var d = new Date(baseDate);
-      d.setDate(baseDate.getDate() + i);
-      dates.push(d);
-    }
-
     var canCreate = S.user && (S.user.role === 'RESP_SECTION' || S.user.role === 'GRAND_RESPONSABLE');
-    
     var rightBtn = canCreate ? '<button onclick="App.openCreateEvent()" style="background:#007AFF;color:#FFF;border:none;border-radius:17px;padding:6px 14px;font-size:12.5px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:5px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg> Événement</button>' : '';
     var header = renderScreenHeader('Planning & Cultes', 'Département COM', rightBtn);
 
-    // Date Slider
+    var modeSwitch = '<div style="background:#FFF;padding:10px 16px;display:flex;gap:10px;border-bottom:1px solid #E5E5EA;">' +
+      '<button onclick="S.planningMode=\'upcoming\';render()" style="flex:1;padding:10px;border-radius:12px;font-weight:800;font-size:13.5px;border:none;cursor:pointer;transition:0.2s;' + (S.planningMode==='upcoming' ? 'background:#000;color:#FFF;' : 'background:#F2F2F7;color:#8E8E93;') + '">À venir</button>' +
+      '<button onclick="S.planningMode=\'history\';render()" style="flex:1;padding:10px;border-radius:12px;font-weight:800;font-size:13.5px;border:none;cursor:pointer;transition:0.2s;' + (S.planningMode==='history' ? 'background:#000;color:#FFF;' : 'background:#F2F2F7;color:#8E8E93;') + '">Historique</button>' +
+    '</div>';
+
+    var allPosts = db(SK.POSTS, []);
+    var todayIso = new Date().toISOString().split('T')[0];
+
+    if (S.planningMode === 'history') {
+      var pastEvents = allPosts.filter(function(p) { return p.type === 'EVENT' && p.eventDate < todayIso; });
+      pastEvents.sort(function(a,b) { return b.eventDate.localeCompare(a.eventDate); });
+      var historyHtml = '<div style="padding:20px 16px;min-height:50vh;background:#FAFAFA;">';
+      if (pastEvents.length === 0) {
+         historyHtml += '<div style="text-align:center;padding:40px 20px;color:#8E8E93;"><div style="font-size:40px;margin-bottom:12px;">🕰️</div><div style="font-size:18px;font-weight:700;color:#000;">Aucun historique</div><div style="font-size:14px;margin-top:4px;">Les événements passés s\'afficheront ici.</div></div>';
+      } else {
+         pastEvents.forEach(function(ev) {
+            historyHtml += '<div style="background:#FFF;border-radius:16px;padding:16px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.04);border:1px solid #EFEFEF;">' +
+              '<div style="font-size:12px;font-weight:800;color:#8E8E93;margin-bottom:6px;">📅 ' + (new Date(ev.eventDate).toLocaleDateString('fr-FR')) + '</div>' +
+              '<h3 style="font-size:17px;font-weight:800;color:#000;margin:0 0 12px;">' + safeHtml(ev.eventTitle) + '</h3>' +
+              '<button onclick="S.evalEventId=\''+ev.id+'\';S.tab=\'debrief\';render()" style="width:100%;background:linear-gradient(135deg,#FF9500,#FF3B30);color:#FFF;border:none;border-radius:12px;padding:10px;font-size:13.5px;font-weight:800;cursor:pointer;box-shadow:0 4px 12px rgba(255,59,48,0.3);">✍️ Évaluer / Débriefer</button>' +
+            '</div>';
+         });
+      }
+      historyHtml += '</div>';
+      return header + modeSwitch + historyHtml;
+    }
+
+    var baseDate = new Date();
+    var dateMap = {};
+    for(var i = -1; i < 6; i++) {
+      var d = new Date(baseDate);
+      d.setDate(baseDate.getDate() + i);
+      dateMap[d.toISOString().split('T')[0]] = d;
+    }
+    
+    var maxBaseDate = new Date(baseDate);
+    maxBaseDate.setDate(baseDate.getDate() + 5);
+    var maxBaseIso = maxBaseDate.toISOString().split('T')[0];
+    
+    allPosts.forEach(function(p) {
+      if (p.type === 'EVENT' && p.eventDate && p.eventDate > maxBaseIso) {
+         if (!dateMap[p.eventDate]) dateMap[p.eventDate] = new Date(p.eventDate);
+      }
+    });
+    var dates = Object.keys(dateMap).sort().map(function(k){ return dateMap[k]; });
+
     var slider = '<div style="background:#FFF;padding:16px;border-bottom:1px solid #E5E5EA;display:flex;gap:12px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;">' +
       dates.map(function(d) {
         var iso = d.toISOString().split('T')[0];
@@ -1700,14 +1735,16 @@
         var bg = isSel ? '#000' : '#F2F2F7';
         var col = isSel ? '#FFF' : '#8E8E93';
         var numCol = isSel ? '#FFF' : '#000';
-        return '<div onclick="App.selectDate(\''+iso+'\')" style="min-width:54px;height:70px;border-radius:16px;background:'+bg+';display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:0.2s;">' +
-          '<span style="font-size:11px;font-weight:700;color:'+col+';margin-bottom:4px;">'+dayName+'</span>' +
-          '<span style="font-size:20px;font-weight:800;color:'+numCol+';">'+dayNum+'</span>' +
+        var hasEv = allPosts.some(function(p){ return p.type==='EVENT' && p.eventDate===iso; });
+        var dot = hasEv ? '<div style="width:4px;height:4px;border-radius:2px;background:'+(isSel?'#FFF':'#FF3B30')+';margin-top:2px;"></div>' : '<div style="height:6px;"></div>';
+        return '<div onclick="App.selectDate(\''+iso+'\')" style="min-width:54px;height:74px;border-radius:16px;background:'+bg+';display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:0.2s;">' +
+          '<span style="font-size:11px;font-weight:700;color:'+col+';margin-bottom:2px;">'+dayName+'</span>' +
+          '<span style="font-size:20px;font-weight:800;color:'+numCol+';line-height:1;">'+dayNum+'</span>' +
+          dot +
         '</div>';
       }).join('') +
     '</div>';
 
-    var allPosts = db(SK.POSTS, []);
     var dayEvents = allPosts.filter(function(p) { 
       return p.type === 'EVENT' && p.eventDate === S.selectedDate;
     }).sort(function(a,b) {
@@ -1724,14 +1761,13 @@
         '<div style="font-size:14px;margin-top:4px;">Rien de prévu pour cette date.</div>' +
       '</div>';
     } else {
-      var nowIso = new Date().toISOString().split('T')[0];
-      var nowTime = new Date().toTimeString().slice(0,5); // HH:MM
+      var nowTime = new Date().toTimeString().slice(0,5);
       
       dayEvents.forEach(function(ev) {
         var status = 'upcoming';
         var statusHtml = '';
-        if (ev.eventDate < nowIso) status = 'closed';
-        else if (ev.eventDate === nowIso) {
+        if (ev.eventDate < todayIso) status = 'closed';
+        else if (ev.eventDate === todayIso) {
           if (nowTime >= ev.eventStart && nowTime <= ev.eventEnd) status = 'active';
           else if (nowTime > ev.eventEnd) status = 'closed';
         }
@@ -1778,7 +1814,7 @@
     
     timeline += '</div>';
 
-    return header + slider + timeline;
+    return header + modeSwitch + slider + timeline;
   }
   // ============================================================
   // DEBRIEF TAB
