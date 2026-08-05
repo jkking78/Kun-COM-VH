@@ -3,7 +3,7 @@
 // Stratégie : Network-First pour JS/HTML (Garantie de mise à jour instantanée)
 // ============================================================
 
-const CACHE_NAME = 'kun-com-pwa-v23';
+const CACHE_NAME = 'kun-com-pwa-v24';
 const STATIC_ASSETS = [
   './',
   './index.html',

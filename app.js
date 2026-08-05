@@ -356,6 +356,11 @@
   // ============================================================
   var S = {
     auth: 'login',
+    cropperOpen: false,
+    cropperDataUrl: null,
+    cropperAspectRatio: 1,
+    cropperTitle: 'Recadrer la photo',
+    cropperOnConfirm: null,
     user: null,
     tab: 'home',
     story: 'all',
@@ -645,6 +650,45 @@
   // ============================================================
   // AUTH SCREENS
   // ============================================================
+    function renderCropperModal() {
+    if (!S.cropperOpen || !S.cropperDataUrl) return '';
+    var title = S.cropperTitle || 'Recadrer la photo';
+    return '<div id="cropperModal" style="position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.94);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);display:flex;flex-direction:column;box-sizing:border-box;animation:fadeIn 0.2s ease-out;">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:rgba(0,0,0,0.8);border-bottom:0.5px solid rgba(255,255,255,0.15);box-sizing:border-box;z-index:10;">' +
+        '<button onclick="App.closeCropper()" style="background:rgba(255,255,255,0.15);color:#FFF;border:none;border-radius:12px;padding:8px 16px;font-size:13.5px;font-weight:700;cursor:pointer;">Annuler</button>' +
+        '<div style="font-size:15px;font-weight:800;color:#FFF;letter-spacing:-0.2px;">' + safeHtml(title) + '</div>' +
+        '<button onclick="App.confirmCropper()" style="background:linear-gradient(135deg,#007AFF,#0040CC);color:#FFF;border:none;border-radius:12px;padding:8px 18px;font-size:13.5px;font-weight:800;cursor:pointer;box-shadow:0 4px 14px rgba(0,122,255,0.4);">Valider ✓</button>' +
+      '</div>' +
+      '<div style="flex:1;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;padding:16px;background:#000;">' +
+        '<img id="cropperTargetImage" src="' + S.cropperDataUrl + '" style="max-width:100%;max-height:100%;display:block;" />' +
+      '</div>' +
+    '</div>';
+  }
+
+  function initCropperIfNeeded() {
+    if (S.cropperOpen && S.cropperDataUrl && window.Cropper) {
+      setTimeout(function() {
+        var img = document.getElementById('cropperTargetImage');
+        if (img && !img._cropperInst) {
+          img._cropperInst = new Cropper(img, {
+            aspectRatio: S.cropperAspectRatio || 1,
+            viewMode: 1,
+            dragMode: 'move',
+            autoCropArea: 0.9,
+            restore: false,
+            guides: true,
+            center: true,
+            highlight: false,
+            cropBoxMovable: true,
+            cropBoxResizable: true,
+            toggleDragModeOnDblclick: false
+          });
+          window._currentCropper = img._cropperInst;
+        }
+      }, 50);
+    }
+  }
+
   function renderLogin() {
     return '<div style="min-height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:28px 24px;box-sizing:border-box;background:linear-gradient(180deg,#F8F9FF 0%,#FFFFFF 100%);">' +
     '<div style="width:100%;max-width:360px;">' +
@@ -923,6 +967,7 @@
     if (S.createOpen) modals += renderCreateModal(u);
     if (S.optionsOpen && S.optionsPost) modals += renderOptionsModal();
     if (S.commentOpen && S.commentPostId) modals += renderCommentsModal(posts, initial);
+    if (S.cropperOpen) modals += renderCropperModal();
 
     return '<div style="position:relative;width:100%;height:100%;display:flex;flex-direction:column;background:#F2F2F7;font-family:-apple-system,BlinkMacSystemFont,\'SF Pro Text\',sans-serif;">' +
       '<div id="mainContent" style="flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;padding-bottom:70px;">' + content + '</div>' +
@@ -3073,45 +3118,91 @@ toggleParticipation: function(postId, status) {
       render();
       toast('Réinitialisé en Membre simple.', 'success');
     },
+        openCropper: function(dataUrl, aspectRatio, title, onConfirm) {
+      if (window._currentCropper) {
+        try { window._currentCropper.destroy(); } catch(e){}
+        window._currentCropper = null;
+      }
+      S.cropperOpen = true;
+      S.cropperDataUrl = dataUrl;
+      S.cropperAspectRatio = aspectRatio || 1;
+      S.cropperTitle = title || 'Recadrer la photo';
+      S.cropperOnConfirm = onConfirm;
+      render();
+    },
+    closeCropper: function() {
+      if (window._currentCropper) {
+        try { window._currentCropper.destroy(); } catch(e){}
+        window._currentCropper = null;
+      }
+      S.cropperOpen = false;
+      S.cropperDataUrl = null;
+      S.cropperOnConfirm = null;
+      render();
+    },
+    confirmCropper: function() {
+      if (!window._currentCropper) return;
+      var canvas = window._currentCropper.getCroppedCanvas({
+        maxWidth: 1200,
+        maxHeight: 1200,
+        imageSmoothingEnabled: true,
+        imageSmoothingQuality: 'high'
+      });
+      if (!canvas) return;
+      var croppedDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+      var cb = S.cropperOnConfirm;
+      this.closeCropper();
+      if (cb) cb(croppedDataUrl);
+    },
     openEditProfile: function() { S.editProfileOpen = true; S.avatarFile = null; S.coverFile = null; S.avatarPreview = null; S.coverPreview = null; S.editProfileData = null; S.editSections = getUserSections(S.user).slice(); render(); },
     closeEditProfile: function() { S.editProfileOpen = false; S.avatarFile = null; S.coverFile = null; S.avatarPreview = null; S.coverPreview = null; S.editProfileData = null; render(); },
     handleAvatarSelect: function(e) {
       var file = e.target.files[0];
       if (file) {
-        S.avatarFile = file;
-        compressImage(file, 240, 240, 0.75, function(dataUrl) {
-          S.avatarPreview = dataUrl;
-          if (!S.editProfileOpen) {
-            S.editProfileOpen = true;
-            S.editSections = getUserSections(S.user).slice();
-            render();
-          } else {
-            var el = document.getElementById('editAvatarPreview');
-            if (el) {
-              var parent = el.parentNode;
-              parent.innerHTML = '<img id="editAvatarPreview" src="' + dataUrl + '" style="width:100%;height:100%;object-fit:cover;" />';
-            }
-          }
-        });
+        var reader = new FileReader();
+        reader.onload = function(evt) {
+          App.openCropper(evt.target.result, 1, 'Photo de Profil (1:1)', function(croppedDataUrl) {
+            compressImage(croppedDataUrl, 240, 240, 0.75, function(dataUrl) {
+              S.avatarPreview = dataUrl;
+              if (!S.editProfileOpen) {
+                S.editProfileOpen = true;
+                S.editSections = getUserSections(S.user).slice();
+                render();
+              } else {
+                var el = document.getElementById('editAvatarPreview');
+                if (el) {
+                  var parent = el.parentNode;
+                  parent.innerHTML = '<img id="editAvatarPreview" src="' + dataUrl + '" style="width:100%;height:100%;object-fit:cover;" />';
+                }
+              }
+            });
+          });
+        };
+        reader.readAsDataURL(file);
       }
     },
     handleCoverSelect: function(e) {
       var file = e.target.files[0];
       if (file) {
-        S.coverFile = file;
-        compressImage(file, 640, 360, 0.75, function(dataUrl) {
-          S.coverPreview = dataUrl;
-          if (!S.editProfileOpen) {
-            S.editProfileOpen = true;
-            S.editSections = getUserSections(S.user).slice();
-            render();
-          } else {
-            var el = document.getElementById('editCoverPreview');
-            if (el) {
-              el.innerHTML = '<img src="' + dataUrl + '" style="width:100%;height:100%;object-fit:cover;" />';
-            }
-          }
-        });
+        var reader = new FileReader();
+        reader.onload = function(evt) {
+          App.openCropper(evt.target.result, 16 / 9, 'Photo de Couverture (16:9)', function(croppedDataUrl) {
+            compressImage(croppedDataUrl, 640, 360, 0.75, function(dataUrl) {
+              S.coverPreview = dataUrl;
+              if (!S.editProfileOpen) {
+                S.editProfileOpen = true;
+                S.editSections = getUserSections(S.user).slice();
+                render();
+              } else {
+                var el = document.getElementById('editCoverPreview');
+                if (el) {
+                  el.innerHTML = '<img src="' + dataUrl + '" style="width:100%;height:100%;object-fit:cover;" />';
+                }
+              }
+            });
+          });
+        };
+        reader.readAsDataURL(file);
       }
     },
 
@@ -3656,14 +3747,21 @@ toggleParticipation: function(postId, status) {
       ta.focus();
     },
     addMedia: function(e) {
-      var files = Array.from((e.target&&e.target.files)||[]);
+      var files = Array.from((e.target && e.target.files) || []);
       var remaining = 10 - S.pendingMedia.length;
-      files.slice(0, remaining).forEach(function(f) {
-        if (!f.type.startsWith('image/')) return;
-        var r = new FileReader();
-        r.onloadend = function() { S.pendingMedia.push(r.result); render(); };
-        r.readAsDataURL(f);
-      });
+      if (files.length === 0 || remaining <= 0) return;
+      var file = files[0];
+      if (!file.type.startsWith('image/')) return;
+      var reader = new FileReader();
+      reader.onload = function(evt) {
+        App.openCropper(evt.target.result, 4 / 5, 'Photo Publication (4:5)', function(croppedDataUrl) {
+          compressImage(croppedDataUrl, 640, 800, 0.75, function(dataUrl) {
+            S.pendingMedia.push(dataUrl);
+            render();
+          });
+        });
+      };
+      reader.readAsDataURL(file);
     },
     removeMedia: function(i) { S.pendingMedia.splice(i,1); render(); },
     setProfileTab: function(tab) {
