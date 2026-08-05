@@ -460,10 +460,10 @@
 
   
   // Helper for image compression to avoid LocalStorage QuotaExceededError
+  // Accepts either a File/Blob (from an <input>) OR an already-encoded dataURL string (e.g. from a canvas crop)
   function compressImage(file, maxWidth, maxHeight, quality, callback) {
     if (!file) return;
-    var reader = new FileReader();
-    reader.onload = function(e) {
+    function processDataUrl(srcDataUrl) {
       var img = new Image();
       img.onload = function() {
         var canvas = document.createElement('canvas');
@@ -484,10 +484,16 @@
         var dataUrl = canvas.toDataURL('image/jpeg', quality || 0.7);
         callback(dataUrl);
       };
-      img.onerror = function() { callback(e.target.result); };
-      img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
+      img.onerror = function() { callback(srcDataUrl); };
+      img.src = srcDataUrl;
+    }
+    if (typeof file === 'string') {
+      processDataUrl(file);
+    } else {
+      var reader = new FileReader();
+      reader.onload = function(e) { processDataUrl(e.target.result); };
+      reader.readAsDataURL(file);
+    }
   }
 
     function getUserSections(u) {
@@ -671,7 +677,7 @@
         var img = document.getElementById('cropperTargetImage');
         if (img && !img._cropperInst) {
           img._cropperInst = new Cropper(img, {
-            aspectRatio: S.cropperAspectRatio || 1,
+            aspectRatio: (S.cropperAspectRatio === undefined || S.cropperAspectRatio === null) ? 1 : S.cropperAspectRatio,
             viewMode: 1,
             dragMode: 'move',
             autoCropArea: 0.9,
@@ -3125,7 +3131,7 @@ toggleParticipation: function(postId, status) {
       }
       S.cropperOpen = true;
       S.cropperDataUrl = dataUrl;
-      S.cropperAspectRatio = aspectRatio || 1;
+      S.cropperAspectRatio = (aspectRatio === undefined || aspectRatio === null) ? 1 : aspectRatio;
       S.cropperTitle = title || 'Recadrer la photo';
       S.cropperOnConfirm = onConfirm;
       render();
@@ -3751,18 +3757,23 @@ toggleParticipation: function(postId, status) {
       var files = Array.from((e.target && e.target.files) || []);
       var remaining = 10 - S.pendingMedia.length;
       if (files.length === 0 || remaining <= 0) return;
-      var file = files[0];
-      if (!file.type.startsWith('image/')) return;
-      var reader = new FileReader();
-      reader.onload = function(evt) {
-        App.openCropper(evt.target.result, 4 / 5, 'Photo Publication (4:5)', function(croppedDataUrl) {
-          compressImage(croppedDataUrl, 640, 800, 0.75, function(dataUrl) {
-            S.pendingMedia.push(dataUrl);
-            render();
+      var queue = files.slice(0, remaining).filter(function(f){ return f.type.startsWith('image/'); });
+      function processNext() {
+        if (queue.length === 0) return;
+        var file = queue.shift();
+        var reader = new FileReader();
+        reader.onload = function(evt) {
+          App.openCropper(evt.target.result, NaN, 'Photo Publication (libre)', function(croppedDataUrl) {
+            compressImage(croppedDataUrl, 1080, 1350, 0.8, function(dataUrl) {
+              S.pendingMedia.push(dataUrl);
+              render();
+              processNext();
+            });
           });
-        });
-      };
-      reader.readAsDataURL(file);
+        };
+        reader.readAsDataURL(file);
+      }
+      processNext();
     },
     removeMedia: function(i) { S.pendingMedia.splice(i,1); render(); },
     setProfileTab: function(tab) {
