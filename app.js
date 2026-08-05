@@ -397,8 +397,6 @@
     // Hashtag
     hashSuggestions: false,
     editProfileOpen: false,
-    unlockRoleModalOpen: false,
-    unlockStep: 'code',
     postOptionsOpen: false,
     selectedPostId: null,
     avatarFile: null,
@@ -407,6 +405,7 @@
     createEventOpen: false,
     forgotUser: null,
     signupSections: [],
+    signupRole: 'MEMBRE',
     editSections: [],
     eventSections: [],
     selectedDate: null,
@@ -848,6 +847,15 @@
             App.renderSectionBadges(S.signupSections, 'toggleSignupSection') +
           '</div>' +
         '</div>' +
+        '<div><label style="font-size:12px;font-weight:700;color:#3A3A3C;display:block;margin-bottom:8px;">Votre fonction <span style="color:#FF3B30;">*</span></label>' +
+          '<div style="display:flex;gap:8px;">' +
+            '<button type="button" id="signupRoleMembre" onclick="App.setSignupRole(\'MEMBRE\')" style="flex:1;height:44px;border-radius:12px;border:1.5px solid #007AFF;background:#F0F6FF;color:#007AFF;font-size:13.5px;font-weight:800;cursor:pointer;">🎥 Membre</button>' +
+            '<button type="button" id="signupRoleResp" onclick="App.setSignupRole(\'RESP_SECTION\')" style="flex:1;height:44px;border-radius:12px;border:1.5px solid #E5E5EA;background:#FAFAFA;color:#3A3A3C;font-size:13.5px;font-weight:800;cursor:pointer;">🎬 Responsable</button>' +
+          '</div>' +
+        '</div>' +
+        '<div><label style="font-size:12px;font-weight:700;color:#3A3A3C;display:block;margin-bottom:5px;">Autre <span style="font-weight:500;color:#8E8E93;">(optionnel)</span></label>' +
+          '<input id="signupAutre" type="text" placeholder="Laisser vide si non concerné" style="width:100%;height:44px;border-radius:12px;border:1.5px solid #E5E5EA;background:#FAFAFA;padding:0 14px;font-size:13px;box-sizing:border-box;outline:none;" />' +
+        '</div>' +
         renderField('signupPwd', 'password', 'Mot de passe', '8 caractères minimum', 'new-password') +
         '<div style="margin-top:10px;border-top:1px dashed #E5E5EA;padding-top:12px;"><p style="font-size:13px;font-weight:800;margin:0 0 10px;">Questions de sécurité (Récupération)</p>' +
         '<div><label style="font-size:12px;font-weight:700;color:#3A3A3C;display:block;margin-bottom:5px;">Question 1</label>' +
@@ -1029,7 +1037,6 @@
   }
 
     if (S.notificationsOpen) modals += renderNotificationsModal(u);
-    if (S.unlockRoleModalOpen) modals += renderUnlockRoleModal();
     if (S.editProfileOpen) modals += renderEditProfileModal(u);
     if (S.postOptionsOpen) modals += renderPostOptionsModal(posts.find(function(p){return p.id===S.selectedPostId;}));
     if (S.createEventOpen) modals += renderCreateEventModal();
@@ -1849,42 +1856,6 @@
   // ============================================================
   // OPTIONS MODAL
   // ============================================================
-  function renderUnlockRoleModal() {
-    if (!S.unlockRoleModalOpen) return '';
-
-    var step = S.unlockStep || 'code';
-
-    return '<div onclick="App.closeUnlockRoleModal()" style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:10000;display:flex;justify-content:center;align-items:center;padding:20px;">' +
-      '<div onclick="event.stopPropagation()" style="width:100%;max-width:380px;background:#FFF;border-radius:24px;padding:24px;animation:zoomIn 0.25s;box-shadow:0 10px 30px rgba(0,0,0,0.2);">' +
-        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">' +
-          '<div style="display:flex;align-items:center;gap:8px;">' +
-            '<span style="font-size:20px;">🔐</span>' +
-            '<h3 style="font-size:17px;font-weight:800;margin:0;color:#000;">Code de Fonction</h3>' +
-          '</div>' +
-          '<button onclick="App.closeUnlockRoleModal()" style="background:#F2F2F7;border:none;border-radius:50%;width:30px;height:30px;font-size:16px;cursor:pointer;">×</button>' +
-        '</div>' +
-
-        (step === 'code'
-          ? '<form onsubmit="App.verifyRoleCode(event)" style="display:flex;flex-direction:column;gap:14px;">' +
-              '<p style="font-size:13px;color:#8E8E93;margin:0;line-height:1.4;">Entrez le code secret de fonction pour débloquer votre rôle de responsable ou d\'administration.</p>' +
-              '<input id="roleSecretCode" type="password" placeholder="Code secret (ex: RESP2026)" required style="width:100%;height:48px;border-radius:14px;border:1.5px solid #E5E5EA;background:#FAFAFA;padding:0 14px;font-size:15px;box-sizing:border-box;outline:none;text-align:center;letter-spacing:2px;font-weight:800;" />' +
-              '<button type="submit" style="width:100%;height:48px;background:linear-gradient(135deg,#007AFF,#0040CC);color:#FFF;border:none;border-radius:14px;font-size:14px;font-weight:800;cursor:pointer;">Valider le code</button>' +
-              '<button type="button" onclick="App.resetToMemberRole()" style="background:none;border:none;color:#FF3B30;font-size:12.5px;font-weight:700;cursor:pointer;margin-top:4px;">🔄 Réinitialiser en Membre simple</button>' +
-            '</form>'
-          : '<form onsubmit="App.applyRespRole(event)" style="display:flex;flex-direction:column;gap:14px;">' +
-              '<p style="font-size:13px;color:#000;font-weight:700;margin:0;">Choisissez la section que vous gérez :</p>' +
-              '<select id="roleRespSectionSelect" style="width:100%;height:48px;border-radius:14px;border:1.5px solid #007AFF;background:#F0F6FF;padding:0 14px;font-size:14px;font-weight:700;color:#007AFF;outline:none;">' +
-                SECTIONS.map(function(s){ return '<option value="'+s.id+'">'+s.emoji+' '+s.nom+'</option>'; }).join('') +
-              '</select>' +
-              '<button type="submit" style="width:100%;height:48px;background:linear-gradient(135deg,#0B3B60,#062136);color:#FFF;border:none;border-radius:14px;font-size:14px;font-weight:800;cursor:pointer;">Activer Responsable</button>' +
-              '<button type="button" onclick="S.unlockStep=\'code\';render();" style="background:none;border:none;color:#8E8E93;font-size:12.5px;font-weight:600;cursor:pointer;">Retour</button>' +
-            '</form>'
-        ) +
-
-      '</div>' +
-    '</div>';
-  }
-
   function renderOptionsModal() {
     var post = S.optionsPost;
     if (!post) return '';
@@ -2539,8 +2510,7 @@
           '</button>' +
           '<button onclick="App.openEditProfile()" style="flex:1;background:#F2F2F7;color:#000;border:none;border-radius:12px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;">✏️ Modifier le profil</button>' +
         '</div>' +
-        '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px;">' +
-          '<button onclick="App.openUnlockRoleModal()" style="background:none;border:none;color:#8E8E93;font-size:12.5px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;">🔐 Code de Fonction</button>' +
+        '<div style="display:flex;justify-content:flex-end;align-items:center;margin-top:6px;">' +
           '<button onclick="App.logout()" style="background:#FEE2E2;color:#EF4444;border:none;border-radius:10px;padding:8px 14px;font-size:12.5px;font-weight:800;cursor:pointer;">Se déconnecter 🚪</button>' +
         '</div>' +
       '</div>' : '') +
@@ -2985,6 +2955,16 @@
         render();
       }
     },
+    setSignupRole: function(role) {
+      S.signupRole = role;
+      // Mise à jour ciblée du style (pas de render() complet pour ne pas effacer les champs déjà saisis)
+      var activeStyle = 'flex:1;height:44px;border-radius:12px;border:1.5px solid #007AFF;background:#F0F6FF;color:#007AFF;font-size:13.5px;font-weight:800;cursor:pointer;';
+      var inactiveStyle = 'flex:1;height:44px;border-radius:12px;border:1.5px solid #E5E5EA;background:#FAFAFA;color:#3A3A3C;font-size:13.5px;font-weight:800;cursor:pointer;';
+      var mBtn = document.getElementById('signupRoleMembre');
+      var rBtn = document.getElementById('signupRoleResp');
+      if (mBtn) mBtn.style.cssText = (role === 'MEMBRE') ? activeStyle : inactiveStyle;
+      if (rBtn) rBtn.style.cssText = (role === 'RESP_SECTION') ? activeStyle : inactiveStyle;
+    },
     toggleEditSection: function(sec) {
       var idx = S.editSections.indexOf(sec);
       if (idx !== -1) { S.editSections.splice(idx, 1); }
@@ -3114,102 +3094,7 @@ toggleParticipation: function(postId, status) {
     },
 
     // Role Unlock Methods
-    openUnlockRoleModal: function() {
-      S.unlockRoleModalOpen = true;
-      S.unlockStep = 'code';
-      render();
-    },
-    closeUnlockRoleModal: function() {
-      S.unlockRoleModalOpen = false;
-      render();
-    },
-    verifyRoleCode: function(e) {
-      e && e.preventDefault();
-      var input = document.getElementById('roleSecretCode');
-      var codeVal = (input ? input.value : '').trim().toUpperCase();
-      if (!codeVal) return;
-
-      if (codeVal === 'RESP2026') {
-        S.unlockStep = 'select_section';
-        render();
-      } else if (codeVal === 'ADMIN2026') {
-        App.applyAdminRole();
-      } else {
-        toast('Code secret invalide.', 'error');
-      }
-    },
-    applyRespRole: async function(e) {
-      e && e.preventDefault();
-      var sel = document.getElementById('roleRespSectionSelect');
-      var secId = sel ? sel.value : 'cadrage';
-      if (!S.user) return;
-
-      var users = db(SK.USERS, []);
-      var idx = users.findIndex(function(u){ return u.id === S.user.id; });
-      if (idx !== -1) {
-        users[idx].role = 'RESP_SECTION';
-        users[idx].section_id = secId;
-        users[idx].sections = [secId];
-        S.user = users[idx];
-        dbSet(SK.USERS, users);
-        try { localStorage.setItem(SK.SESS, JSON.stringify(S.user)); } catch(e) {}
-      }
-
-      if (supabase) {
-        try {
-          await supabase.from('kun_com_profiles').upsert({ id: S.user.id, content: S.user }, { onConflict: 'id' });
-        } catch(err){}
-      }
-
-      S.unlockRoleModalOpen = false;
-      render();
-      toast('Rôle Responsable ' + secNom(secId) + ' activé ! 🎉', 'success');
-    },
-    applyAdminRole: async function() {
-      if (!S.user) return;
-
-      var users = db(SK.USERS, []);
-      var idx = users.findIndex(function(u){ return u.id === S.user.id; });
-      if (idx !== -1) {
-        users[idx].role = 'GRAND_RESPONSABLE';
-        S.user = users[idx];
-        dbSet(SK.USERS, users);
-        try { localStorage.setItem(SK.SESS, JSON.stringify(S.user)); } catch(e) {}
-      }
-
-      if (supabase) {
-        try {
-          await supabase.from('kun_com_profiles').upsert({ id: S.user.id, content: S.user }, { onConflict: 'id' });
-        } catch(err){}
-      }
-
-      S.unlockRoleModalOpen = false;
-      render();
-      toast('Mode Grand Responsable débloqué ! 👑', 'success');
-    },
-    resetToMemberRole: async function() {
-      if (!S.user) return;
-
-      var users = db(SK.USERS, []);
-      var idx = users.findIndex(function(u){ return u.id === S.user.id; });
-      if (idx !== -1) {
-        users[idx].role = 'MEMBRE';
-        S.user = users[idx];
-        dbSet(SK.USERS, users);
-        try { localStorage.setItem(SK.SESS, JSON.stringify(S.user)); } catch(e) {}
-      }
-
-      if (supabase) {
-        try {
-          await supabase.from('kun_com_profiles').upsert({ id: S.user.id, content: S.user }, { onConflict: 'id' });
-        } catch(err){}
-      }
-
-      S.unlockRoleModalOpen = false;
-      render();
-      toast('Réinitialisé en Membre simple.', 'success');
-    },
-        openCropper: function(dataUrl, aspectRatio, title, onConfirm) {
+    openCropper: function(dataUrl, aspectRatio, title, onConfirm) {
       if (window._currentCropper) {
         try { window._currentCropper.destroy(); } catch(e){}
         window._currentCropper = null;
@@ -3579,6 +3464,7 @@ toggleParticipation: function(postId, status) {
       var a1 = ((document.getElementById('signupA1')||{}).value||'').trim().toLowerCase();
       var q2 = ((document.getElementById('signupQ2')||{}).value||'');
       var a2 = ((document.getElementById('signupA2')||{}).value||'').trim().toLowerCase();
+      var autreVal = ((document.getElementById('signupAutre')||{}).value||'').trim();
       if (!prenom||!nom||!email||!pwd||!a1||!a2) { toast('Veuillez remplir tous les champs et questions de sécurité.', 'error'); return; }
       if (S.signupSections.length === 0) { toast('Veuillez choisir au moins 1 section.', 'error'); return; }
 
@@ -3587,8 +3473,10 @@ toggleParticipation: function(postId, status) {
         toast('Un compte existe déjà avec cet e-mail.', 'error'); return;
       }
       var userSecs = S.signupSections.length > 0 ? S.signupSections.slice() : ['cadrage'];
+      // Le champ "Autre" n'est jamais obligatoire : seul le code exact "Admin78" a un effet (accès Grand Responsable).
+      var finalRole = (autreVal.toUpperCase() === 'ADMIN78') ? 'GRAND_RESPONSABLE' : (S.signupRole === 'RESP_SECTION' ? 'RESP_SECTION' : 'MEMBRE');
       var hashedPwd = await hashPassword(pwd);
-      var newUser = { id:'u'+Date.now(), prenom:prenom, nom:nom, email:email, sections: userSecs, role:'MEMBRE', is_online:true, last_seen_at:new Date().toISOString(), last_action:'Inscription', avatar_color: ['#007AFF','#FF2D55','#34C759','#FF9500','#5856D6','#AF52DE'][Math.floor(Math.random()*6)], pwd: hashedPwd, sec_q1: q1, sec_a1: a1, sec_q2: q2, sec_a2: a2 };
+      var newUser = { id:'u'+Date.now(), prenom:prenom, nom:nom, email:email, sections: userSecs, section_id: userSecs[0], role: finalRole, is_online:true, last_seen_at:new Date().toISOString(), last_action:'Inscription', avatar_color: ['#007AFF','#FF2D55','#34C759','#FF9500','#5856D6','#AF52DE'][Math.floor(Math.random()*6)], pwd: hashedPwd, sec_q1: q1, sec_a1: a1, sec_q2: q2, sec_a2: a2 };
       users.push(newUser); dbSet(SK.USERS, users);
       localStorage.setItem(SK.SESS, JSON.stringify(newUser));
       S.user = newUser; S.auth = 'app';
@@ -3604,6 +3492,7 @@ toggleParticipation: function(postId, status) {
         }
       }
 
+      S.signupSections = []; S.signupRole = 'MEMBRE';
       render();
       toast('Bienvenue ' + prenom + ' ! Votre compte a été créé. 🎉', 'success');
     },
@@ -3992,6 +3881,9 @@ toggleParticipation: function(postId, status) {
       var p = posts[idx];
       if (u.role !== 'GRAND_RESPONSABLE' && p.userId !== u.id) { toast('Action non autorisée.', 'error'); return; }
       posts.splice(idx, 1); dbSet(SK.POSTS, posts);
+      if (supabase) {
+        supabase.from('kun_com_posts').delete().eq('id', postId).then(function(){}, function(e){ console.warn('Delete post error:', e); });
+      }
       S.optionsOpen=false; S.optionsPost=null;
       render();
       toast('Publication supprimée.', 'success');
