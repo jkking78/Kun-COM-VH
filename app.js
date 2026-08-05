@@ -1320,8 +1320,8 @@
     // Stories
     var sectionSeen = db(SK.SECTION_SEEN, {});
     var allPostsForCount = db(SK.POSTS, []);
-    var stories = '<div style="background:#FFF;border-bottom:0.5px solid #F2F2F7;padding:10px 0;">' +
-      '<div style="display:flex;gap:2px;padding:0 10px;overflow-x:auto;-webkit-overflow-scrolling:touch;">' +
+    var stories = '<div style="background:#FFF;border-bottom:0.5px solid #F2F2F7;padding:4px 0 10px;">' +
+      '<div style="display:flex;gap:2px;padding:8px 10px 0;overflow-x:auto;-webkit-overflow-scrolling:touch;">' +
       [{ id:'all', nom:'Tous', emoji:'✨' }].concat(SECTIONS).map(function(s) {
         var sel = S.story === s.id;
         var sc = secColor(s.id) || '#007AFF';
@@ -1334,7 +1334,7 @@
               'display:flex;align-items:center;justify-content:center;font-size:24px;transition:all 0.2s;">' +
               s.emoji +
             '</div>' +
-            (cnt > 0 ? '<div style="position:absolute;top:-3px;right:-3px;background:#FF3B30;color:#FFF;font-size:10px;font-weight:800;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px;box-shadow:0 0 0 2px #FFF;">' + (cnt > 99 ? '99+' : cnt) + '</div>' : '') +
+            (cnt > 0 ? '<div style="position:absolute;top:-4px;right:-4px;z-index:2;background:#FF3B30;color:#FFF;font-size:11px;font-weight:800;min-width:19px;height:19px;line-height:19px;border-radius:10px;display:flex;align-items:center;justify-content:center;padding:0 4px;box-shadow:0 0 0 2.5px #FFF;">' + (cnt > 99 ? '99+' : cnt) + '</div>' : '') +
           '</div>' +
           '<span style="font-size:10.5px;font-weight:' + (sel?'800':'400') + ';color:' + (sel?sc:'#8E8E93') + ';text-align:center;white-space:nowrap;">' + s.nom + '</span>' +
         '</div>';
