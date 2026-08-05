@@ -638,29 +638,52 @@
     try {
       var v = document.createElement('video');
       v.muted = true;
+      v.defaultMuted = true;
       v.playsInline = true;
+      v.setAttribute('muted', '');
+      v.setAttribute('playsinline', '');
+      v.setAttribute('webkit-playsinline', '');
       v.preload = 'auto';
-      v.src = videoDataUrl;
+      // Safari/iOS ne charge et ne décode pas de façon fiable un <video> qui n'est pas
+      // attaché au DOM : on l'insère donc hors écran (invisible) le temps de la capture.
+      v.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:2px;height:2px;opacity:0;pointer-events:none;';
+      document.body.appendChild(v);
+
       var done = false;
-      function finish(poster) { if (done) return; done = true; callback(poster); }
+      var captured = false;
+      function cleanupEl() {
+        try { v.pause(); } catch(e){}
+        try { v.removeAttribute('src'); v.load(); } catch(e){}
+        try { if (v.parentNode) v.parentNode.removeChild(v); } catch(e){}
+      }
+      function finish(poster) { if (done) return; done = true; cleanupEl(); callback(poster); }
       function capture() {
+        if (captured) return;
         try {
+          var w = v.videoWidth || 320, h = v.videoHeight || 320;
           var c = document.createElement('canvas');
-          c.width = v.videoWidth || 320;
-          c.height = v.videoHeight || 320;
+          c.width = w; c.height = h;
           var ctx = c.getContext('2d');
-          ctx.drawImage(v, 0, 0, c.width, c.height);
+          ctx.drawImage(v, 0, 0, w, h);
+          captured = true;
           finish(c.toDataURL('image/jpeg', 0.72));
         } catch (e) { finish(null); }
       }
-      v.onloadeddata = function() {
+      function trySeek() {
         try {
           var t = Math.min(0.2, (v.duration || 1) / 4);
-          if (t > 0) { v.currentTime = t; } else { capture(); }
+          if (t > 0 && isFinite(t)) { v.currentTime = t; } else { capture(); }
         } catch (e) { capture(); }
-      };
-      v.onseeked = function() { capture(); };
+      }
+      v.onloadeddata = trySeek;
+      v.onloadedmetadata = function() { if (!captured) trySeek(); };
+      v.onseeked = capture;
+      // Filet de sécurité : certains navigateurs mobiles ne déclenchent jamais 'seeked'
+      // pour une très courte vidéo — on capture dès qu'une image est disponible.
+      v.oncanplay = function() { if (!captured) capture(); };
+      v.ontimeupdate = function() { if (!captured && v.currentTime > 0) capture(); };
       v.onerror = function() { finish(null); };
+      try { v.load(); } catch(e){}
       setTimeout(function() { finish(null); }, 4000);
     } catch (e) { callback(null); }
   }
