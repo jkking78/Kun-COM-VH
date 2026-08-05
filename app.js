@@ -3129,6 +3129,7 @@ toggleParticipation: function(postId, status) {
       S.cropperTitle = title || 'Recadrer la photo';
       S.cropperOnConfirm = onConfirm;
       render();
+      initCropperIfNeeded();
     },
     closeCropper: function() {
       if (window._currentCropper) {
