@@ -436,7 +436,10 @@
     selectedDate: null,
     postBg: null,
     postText: '',
-    profileTab: 'tout'
+    profileTab: 'tout',
+    repostPostId: null,
+    pendingCommentImage: null,
+    showAllLinks: false
 };
 
   // ============================================================
@@ -560,8 +563,50 @@
         return '<span onclick="App.openUserProfile(\'' + found.id + '\')" style="color:#007AFF;font-weight:800;cursor:pointer;background:#EBF5FF;padding:2px 6px;border-radius:6px;">' + safeHtml(m) + '</span>';
       }
       return '<span style="color:#007AFF;font-weight:700;">' + safeHtml(m) + '</span>';
+    }).replace(/(https?:\/\/[^\s<]+)/gi, function(m) {
+      return '<a href="' + m + '" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" style="color:#007AFF;font-weight:600;text-decoration:underline;word-break:break-all;">' + m + '</a>';
     }).replace(/\n/g, '<br>');
     return html;
+  }
+
+  // Extrait les liens http(s) d'un texte (pour l'enregistrement automatique dans le profil)
+  function extractLinks(text) {
+    if (!text) return [];
+    var matches = text.match(/(https?:\/\/[^\s<]+)/gi) || [];
+    // Dédoublonne dans le même texte
+    var seen = {};
+    return matches.filter(function(u) { if (seen[u]) return false; seen[u] = true; return true; });
+  }
+
+  // Enregistre automatiquement les liens partagés dans le profil de l'utilisateur
+  function saveLinksToProfile(userId, links, sourcePostId) {
+    if (!userId || !links || links.length === 0) return;
+    var allUsers = db(SK.USERS, []);
+    var uIdx = allUsers.findIndex(function(u){ return u.id === userId; });
+    if (uIdx === -1) return;
+    var u = allUsers[uIdx];
+    if (!Array.isArray(u.sharedLinks)) u.sharedLinks = [];
+    var existingUrls = {};
+    u.sharedLinks.forEach(function(l){ existingUrls[l.url] = true; });
+    var added = false;
+    links.forEach(function(url) {
+      if (!existingUrls[url]) {
+        u.sharedLinks.unshift({ url: url, postId: sourcePostId || null, timestamp: Date.now() });
+        existingUrls[url] = true;
+        added = true;
+      }
+    });
+    if (!added) return;
+    if (u.sharedLinks.length > 100) u.sharedLinks = u.sharedLinks.slice(0, 100);
+    allUsers[uIdx] = u;
+    dbSet(SK.USERS, allUsers);
+    if (S.user && S.user.id === userId) {
+      S.user = u;
+      try { localStorage.setItem(SK.SESS, JSON.stringify(u)); } catch(e){}
+    }
+    if (supabase) {
+      supabase.from('kun_com_profiles').upsert({ id: u.id, content: u }, { onConflict: 'id' }).then(function(){}, function(e){});
+    }
   }
 
   function trendingTags() {
@@ -1076,6 +1121,7 @@
     if (S.commentOpen && S.commentPostId) modals += renderCommentsModal(posts, initial);
     if (S.cropperOpen) modals += renderCropperModal();
     if (S.membersListOpen) modals += renderMembersModal();
+    if (S.repostPostId) modals += renderRepostModal();
 
     return '<div style="position:relative;width:100%;height:100%;display:flex;flex-direction:column;background:#F2F2F7;font-family:-apple-system,BlinkMacSystemFont,\'SF Pro Text\',sans-serif;">' +
       '<div id="mainContent" style="flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;padding-bottom:70px;">' + content + '</div>' +
@@ -1519,7 +1565,7 @@
         '<div style="display:flex;gap:14px;align-items:center;">' +
           '<button id="likeBtn-'+post.id+'" onclick="App.like(\''+post.id+'\')" style="background:none;border:none;padding:2px;cursor:pointer;display:flex;align-items:center;transition:transform 0.1s;" onmousedown="this.style.transform=\'scale(0.85)\'" onmouseup="this.style.transform=\'scale(1)\'">' + SVG.heart(iLiked, 26) + '</button>' +
           '<button onclick="App.openComments(\''+post.id+'\')" style="background:none;border:none;padding:2px;cursor:pointer;display:flex;align-items:center;">' + SVG.comment + '</button>' +
-          '<button onclick="App.share(\''+post.id+'\')" style="background:none;border:none;padding:2px;cursor:pointer;display:flex;align-items:center;">' + SVG.share + '</button>' +
+          '<button onclick="App.openRepostModal(\''+post.id+'\')" style="background:none;border:none;padding:2px;cursor:pointer;display:flex;align-items:center;">' + SVG.share + '</button>' +
         '</div>' +
         '<button id="saveBtn-'+post.id+'" onclick="App.save(\''+post.id+'\')" style="background:none;border:none;padding:2px;cursor:pointer;display:flex;align-items:center;">' + SVG.bookmark(iSaved) + '</button>' +
       '</div>' +
@@ -1704,6 +1750,25 @@
       schedTimeVal = d.toTimeString().split(' ')[0].slice(0, 5);
     }
 
+    var previewHtml = '';
+    if (S.pendingMedia.length > 0) {
+      previewHtml = '<div style="display:flex;gap:8px;overflow-x:auto;margin-bottom:12px;padding-bottom:4px;">' +
+        S.pendingMedia.map(function(url, i) {
+          return '<div style="position:relative;flex-shrink:0;width:72px;height:72px;border-radius:12px;overflow:hidden;border:2px solid #E5E5EA;">' +
+            '<img src="'+url+'" style="width:100%;height:100%;object-fit:cover;">' +
+            '<button type="button" onclick="App.removeMedia('+i+')" style="position:absolute;top:3px;right:3px;background:rgba(0,0,0,0.7);border:none;border-radius:8px;width:18px;height:18px;color:#FFF;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:900;">×</button>' +
+          '</div>';
+        }).join('') +
+      '</div>';
+    }
+
+    var hashHtml = '<div id="hashSugg" style="display:none;flex-wrap:wrap;gap:6px;background:#F0F6FF;border:1px solid #CCDEFF;border-radius:14px;padding:10px;margin-bottom:12px;">' +
+      '<div style="font-size:11px;font-weight:800;color:#007AFF;width:100%;margin-bottom:4px;">Hashtags suggérés :</div>' +
+      HASHTAGS.map(function(h) {
+        return '<button type="button" onclick="App.insertTag(\''+h+'\')" style="background:#007AFF;color:#FFF;border:none;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;">'+h+'</button>';
+      }).join('') +
+    '</div>';
+
     return '<div onclick="App.closeEditPost()" style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:10000;display:flex;justify-content:center;align-items:flex-end;">' +
       '<div onclick="event.stopPropagation()" style="width:100%;max-width:460px;background:#FFF;border-top-left-radius:28px;border-top-right-radius:28px;max-height:92vh;display:flex;flex-direction:column;animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
 
@@ -1718,9 +1783,17 @@
         '</div>' +
 
         '<div style="overflow-y:auto;flex:1;padding:16px;">' +
+          hashHtml +
           '<div id="mentionSugg" style="display:none;flex-wrap:wrap;gap:6px;background:#F0F6FF;border:1px solid #CCDEFF;border-radius:14px;padding:10px;margin-bottom:12px;"></div>' +
+          previewHtml +
 
-          '<textarea id="editPostText" oninput="App.onPostInput(this.value)" placeholder="Modifiez votre texte... Tapez @ pour mentionner un membre..." style="width:100%;min-height:120px;border:1px solid #E5E5EA;border-radius:14px;padding:12px;font-size:15px;line-height:1.5;color:#000;resize:none;outline:none;box-sizing:border-box;font-family:inherit;margin-bottom:14px;">' + safeHtml(post.caption||'') + '</textarea>' +
+          (S.pendingMedia.length === 0 && S.postBg
+            ? '<div id="bgPreviewZone" style="border-radius:18px;overflow:hidden;margin-bottom:14px;position:relative;min-height:180px;display:flex;align-items:center;justify-content:center;' + (S.postBg.startsWith('url') ? 'background:' + S.postBg + ';background-size:cover;background-position:center;' : 'background:' + S.postBg + ';') + '">' +
+                (S.postBg && !S.postBg.includes('linear-gradient') && !S.postBg.includes('url') ? '<div style="position:absolute;inset:0;background:rgba(0,0,0,0.18);border-radius:18px;"></div>' : '') +
+                '<textarea id="editPostText" oninput="App.onPostInput(this.value)" placeholder="Modifiez votre texte..." style="width:100%;min-height:180px;border:none;background:transparent;font-size:24px;font-weight:900;line-height:1.4;color:#FFF;resize:none;outline:none;box-sizing:border-box;font-family:inherit;text-align:center;padding:24px 20px;text-shadow:0 2px 12px rgba(0,0,0,0.3);position:relative;z-index:1;">' + safeHtml(S.postText||'') + '</textarea>' +
+              '</div>'
+            : '<textarea id="editPostText" oninput="App.onPostInput(this.value)" placeholder="Modifiez votre texte... Tapez @ pour mentionner un membre..." style="width:100%;min-height:120px;border:1px solid #E5E5EA;border-radius:14px;padding:12px;font-size:15px;line-height:1.5;color:#000;resize:none;outline:none;box-sizing:border-box;font-family:inherit;margin-bottom:14px;">' + safeHtml(S.postText||'') + '</textarea>'
+          ) +
 
           '<!-- Confidentialité -->' +
           '<div style="background:#FAFAFA;border-radius:16px;padding:14px;margin-bottom:14px;border:1px solid #E5E5EA;">' +
@@ -1729,7 +1802,7 @@
               '<button type="button" onclick="App.setPostVisibility(\'all\')" style="flex:1;padding:8px;border-radius:10px;font-size:12px;font-weight:700;border:none;cursor:pointer;background:' + (vis==='all'?'#007AFF':'#FFF') + ';color:' + (vis==='all'?'#FFF':'#3A3A3C') + ';box-shadow:0 1px 3px rgba(0,0,0,0.1);">🌍 Tout le monde</button>' +
               '<button type="button" onclick="App.setPostVisibility(\'sections\')" style="flex:1;padding:8px;border-radius:10px;font-size:12px;font-weight:700;border:none;cursor:pointer;background:' + (vis==='sections'?'#007AFF':'#FFF') + ';color:' + (vis==='sections'?'#FFF':'#3A3A3C') + ';box-shadow:0 1px 3px rgba(0,0,0,0.1);">🔒 Sections ciblées</button>' +
             '</div>' +
-            (vis === 'sections' 
+            (vis === 'sections'
               ? '<div style="margin-top:10px;">' +
                   '<label style="font-size:12px;color:#8E8E93;font-weight:600;display:block;margin-bottom:6px;">Cliquer sur les sections autorisées :</label>' +
                   '<div id="targetSectionBadgesContainer">' + App.renderSectionBadges(S.postTargetSections||[], 'toggleTargetSection') + '</div>' +
@@ -1738,7 +1811,7 @@
           '</div>' +
 
           '<!-- Programmation -->' +
-          '<div style="background:#FAFAFA;border-radius:16px;padding:14px;border:1px solid #E5E5EA;">' +
+          '<div style="background:#FAFAFA;border-radius:16px;padding:14px;margin-bottom:14px;border:1px solid #E5E5EA;">' +
             '<label style="font-size:13px;font-weight:800;color:#000;display:block;margin-bottom:8px;">⏰ Programmer la publication</label>' +
             '<div style="display:flex;gap:8px;">' +
               '<input type="date" id="editPostScheduleDate" value="' + schedDateVal + '" style="flex:1;height:40px;border-radius:10px;border:1px solid #E5E5EA;background:#FFF;padding:0 10px;font-size:13px;outline:none;" />' +
@@ -1746,7 +1819,114 @@
             '</div>' +
           '</div>' +
 
+          '<!-- Éphémère -->' +
+          '<div style="background:#FAFAFA;border-radius:16px;padding:14px;border:1px solid #E5E5EA;">' +
+            '<div style="display:flex;align-items:center;justify-content:space-between;">' +
+              '<div style="display:flex;align-items:center;gap:8px;">' +
+                '<span style="font-size:18px;">🕐</span>' +
+                '<div>' +
+                  '<div style="font-size:13px;font-weight:700;color:#000;">Publication éphémère</div>' +
+                  '<div style="font-size:11px;color:#8E8E93;">Disparaît automatiquement après 24h</div>' +
+                '</div>' +
+              '</div>' +
+              '<label style="position:relative;display:inline-block;width:50px;height:30px;">' +
+                '<input type="checkbox" id="editPostEphemeral" ' + (post.is_ephemeral ? 'checked' : '') + ' style="opacity:0;width:0;height:0;" onchange="this.nextElementSibling.style.background=this.checked?\'#FF9500\':\'#E5E5EA\'; this.nextElementSibling.children[0].style.transform=this.checked?\'translateX(20px)\':\'translateX(0)\';"/>' +
+                '<span style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:' + (post.is_ephemeral?'#FF9500':'#E5E5EA') + ';transition:.3s;border-radius:30px;">' +
+                  '<span style="position:absolute;content:\'\';height:26px;width:26px;left:2px;bottom:2px;background-color:white;transition:.3s;border-radius:50%;box-shadow:0 2px 4px rgba(0,0,0,0.2);transform:' + (post.is_ephemeral?'translateX(20px)':'translateX(0)') + ';"></span>' +
+                '</span>' +
+              '</label>' +
+            '</div>' +
+          '</div>' +
+
         '</div>' +
+
+        '<div style="border-top:0.5px solid #F2F2F7;padding:10px 16px;">' +
+          (S.pendingMedia.length === 0
+            ? '<div style="display:flex;gap:8px;align-items:center;overflow-x:auto;padding-bottom:8px;scrollbar-width:none;">' +
+                '<span style="font-size:11px;font-weight:700;color:#8E8E93;flex-shrink:0;">Fond :</span>' +
+                '<div onclick="App.setPostBg(null)" style="width:28px;height:28px;border-radius:14px;background:#FFF;border:2px solid ' + (S.postBg===null?'#007AFF':'#E5E5EA') + ';cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;">Aa</div>' +
+                [
+                  'linear-gradient(135deg,#1A1A2E,#16213E)',
+                  'linear-gradient(135deg,#FF6B6B,#FF8E53)',
+                  'linear-gradient(135deg,#4ECDC4,#2ECC71)',
+                  'linear-gradient(135deg,#667EEA,#764BA2)',
+                  'linear-gradient(135deg,#F093FB,#F5576C)',
+                  'linear-gradient(135deg,#4481EB,#04BEFE)',
+                  'linear-gradient(135deg,#0F2027,#203A43,#2C5364)',
+                  'linear-gradient(135deg,#FFA62E,#EA4D2C)',
+                  'linear-gradient(135deg,#56AB2F,#A8E063)',
+                  'linear-gradient(135deg,#373B44,#4286F4)',
+                  'linear-gradient(135deg,#C94B4B,#4B134F)',
+                  'linear-gradient(135deg,#F7971E,#FFD200)',
+                ].map(function(bg, idx) {
+                  var isSel = S.postBg === bg;
+                  return '<div onclick="App.setPostBgIdx(' + idx + ')" style="width:28px;height:28px;border-radius:14px;background:' + bg + ';cursor:pointer;flex-shrink:0;border:2.5px solid ' + (isSel?'#FFF':'transparent') + ';box-shadow:' + (isSel?'0 0 0 2px #007AFF':'none') + ';transition:0.15s;"></div>';
+                }).join('') +
+              '</div>'
+            : ''
+          ) +
+          '<div style="display:flex;gap:14px;align-items:center;">' +
+            '<label style="cursor:pointer;display:flex;align-items:center;gap:6px;color:#007AFF;font-size:13px;font-weight:700;">' +
+              '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#007AFF" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>' +
+              'Photo' +
+              '<input type="file" accept="image/*" multiple onchange="App.addMedia(event)" style="display:none;">' +
+            '</label>' +
+            '<span style="color:#8E8E93;font-size:13px;">|</span>' +
+            '<span style="font-size:12px;color:#8E8E93;">' + S.pendingMedia.length + '/10 photos</span>' +
+          '</div>' +
+        '</div>' +
+
+      '</div>' +
+    '</div>';
+  }
+
+  function renderRepostModal() {
+    if (!S.repostPostId) return '';
+    var posts = db(SK.POSTS, []);
+    var post = posts.find(function(p){ return p.id === S.repostPostId; });
+    if (!post) return '';
+
+    var previewCaption = post.caption || '';
+    var previewMedia = (post.mediaUrls && post.mediaUrls[0]) || null;
+
+    var hashHtml = '<div id="hashSugg" style="display:none;flex-wrap:wrap;gap:6px;background:#F0F6FF;border:1px solid #CCDEFF;border-radius:14px;padding:10px;margin-bottom:12px;">' +
+      '<div style="font-size:11px;font-weight:800;color:#007AFF;width:100%;margin-bottom:4px;">Hashtags suggérés :</div>' +
+      HASHTAGS.map(function(h) {
+        return '<button type="button" onclick="App.insertTag(\''+h+'\')" style="background:#007AFF;color:#FFF;border:none;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;">'+h+'</button>';
+      }).join('') +
+    '</div>';
+
+    return '<div onclick="App.closeRepostModal()" style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:10000;display:flex;justify-content:center;align-items:flex-end;">' +
+      '<div onclick="event.stopPropagation()" style="width:100%;max-width:460px;background:#FFF;border-top-left-radius:28px;border-top-right-radius:28px;max-height:92vh;display:flex;flex-direction:column;animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
+
+        '<div style="display:flex;justify-content:center;padding:10px 0 0;cursor:pointer;" onclick="App.closeRepostModal()">' +
+          '<div style="width:40px;height:4px;background:#D1D1D6;border-radius:2px;"></div>' +
+        '</div>' +
+
+        '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 18px 10px;border-bottom:0.5px solid #F2F2F7;">' +
+          '<span onclick="App.closeRepostModal()" style="font-size:15px;color:#007AFF;cursor:pointer;font-weight:600;">Annuler</span>' +
+          '<h3 style="font-size:16px;font-weight:800;margin:0;color:#000;">Partager</h3>' +
+          '<button type="button" onclick="App.confirmRepost()" style="font-size:15px;color:#007AFF;font-weight:800;background:none;border:none;cursor:pointer;">Partager</button>' +
+        '</div>' +
+
+        '<div style="overflow-y:auto;flex:1;padding:16px;">' +
+          hashHtml +
+          '<div id="mentionSugg" style="display:none;flex-wrap:wrap;gap:6px;background:#F0F6FF;border:1px solid #CCDEFF;border-radius:14px;padding:10px;margin-bottom:12px;"></div>' +
+          '<textarea id="repostText" oninput="App.onPostInput(this.value)" placeholder="Ajoutez un commentaire... Tapez # pour un hashtag ou @ pour mentionner un membre..." style="width:100%;min-height:90px;border:1px solid #E5E5EA;border-radius:14px;padding:12px;font-size:15px;line-height:1.5;color:#000;resize:none;outline:none;box-sizing:border-box;font-family:inherit;margin-bottom:14px;">' + safeHtml(S.postText||'') + '</textarea>' +
+
+          '<div style="border:1px solid #E5E5EA;border-radius:16px;overflow:hidden;">' +
+            '<div style="padding:10px 12px;border-bottom:0.5px solid #F2F2F7;">' +
+              '<strong style="font-size:13px;color:#000;">' + safeHtml(post.author||'Membre') + '</strong>' +
+            '</div>' +
+            (previewMedia
+              ? '<img src="'+previewMedia+'" style="width:100%;max-height:220px;object-fit:cover;display:block;">'
+              : (post.postBg
+                  ? '<div style="min-height:100px;display:flex;align-items:center;justify-content:center;padding:20px;background:' + post.postBg + ';"><p style="color:#FFF;font-size:15px;font-weight:800;text-align:center;margin:0;">' + safeHtml(previewCaption.slice(0,140)) + '</p></div>'
+                  : '<p style="font-size:13.5px;color:#3A3A3C;margin:0;padding:12px;line-height:1.4;">' + safeHtml(previewCaption.slice(0,200)) + '</p>')
+            ) +
+          '</div>' +
+        '</div>' +
+
       '</div>' +
     '</div>';
   }
@@ -1964,16 +2144,29 @@
         '</div>' +
 
         '<div style="border-top:0.5px solid #F2F2F7;">' +
+          '<div id="commentMentionSugg" style="display:none;flex-wrap:wrap;gap:6px;background:#F0F6FF;border-top:1px solid #CCDEFF;padding:8px 14px;"></div>' +
+          '<div id="commentImagePreview" style="padding:' + (S.pendingCommentImage ? '10px 14px 0' : '0') + ';">' +
+            (S.pendingCommentImage
+              ? '<div style="position:relative;display:inline-block;">' +
+                  '<img src="'+S.pendingCommentImage+'" style="width:64px;height:64px;object-fit:cover;border-radius:10px;border:1px solid #E5E5EA;">' +
+                  '<button type="button" onclick="App.removeCommentImage()" style="position:absolute;top:-6px;right:-6px;background:rgba(0,0,0,0.7);border:none;border-radius:8px;width:18px;height:18px;color:#FFF;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;">×</button>' +
+                '</div>'
+              : '') +
+          '</div>' +
           '<div style="display:flex;justify-content:space-around;padding:8px 14px;border-bottom:0.5px solid #F7F7F7;">' +
             emojis.map(function(e) {
               return '<span onclick="App.addEmoji(\''+e+'\')" style="font-size:22px;cursor:pointer;padding:3px 2px;-webkit-tap-highlight-color:transparent;">'+e+'</span>';
             }).join('') +
           '</div>' +
-          '<form onsubmit="event.preventDefault(); App.submitComment(event);" style="display:flex;align-items:center;gap:10px;padding:10px 14px;">' +
+          '<form onsubmit="event.preventDefault(); App.submitComment(event);" style="display:flex;align-items:center;gap:8px;padding:10px 14px;">' +
             (u.avatar_url ? '<img src="' + u.avatar_url + '" style="width:34px;height:34px;border-radius:17px;object-fit:cover;flex-shrink:0;" />' : '<div style="width:34px;height:34px;border-radius:17px;background:linear-gradient(135deg,' + (u.avatar_color||'#007AFF') + ',#0040CC);color:#FFF;font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + userInitial + '</div>') +
-            '<div style="flex:1;display:flex;align-items:center;background:#F2F2F7;border-radius:22px;height:40px;padding:0 14px;">' +
-              '<input id="commentInput" type="text" placeholder="Ajouter un commentaire…" style="flex:1;border:none;background:transparent;font-size:14px;color:#000;outline:none;" required>' +
-              '<button type="submit" style="background:none;border:none;padding:0 0 0 8px;cursor:pointer;display:flex;align-items:center;">' + SVG.send + '</button>' +
+            '<div style="flex:1;display:flex;align-items:center;background:#F2F2F7;border-radius:22px;height:40px;padding:0 6px 0 14px;">' +
+              '<input id="commentInput" type="text" oninput="App.onCommentInput(this.value)" placeholder="Ajouter un commentaire… (@ pour taguer)" style="flex:1;border:none;background:transparent;font-size:14px;color:#000;outline:none;">' +
+              '<label style="cursor:pointer;padding:6px;display:flex;align-items:center;flex-shrink:0;">' +
+                '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>' +
+                '<input type="file" accept="image/*" onchange="App.addCommentImage(event)" style="display:none;">' +
+              '</label>' +
+              '<button type="submit" style="background:none;border:none;padding:0 0 0 4px;cursor:pointer;display:flex;align-items:center;">' + SVG.send + '</button>' +
             '</div>' +
           '</form>' +
         '</div>' +
@@ -2001,7 +2194,8 @@
           '<strong onclick="App.openUserProfile(\'' + c.userId + '\')" style="cursor:pointer;font-size:13.5px;color:#000;">' + safeHtml(c.author||'Membre') + '</strong>' +
           '<span style="font-size:11.5px;color:#8E8E93;">' + timeAgo(c.timestamp) + '</span>' +
         '</div>' +
-        '<p style="font-size:14px;color:#1C1C1E;margin:3px 0 5px;line-height:1.4;">' + hashtagify(c.text) + '</p>' +
+        (c.text ? '<p style="font-size:14px;color:#1C1C1E;margin:3px 0 5px;line-height:1.4;">' + hashtagify(c.text) + '</p>' : '') +
+        (c.imageUrl ? '<img src="'+c.imageUrl+'" style="max-width:180px;max-height:180px;border-radius:12px;margin:2px 0 6px;display:block;object-fit:cover;">' : '') +
         '<button style="background:none;border:none;padding:0;font-size:12px;font-weight:700;color:#8E8E93;cursor:pointer;">Répondre</button>' +
       '</div>' +
       '<div id="clike-'+c.id+'" onclick="App.likeComment(\''+c.id+'\')" style="cursor:pointer;padding:4px;margin-top:2px;">' +
@@ -2584,6 +2778,23 @@
             '<div style="font-size:12px;color:#8E8E93;margin-top:4px;">' + safeHtml(meta.date || ev.eventDate || '') + (meta.time || ev.eventStart ? ' · ' + safeHtml(meta.time || ev.eventStart || '') : '') + '</div>' +
           '</div>';
         }).join('') +
+      '</div>';
+    }
+
+    // Section 2.5: Liens partagés (enregistrés automatiquement)
+    var sharedLinks = Array.isArray(freshU.sharedLinks) ? freshU.sharedLinks : [];
+    if (sharedLinks.length > 0) {
+      var showAllLinksNow = !!S.showAllLinks;
+      var linksToShow = showAllLinksNow ? sharedLinks : sharedLinks.slice(0, 5);
+      feed += '<div style="background:#FFF;padding:14px;margin-bottom:8px;">' +
+        '<div style="font-size:15px;font-weight:800;color:#000;margin-bottom:10px;display:flex;align-items:center;gap:6px;">🔗 Liens partagés <span style="font-size:12px;font-weight:600;color:#8E8E93;">(' + sharedLinks.length + ')</span></div>' +
+        linksToShow.map(function(l) {
+          return '<a href="' + l.url + '" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" style="display:block;background:#F9FAFB;border:1px solid #E5E5EA;border-radius:12px;padding:10px 12px;margin-bottom:8px;text-decoration:none;">' +
+            '<div style="font-size:13px;color:#007AFF;font-weight:700;word-break:break-all;">' + safeHtml(l.url) + '</div>' +
+            '<div style="font-size:11px;color:#8E8E93;margin-top:2px;">' + timeAgo(l.timestamp) + '</div>' +
+          '</a>';
+        }).join('') +
+        (sharedLinks.length > 5 && !showAllLinksNow ? '<button onclick="S.showAllLinks=true;render();" style="width:100%;background:#F2F2F7;border:none;border-radius:10px;padding:10px;font-size:13px;font-weight:700;color:#007AFF;cursor:pointer;">Voir tous les liens (' + sharedLinks.length + ')</button>' : '') +
       '</div>';
     }
 
@@ -3353,19 +3564,6 @@ toggleParticipation: function(postId, status) {
          if (el) el.scrollIntoView({behavior: 'smooth'});
        }, 100);
     },
-    deletePost: async function(id) {
-       if (!confirm("Voulez-vous vraiment supprimer cette publication ?")) return;
-       var posts = db(SK.POSTS, []);
-       posts = posts.filter(function(p){ return p.id !== id; });
-       dbSet(SK.POSTS, posts);
-       if (supabase) {
-         try { await supabase.from('kun_com_posts').delete().eq('id', id); } catch(e){}
-       }
-       S.postOptionsOpen = false;
-       S.selectedPostId = null;
-       render();
-       toast('Publication supprimée', 'success');
-    },
     shareProfile: function() { toast('Fonction de partage bientôt disponible !'); },
 
 
@@ -3643,13 +3841,30 @@ toggleParticipation: function(postId, status) {
       if (btn) btn.innerHTML = SVG.bookmark(S.savedPosts[postId]);
       if (!S.optionsOpen) toast(S.savedPosts[postId] ? 'Publication enregistrée.' : 'Retiré des favoris.', 'success');
     },
-    share: function(postId) {
+    openRepostModal: function(postId) {
+      if (!S.user) return;
       var posts = db(SK.POSTS, []);
       var post = posts.find(function(p){ return p.id===postId; });
-      if (!post || !S.user) return;
-      // Check if already reposted
+      if (!post) return;
       var alreadyReposted = posts.some(function(p){ return p.type === 'REPOST' && p.originalPostId === postId && p.userId === S.user.id; });
       if (alreadyReposted) { toast('Vous avez déjà partagé cette publication.', 'error'); return; }
+      S.repostPostId = postId;
+      S.postText = '';
+      render();
+    },
+    closeRepostModal: function() {
+      S.repostPostId = null;
+      S.postText = '';
+      render();
+    },
+    confirmRepost: function() {
+      var postId = S.repostPostId;
+      if (!postId || !S.user) return;
+      var posts = db(SK.POSTS, []);
+      var post = posts.find(function(p){ return p.id===postId; });
+      if (!post) return;
+      var ta = document.getElementById('repostText');
+      var txt = (ta ? ta.value : (S.postText||'')).trim();
       var repost = {
         id: 'rp_' + Date.now(), userId: S.user.id, timestamp: Date.now(),
         author: S.user.prenom + ' ' + S.user.nom,
@@ -3662,7 +3877,7 @@ toggleParticipation: function(postId, status) {
         originalCaption: post.caption || '',
         originalMediaUrls: (post.mediaUrls || []).slice(),
         originalPostBg: post.postBg || null,
-        caption: '', mediaUrls: [], postBg: null,
+        caption: txt, mediaUrls: [], postBg: null,
         likes: 0, likedBy: [], comments: [],
         visibility: 'all', targetSections: []
       };
@@ -3671,7 +3886,10 @@ toggleParticipation: function(postId, status) {
       if (supabase) {
         supabase.from('kun_com_posts').upsert({ id: repost.id, content: repost, created_at: new Date().toISOString() }, { onConflict: 'id' }).then(function(){}, function(e){});
       }
+      saveLinksToProfile(repost.userId, extractLinks(txt), repost.id);
       updateUserActivity('Partage');
+      S.repostPostId = null;
+      S.postText = '';
       render();
       toast('Publication partagée sur votre mur ! 🔄', 'success');
     },
@@ -3689,10 +3907,11 @@ toggleParticipation: function(postId, status) {
     // Create post
     // Mentions & Privacy
     insertMention: function(mention) {
-      var ta = document.getElementById('newPostText') || document.getElementById('editPostText');
+      var ta = document.getElementById('newPostText') || document.getElementById('editPostText') || document.getElementById('repostText');
       if (!ta) return;
       var val = ta.value;
       ta.value = val.replace(/@[\wéèêàâôûîçÉÈÊÀÂÔÛÎÇùÙ]*$/, mention);
+      S.postText = ta.value;
       var box = document.getElementById('mentionSugg');
       if (box) box.style.display = 'none';
       ta.focus();
@@ -3720,24 +3939,43 @@ toggleParticipation: function(postId, status) {
       S.editPostId = postId;
       S.postVisibility = p.visibility || 'all';
       S.postTargetSections = (p.targetSections || []).slice();
+      S.pendingMedia = (p.mediaUrls || []).slice();
+      S.postBg = p.postBg || null;
+      S.postText = p.caption || '';
       render();
     },
     closeEditPost: function() {
       S.editPostId = null;
+      S.pendingMedia = [];
+      S.postBg = null;
+      S.postText = '';
       render();
     },
     saveEditPost: async function(postId) {
       var ta = document.getElementById('editPostText');
-      var txt = ta ? ta.value.trim() : '';
-      if (!txt) { toast('Le texte ne peut pas être vide.', 'error'); return; }
+      var txt = (ta ? ta.value : (S.postText||'')).trim();
+      if (!txt && S.pendingMedia.length === 0) { toast('Ajoutez du texte ou une photo.', 'error'); return; }
       var posts = db(SK.POSTS, []);
       var post = posts.find(function(p){ return p.id === postId; });
       if (!post) return;
-      
+
       post.caption = txt;
       post.is_edited = true;
       post.visibility = S.postVisibility || 'all';
       post.targetSections = (S.postTargetSections || []).slice();
+      post.mediaUrls = S.pendingMedia.slice();
+      post.postBg = S.pendingMedia.length === 0 ? (S.postBg || null) : null;
+
+      var ephEl = document.getElementById('editPostEphemeral');
+      if (ephEl) {
+        if (ephEl.checked) {
+          if (!post.is_ephemeral) post.ephemeral_expiry = Date.now() + 86400000;
+          post.is_ephemeral = true;
+        } else {
+          post.is_ephemeral = false;
+          post.ephemeral_expiry = null;
+        }
+      }
 
       var dateEl = document.getElementById('editPostScheduleDate');
       var timeEl = document.getElementById('editPostScheduleTime');
@@ -3758,7 +3996,17 @@ toggleParticipation: function(postId, status) {
           await supabase.from('kun_com_posts').upsert({ id: post.id, content: post, created_at: new Date(post.timestamp).toISOString() }, { onConflict: 'id' });
         } catch(e){}
       }
+
+      // Notifie et enregistre les liens si la publication ciblée/modifiée en contient
+      if (post.visibility === 'sections' && (!post.status || post.status !== 'scheduled')) {
+        sendTargetedSectionPostNotifications(post);
+      }
+      saveLinksToProfile(post.userId, extractLinks(txt), post.id);
+
       S.editPostId = null;
+      S.pendingMedia = [];
+      S.postBg = null;
+      S.postText = '';
       render();
       toast('Publication modifiée ! 🎉', 'success');
     },
@@ -3798,9 +4046,10 @@ toggleParticipation: function(postId, status) {
       }
     },
     insertTag: function(tag) {
-      var ta = document.getElementById('newPostText'); if (!ta) return;
+      var ta = document.getElementById('newPostText') || document.getElementById('editPostText') || document.getElementById('repostText'); if (!ta) return;
       var words = ta.value.split(/\s/); words.pop();
       ta.value = words.concat([tag,'']).join(' ');
+      S.postText = ta.value;
       var box = document.getElementById('hashSugg'); if (box) box.style.display='none';
       ta.focus();
     },
@@ -3846,12 +4095,12 @@ toggleParticipation: function(postId, status) {
         'linear-gradient(135deg,#C94B4B,#4B134F)',
         'linear-gradient(135deg,#F7971E,#FFD200)'
       ];
-      var taIdx = document.getElementById('newPostText'); if (taIdx) S.postText = taIdx.value;
+      var taIdx = document.getElementById('newPostText') || document.getElementById('editPostText') || document.getElementById('repostText'); if (taIdx) S.postText = taIdx.value;
       S.postBg = BG_PALETTES[idx] || null;
       render();
     },
     setPostBg: function(bg) {
-      var ta = document.getElementById('newPostText'); if (ta) S.postText = ta.value;
+      var ta = document.getElementById('newPostText') || document.getElementById('editPostText') || document.getElementById('repostText'); if (ta) S.postText = ta.value;
       S.postBg = bg;
       render();
     },
@@ -3915,6 +4164,9 @@ toggleParticipation: function(postId, status) {
         sendTargetedSectionPostNotifications(newPost);
       }
 
+      // Enregistre automatiquement les liens partagés dans le profil
+      saveLinksToProfile(newPost.userId, extractLinks(txt), newPost.id);
+
       updateUserActivity('Publication');
       S.createOpen=false; S.pendingMedia=[]; S.hashSuggestions=false; S.postBg=null; S.postText=''; S.postVisibility='all'; S.postTargetSections=[];
       S.tab = 'home';
@@ -3949,20 +4201,72 @@ toggleParticipation: function(postId, status) {
 
     // Comments
     openComments: function(postId) {
-      S.commentPostId=postId; S.commentOpen=true; render();
+      S.commentPostId=postId; S.commentOpen=true; S.pendingCommentImage=null; render();
       window.setTimeout(function(){ var i=document.getElementById('commentInput'); if(i) i.focus(); },150);
     },
-    closeComments: function() { S.commentOpen=false; S.commentPostId=null; render(); },
+    closeComments: function() { S.commentOpen=false; S.commentPostId=null; S.pendingCommentImage=null; render(); },
     addEmoji: function(e) { var i=document.getElementById('commentInput'); if(i){i.value+=e;i.focus();} },
+    addCommentImage: function(e) {
+      var file = (e.target && e.target.files && e.target.files[0]) || null;
+      if (!file) return;
+      compressImage(file, 800, 800, 0.7, function(dataUrl) {
+        S.pendingCommentImage = dataUrl;
+        var prev = document.getElementById('commentImagePreview');
+        if (prev) {
+          prev.style.padding = '10px 14px 0';
+          prev.innerHTML = '<div style="position:relative;display:inline-block;">' +
+            '<img src="'+dataUrl+'" style="width:64px;height:64px;object-fit:cover;border-radius:10px;border:1px solid #E5E5EA;">' +
+            '<button type="button" onclick="App.removeCommentImage()" style="position:absolute;top:-6px;right:-6px;background:rgba(0,0,0,0.7);border:none;border-radius:8px;width:18px;height:18px;color:#FFF;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;">×</button>' +
+          '</div>';
+        } else {
+          render();
+        }
+      });
+    },
+    removeCommentImage: function() {
+      S.pendingCommentImage = null;
+      var prev = document.getElementById('commentImagePreview');
+      if (prev) { prev.style.padding = '0'; prev.innerHTML = ''; } else { render(); }
+    },
+    onCommentInput: function(val) {
+      var match = val.match(/@([\wéèêàâôûîçÉÈÊÀÂÔÛÎÇùÙ]*)$/);
+      var box = document.getElementById('commentMentionSugg');
+      if (match && box) {
+        var query = match[1].toLowerCase();
+        var users = db(SK.USERS, []).filter(function(u) {
+          var name = ((u.prenom||'') + ' ' + (u.nom||'')).toLowerCase();
+          return name.indexOf(query) !== -1;
+        }).slice(0, 5);
+        if (users.length > 0) {
+          box.innerHTML = users.map(function(u) {
+            return '<button type="button" onclick="App.insertCommentMention(\'@' + safeHtml(u.prenom + u.nom) + ' \')" style="background:#EBF5FF;color:#007AFF;border:none;padding:5px 10px;border-radius:12px;font-size:12px;font-weight:700;cursor:pointer;">👤 ' + safeHtml(u.prenom + ' ' + u.nom) + '</button>';
+          }).join('');
+          box.style.display = 'flex';
+        } else {
+          box.style.display = 'none';
+        }
+      } else if (box) {
+        box.style.display = 'none';
+      }
+    },
+    insertCommentMention: function(mention) {
+      var input = document.getElementById('commentInput');
+      if (!input) return;
+      var val = input.value;
+      input.value = val.replace(/@[\wéèêàâôûîçÉÈÊÀÂÔÛÎÇùÙ]*$/, mention);
+      var box = document.getElementById('commentMentionSugg');
+      if (box) box.style.display = 'none';
+      input.focus();
+    },
     submitComment: function(ev) {
       ev && ev.preventDefault();
       var input = document.getElementById('commentInput');
       var txt = input ? input.value.trim() : '';
-      if (!txt || !S.user || !S.commentPostId) return;
+      if ((!txt && !S.pendingCommentImage) || !S.user || !S.commentPostId) return;
       var posts = db(SK.POSTS, []);
       var post = posts.find(function(p){ return p.id===S.commentPostId; });
       if (!post) return;
-      var newC = { id:'c'+Date.now(), userId:S.user.id, author:(S.user.prenom||'User')+' '+(S.user.nom?S.user.nom.charAt(0):'')+'.', avatarColor:S.user.avatar_color||'#007AFF', text:txt, timestamp:Date.now() };
+      var newC = { id:'c'+Date.now(), userId:S.user.id, author:(S.user.prenom||'User')+' '+(S.user.nom?S.user.nom.charAt(0):'')+'.', avatarColor:S.user.avatar_color||'#007AFF', text:txt, imageUrl:S.pendingCommentImage||null, timestamp:Date.now() };
       if (!Array.isArray(post.comments)) post.comments = [];
       post.comments.push(newC); dbSet(SK.POSTS, posts);
       if (supabase && post) supabase.from('kun_com_posts').upsert({ id: post.id, content: post }, { onConflict: 'id' }).then(function(){}, function(e){});
@@ -3970,7 +4274,7 @@ toggleParticipation: function(postId, status) {
         sendNotificationToUser(post.userId, {
           type: 'COMMENT',
           title: '💬 Nouveau Commentaire',
-          text: S.user.prenom + ' : "' + txt.slice(0, 40) + '"',
+          text: S.user.prenom + ' : "' + (txt ? txt.slice(0, 40) : '📷 Photo') + '"',
           targetId: post.id
         });
       }
@@ -3989,6 +4293,7 @@ toggleParticipation: function(postId, status) {
         ccBtn.textContent = 'Voir les ' + post.comments.length + ' commentaire' + (post.comments.length>1?'s':'');
       }
       if (input) input.value = '';
+      App.removeCommentImage();
       toast('Commentaire ajouté !', 'success');
     },
     likeComment: function(cId) {
