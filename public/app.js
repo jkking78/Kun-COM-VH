@@ -439,7 +439,8 @@
     profileTab: 'tout',
     repostPostId: null,
     pendingCommentImage: null,
-    showAllLinks: false
+    showAllLinks: false,
+    reduceVideoQuality: true
 };
 
   // ============================================================
@@ -533,6 +534,95 @@
       reader.onload = function(e) { processDataUrl(e.target.result); };
       reader.readAsDataURL(file);
     }
+  }
+
+  // Une URL (data: ou blob:) de vidéo est reconnue par son préfixe MIME
+  function isVideoUrl(url) {
+    return typeof url === 'string' && url.indexOf('data:video') === 0;
+  }
+
+  // Réduction de qualité vidéo optionnelle : ré-encode en temps réel via canvas + MediaRecorder
+  // (aucune librairie externe nécessaire). Si l'API n'est pas supportée par le navigateur,
+  // on retombe automatiquement sur le fichier original sans compression.
+  function compressVideo(file, callback) {
+    if (!file) { callback(null); return; }
+    var canSupport = (typeof MediaRecorder !== 'undefined') &&
+      document.createElement('canvas').captureStream;
+    function passthrough() {
+      var reader = new FileReader();
+      reader.onload = function(e) { callback(e.target.result); };
+      reader.onerror = function() { callback(null); };
+      reader.readAsDataURL(file);
+    }
+    if (!canSupport) { passthrough(); return; }
+
+    var objectUrl = URL.createObjectURL(file);
+    var videoEl = document.createElement('video');
+    videoEl.muted = true;
+    videoEl.playsInline = true;
+    videoEl.src = objectUrl;
+
+    var finished = false;
+    function cleanup() { try { URL.revokeObjectURL(objectUrl); } catch(e){} }
+
+    videoEl.onerror = function() { if (finished) return; finished = true; cleanup(); passthrough(); };
+
+    videoEl.onloadedmetadata = function() {
+      try {
+        var maxW = 640;
+        var scale = Math.min(1, maxW / (videoEl.videoWidth || maxW));
+        var w = Math.max(2, Math.round((videoEl.videoWidth || maxW) * scale));
+        var h = Math.max(2, Math.round((videoEl.videoHeight || maxW) * scale));
+        var canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        var ctx = canvas.getContext('2d');
+        var stream = canvas.captureStream(25);
+        var mimeType = 'video/webm;codecs=vp8';
+        if (typeof MediaRecorder.isTypeSupported === 'function' && !MediaRecorder.isTypeSupported(mimeType)) {
+          mimeType = 'video/webm';
+        }
+        var recorder = new MediaRecorder(stream, { mimeType: mimeType, videoBitsPerSecond: 700000 });
+        var chunks = [];
+        recorder.ondataavailable = function(e) { if (e.data && e.data.size > 0) chunks.push(e.data); };
+        recorder.onerror = function() {
+          if (finished) return;
+          finished = true;
+          try { videoEl.pause(); } catch(e){}
+          cleanup();
+          passthrough();
+        };
+        recorder.onstop = function() {
+          if (finished) return;
+          finished = true;
+          cleanup();
+          var blob = new Blob(chunks, { type: 'video/webm' });
+          var reader = new FileReader();
+          reader.onload = function(e) { callback(e.target.result); };
+          reader.onerror = function() { callback(null); };
+          reader.readAsDataURL(blob);
+        };
+        var drawFrame = function() {
+          if (finished || videoEl.paused || videoEl.ended) return;
+          try { ctx.drawImage(videoEl, 0, 0, w, h); } catch(e) {}
+          requestAnimationFrame(drawFrame);
+        };
+        videoEl.onplay = function() { drawFrame(); };
+        videoEl.onended = function() { if (recorder.state !== 'inactive') recorder.stop(); };
+        recorder.start();
+        videoEl.play().catch(function() {
+          if (finished) return;
+          finished = true;
+          try { recorder.stop(); } catch(e){}
+          cleanup();
+          passthrough();
+        });
+      } catch (err) {
+        if (finished) return;
+        finished = true;
+        cleanup();
+        passthrough();
+      }
+    };
   }
 
     function getUserSections(u) {
@@ -1314,7 +1404,10 @@
         (isMulti ? '<div id="badge-'+post.id+'" style="position:absolute;top:12px;right:12px;background:rgba(0,0,0,0.6);color:#FFF;font-size:12px;font-weight:700;padding:4px 10px;border-radius:20px;z-index:10;">' + (curIdx+1) + '/' + post.mediaUrls.length + '</div>' : '') +
         '<div id="car-'+post.id+'" onscroll="App.carScroll(\''+post.id+'\',this)" ondblclick="App.doubleTapLike(\''+post.id+'\')" style="display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;aspect-ratio:1/1;scrollbar-width:none;">' +
           post.mediaUrls.map(function(url) {
-            return '<div style="flex:0 0 100%;scroll-snap-align:start;"><img src="'+url+'" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;aspect-ratio:1/1;"/></div>';
+            var mediaTag = isVideoUrl(url)
+              ? '<video src="'+url+'" controls playsinline preload="metadata" style="width:100%;height:100%;object-fit:cover;display:block;aspect-ratio:1/1;"></video>'
+              : '<img src="'+url+'" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;aspect-ratio:1/1;"/>';
+            return '<div style="flex:0 0 100%;scroll-snap-align:start;">'+mediaTag+'</div>';
           }).join('') +
         '</div>' +
         (isMulti ? '<div id="dots-'+post.id+'" style="display:flex;justify-content:center;gap:5px;padding:8px 0;background:#FFF;">' +
@@ -1489,7 +1582,11 @@
          if (post.type === 'REPOST') {
            var origMedia = post.originalMediaUrls || [];
            if (origMedia.length > 0) {
-             contentZone = '<div style="padding:0;">' + origMedia.map(function(url){ return '<img src="' + url + '" style="width:100%;display:block;" />'; }).join('') + '</div>';
+             contentZone = '<div style="padding:0;">' + origMedia.map(function(url){
+               return isVideoUrl(url)
+                 ? '<video src="' + url + '" controls playsinline preload="metadata" style="width:100%;display:block;"></video>'
+                 : '<img src="' + url + '" style="width:100%;display:block;" />';
+             }).join('') + '</div>';
            } else if (post.originalPostBg) {
              contentZone = '<div style="background:' + post.originalPostBg + ';min-height:200px;display:flex;align-items:center;justify-content:center;padding:30px;"><p style="color:#FFF;font-size:20px;font-weight:800;text-align:center;text-shadow:0 2px 8px rgba(0,0,0,0.3);margin:0;line-height:1.4;">' + safeHtml(post.originalCaption || '') + '</p></div>';
            }
@@ -1754,8 +1851,11 @@
     if (S.pendingMedia.length > 0) {
       previewHtml = '<div style="display:flex;gap:8px;overflow-x:auto;margin-bottom:12px;padding-bottom:4px;">' +
         S.pendingMedia.map(function(url, i) {
-          return '<div style="position:relative;flex-shrink:0;width:72px;height:72px;border-radius:12px;overflow:hidden;border:2px solid #E5E5EA;">' +
-            '<img src="'+url+'" style="width:100%;height:100%;object-fit:cover;">' +
+          var isVid = isVideoUrl(url);
+          return '<div style="position:relative;flex-shrink:0;width:72px;height:72px;border-radius:12px;overflow:hidden;border:2px solid #E5E5EA;background:#000;">' +
+            (isVid
+              ? '<video src="'+url+'" muted style="width:100%;height:100%;object-fit:cover;"></video><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;"><svg width="22" height="22" viewBox="0 0 24 24" fill="rgba(255,255,255,0.9)"><path d="M8 5v14l11-7z"/></svg></div>'
+              : '<img src="'+url+'" style="width:100%;height:100%;object-fit:cover;">') +
             '<button type="button" onclick="App.removeMedia('+i+')" style="position:absolute;top:3px;right:3px;background:rgba(0,0,0,0.7);border:none;border-radius:8px;width:18px;height:18px;color:#FFF;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:900;">×</button>' +
           '</div>';
         }).join('') +
@@ -1868,12 +1968,13 @@
           '<div style="display:flex;gap:14px;align-items:center;">' +
             '<label style="cursor:pointer;display:flex;align-items:center;gap:6px;color:#007AFF;font-size:13px;font-weight:700;">' +
               '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#007AFF" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>' +
-              'Photo' +
-              '<input type="file" accept="image/*" multiple onchange="App.addMedia(event)" style="display:none;">' +
+              'Photo / Vidéo' +
+              '<input type="file" accept="image/*,video/*" multiple onchange="App.addMedia(event)" style="display:none;">' +
             '</label>' +
             '<span style="color:#8E8E93;font-size:13px;">|</span>' +
-            '<span style="font-size:12px;color:#8E8E93;">' + S.pendingMedia.length + '/10 photos</span>' +
+            '<span style="font-size:12px;color:#8E8E93;">' + (S.pendingMedia.some(function(m){return isVideoUrl(m);}) ? '1 vidéo' : S.pendingMedia.length + '/10 photos') + '</span>' +
           '</div>' +
+          '<label style="display:flex;align-items:center;gap:6px;margin-top:8px;cursor:pointer;font-size:12px;color:#3A3A3C;font-weight:600;"><input type="checkbox" ' + (S.reduceVideoQuality?'checked':'') + ' onchange="App.toggleReduceVideoQuality()" style="width:16px;height:16px;"> 🎥 Réduire la qualité vidéo à l\'ajout (envoi plus rapide, optionnel)</label>' +
         '</div>' +
 
       '</div>' +
@@ -1919,7 +2020,9 @@
               '<strong style="font-size:13px;color:#000;">' + safeHtml(post.author||'Membre') + '</strong>' +
             '</div>' +
             (previewMedia
-              ? '<img src="'+previewMedia+'" style="width:100%;max-height:220px;object-fit:cover;display:block;">'
+              ? (isVideoUrl(previewMedia)
+                  ? '<video src="'+previewMedia+'" muted preload="metadata" style="width:100%;max-height:220px;object-fit:cover;display:block;"></video>'
+                  : '<img src="'+previewMedia+'" style="width:100%;max-height:220px;object-fit:cover;display:block;">')
               : (post.postBg
                   ? '<div style="min-height:100px;display:flex;align-items:center;justify-content:center;padding:20px;background:' + post.postBg + ';"><p style="color:#FFF;font-size:15px;font-weight:800;text-align:center;margin:0;">' + safeHtml(previewCaption.slice(0,140)) + '</p></div>'
                   : '<p style="font-size:13.5px;color:#3A3A3C;margin:0;padding:12px;line-height:1.4;">' + safeHtml(previewCaption.slice(0,200)) + '</p>')
@@ -1936,8 +2039,11 @@
     if (S.pendingMedia.length > 0) {
       previewHtml = '<div style="display:flex;gap:8px;overflow-x:auto;margin-bottom:12px;padding-bottom:4px;">' +
         S.pendingMedia.map(function(url, i) {
-          return '<div style="position:relative;flex-shrink:0;width:72px;height:72px;border-radius:12px;overflow:hidden;border:2px solid #E5E5EA;">' +
-            '<img src="'+url+'" style="width:100%;height:100%;object-fit:cover;">' +
+          var isVid = isVideoUrl(url);
+          return '<div style="position:relative;flex-shrink:0;width:72px;height:72px;border-radius:12px;overflow:hidden;border:2px solid #E5E5EA;background:#000;">' +
+            (isVid
+              ? '<video src="'+url+'" muted style="width:100%;height:100%;object-fit:cover;"></video><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;"><svg width="22" height="22" viewBox="0 0 24 24" fill="rgba(255,255,255,0.9)"><path d="M8 5v14l11-7z"/></svg></div>'
+              : '<img src="'+url+'" style="width:100%;height:100%;object-fit:cover;">') +
             '<button type="button" onclick="App.removeMedia('+i+')" style="position:absolute;top:3px;right:3px;background:rgba(0,0,0,0.7);border:none;border-radius:8px;width:18px;height:18px;color:#FFF;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:900;">×</button>' +
           '</div>';
         }).join('') +
@@ -2061,12 +2167,13 @@
           '<div style="display:flex;gap:14px;align-items:center;">' +
             '<label style="cursor:pointer;display:flex;align-items:center;gap:6px;color:#007AFF;font-size:13px;font-weight:700;">' +
               '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#007AFF" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>' +
-              'Photo' +
-              '<input type="file" accept="image/*" multiple onchange="App.addMedia(event)" style="display:none;">' +
+              'Photo / Vidéo' +
+              '<input type="file" accept="image/*,video/*" multiple onchange="App.addMedia(event)" style="display:none;">' +
             '</label>' +
             '<span style="color:#8E8E93;font-size:13px;">|</span>' +
-            '<span style="font-size:12px;color:#8E8E93;">' + S.pendingMedia.length + '/10 photos</span>' +
+            '<span style="font-size:12px;color:#8E8E93;">' + (S.pendingMedia.some(function(m){return isVideoUrl(m);}) ? '1 vidéo' : S.pendingMedia.length + '/10 photos') + '</span>' +
           '</div>' +
+          '<label style="display:flex;align-items:center;gap:6px;margin-top:8px;cursor:pointer;font-size:12px;color:#3A3A3C;font-weight:600;"><input type="checkbox" ' + (S.reduceVideoQuality?'checked':'') + ' onchange="App.toggleReduceVideoQuality()" style="width:16px;height:16px;"> 🎥 Réduire la qualité vidéo à l\'ajout (envoi plus rapide, optionnel)</label>' +
         '</div>' +
 
       '</div>' +
@@ -2751,19 +2858,22 @@
     // ---- Feed: continuous scroll layout ----
     var feed = '<div style="background:#F2F2F7;min-height:50vh;padding-bottom:100px;">';
 
-    // Section 1: Photos grid (if any)
+    // Section 1: Photos/Vidéos grid (if any)
     if (photosPosts.length > 0) {
       feed += '<div style="background:#FFF;padding:14px;margin-bottom:8px;">' +
-        '<div style="font-size:15px;font-weight:800;color:#000;margin-bottom:10px;display:flex;align-items:center;gap:6px;">📷 Photos <span style="font-size:12px;font-weight:600;color:#8E8E93;">(' + photosPosts.length + ')</span></div>' +
+        '<div style="font-size:15px;font-weight:800;color:#000;margin-bottom:10px;display:flex;align-items:center;gap:6px;">📷 Médias <span style="font-size:12px;font-weight:600;color:#8E8E93;">(' + photosPosts.length + ')</span></div>' +
         '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:3px;border-radius:12px;overflow:hidden;">' +
         photosPosts.slice(0, 9).map(function(p) {
-          var imgUrl = p.mediaUrls[0];
-          return '<div style="aspect-ratio:1;overflow:hidden;cursor:pointer;" onclick="App.viewPost(\'' + p.id + '\')">' +
-            '<img src="' + imgUrl + '" style="width:100%;height:100%;object-fit:cover;" />' +
+          var mediaUrl = p.mediaUrls[0];
+          var isVid = isVideoUrl(mediaUrl);
+          return '<div style="aspect-ratio:1;overflow:hidden;cursor:pointer;position:relative;background:#000;" onclick="App.viewPost(\'' + p.id + '\')">' +
+            (isVid
+              ? '<video src="' + mediaUrl + '" muted preload="metadata" style="width:100%;height:100%;object-fit:cover;"></video><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;"><svg width="26" height="26" viewBox="0 0 24 24" fill="rgba(255,255,255,0.9)"><path d="M8 5v14l11-7z"/></svg></div>'
+              : '<img src="' + mediaUrl + '" style="width:100%;height:100%;object-fit:cover;" />') +
           '</div>';
         }).join('') +
         '</div>' +
-        (photosPosts.length > 9 ? '<button onclick="S.showAllPhotos=true;render();" style="width:100%;margin-top:8px;background:#F2F2F7;border:none;border-radius:10px;padding:10px;font-size:13px;font-weight:700;color:#007AFF;cursor:pointer;">Voir toutes les photos (' + photosPosts.length + ')</button>' : '') +
+        (photosPosts.length > 9 ? '<button onclick="S.showAllPhotos=true;render();" style="width:100%;margin-top:8px;background:#F2F2F7;border:none;border-radius:10px;padding:10px;font-size:13px;font-weight:700;color:#007AFF;cursor:pointer;">Voir tous les médias (' + photosPosts.length + ')</button>' : '') +
       '</div>';
     }
 
@@ -4055,9 +4165,50 @@ toggleParticipation: function(postId, status) {
     },
     addMedia: function(e) {
       var files = Array.from((e.target && e.target.files) || []);
+      if (files.length === 0) return;
+
+      var videoFile = files.find(function(f){ return f.type.startsWith('video/'); });
+      var imageFiles = files.filter(function(f){ return f.type.startsWith('image/'); });
+      var hasVideoPending = S.pendingMedia.some(function(m){ return isVideoUrl(m); });
+
+      // Vidéo : format libre (aucun recadrage), un seul média vidéo par publication, façon Facebook
+      if (videoFile) {
+        if (S.pendingMedia.length > 0 && !hasVideoPending) {
+          toast('Impossible de mélanger une vidéo avec des photos dans la même publication. Retirez d\'abord les photos.', 'error');
+          return;
+        }
+        var maxVideoBytes = 60 * 1024 * 1024;
+        if (videoFile.size > maxVideoBytes) {
+          toast('Vidéo trop volumineuse (max 60 Mo). Choisissez une vidéo plus courte ou plus légère.', 'error');
+          return;
+        }
+        S.pendingMedia = [];
+        render();
+        toast(S.reduceVideoQuality ? 'Traitement de la vidéo (réduction de qualité)…' : 'Traitement de la vidéo…', 'info');
+        var finishVideo = function(dataUrl) {
+          if (!dataUrl) { toast('Impossible de traiter cette vidéo.', 'error'); render(); return; }
+          S.pendingMedia.push(dataUrl);
+          render();
+        };
+        if (S.reduceVideoQuality) {
+          compressVideo(videoFile, finishVideo);
+        } else {
+          var vReader = new FileReader();
+          vReader.onload = function(ev){ finishVideo(ev.target.result); };
+          vReader.onerror = function(){ finishVideo(null); };
+          vReader.readAsDataURL(videoFile);
+        }
+        return;
+      }
+
+      if (hasVideoPending) {
+        toast('Une vidéo est déjà sélectionnée. Retirez-la pour ajouter des photos.', 'error');
+        return;
+      }
+
       var remaining = 10 - S.pendingMedia.length;
-      if (files.length === 0 || remaining <= 0) return;
-      var queue = files.slice(0, remaining).filter(function(f){ return f.type.startsWith('image/'); });
+      if (imageFiles.length === 0 || remaining <= 0) return;
+      var queue = imageFiles.slice(0, remaining);
       function processNext() {
         if (queue.length === 0) return;
         var file = queue.shift();
@@ -4074,6 +4225,10 @@ toggleParticipation: function(postId, status) {
         reader.readAsDataURL(file);
       }
       processNext();
+    },
+    toggleReduceVideoQuality: function() {
+      S.reduceVideoQuality = !S.reduceVideoQuality;
+      render();
     },
     removeMedia: function(i) { S.pendingMedia.splice(i,1); render(); },
     setProfileTab: function(tab) {
