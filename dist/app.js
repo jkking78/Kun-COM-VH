@@ -1336,6 +1336,29 @@
         safeHtml(post.author || '') + ' a partagé la publication de ' + safeHtml(post.originalAuthor || '') +
       '</div>';
     }
+    // Caption text (author + label), shown ABOVE the media — Facebook style
+    var captionTextBlock = (!post.postBg && (captionHtml || (post.type === 'REPOST' && post.originalCaption && !post.originalPostBg)))
+      ? '<div style="padding:0 14px 10px;">' +
+          (post.type === 'REPOST' && post.originalCaption && !post.originalPostBg ? '<p style="font-size:14px;color:#000;margin:0 0 4px;line-height:1.45;"><strong>' + safeHtml(post.originalAuthor || '') + '</strong> ' + safeHtml(post.originalCaption) + '</p>' : '') +
+          (captionHtml ? '<p style="font-size:14px;color:#000;margin:0;line-height:1.45;"><strong>' + safeHtml(post.author||'') + '</strong> ' + captionHtml + '</p>' : '') +
+        '</div>'
+      : '';
+
+    // Comments link + timestamp, stays below the media/actions
+    var metaFooterBlock =
+      (!post.postBg ? '<div style="padding:0 14px 10px;">' +
+        ((post.comments || []).length > 0
+          ? '<button onclick="App.openComments(\''+post.id+'\')" style="background:none;border:none;padding:0;font-size:13.5px;color:#8E8E93;cursor:pointer;">Voir les '+(post.comments || []).length+' commentaire'+((post.comments || []).length>1?'s':'')+'</button>'
+          : '<button onclick="App.openComments(\''+post.id+'\')" style="background:none;border:none;padding:0;font-size:13.5px;color:#8E8E93;cursor:pointer;">Ajouter un commentaire…</button>'
+        ) +
+        '<div style="font-size:11px;color:#C7C7CC;margin-top:4px;text-transform:uppercase;letter-spacing:0.5px;">' + ago + '</div>' +
+      '</div>' : '') +
+      // For bg posts: show timestamp and comment button below the card
+      (post.postBg ? '<div style="padding:2px 14px 10px;display:flex;justify-content:space-between;align-items:center;">' +
+        '<button onclick="App.openComments(\'' + post.id + '\')" style="background:none;border:none;padding:0;font-size:13.5px;color:#8E8E93;cursor:pointer;">' + ((post.comments || []).length>0?'Voir les '+(post.comments || []).length+' commentaire'+((post.comments || []).length>1?'s':''):' Ajouter un commentaire…') + '</button>' +
+        '<div style="font-size:11px;color:#C7C7CC;text-transform:uppercase;letter-spacing:0.5px;">' + ago + '</div>' +
+      '</div>' : '');
+
     var finalHtml = '<article id="post-'+post.id+'" style="background:#FFF;margin-bottom:10px;">' +
       repostBanner +
       pinnedBadge +
@@ -1349,7 +1372,7 @@
           var pColor = (pAuthor && pAuthor.avatar_color) ? pAuthor.avatar_color : (post.avatarColor || '#007AFF');
           var pInitial = (pAuthor && pAuthor.prenom) ? pAuthor.prenom.charAt(0).toUpperCase() : (post.authorAvatar || 'M');
           var pName = (pAuthor && pAuthor.prenom && pAuthor.nom) ? (pAuthor.prenom + ' ' + pAuthor.nom) : (post.author || 'Membre');
-          
+
           var avatarNode = pAvatarUrl
             ? '<img src="' + pAvatarUrl + '" style="width:40px;height:40px;border-radius:20px;object-fit:cover;flex-shrink:0;" />'
             : '<div style="width:40px;height:40px;border-radius:20px;background:linear-gradient(135deg,' + pColor + ',#0040CC);color:#FFF;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + pInitial + '</div>';
@@ -1367,6 +1390,7 @@
         '</div>' +
         '<button onclick="App.openOptions(\'' + post.id + '\')" style="background:#F2F2F7;border:none;width:32px;height:32px;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' + SVG.dots + '</button>' +
       '</div>' +
+      captionTextBlock +
       contentZone +
       // Actions row
       '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px 6px;">' +
@@ -1385,21 +1409,7 @@
         '</div>' +
       '</div>' +
 
-      // Caption (hidden for bg posts — text is shown on the card itself)
-      (!post.postBg ? '<div style="padding:0 14px 10px;">' +
-        (post.type === 'REPOST' && post.originalCaption && !post.originalPostBg ? '<p style="font-size:14px;color:#000;margin:0 0 4px;line-height:1.45;"><strong>' + safeHtml(post.originalAuthor || '') + '</strong> ' + safeHtml(post.originalCaption) + '</p>' : '') +
-        (captionHtml ? '<p style="font-size:14px;color:#000;margin:0;line-height:1.45;"><strong>' + safeHtml(post.author||'') + '</strong> ' + captionHtml + '</p>' : '') +
-        ((post.comments || []).length > 0
-          ? '<button onclick="App.openComments(\''+post.id+'\')" style="background:none;border:none;padding:0;margin-top:5px;font-size:13.5px;color:#8E8E93;cursor:pointer;">Voir les '+(post.comments || []).length+' commentaire'+((post.comments || []).length>1?'s':'')+'</button>'
-          : '<button onclick="App.openComments(\''+post.id+'\')" style="background:none;border:none;padding:0;margin-top:5px;font-size:13.5px;color:#8E8E93;cursor:pointer;">Ajouter un commentaire…</button>'
-        ) +
-        '<div style="font-size:11px;color:#C7C7CC;margin-top:4px;text-transform:uppercase;letter-spacing:0.5px;">' + ago + '</div>' +
-      '</div>' : '') +
-      // For bg posts: show timestamp and comment button below the card
-      (post.postBg ? '<div style="padding:2px 14px 10px;display:flex;justify-content:space-between;align-items:center;">' +
-        '<button onclick="App.openComments(\'' + post.id + '\')" style="background:none;border:none;padding:0;font-size:13.5px;color:#8E8E93;cursor:pointer;">' + ((post.comments || []).length>0?'Voir les '+(post.comments || []).length+' commentaire'+((post.comments || []).length>1?'s':''):' Ajouter un commentaire…') + '</button>' +
-        '<div style="font-size:11px;color:#C7C7CC;text-transform:uppercase;letter-spacing:0.5px;">' + ago + '</div>' +
-      '</div>' : '') +
+      metaFooterBlock +
 
     '</article>';
     return finalHtml;
