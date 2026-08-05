@@ -20,6 +20,9 @@
   };
 
   var DB_CACHE = {};
+  // Empêche la boucle infinie focus->render->focus quand on refocus programmatiquement
+  // un input recréé par un render() complet (le nouvel input déclenche son propre onfocus).
+  var _restoringSearchFocus = false;
 
   // ============================================================
   // INSTAGRAM-STYLE TARGETED NOTIFICATION SYSTEM
@@ -3513,6 +3516,7 @@ toggleParticipation: function(postId, status) {
       // Debounced render (préserve la saisie ET le focus/curseur du champ)
       if (this._searchTimer) clearTimeout(this._searchTimer);
       this._searchTimer = setTimeout(function(){
+        _restoringSearchFocus = true;
         render();
         var input = document.getElementById('searchInput');
         if (input) {
@@ -3520,11 +3524,14 @@ toggleParticipation: function(postId, status) {
           var len = input.value.length;
           try { input.setSelectionRange(len, len); } catch(e) {}
         }
+        _restoringSearchFocus = false;
       }, 250);
     },
     setSearchFocused: function(v) {
+      if (_restoringSearchFocus) return; // ignore les événements focus/blur déclenchés par le re-render lui-même
       if (v) {
         S.searchFocused = true;
+        _restoringSearchFocus = true;
         render();
         var input = document.getElementById('searchInput');
         if (input) {
@@ -3532,6 +3539,7 @@ toggleParticipation: function(postId, status) {
           var len = input.value.length;
           try { input.setSelectionRange(len, len); } catch(e) {}
         }
+        _restoringSearchFocus = false;
       } else {
         // Petit délai pour laisser le clic sur "Voir tous les membres" s'exécuter avant de masquer le bandeau
         setTimeout(function(){ S.searchFocused = false; render(); }, 180);
