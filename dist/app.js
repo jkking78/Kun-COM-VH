@@ -6,7 +6,7 @@
 
 (function() {
   'use strict';
-  console.log('🚀 Kun COM VH v3.0 — Démarrage...');
+  console.log('🚀 Commit VH v3.0 — Démarrage...');
 
   // ============================================================
   // STOCKAGE
@@ -440,7 +440,8 @@
     repostPostId: null,
     pendingCommentImage: null,
     showAllLinks: false,
-    reduceVideoQuality: true
+    reduceVideoQuality: true,
+    pendingVideoPoster: null
 };
 
   // ============================================================
@@ -628,6 +629,40 @@
         passthrough();
       }
     };
+  }
+
+  // Génère une image d'aperçu (poster) à partir d'une vidéo, en capturant une image
+  // à un instant proche du début. Utilisé pour éviter l'écran noir avant lecture.
+  function generateVideoPoster(videoDataUrl, callback) {
+    if (!videoDataUrl) { callback(null); return; }
+    try {
+      var v = document.createElement('video');
+      v.muted = true;
+      v.playsInline = true;
+      v.preload = 'auto';
+      v.src = videoDataUrl;
+      var done = false;
+      function finish(poster) { if (done) return; done = true; callback(poster); }
+      function capture() {
+        try {
+          var c = document.createElement('canvas');
+          c.width = v.videoWidth || 320;
+          c.height = v.videoHeight || 320;
+          var ctx = c.getContext('2d');
+          ctx.drawImage(v, 0, 0, c.width, c.height);
+          finish(c.toDataURL('image/jpeg', 0.72));
+        } catch (e) { finish(null); }
+      }
+      v.onloadeddata = function() {
+        try {
+          var t = Math.min(0.2, (v.duration || 1) / 4);
+          if (t > 0) { v.currentTime = t; } else { capture(); }
+        } catch (e) { capture(); }
+      };
+      v.onseeked = function() { capture(); };
+      v.onerror = function() { finish(null); };
+      setTimeout(function() { finish(null); }, 4000);
+    } catch (e) { callback(null); }
   }
 
     function getUserSections(u) {
@@ -936,7 +971,7 @@
           '<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' +
         '</div>' +
         '<div style="font-size:11px;font-weight:800;color:#007AFF;text-transform:uppercase;letter-spacing:2px;margin-bottom:6px;">Église Vase d\'Honneur</div>' +
-        '<h1 style="font-size:32px;font-weight:900;color:#000;margin:0;letter-spacing:-1px;">Kun COM</h1>' +
+        '<h1 style="font-size:32px;font-weight:900;color:#000;margin:0;letter-spacing:-1px;">Commit</h1>' +
         '<p style="font-size:14px;color:#8E8E93;margin:6px 0 0;">Département Communication</p>' +
       '</div>' +
 
@@ -1003,7 +1038,7 @@
           '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>' +
         '</button>' +
         '<div><p style="font-size:11px;font-weight:800;color:#007AFF;text-transform:uppercase;letter-spacing:1.5px;margin:0;">Créer un compte</p>' +
-        '<h1 style="font-size:22px;font-weight:900;color:#000;margin:0;">Rejoindre Kun COM</h1></div>' +
+        '<h1 style="font-size:22px;font-weight:900;color:#000;margin:0;">Rejoindre Commit</h1></div>' +
       '</div>' +
 
       '<form onsubmit="event.preventDefault(); App.signup(event);" style="display:flex;flex-direction:column;gap:12px;">' +
@@ -1273,7 +1308,7 @@
       '<div style="display:flex;justify-content:space-between;align-items:center;padding:13px 16px 8px;">' +
         '<div>' +
           '<div style="font-size:10px;font-weight:800;color:#007AFF;text-transform:uppercase;letter-spacing:1.5px;">Église Vase d\'Honneur</div>' +
-          '<h1 style="font-size:22px;font-weight:900;color:#000;margin:0;letter-spacing:-0.5px;">Kun COM</h1>' +
+          '<h1 style="font-size:22px;font-weight:900;color:#000;margin:0;letter-spacing:-0.5px;">Commit</h1>' +
         '</div>' +
         '<div style="display:flex;gap:8px;align-items:center;">' +
           (function(){
@@ -1385,6 +1420,13 @@
     var likeCount = Array.isArray(post.likedBy) ? post.likedBy.length : (post.likes || 0);
     var postAuthorUser = db(SK.USERS, []).find(function(u){ return u.id === post.userId; });
     var postAuthorRoleLabel = roleLabel(postAuthorUser ? postAuthorUser.role : null);
+    // Section du PROFIL de l'auteur (affichée dans l'en-tête) — différente du topic
+    // détecté par hashtag sur la publication (affiché près des icônes like/commentaire/partage).
+    var authorSecId = getUserSections(postAuthorUser)[0];
+    var authorSecObj = SECTIONS.find(function(s){ return s.id === authorSecId; });
+    var authorSecEmoji = authorSecObj ? authorSecObj.emoji : '🎥';
+    var authorSecColor = authorSecObj ? authorSecObj.color : '#007AFF';
+    var authorSecNom = authorSecObj ? authorSecObj.nom : 'Membre';
 
     // Caption truncation (Instagram style: max 3 lines)
     var fullCaption = post.caption || '';
@@ -1410,7 +1452,7 @@
         '<div id="car-'+post.id+'" onscroll="App.carScroll(\''+post.id+'\',this)" ondblclick="App.doubleTapLike(\''+post.id+'\')" style="display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;aspect-ratio:1/1;scrollbar-width:none;">' +
           post.mediaUrls.map(function(url) {
             var mediaTag = isVideoUrl(url)
-              ? '<video src="'+url+'" controls playsinline preload="metadata" style="width:100%;height:100%;object-fit:cover;display:block;aspect-ratio:1/1;"></video>'
+              ? '<video src="'+url+'"' + (post.videoPoster ? ' poster="'+post.videoPoster+'"' : '') + ' controls playsinline preload="metadata" style="width:100%;height:100%;object-fit:cover;display:block;aspect-ratio:1/1;background:#000;"></video>'
               : '<img src="'+url+'" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;aspect-ratio:1/1;"/>';
             return '<div style="flex:0 0 100%;scroll-snap-align:start;">'+mediaTag+'</div>';
           }).join('') +
@@ -1589,7 +1631,7 @@
            if (origMedia.length > 0) {
              contentZone = '<div style="padding:0;">' + origMedia.map(function(url){
                return isVideoUrl(url)
-                 ? '<video src="' + url + '" controls playsinline preload="metadata" style="width:100%;display:block;"></video>'
+                 ? '<video src="' + url + '"' + (post.originalVideoPoster ? ' poster="'+post.originalVideoPoster+'"' : '') + ' controls playsinline preload="metadata" style="width:100%;display:block;background:#000;"></video>'
                  : '<img src="' + url + '" style="width:100%;display:block;" />';
              }).join('') + '</div>';
            } else if (post.originalPostBg) {
@@ -1609,7 +1651,7 @@
     var captionTextBlock = (!post.postBg && (captionHtml || (post.type === 'REPOST' && post.originalCaption && !post.originalPostBg)))
       ? '<div style="padding:0 14px 10px;">' +
           (post.type === 'REPOST' && post.originalCaption && !post.originalPostBg ? '<p style="font-size:14px;color:#000;margin:0 0 4px;line-height:1.45;"><strong>' + safeHtml(post.originalAuthor || '') + '</strong> ' + safeHtml(post.originalCaption) + '</p>' : '') +
-          (captionHtml ? '<p style="font-size:14px;color:#000;margin:0;line-height:1.45;"><strong>' + safeHtml(post.author||'') + '</strong> ' + captionHtml + '</p>' : '') +
+          (captionHtml ? '<p style="font-size:14px;color:#000;margin:0;line-height:1.45;">' + captionHtml + '</p>' : '') +
         '</div>'
       : '';
 
@@ -1652,7 +1694,7 @@
               '<div style="font-size:13.5px;font-weight:700;color:#000;">' + safeHtml(pName) + '</div>';
         })() +
             '<div style="font-size:11.5px;color:#8E8E93;display:flex;align-items:center;gap:4px;flex-wrap:wrap;">' +
-              '<span style="color:' + sec.color + ';font-weight:600;">' + sec.emoji + ' ' + (post.sectionNom||'') + '</span>' +
+              '<span style="color:' + authorSecColor + ';font-weight:600;">' + authorSecEmoji + ' ' + authorSecNom + '</span>' +
               '<span>·</span><span>' + postAuthorRoleLabel + '</span>' +
               '<span>·</span><span>' + ago + '</span>' + (post.is_edited ? '<span style="font-style:italic;color:#8E8E93;margin-left:4px;">(modifié)</span>' : '') +
             '</div>' +
@@ -1668,6 +1710,7 @@
           '<button id="likeBtn-'+post.id+'" onclick="App.like(\''+post.id+'\')" style="background:none;border:none;padding:2px;cursor:pointer;display:flex;align-items:center;transition:transform 0.1s;" onmousedown="this.style.transform=\'scale(0.85)\'" onmouseup="this.style.transform=\'scale(1)\'">' + SVG.heart(iLiked, 26) + '</button>' +
           '<button onclick="App.openComments(\''+post.id+'\')" style="background:none;border:none;padding:2px;cursor:pointer;display:flex;align-items:center;">' + SVG.comment + '</button>' +
           '<button onclick="App.openRepostModal(\''+post.id+'\')" style="background:none;border:none;padding:2px;cursor:pointer;display:flex;align-items:center;">' + SVG.share + '</button>' +
+          '<span style="font-size:11px;font-weight:700;color:' + sec.color + ';background:' + sec.color + '18;padding:4px 10px;border-radius:10px;margin-left:2px;">' + sec.emoji + ' ' + (post.sectionNom||'Général') + '</span>' +
         '</div>' +
         '<button id="saveBtn-'+post.id+'" onclick="App.save(\''+post.id+'\')" style="background:none;border:none;padding:2px;cursor:pointer;display:flex;align-items:center;">' + SVG.bookmark(iSaved) + '</button>' +
       '</div>' +
@@ -1859,7 +1902,7 @@
           var isVid = isVideoUrl(url);
           return '<div style="position:relative;flex-shrink:0;width:72px;height:72px;border-radius:12px;overflow:hidden;border:2px solid #E5E5EA;background:#000;">' +
             (isVid
-              ? '<video src="'+url+'" muted style="width:100%;height:100%;object-fit:cover;"></video><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;"><svg width="22" height="22" viewBox="0 0 24 24" fill="rgba(255,255,255,0.9)"><path d="M8 5v14l11-7z"/></svg></div>'
+              ? '<video src="'+url+'"' + (S.pendingVideoPoster ? ' poster="'+S.pendingVideoPoster+'"' : '') + ' muted style="width:100%;height:100%;object-fit:cover;"></video><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;"><svg width="22" height="22" viewBox="0 0 24 24" fill="rgba(255,255,255,0.9)"><path d="M8 5v14l11-7z"/></svg></div>'
               : '<img src="'+url+'" style="width:100%;height:100%;object-fit:cover;">') +
             '<button type="button" onclick="App.removeMedia('+i+')" style="position:absolute;top:3px;right:3px;background:rgba(0,0,0,0.7);border:none;border-radius:8px;width:18px;height:18px;color:#FFF;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:900;">×</button>' +
           '</div>';
@@ -2025,7 +2068,7 @@
             '</div>' +
             (previewMedia
               ? (isVideoUrl(previewMedia)
-                  ? '<video src="'+previewMedia+'" muted preload="metadata" style="width:100%;max-height:220px;object-fit:cover;display:block;"></video>'
+                  ? '<video src="'+previewMedia+'"' + (post.videoPoster ? ' poster="'+post.videoPoster+'"' : '') + ' muted preload="metadata" style="width:100%;max-height:220px;object-fit:cover;display:block;background:#000;"></video>'
                   : '<img src="'+previewMedia+'" style="width:100%;max-height:220px;object-fit:cover;display:block;">')
               : (post.postBg
                   ? '<div style="min-height:100px;display:flex;align-items:center;justify-content:center;padding:20px;background:' + post.postBg + ';"><p style="color:#FFF;font-size:15px;font-weight:800;text-align:center;margin:0;">' + safeHtml(previewCaption.slice(0,140)) + '</p></div>'
@@ -2046,7 +2089,7 @@
           var isVid = isVideoUrl(url);
           return '<div style="position:relative;flex-shrink:0;width:72px;height:72px;border-radius:12px;overflow:hidden;border:2px solid #E5E5EA;background:#000;">' +
             (isVid
-              ? '<video src="'+url+'" muted style="width:100%;height:100%;object-fit:cover;"></video><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;"><svg width="22" height="22" viewBox="0 0 24 24" fill="rgba(255,255,255,0.9)"><path d="M8 5v14l11-7z"/></svg></div>'
+              ? '<video src="'+url+'"' + (S.pendingVideoPoster ? ' poster="'+S.pendingVideoPoster+'"' : '') + ' muted style="width:100%;height:100%;object-fit:cover;"></video><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;"><svg width="22" height="22" viewBox="0 0 24 24" fill="rgba(255,255,255,0.9)"><path d="M8 5v14l11-7z"/></svg></div>'
               : '<img src="'+url+'" style="width:100%;height:100%;object-fit:cover;">') +
             '<button type="button" onclick="App.removeMedia('+i+')" style="position:absolute;top:3px;right:3px;background:rgba(0,0,0,0.7);border:none;border-radius:8px;width:18px;height:18px;color:#FFF;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:900;">×</button>' +
           '</div>';
@@ -2871,7 +2914,7 @@
           var isVid = isVideoUrl(mediaUrl);
           return '<div style="aspect-ratio:1;overflow:hidden;cursor:pointer;position:relative;background:#000;" onclick="App.viewPost(\'' + p.id + '\')">' +
             (isVid
-              ? '<video src="' + mediaUrl + '" muted preload="metadata" style="width:100%;height:100%;object-fit:cover;"></video><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;"><svg width="26" height="26" viewBox="0 0 24 24" fill="rgba(255,255,255,0.9)"><path d="M8 5v14l11-7z"/></svg></div>'
+              ? '<video src="' + mediaUrl + '"' + (p.videoPoster ? ' poster="'+p.videoPoster+'"' : '') + ' muted preload="metadata" style="width:100%;height:100%;object-fit:cover;"></video><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;"><svg width="26" height="26" viewBox="0 0 24 24" fill="rgba(255,255,255,0.9)"><path d="M8 5v14l11-7z"/></svg></div>'
               : '<img src="' + mediaUrl + '" style="width:100%;height:100%;object-fit:cover;" />') +
           '</div>';
         }).join('') +
@@ -3990,6 +4033,7 @@ toggleParticipation: function(postId, status) {
         originalCaption: post.caption || '',
         originalMediaUrls: (post.mediaUrls || []).slice(),
         originalPostBg: post.postBg || null,
+        originalVideoPoster: post.videoPoster || null,
         caption: txt, mediaUrls: [], postBg: null,
         likes: 0, likedBy: [], comments: [],
         visibility: 'all', targetSections: []
@@ -4011,7 +4055,7 @@ toggleParticipation: function(postId, status) {
       var post = posts.find(function(p){ return p.id===postId; });
       var txt = post ? (post.caption||'').slice(0,100) : '';
       if (navigator.share) {
-        navigator.share({ title:'Kun COM VH', text:txt, url:location.href }).catch(function(){});
+        navigator.share({ title:'Commit VH', text:txt, url:location.href }).catch(function(){});
       } else if (navigator.clipboard) {
         navigator.clipboard.writeText(location.href).then(function(){ toast('Lien copié !', 'success'); });
       } else { toast('Lien copié !', 'success'); }
@@ -4055,6 +4099,7 @@ toggleParticipation: function(postId, status) {
       S.pendingMedia = (p.mediaUrls || []).slice();
       S.postBg = p.postBg || null;
       S.postText = p.caption || '';
+      S.pendingVideoPoster = p.videoPoster || null;
       render();
     },
     closeEditPost: function() {
@@ -4062,6 +4107,7 @@ toggleParticipation: function(postId, status) {
       S.pendingMedia = [];
       S.postBg = null;
       S.postText = '';
+      S.pendingVideoPoster = null;
       render();
     },
     saveEditPost: async function(postId) {
@@ -4077,6 +4123,7 @@ toggleParticipation: function(postId, status) {
       post.visibility = S.postVisibility || 'all';
       post.targetSections = (S.postTargetSections || []).slice();
       post.mediaUrls = S.pendingMedia.slice();
+      post.videoPoster = S.pendingMedia.some(function(m){return isVideoUrl(m);}) ? (S.pendingVideoPoster || null) : null;
       post.postBg = S.pendingMedia.length === 0 ? (S.postBg || null) : null;
 
       var ephEl = document.getElementById('editPostEphemeral');
@@ -4120,11 +4167,12 @@ toggleParticipation: function(postId, status) {
       S.pendingMedia = [];
       S.postBg = null;
       S.postText = '';
+      S.pendingVideoPoster = null;
       render();
       toast('Publication modifiée ! 🎉', 'success');
     },
-    openCreate: function() { S.createOpen=true; S.pendingMedia=[]; render(); setTimeout(function(){ var t=document.getElementById('newPostText'); if(t) t.focus(); },120); },
-    closeCreate: function() { S.createOpen=false; S.pendingMedia=[]; S.hashSuggestions=false; S.postBg=null; S.postText=''; render(); },
+    openCreate: function() { S.createOpen=true; S.pendingMedia=[]; S.pendingVideoPoster=null; render(); setTimeout(function(){ var t=document.getElementById('newPostText'); if(t) t.focus(); },120); },
+    closeCreate: function() { S.createOpen=false; S.pendingMedia=[]; S.hashSuggestions=false; S.postBg=null; S.postText=''; S.pendingVideoPoster=null; render(); },
     onPostInput: function(val) {
       // Préserve le texte tapé à travers les re-render (ex: changement de fond)
       S.postText = val;
@@ -4186,12 +4234,17 @@ toggleParticipation: function(postId, status) {
           return;
         }
         S.pendingMedia = [];
+        S.pendingVideoPoster = null;
         render();
         toast(S.reduceVideoQuality ? 'Traitement de la vidéo (réduction de qualité)…' : 'Traitement de la vidéo…', 'info');
         var finishVideo = function(dataUrl) {
           if (!dataUrl) { toast('Impossible de traiter cette vidéo.', 'error'); render(); return; }
           S.pendingMedia.push(dataUrl);
           render();
+          generateVideoPoster(dataUrl, function(poster) {
+            S.pendingVideoPoster = poster;
+            render();
+          });
         };
         if (S.reduceVideoQuality) {
           compressVideo(videoFile, finishVideo);
@@ -4233,7 +4286,7 @@ toggleParticipation: function(postId, status) {
       S.reduceVideoQuality = !S.reduceVideoQuality;
       render();
     },
-    removeMedia: function(i) { S.pendingMedia.splice(i,1); render(); },
+    removeMedia: function(i) { S.pendingMedia.splice(i,1); if (S.pendingMedia.length === 0) S.pendingVideoPoster = null; render(); },
     setProfileTab: function(tab) {
       S.profileTab = tab;
       render();
@@ -4267,7 +4320,9 @@ toggleParticipation: function(postId, status) {
       var txt = ((document.getElementById('newPostText')||{}).value||'').trim();
       if (!txt && S.pendingMedia.length===0) { toast('Ajoutez du texte ou une photo.', 'error'); return; }
       if (!S.user) { toast('Vous devez être connecté.', 'error'); return; }
-      // Detect section
+      // Detect section (topic de la publication) : "general" si aucun hashtag reconnu.
+      // Ce topic s'affiche désormais près des icônes like/commentaire/partage, pas dans l'en-tête
+      // (l'en-tête affiche la section du profil de l'auteur, voir renderPostCard).
       var secId = 'general';
       var low = txt.toLowerCase();
       for (var i=0;i<SECTIONS.length;i++) {
@@ -4282,6 +4337,7 @@ toggleParticipation: function(postId, status) {
         sectionId: secId, sectionNom: secNom(secId),
         isVedette: false, scoreText: '',
         caption: txt, mediaUrls: S.pendingMedia.slice(),
+        videoPoster: S.pendingMedia.some(function(m){return isVideoUrl(m);}) ? (S.pendingVideoPoster || null) : null,
         postBg: S.pendingMedia.length === 0 ? (S.postBg || null) : null,
         likes: 0, likedBy: [], comments: [],
         visibility: S.postVisibility || 'all',
@@ -4326,7 +4382,7 @@ toggleParticipation: function(postId, status) {
       saveLinksToProfile(newPost.userId, extractLinks(txt), newPost.id);
 
       updateUserActivity('Publication');
-      S.createOpen=false; S.pendingMedia=[]; S.hashSuggestions=false; S.postBg=null; S.postText=''; S.postVisibility='all'; S.postTargetSections=[];
+      S.createOpen=false; S.pendingMedia=[]; S.hashSuggestions=false; S.postBg=null; S.postText=''; S.pendingVideoPoster=null; S.postVisibility='all'; S.postTargetSections=[];
       S.tab = 'home';
       S.q = ''; // Optional: clear search if they were searching
       render();
