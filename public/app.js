@@ -16,7 +16,8 @@
     POSTS: 'kc_posts',
     SESS: 'kc_user',
     SAVED: 'kc_saved',
-    LIKED_COMMENTS: 'kc_liked_comments'
+    LIKED_COMMENTS: 'kc_liked_comments',
+    SECTION_SEEN: 'kc_section_seen'
   };
 
   var DB_CACHE = {};
@@ -1157,16 +1158,23 @@
     }
 
     // Stories
+    var sectionSeen = db(SK.SECTION_SEEN, {});
+    var allPostsForCount = db(SK.POSTS, []);
     var stories = '<div style="background:#FFF;border-bottom:0.5px solid #F2F2F7;padding:10px 0;">' +
       '<div style="display:flex;gap:2px;padding:0 10px;overflow-x:auto;-webkit-overflow-scrolling:touch;">' +
       [{ id:'all', nom:'Tous', emoji:'✨' }].concat(SECTIONS).map(function(s) {
         var sel = S.story === s.id;
         var sc = secColor(s.id) || '#007AFF';
+        var lastSeen = s.id === 'all' ? null : (sectionSeen[s.id] || 0);
+        var cnt = lastSeen === null ? 0 : allPostsForCount.filter(function(p){ return p.sectionId === s.id && (p.timestamp||0) > lastSeen; }).length;
         return '<div onclick="App.story(\'' + s.id + '\')" style="display:flex;flex-direction:column;align-items:center;cursor:pointer;min-width:66px;gap:4px;flex-shrink:0;">' +
-          '<div style="width:58px;height:58px;border-radius:29px;' +
-            (sel ? 'background:linear-gradient(135deg,' + sc + ',#0040CC);box-shadow:0 4px 14px rgba(0,0,0,0.2);' : 'background:#F2F2F7;') +
-            'display:flex;align-items:center;justify-content:center;font-size:24px;transition:all 0.2s;">' +
-            s.emoji +
+          '<div style="position:relative;width:58px;height:58px;">' +
+            '<div style="width:58px;height:58px;border-radius:29px;' +
+              (sel ? 'background:linear-gradient(135deg,' + sc + ',#0040CC);box-shadow:0 4px 14px rgba(0,0,0,0.2);' : 'background:#F2F2F7;') +
+              'display:flex;align-items:center;justify-content:center;font-size:24px;transition:all 0.2s;">' +
+              s.emoji +
+            '</div>' +
+            (cnt > 0 ? '<div style="position:absolute;top:-3px;right:-3px;background:#FF3B30;color:#FFF;font-size:10px;font-weight:800;min-width:18px;height:18px;border-radius:9px;display:flex;align-items:center;justify-content:center;padding:0 4px;box-shadow:0 0 0 2px #FFF;">' + (cnt > 99 ? '99+' : cnt) + '</div>' : '') +
           '</div>' +
           '<span style="font-size:10.5px;font-weight:' + (sel?'800':'400') + ';color:' + (sel?sc:'#8E8E93') + ';text-align:center;white-space:nowrap;">' + s.nom + '</span>' +
         '</div>';
@@ -3511,7 +3519,15 @@ toggleParticipation: function(postId, status) {
 
     // Navigation
     tab: function(t) { S.tab=t; S.createOpen=false; S.commentOpen=false; S.optionsOpen=false; render(); },
-    story: function(s) { S.story=s; S.q=''; render(); },
+    story: function(s) {
+      S.story=s; S.q='';
+      if (s !== 'all') {
+        var seen = db(SK.SECTION_SEEN, {});
+        seen[s] = Date.now();
+        dbSet(SK.SECTION_SEEN, seen);
+      }
+      render();
+    },
     search: function(q) {
       S.q = q;
       // Debounced render (préserve la saisie ET le focus/curseur du champ)
