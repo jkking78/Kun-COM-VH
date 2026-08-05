@@ -119,6 +119,27 @@
     }
   }
 
+  function sendTargetedSectionPostNotifications(post) {
+    if (!post || post.visibility !== 'sections') return;
+    var targetSecs = post.targetSections || [];
+    if (targetSecs.length === 0) return;
+    var allUsers = db(SK.USERS, []);
+    var authorId = S.user ? S.user.id : '';
+    allUsers.forEach(function(u) {
+      if (u.id === authorId) return;
+      var uSecs = u.sections || [];
+      var match = targetSecs.some(function(s){ return uSecs.indexOf(s) !== -1; });
+      if (match) {
+        sendNotificationToUser(u.id, {
+          type: 'POST_SECTION',
+          title: '📢 Nouvelle publication de Pôle',
+          text: (S.user ? S.user.prenom : 'Quelqu\'un') + ' a publié pour votre pôle "' + post.sectionNom + '".',
+          targetId: post.id
+        });
+      }
+    });
+  }
+
 
   // ============================================================
   // SUPABASE REALTIME CLIENT
@@ -414,6 +435,7 @@
     eventSections: [],
     selectedDate: null,
     postBg: null,
+    postText: '',
     profileTab: 'tout'
 };
 
@@ -735,7 +757,7 @@
             ? '<img src="' + u.avatar_url + '" style="width:48px;height:48px;border-radius:24px;object-fit:cover;flex-shrink:0;" />'
             : '<div style="width:48px;height:48px;border-radius:24px;background:linear-gradient(135deg,' + (u.avatar_color||'#007AFF') + ',#0040CC);color:#FFF;font-size:18px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + initial + '</div>';
           var roleLabel = ROLE_LABELS_M[u.role] || '🎥 Membre';
-          var secs = getUserSections(u).map(function(s){ return secNom(s); }).join(' · ');
+          var secs = getUserSections(u).filter(function(s){ return SECTIONS.some(function(x){ return x.id === s; }); }).map(function(s){ return secNom(s); }).join(' · ');
           return '<div onclick="App.closeMembersList();App.openUserProfile(\'' + u.id + '\');" style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:0.5px solid #F7F7F7;cursor:pointer;">' +
             avatarNode +
             '<div style="flex:1;min-width:0;">' +
@@ -1774,10 +1796,10 @@
           (S.pendingMedia.length === 0 && S.postBg
             ? '<div id="bgPreviewZone" style="border-radius:18px;overflow:hidden;margin-bottom:12px;position:relative;min-height:180px;display:flex;align-items:center;justify-content:center;' + (S.postBg.startsWith('url') ? 'background:' + S.postBg + ';background-size:cover;background-position:center;' : 'background:' + S.postBg + ';') + '">' +
                 (S.postBg && !S.postBg.includes('linear-gradient') && !S.postBg.includes('url') ? '<div style="position:absolute;inset:0;background:rgba(0,0,0,0.18);border-radius:18px;"></div>' : '') +
-                '<textarea id="newPostText" oninput="App.onPostInput(this.value)" placeholder="Quoi de neuf ?" style="width:100%;min-height:180px;border:none;background:transparent;font-size:24px;font-weight:900;line-height:1.4;color:#FFF;resize:none;outline:none;box-sizing:border-box;font-family:inherit;text-align:center;padding:24px 20px;text-shadow:0 2px 12px rgba(0,0,0,0.3);position:relative;z-index:1;"></textarea>' +
+                '<textarea id="newPostText" oninput="App.onPostInput(this.value)" placeholder="Quoi de neuf ?" style="width:100%;min-height:180px;border:none;background:transparent;font-size:24px;font-weight:900;line-height:1.4;color:#FFF;resize:none;outline:none;box-sizing:border-box;font-family:inherit;text-align:center;padding:24px 20px;text-shadow:0 2px 12px rgba(0,0,0,0.3);position:relative;z-index:1;">' + safeHtml(S.postText||'') + '</textarea>' +
               '</div>'
             : '<form id="createPostForm" onsubmit="App.submitPost(event)">' +
-                '<textarea id="newPostText" oninput="App.onPostInput(this.value)" placeholder="Quoi de neuf ? Tapez # pour ajouter un hashtag de section..." style="width:100%;min-height:110px;border:none;background:transparent;font-size:15px;line-height:1.5;color:#000;resize:none;outline:none;box-sizing:border-box;font-family:inherit;"></textarea>' +
+                '<textarea id="newPostText" oninput="App.onPostInput(this.value)" placeholder="Quoi de neuf ? Tapez # pour ajouter un hashtag de section..." style="width:100%;min-height:110px;border:none;background:transparent;font-size:15px;line-height:1.5;color:#000;resize:none;outline:none;box-sizing:border-box;font-family:inherit;">' + safeHtml(S.postText||'') + '</textarea>' +
               '</form>'
           ) +
           (S.postBg ? '<form id="createPostForm" onsubmit="App.submitPost(event)" style="display:none;"></form>' : '') +
@@ -2375,7 +2397,9 @@
       : 'background:' + theme.coverGradient + ';';
 
     // ---- Sections badges ----
-    var uSecs = getUserSections(freshU);
+    // On n'affiche que les sections reconnues (évite le badge "Général" fantôme
+    // pour d'anciennes sections supprimées comme Son/Lumière/Montage).
+    var uSecs = getUserSections(freshU).filter(function(s){ return SECTIONS.some(function(x){ return x.id === s; }); });
     var secBadges = uSecs.map(function(s){
       var sc = secColor(s) || '#007AFF';
       return '<span style="background:' + sc + '22;color:' + sc + ';padding:4px 10px;border-radius:12px;font-size:12px;font-weight:800;">' + secNom(s) + '</span>';
@@ -3667,29 +3691,6 @@ toggleParticipation: function(postId, status) {
 
     // Create post
     // Mentions & Privacy
-    onPostInput: function(val) {
-      var match = val.match(/@([\wéèêàâôûîçÉÈÊÀÂÔÛÎÇùÙ]*)$/);
-      var box = document.getElementById('mentionSugg');
-      if (match && box) {
-        var query = match[1].toLowerCase();
-        var users = db(SK.USERS, []).filter(function(u) {
-          var name = ((u.prenom||'') + ' ' + (u.nom||'')).toLowerCase();
-          return name.indexOf(query) !== -1;
-        }).slice(0, 5);
-
-        if (users.length > 0) {
-          box.innerHTML = '<div style="font-size:11px;font-weight:800;color:#007AFF;width:100%;margin-bottom:4px;">Membres à mentionner :</div>' +
-            users.map(function(u) {
-              return '<button type="button" onclick="App.insertMention(\'@' + safeHtml(u.prenom + u.nom) + ' \')" style="background:#EBF5FF;color:#007AFF;border:none;padding:5px 10px;border-radius:12px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:4px;">👤 ' + safeHtml(u.prenom + ' ' + u.nom) + '</button>';
-            }).join('');
-          box.style.display = 'flex';
-        } else {
-          box.style.display = 'none';
-        }
-      } else if (box) {
-        box.style.display = 'none';
-      }
-    },
     insertMention: function(mention) {
       var ta = document.getElementById('newPostText') || document.getElementById('editPostText');
       if (!ta) return;
@@ -3765,12 +3766,39 @@ toggleParticipation: function(postId, status) {
       toast('Publication modifiée ! 🎉', 'success');
     },
     openCreate: function() { S.createOpen=true; S.pendingMedia=[]; render(); setTimeout(function(){ var t=document.getElementById('newPostText'); if(t) t.focus(); },120); },
-    closeCreate: function() { S.createOpen=false; S.pendingMedia=[]; S.hashSuggestions=false; S.postBg=null; render(); },
+    closeCreate: function() { S.createOpen=false; S.pendingMedia=[]; S.hashSuggestions=false; S.postBg=null; S.postText=''; render(); },
     onPostInput: function(val) {
+      // Préserve le texte tapé à travers les re-render (ex: changement de fond)
+      S.postText = val;
+
+      // Suggestions de hashtags
       var words = val.split(/\s/); var last = words[words.length-1];
       var show = last.length > 0 && last.startsWith('#');
-      var box = document.getElementById('hashSugg');
-      if (box) box.style.display = show ? 'flex' : 'none';
+      var hashBox = document.getElementById('hashSugg');
+      if (hashBox) hashBox.style.display = show ? 'flex' : 'none';
+
+      // Suggestions de mentions (@)
+      var match = val.match(/@([\wéèêàâôûîçÉÈÊÀÂÔÛÎÇùÙ]*)$/);
+      var mentionBox = document.getElementById('mentionSugg');
+      if (match && mentionBox) {
+        var query = match[1].toLowerCase();
+        var users = db(SK.USERS, []).filter(function(u) {
+          var name = ((u.prenom||'') + ' ' + (u.nom||'')).toLowerCase();
+          return name.indexOf(query) !== -1;
+        }).slice(0, 5);
+
+        if (users.length > 0) {
+          mentionBox.innerHTML = '<div style="font-size:11px;font-weight:800;color:#007AFF;width:100%;margin-bottom:4px;">Membres à mentionner :</div>' +
+            users.map(function(u) {
+              return '<button type="button" onclick="App.insertMention(\'@' + safeHtml(u.prenom + u.nom) + ' \')" style="background:#EBF5FF;color:#007AFF;border:none;padding:5px 10px;border-radius:12px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:4px;">👤 ' + safeHtml(u.prenom + ' ' + u.nom) + '</button>';
+            }).join('');
+          mentionBox.style.display = 'flex';
+        } else {
+          mentionBox.style.display = 'none';
+        }
+      } else if (mentionBox) {
+        mentionBox.style.display = 'none';
+      }
     },
     insertTag: function(tag) {
       var ta = document.getElementById('newPostText'); if (!ta) return;
@@ -3821,10 +3849,12 @@ toggleParticipation: function(postId, status) {
         'linear-gradient(135deg,#C94B4B,#4B134F)',
         'linear-gradient(135deg,#F7971E,#FFD200)'
       ];
+      var taIdx = document.getElementById('newPostText'); if (taIdx) S.postText = taIdx.value;
       S.postBg = BG_PALETTES[idx] || null;
       render();
     },
     setPostBg: function(bg) {
+      var ta = document.getElementById('newPostText'); if (ta) S.postText = ta.value;
       S.postBg = bg;
       render();
     },
@@ -3883,8 +3913,13 @@ toggleParticipation: function(postId, status) {
         }
       }
 
+      // Notifie automatiquement les membres des sections ciblées
+      if (!newPost.status || newPost.status !== 'scheduled') {
+        sendTargetedSectionPostNotifications(newPost);
+      }
+
       updateUserActivity('Publication');
-      S.createOpen=false; S.pendingMedia=[]; S.hashSuggestions=false; S.postBg=null; S.postVisibility='all'; S.postTargetSections=[];
+      S.createOpen=false; S.pendingMedia=[]; S.hashSuggestions=false; S.postBg=null; S.postText=''; S.postVisibility='all'; S.postTargetSections=[];
       S.tab = 'home';
       S.q = ''; // Optional: clear search if they were searching
       render();
