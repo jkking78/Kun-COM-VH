@@ -635,6 +635,7 @@
 
       if (S.auth === 'login') html = renderLogin();
       else if (S.auth === 'signup') html = renderSignup();
+      else if (S.auth === 'forgot') html = renderForgot();
       else html = renderApp();
     } catch (err) {
       console.error("Critical render error caught, falling back to login:", err);
@@ -762,7 +763,7 @@
   }
 
   function renderLogin() {
-    return '<div style="min-height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:28px 24px;box-sizing:border-box;background:linear-gradient(180deg,#F8F9FF 0%,#FFFFFF 100%);">' +
+    return '<div style="flex:1;min-height:0;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:28px 24px 40px;box-sizing:border-box;background:linear-gradient(180deg,#F8F9FF 0%,#FFFFFF 100%);">' +
     '<div style="width:100%;max-width:360px;">' +
 
       '<div style="text-align:center;margin-bottom:40px;">' +
@@ -777,6 +778,7 @@
       '<form onsubmit="event.preventDefault(); App.login(event);" style="display:flex;flex-direction:column;gap:14px;">' +
         renderField('loginEmail', 'email', 'Adresse e-mail', 'votre.email@eglise.org', 'email') +
         renderField('loginPwd', 'password', 'Mot de passe', '••••••••', 'current-password') +
+        '<div style="text-align:right;margin-top:-6px;"><span onclick="App.nav(\'forgot\')" style="color:#007AFF;font-size:12.5px;font-weight:700;cursor:pointer;">Mot de passe oublié ?</span></div>' +
         '<button type="submit" style="' + btnStyle('#007AFF') + '">Se connecter →</button>' +
       '</form>' +
 
@@ -791,7 +793,7 @@
 
   function renderForgot() {
     if (!S.forgotUser) {
-      return '<div style="min-height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:28px 24px;box-sizing:border-box;background:linear-gradient(180deg,#F8F9FF 0%,#FFFFFF 100%);">' +
+      return '<div style="flex:1;min-height:0;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:28px 24px 40px;box-sizing:border-box;background:linear-gradient(180deg,#F8F9FF 0%,#FFFFFF 100%);">' +
         '<div style="width:100%;max-width:360px;">' +
           '<div style="display:flex;align-items:center;gap:12px;margin-bottom:28px;">' +
             '<button onclick="App.nav(\'login\')" style="background:#F2F2F7;border:none;width:36px;height:36px;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
@@ -806,7 +808,7 @@
           '</form>' +
         '</div></div>';
     } else {
-      return '<div style="min-height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:28px 24px;box-sizing:border-box;background:linear-gradient(180deg,#F8F9FF 0%,#FFFFFF 100%);">' +
+      return '<div style="flex:1;min-height:0;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:28px 24px 40px;box-sizing:border-box;background:linear-gradient(180deg,#F8F9FF 0%,#FFFFFF 100%);">' +
         '<div style="width:100%;max-width:360px;">' +
           '<div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">' +
             '<button onclick="S.forgotUser=null;render();" style="background:#F2F2F7;border:none;width:36px;height:36px;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
@@ -828,7 +830,7 @@
   }
 
   function renderSignup() {
-    return '<div style="min-height:100%;overflow-y:auto;display:flex;flex-direction:column;align-items:center;padding:28px 24px;box-sizing:border-box;background:#FFF;">' +
+    return '<div style="flex:1;min-height:0;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;align-items:center;padding:28px 24px 40px;box-sizing:border-box;background:#FFF;">' +
     '<div style="width:100%;max-width:360px;">' +
 
       '<div style="display:flex;align-items:center;gap:12px;margin-bottom:28px;">' +
@@ -2986,12 +2988,11 @@
       var sections = [
         {id:'cadrage', label:'Cadrage', icon:'🎥'},
         {id:'regie', label:'Régie', icon:'🎛️'},
-        {id:'montage', label:'Montage', icon:'🎬'},
         {id:'web', label:'Web', icon:'🌐'},
-        {id:'son', label:'Son', icon:'🎧'},
+        {id:'proj', label:'Projection', icon:'🖥️'},
+        {id:'prod', label:'Prod', icon:'🎬'},
         {id:'photo', label:'Photo', icon:'📷'},
-        {id:'light', label:'Lumière', icon:'💡'},
-        {id:'proj', label:'Proj', icon:'🖥️'}
+        {id:'vente', label:'Vente', icon:'🛒'}
       ];
       var html = '<div style="display:flex;flex-wrap:wrap;gap:8px;">';
       sections.forEach(function(s) {
