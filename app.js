@@ -472,6 +472,14 @@
   ];
   var HASHTAGS = ['#Cadrage','#Régie','#Web','#Projection','#Prod','#Photo','#Vente','#CulteDuDimanche','#Chorale','#Formation','#Bilan'];
 
+  var ROLE_LABELS = {
+    GRAND_RESPONSABLE: '👑 Grand Resp.',
+    RESP_SECTION: '🎬 Responsable',
+    MEMBRE: '🎥 Membre',
+    STAGIAIRE: '✏️ Stagiaire'
+  };
+  function roleLabel(role) { return ROLE_LABELS[role] || ROLE_LABELS.MEMBRE; }
+
   function secNom(id) { var s = SECTIONS.find(function(x){ return x.id===id; }); return s ? s.nom : 'Général'; }
   function secEmoji(id) { var s = SECTIONS.find(function(x){ return x.id===id; }); return s ? s.emoji : '📢'; }
   function secColor(id) { var s = SECTIONS.find(function(x){ return x.id===id; }); return s ? s.color : '#8E8E93'; }
@@ -729,12 +737,6 @@
   // ============================================================
   function renderMembersModal() {
     if (!S.membersListOpen) return '';
-    var ROLE_LABELS_M = {
-      GRAND_RESPONSABLE: '👑 Grand Resp.',
-      RESP_SECTION: '🎬 Responsable',
-      MEMBRE: '🎥 Membre',
-      STAGIAIRE: '✏️ Stagiaire'
-    };
     var allUsers = db(SK.USERS, []).slice().sort(function(a,b){
       return (a.prenom||'').localeCompare(b.prenom||'', 'fr', {sensitivity:'base'});
     });
@@ -756,7 +758,7 @@
           var avatarNode = u.avatar_url
             ? '<img src="' + u.avatar_url + '" style="width:48px;height:48px;border-radius:24px;object-fit:cover;flex-shrink:0;" />'
             : '<div style="width:48px;height:48px;border-radius:24px;background:linear-gradient(135deg,' + (u.avatar_color||'#007AFF') + ',#0040CC);color:#FFF;font-size:18px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + initial + '</div>';
-          var roleLabel = ROLE_LABELS_M[u.role] || '🎥 Membre';
+          var uRoleLabel = roleLabel(u.role);
           var secs = getUserSections(u).filter(function(s){ return SECTIONS.some(function(x){ return x.id === s; }); }).map(function(s){ return secNom(s); }).join(' · ');
           return '<div onclick="App.closeMembersList();App.openUserProfile(\'' + u.id + '\');" style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:0.5px solid #F7F7F7;cursor:pointer;">' +
             avatarNode +
@@ -764,7 +766,7 @@
               '<div style="font-size:14.5px;font-weight:800;color:#000;">' + safeHtml((u.prenom||'') + ' ' + (u.nom||'')) + '</div>' +
               (secs ? '<div style="font-size:12px;color:#8E8E93;margin-top:2px;">' + safeHtml(secs) + '</div>' : '') +
             '</div>' +
-            '<span style="font-size:11px;font-weight:800;color:#007AFF;background:#F0F6FF;padding:4px 10px;border-radius:10px;white-space:nowrap;flex-shrink:0;">' + roleLabel + '</span>' +
+            '<span style="font-size:11px;font-weight:800;color:#007AFF;background:#F0F6FF;padding:4px 10px;border-radius:10px;white-space:nowrap;flex-shrink:0;">' + uRoleLabel + '</span>' +
           '</div>';
         }).join('');
 
@@ -1240,6 +1242,8 @@
     var ago = timeAgo(post.timestamp);
     var sec = SECTIONS.find(function(s){ return s.id === post.sectionId; }) || { emoji:'📢', color:'#8E8E93' };
     var likeCount = Array.isArray(post.likedBy) ? post.likedBy.length : (post.likes || 0);
+    var postAuthorUser = db(SK.USERS, []).find(function(u){ return u.id === post.userId; });
+    var postAuthorRoleLabel = roleLabel(postAuthorUser ? postAuthorUser.role : null);
 
     // Caption truncation (Instagram style: max 3 lines)
     var fullCaption = post.caption || '';
@@ -1499,8 +1503,9 @@
             '<div>' +
               '<div style="font-size:13.5px;font-weight:700;color:#000;">' + safeHtml(pName) + '</div>';
         })() +
-            '<div style="font-size:11.5px;color:#8E8E93;display:flex;align-items:center;gap:4px;">' +
+            '<div style="font-size:11.5px;color:#8E8E93;display:flex;align-items:center;gap:4px;flex-wrap:wrap;">' +
               '<span style="color:' + sec.color + ';font-weight:600;">' + sec.emoji + ' ' + (post.sectionNom||'') + '</span>' +
+              '<span>·</span><span>' + postAuthorRoleLabel + '</span>' +
               '<span>·</span><span>' + ago + '</span>' + (post.is_edited ? '<span style="font-style:italic;color:#8E8E93;margin-left:4px;">(modifié)</span>' : '') +
             '</div>' +
           '</div>' +
@@ -2290,13 +2295,6 @@
 
     var isMe = S.user && S.user.id === freshU.id;
     var profileTab = S.profileTab || 'tout';
-
-    var ROLE_LABELS = {
-      GRAND_RESPONSABLE: '👑 Grand Resp.',
-      RESP_SECTION: '🎬 Responsable',
-      MEMBRE: '🎥 Membre',
-      STAGIAIRE: '✏️ Stagiaire'
-    };
 
     var ROLE_THEMES = {
       GRAND_RESPONSABLE: {
