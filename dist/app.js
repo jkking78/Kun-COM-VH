@@ -1874,38 +1874,38 @@
       }).join('') +
     '</div>';
 
-    return '<div onclick="App.closeEditPost()" style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:10000;display:flex;justify-content:center;align-items:flex-end;">' +
-      '<div onclick="event.stopPropagation()" style="width:100%;max-width:460px;background:#FFF;border-top-left-radius:28px;border-top-right-radius:28px;max-height:92vh;display:flex;flex-direction:column;animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
+    return '<div onclick="App.closeEditPost()" style="position:fixed;inset:0;background:rgba(15,15,20,0.55);backdrop-filter:blur(2px);z-index:10000;display:flex;justify-content:center;align-items:flex-end;">' +
+      '<div onclick="event.stopPropagation()" style="width:100%;max-width:460px;background:#FFF;border-top-left-radius:32px;border-top-right-radius:32px;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 -8px 40px rgba(0,0,0,0.18);animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
 
         '<div style="display:flex;justify-content:center;padding:10px 0 0;cursor:pointer;" onclick="App.closeEditPost()">' +
-          '<div style="width:40px;height:4px;background:#D1D1D6;border-radius:2px;"></div>' +
+          '<div style="width:38px;height:5px;background:#E2E4E9;border-radius:3px;"></div>' +
         '</div>' +
 
-        '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 18px 10px;border-bottom:0.5px solid #F2F2F7;">' +
-          '<span onclick="App.closeEditPost()" style="font-size:15px;color:#007AFF;cursor:pointer;font-weight:600;">Annuler</span>' +
-          '<h3 style="font-size:16px;font-weight:800;margin:0;color:#000;">Modifier la publication</h3>' +
-          '<button type="button" onclick="App.saveEditPost(\'' + post.id + '\')" style="font-size:15px;color:#007AFF;font-weight:800;background:none;border:none;cursor:pointer;">Enregistrer</button>' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px 12px;">' +
+          '<span onclick="App.closeEditPost()" style="font-size:14.5px;color:#65686F;cursor:pointer;font-weight:700;padding:8px 4px;">Annuler</span>' +
+          '<h3 style="font-size:16px;font-weight:800;margin:0;color:#0B0B0C;letter-spacing:-0.2px;">Modifier la publication</h3>' +
+          '<button type="button" onclick="App.saveEditPost(\'' + post.id + '\')" style="font-size:14px;color:#FFF;font-weight:800;background:linear-gradient(135deg,#007AFF,#0062CC);border:none;border-radius:20px;padding:8px 18px;cursor:pointer;box-shadow:0 4px 12px rgba(0,122,255,0.28);">Enregistrer</button>' +
         '</div>' +
 
-        '<div style="overflow-y:auto;flex:1;padding:16px;">' +
+        '<div style="overflow-y:auto;flex:1;padding:4px 16px 16px;">' +
           hashHtml +
           '<div id="mentionSugg" style="display:none;flex-wrap:wrap;gap:6px;background:#F0F6FF;border:1px solid #CCDEFF;border-radius:14px;padding:10px;margin-bottom:12px;"></div>' +
           previewHtml +
 
           (S.pendingMedia.length === 0 && S.postBg
-            ? '<div id="bgPreviewZone" style="border-radius:18px;overflow:hidden;margin-bottom:14px;position:relative;min-height:180px;display:flex;align-items:center;justify-content:center;' + (S.postBg.startsWith('url') ? 'background:' + S.postBg + ';background-size:cover;background-position:center;' : 'background:' + S.postBg + ';') + '">' +
-                (S.postBg && !S.postBg.includes('linear-gradient') && !S.postBg.includes('url') ? '<div style="position:absolute;inset:0;background:rgba(0,0,0,0.18);border-radius:18px;"></div>' : '') +
+            ? '<div id="bgPreviewZone" style="border-radius:22px;overflow:hidden;margin-bottom:14px;position:relative;min-height:180px;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 20px rgba(0,0,0,0.14);' + (S.postBg.startsWith('url') ? 'background:' + S.postBg + ';background-size:cover;background-position:center;' : 'background:' + S.postBg + ';') + '">' +
+                (S.postBg && !S.postBg.includes('linear-gradient') && !S.postBg.includes('url') ? '<div style="position:absolute;inset:0;background:rgba(0,0,0,0.18);border-radius:22px;"></div>' : '') +
                 '<textarea id="editPostText" oninput="App.onPostInput(this.value)" placeholder="Modifiez votre texte..." style="width:100%;min-height:180px;border:none;background:transparent;font-size:24px;font-weight:900;line-height:1.4;color:#FFF;resize:none;outline:none;box-sizing:border-box;font-family:inherit;text-align:center;padding:24px 20px;text-shadow:0 2px 12px rgba(0,0,0,0.3);position:relative;z-index:1;">' + safeHtml(S.postText||'') + '</textarea>' +
               '</div>'
-            : '<textarea id="editPostText" oninput="App.onPostInput(this.value)" placeholder="Modifiez votre texte... Tapez @ pour mentionner un membre..." style="width:100%;min-height:120px;border:1px solid #E5E5EA;border-radius:14px;padding:12px;font-size:15px;line-height:1.5;color:#000;resize:none;outline:none;box-sizing:border-box;font-family:inherit;margin-bottom:14px;">' + safeHtml(S.postText||'') + '</textarea>'
+            : '<textarea id="editPostText" oninput="App.onPostInput(this.value)" placeholder="Modifiez votre texte... Tapez @ pour mentionner un membre..." style="width:100%;min-height:120px;border:none;background:#F6F7F9;border-radius:18px;padding:14px;font-size:15.5px;line-height:1.55;color:#0B0B0C;resize:none;outline:none;box-sizing:border-box;font-family:inherit;margin-bottom:14px;">' + safeHtml(S.postText||'') + '</textarea>'
           ) +
 
           '<!-- Confidentialité -->' +
-          '<div style="background:#FAFAFA;border-radius:16px;padding:14px;margin-bottom:14px;border:1px solid #E5E5EA;">' +
-            '<label style="font-size:13px;font-weight:800;color:#000;display:block;margin-bottom:8px;">🔒 Qui peut voir cette publication ?</label>' +
-            '<div style="display:flex;gap:8px;margin-bottom:10px;">' +
-              '<button type="button" onclick="App.setPostVisibility(\'all\')" style="flex:1;padding:8px;border-radius:10px;font-size:12px;font-weight:700;border:none;cursor:pointer;background:' + (vis==='all'?'#007AFF':'#FFF') + ';color:' + (vis==='all'?'#FFF':'#3A3A3C') + ';box-shadow:0 1px 3px rgba(0,0,0,0.1);">🌍 Tout le monde</button>' +
-              '<button type="button" onclick="App.setPostVisibility(\'sections\')" style="flex:1;padding:8px;border-radius:10px;font-size:12px;font-weight:700;border:none;cursor:pointer;background:' + (vis==='sections'?'#007AFF':'#FFF') + ';color:' + (vis==='sections'?'#FFF':'#3A3A3C') + ';box-shadow:0 1px 3px rgba(0,0,0,0.1);">🔒 Sections ciblées</button>' +
+          '<div style="background:#F6F7F9;border-radius:20px;padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
+            '<span style="font-size:13px;font-weight:800;color:#0B0B0C;display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="width:26px;height:26px;border-radius:13px;background:#EAF2FF;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">🔒</span>Qui peut voir cette publication ?</span>' +
+            '<div style="display:flex;gap:4px;background:#EAEBEF;border-radius:16px;padding:3px;">' +
+              '<button type="button" onclick="App.setPostVisibility(\'all\')" style="flex:1;padding:8px 6px;border-radius:13px;font-size:11.5px;font-weight:800;border:none;cursor:pointer;transition:all 0.2s;background:' + (vis==='all'?'#FFFFFF':'transparent') + ';color:' + (vis==='all'?'#007AFF':'#6B7280') + ';box-shadow:' + (vis==='all'?'0 2px 6px rgba(0,0,0,0.08)':'none') + ';">🌍 Tout le monde</button>' +
+              '<button type="button" onclick="App.setPostVisibility(\'sections\')" style="flex:1;padding:8px 6px;border-radius:13px;font-size:11.5px;font-weight:800;border:none;cursor:pointer;transition:all 0.2s;background:' + (vis==='sections'?'#FFFFFF':'transparent') + ';color:' + (vis==='sections'?'#007AFF':'#6B7280') + ';box-shadow:' + (vis==='sections'?'0 2px 6px rgba(0,0,0,0.08)':'none') + ';">🔒 Sections ciblées</button>' +
             '</div>' +
             (vis === 'sections'
               ? '<div style="margin-top:10px;">' +
@@ -1916,28 +1916,28 @@
           '</div>' +
 
           '<!-- Programmation -->' +
-          '<div style="background:#FAFAFA;border-radius:16px;padding:14px;margin-bottom:14px;border:1px solid #E5E5EA;">' +
-            '<label style="font-size:13px;font-weight:800;color:#000;display:block;margin-bottom:8px;">⏰ Programmer la publication</label>' +
+          '<div style="background:#F6F7F9;border-radius:20px;padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
+            '<span style="font-size:13px;font-weight:800;color:#0B0B0C;display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="width:26px;height:26px;border-radius:13px;background:#FFF3E5;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">⏰</span>Programmer la publication</span>' +
             '<div style="display:flex;gap:8px;">' +
-              '<input type="date" id="editPostScheduleDate" value="' + schedDateVal + '" style="flex:1;height:40px;border-radius:10px;border:1px solid #E5E5EA;background:#FFF;padding:0 10px;font-size:13px;outline:none;" />' +
-              '<input type="time" id="editPostScheduleTime" value="' + schedTimeVal + '" style="flex:1;height:40px;border-radius:10px;border:1px solid #E5E5EA;background:#FFF;padding:0 10px;font-size:13px;outline:none;" />' +
+              '<input type="date" id="editPostScheduleDate" value="' + schedDateVal + '" style="flex:1;height:40px;border-radius:12px;border:none;background:#FFF;padding:0 10px;font-size:12.5px;outline:none;box-shadow:0 1px 2px rgba(16,24,40,0.06);" />' +
+              '<input type="time" id="editPostScheduleTime" value="' + schedTimeVal + '" style="flex:1;height:40px;border-radius:12px;border:none;background:#FFF;padding:0 10px;font-size:12.5px;outline:none;box-shadow:0 1px 2px rgba(16,24,40,0.06);" />' +
             '</div>' +
           '</div>' +
 
           '<!-- Éphémère -->' +
-          '<div style="background:#FAFAFA;border-radius:16px;padding:14px;border:1px solid #E5E5EA;">' +
+          '<div style="background:#F6F7F9;border-radius:20px;padding:14px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
             '<div style="display:flex;align-items:center;justify-content:space-between;">' +
-              '<div style="display:flex;align-items:center;gap:8px;">' +
-                '<span style="font-size:18px;">🕐</span>' +
+              '<div style="display:flex;align-items:center;gap:10px;">' +
+                '<span style="width:26px;height:26px;border-radius:13px;background:#FFEDE0;display:inline-flex;align-items:center;justify-content:center;font-size:14px;">🕐</span>' +
                 '<div>' +
-                  '<div style="font-size:13px;font-weight:700;color:#000;">Publication éphémère</div>' +
+                  '<div style="font-size:13px;font-weight:800;color:#0B0B0C;">Publication éphémère</div>' +
                   '<div style="font-size:11px;color:#8E8E93;">Disparaît automatiquement après 24h</div>' +
                 '</div>' +
               '</div>' +
-              '<label style="position:relative;display:inline-block;width:50px;height:30px;">' +
-                '<input type="checkbox" id="editPostEphemeral" ' + (post.is_ephemeral ? 'checked' : '') + ' style="opacity:0;width:0;height:0;" onchange="this.nextElementSibling.style.background=this.checked?\'#FF9500\':\'#E5E5EA\'; this.nextElementSibling.children[0].style.transform=this.checked?\'translateX(20px)\':\'translateX(0)\';"/>' +
-                '<span style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:' + (post.is_ephemeral?'#FF9500':'#E5E5EA') + ';transition:.3s;border-radius:30px;">' +
-                  '<span style="position:absolute;content:\'\';height:26px;width:26px;left:2px;bottom:2px;background-color:white;transition:.3s;border-radius:50%;box-shadow:0 2px 4px rgba(0,0,0,0.2);transform:' + (post.is_ephemeral?'translateX(20px)':'translateX(0)') + ';"></span>' +
+              '<label style="position:relative;display:inline-block;width:48px;height:28px;flex-shrink:0;">' +
+                '<input type="checkbox" id="editPostEphemeral" ' + (post.is_ephemeral ? 'checked' : '') + ' style="opacity:0;width:0;height:0;" onchange="this.nextElementSibling.style.background=this.checked?\'#FF9500\':\'#DADCE1\'; this.nextElementSibling.children[0].style.transform=this.checked?\'translateX(20px)\':\'translateX(0)\';"/>' +
+                '<span style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:' + (post.is_ephemeral?'#FF9500':'#DADCE1') + ';transition:.25s;border-radius:28px;">' +
+                  '<span style="position:absolute;content:\'\';height:22px;width:22px;left:3px;bottom:3px;background-color:white;transition:.25s;border-radius:50%;box-shadow:0 2px 4px rgba(0,0,0,0.2);transform:' + (post.is_ephemeral?'translateX(20px)':'translateX(0)') + ';"></span>' +
                 '</span>' +
               '</label>' +
             '</div>' +
@@ -1945,11 +1945,11 @@
 
         '</div>' +
 
-        '<div style="border-top:0.5px solid #F2F2F7;padding:10px 16px;">' +
+        '<div style="padding:4px 16px 14px;">' +
           (S.pendingMedia.length === 0
-            ? '<div style="display:flex;gap:8px;align-items:center;overflow-x:auto;padding-bottom:8px;scrollbar-width:none;">' +
-                '<span style="font-size:11px;font-weight:700;color:#8E8E93;flex-shrink:0;">Fond :</span>' +
-                '<div onclick="App.setPostBg(null)" style="width:28px;height:28px;border-radius:14px;background:#FFF;border:2px solid ' + (S.postBg===null?'#007AFF':'#E5E5EA') + ';cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;">Aa</div>' +
+            ? '<div style="display:flex;gap:8px;align-items:center;overflow-x:auto;padding:2px 0 10px;scrollbar-width:none;">' +
+                '<span style="font-size:11px;font-weight:700;color:#9AA0A8;flex-shrink:0;">Fond</span>' +
+                '<div onclick="App.setPostBg(null)" style="width:30px;height:30px;border-radius:15px;background:#FFF;border:2px solid ' + (S.postBg===null?'#007AFF':'#E5E5EA') + ';cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;font-weight:700;color:#3A3A3C;">Aa</div>' +
                 [
                   'linear-gradient(135deg,#1A1A2E,#16213E)',
                   'linear-gradient(135deg,#FF6B6B,#FF8E53)',
@@ -1965,21 +1965,20 @@
                   'linear-gradient(135deg,#F7971E,#FFD200)',
                 ].map(function(bg, idx) {
                   var isSel = S.postBg === bg;
-                  return '<div onclick="App.setPostBgIdx(' + idx + ')" style="width:28px;height:28px;border-radius:14px;background:' + bg + ';cursor:pointer;flex-shrink:0;border:2.5px solid ' + (isSel?'#FFF':'transparent') + ';box-shadow:' + (isSel?'0 0 0 2px #007AFF':'none') + ';transition:0.15s;"></div>';
+                  return '<div onclick="App.setPostBgIdx(' + idx + ')" style="width:30px;height:30px;border-radius:15px;background:' + bg + ';cursor:pointer;flex-shrink:0;border:2.5px solid ' + (isSel?'#FFF':'transparent') + ';box-shadow:' + (isSel?'0 0 0 2px #007AFF':'0 1px 3px rgba(0,0,0,0.15)') + ';transition:0.15s;"></div>';
                 }).join('') +
               '</div>'
             : ''
           ) +
-          '<div style="display:flex;gap:14px;align-items:center;">' +
-            '<label style="cursor:pointer;display:flex;align-items:center;gap:6px;color:#007AFF;font-size:13px;font-weight:700;">' +
-              '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#007AFF" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>' +
+          '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
+            '<label style="cursor:pointer;display:flex;align-items:center;gap:6px;color:#007AFF;font-size:12.5px;font-weight:800;background:#EAF2FF;padding:9px 14px;border-radius:16px;">' +
+              '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#007AFF" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>' +
               'Photo / Vidéo' +
               '<input type="file" accept="image/*,video/*" multiple onchange="App.addMedia(event)" style="display:none;">' +
             '</label>' +
-            '<span style="color:#8E8E93;font-size:13px;">|</span>' +
-            '<span style="font-size:12px;color:#8E8E93;">' + (S.pendingMedia.some(function(m){return isVideoUrl(m);}) ? '1 vidéo' : S.pendingMedia.length + '/10 photos') + '</span>' +
+            '<span style="font-size:11.5px;color:#9AA0A8;font-weight:600;">' + (S.pendingMedia.some(function(m){return isVideoUrl(m);}) ? '1 vidéo' : S.pendingMedia.length + '/10 photos') + '</span>' +
           '</div>' +
-          '<label style="display:flex;align-items:center;gap:6px;margin-top:8px;cursor:pointer;font-size:12px;color:#3A3A3C;font-weight:600;"><input type="checkbox" ' + (S.reduceVideoQuality?'checked':'') + ' onchange="App.toggleReduceVideoQuality()" style="width:16px;height:16px;"> 🎥 Réduire la qualité vidéo à l\'ajout (envoi plus rapide, optionnel)</label>' +
+          '<label style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer;font-size:12px;color:#6B7280;font-weight:600;line-height:1.4;background:#F6F7F9;padding:10px 12px;border-radius:14px;"><input type="checkbox" ' + (S.reduceVideoQuality?'checked':'') + ' onchange="App.toggleReduceVideoQuality()" style="width:17px;height:17px;flex-shrink:0;accent-color:#007AFF;"> 🎥 Nous réduisons la qualité vidéo en HD pour une expérience plus fluide</label>' +
         '</div>' +
 
       '</div>' +
@@ -2002,27 +2001,27 @@
       }).join('') +
     '</div>';
 
-    return '<div onclick="App.closeRepostModal()" style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:10000;display:flex;justify-content:center;align-items:flex-end;">' +
-      '<div onclick="event.stopPropagation()" style="width:100%;max-width:460px;background:#FFF;border-top-left-radius:28px;border-top-right-radius:28px;max-height:92vh;display:flex;flex-direction:column;animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
+    return '<div onclick="App.closeRepostModal()" style="position:fixed;inset:0;background:rgba(15,15,20,0.55);backdrop-filter:blur(2px);z-index:10000;display:flex;justify-content:center;align-items:flex-end;">' +
+      '<div onclick="event.stopPropagation()" style="width:100%;max-width:460px;background:#FFF;border-top-left-radius:32px;border-top-right-radius:32px;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 -8px 40px rgba(0,0,0,0.18);animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
 
         '<div style="display:flex;justify-content:center;padding:10px 0 0;cursor:pointer;" onclick="App.closeRepostModal()">' +
-          '<div style="width:40px;height:4px;background:#D1D1D6;border-radius:2px;"></div>' +
+          '<div style="width:38px;height:5px;background:#E2E4E9;border-radius:3px;"></div>' +
         '</div>' +
 
-        '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 18px 10px;border-bottom:0.5px solid #F2F2F7;">' +
-          '<span onclick="App.closeRepostModal()" style="font-size:15px;color:#007AFF;cursor:pointer;font-weight:600;">Annuler</span>' +
-          '<h3 style="font-size:16px;font-weight:800;margin:0;color:#000;">Partager</h3>' +
-          '<button type="button" onclick="App.confirmRepost()" style="font-size:15px;color:#007AFF;font-weight:800;background:none;border:none;cursor:pointer;">Partager</button>' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px 12px;">' +
+          '<span onclick="App.closeRepostModal()" style="font-size:14.5px;color:#65686F;cursor:pointer;font-weight:700;padding:8px 4px;">Annuler</span>' +
+          '<h3 style="font-size:16px;font-weight:800;margin:0;color:#0B0B0C;letter-spacing:-0.2px;">Partager</h3>' +
+          '<button type="button" onclick="App.confirmRepost()" style="font-size:14px;color:#FFF;font-weight:800;background:linear-gradient(135deg,#007AFF,#0062CC);border:none;border-radius:20px;padding:8px 18px;cursor:pointer;box-shadow:0 4px 12px rgba(0,122,255,0.28);">Partager</button>' +
         '</div>' +
 
-        '<div style="overflow-y:auto;flex:1;padding:16px;">' +
+        '<div style="overflow-y:auto;flex:1;padding:4px 16px 16px;">' +
           hashHtml +
           '<div id="mentionSugg" style="display:none;flex-wrap:wrap;gap:6px;background:#F0F6FF;border:1px solid #CCDEFF;border-radius:14px;padding:10px;margin-bottom:12px;"></div>' +
-          '<textarea id="repostText" oninput="App.onPostInput(this.value)" placeholder="Ajoutez un commentaire... Tapez # pour un hashtag ou @ pour mentionner un membre..." style="width:100%;min-height:90px;border:1px solid #E5E5EA;border-radius:14px;padding:12px;font-size:15px;line-height:1.5;color:#000;resize:none;outline:none;box-sizing:border-box;font-family:inherit;margin-bottom:14px;">' + safeHtml(S.postText||'') + '</textarea>' +
+          '<textarea id="repostText" oninput="App.onPostInput(this.value)" placeholder="Ajoutez un commentaire... Tapez # pour un hashtag ou @ pour mentionner un membre..." style="width:100%;min-height:90px;border:none;background:#F6F7F9;border-radius:18px;padding:14px;font-size:15.5px;line-height:1.55;color:#0B0B0C;resize:none;outline:none;box-sizing:border-box;font-family:inherit;margin-bottom:14px;">' + safeHtml(S.postText||'') + '</textarea>' +
 
-          '<div style="border:1px solid #E5E5EA;border-radius:16px;overflow:hidden;">' +
-            '<div style="padding:10px 12px;border-bottom:0.5px solid #F2F2F7;">' +
-              '<strong style="font-size:13px;color:#000;">' + safeHtml(post.author||'Membre') + '</strong>' +
+          '<div style="background:#F6F7F9;border-radius:18px;overflow:hidden;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
+            '<div style="padding:10px 12px;">' +
+              '<strong style="font-size:13px;color:#0B0B0C;">' + safeHtml(post.author||'Membre') + '</strong>' +
             '</div>' +
             (previewMedia
               ? (isVideoUrl(previewMedia)
@@ -2062,25 +2061,25 @@
       }).join('') +
     '</div>';
 
-    return '<div onclick="App.closeCreate()" style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:10000;display:flex;justify-content:center;align-items:flex-end;">' +
-      '<div onclick="event.stopPropagation()" style="width:100%;max-width:460px;background:#FFF;border-top-left-radius:28px;border-top-right-radius:28px;max-height:92vh;display:flex;flex-direction:column;animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
+    return '<div onclick="App.closeCreate()" style="position:fixed;inset:0;background:rgba(15,15,20,0.55);backdrop-filter:blur(2px);z-index:10000;display:flex;justify-content:center;align-items:flex-end;">' +
+      '<div onclick="event.stopPropagation()" style="width:100%;max-width:460px;background:#FFF;border-top-left-radius:32px;border-top-right-radius:32px;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 -8px 40px rgba(0,0,0,0.18);animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
 
         '<div style="display:flex;justify-content:center;padding:10px 0 0;cursor:pointer;" onclick="App.closeCreate()">' +
-          '<div style="width:40px;height:4px;background:#D1D1D6;border-radius:2px;"></div>' +
+          '<div style="width:38px;height:5px;background:#E2E4E9;border-radius:3px;"></div>' +
         '</div>' +
 
-        '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 18px 10px;border-bottom:0.5px solid #F2F2F7;">' +
-          '<span onclick="App.closeCreate()" style="font-size:15px;color:#007AFF;cursor:pointer;font-weight:600;">Annuler</span>' +
-          '<h3 style="font-size:16px;font-weight:800;margin:0;color:#000;">Nouvelle publication</h3>' +
-          '<button type="submit" form="createPostForm" style="font-size:15px;color:#007AFF;font-weight:800;background:none;border:none;cursor:pointer;">Publier</button>' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px 12px;">' +
+          '<span onclick="App.closeCreate()" style="font-size:14.5px;color:#65686F;cursor:pointer;font-weight:700;padding:8px 4px;">Annuler</span>' +
+          '<h3 style="font-size:16px;font-weight:800;margin:0;color:#0B0B0C;letter-spacing:-0.2px;">Nouvelle publication</h3>' +
+          '<button type="submit" form="createPostForm" style="font-size:14px;color:#FFF;font-weight:800;background:linear-gradient(135deg,#007AFF,#0062CC);border:none;border-radius:20px;padding:8px 18px;cursor:pointer;box-shadow:0 4px 12px rgba(0,122,255,0.28);">Publier</button>' +
         '</div>' +
 
-        '<div style="overflow-y:auto;flex:1;padding:16px;">' +
+        '<div style="overflow-y:auto;flex:1;padding:4px 16px 16px;">' +
           '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">' +
-            '<div style="width:40px;height:40px;border-radius:20px;background:linear-gradient(135deg,' + ((u||{}).avatar_color||'#007AFF') + ',#0040CC);color:#FFF;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + ((u&&u.prenom||'M').charAt(0)) + '</div>' +
+            '<div style="width:42px;height:42px;border-radius:21px;background:linear-gradient(135deg,' + ((u||{}).avatar_color||'#007AFF') + ',#0040CC);color:#FFF;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 3px 8px rgba(0,0,0,0.12);">' + ((u&&u.prenom||'M').charAt(0)) + '</div>' +
             '<div>' +
-              '<div style="font-size:14px;font-weight:700;color:#000;">' + safeHtml((u&&u.prenom||'') + ' ' + (u&&u.nom||'')) + '</div>' +
-              '<div style="font-size:11.5px;color:#007AFF;font-weight:600;">' + secNom((u&&u.section_id)||'cadrage') + ' · Tapez # pour les hashtags</div>' +
+              '<div style="font-size:14.5px;font-weight:800;color:#0B0B0C;">' + safeHtml((u&&u.prenom||'') + ' ' + (u&&u.nom||'')) + '</div>' +
+              '<div style="font-size:11.5px;color:#007AFF;font-weight:700;background:#EEF5FF;display:inline-block;padding:2px 8px;border-radius:8px;margin-top:2px;">' + secNom((u&&u.section_id)||'cadrage') + ' · Tapez # pour les hashtags</div>' +
             '</div>' +
           '</div>' +
 
@@ -2090,64 +2089,64 @@
 
           // Color preview or plain textarea
           (S.pendingMedia.length === 0 && S.postBg
-            ? '<div id="bgPreviewZone" style="border-radius:18px;overflow:hidden;margin-bottom:12px;position:relative;min-height:180px;display:flex;align-items:center;justify-content:center;' + (S.postBg.startsWith('url') ? 'background:' + S.postBg + ';background-size:cover;background-position:center;' : 'background:' + S.postBg + ';') + '">' +
-                (S.postBg && !S.postBg.includes('linear-gradient') && !S.postBg.includes('url') ? '<div style="position:absolute;inset:0;background:rgba(0,0,0,0.18);border-radius:18px;"></div>' : '') +
+            ? '<div id="bgPreviewZone" style="border-radius:22px;overflow:hidden;margin-bottom:14px;position:relative;min-height:180px;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 20px rgba(0,0,0,0.14);' + (S.postBg.startsWith('url') ? 'background:' + S.postBg + ';background-size:cover;background-position:center;' : 'background:' + S.postBg + ';') + '">' +
+                (S.postBg && !S.postBg.includes('linear-gradient') && !S.postBg.includes('url') ? '<div style="position:absolute;inset:0;background:rgba(0,0,0,0.18);border-radius:22px;"></div>' : '') +
                 '<textarea id="newPostText" oninput="App.onPostInput(this.value)" placeholder="Quoi de neuf ?" style="width:100%;min-height:180px;border:none;background:transparent;font-size:24px;font-weight:900;line-height:1.4;color:#FFF;resize:none;outline:none;box-sizing:border-box;font-family:inherit;text-align:center;padding:24px 20px;text-shadow:0 2px 12px rgba(0,0,0,0.3);position:relative;z-index:1;">' + safeHtml(S.postText||'') + '</textarea>' +
               '</div>'
             : '<form id="createPostForm" onsubmit="App.submitPost(event)">' +
-                '<textarea id="newPostText" oninput="App.onPostInput(this.value)" placeholder="Quoi de neuf ? Tapez # pour ajouter un hashtag de section..." style="width:100%;min-height:110px;border:none;background:transparent;font-size:15px;line-height:1.5;color:#000;resize:none;outline:none;box-sizing:border-box;font-family:inherit;">' + safeHtml(S.postText||'') + '</textarea>' +
+                '<textarea id="newPostText" oninput="App.onPostInput(this.value)" placeholder="Quoi de neuf ? Tapez # pour ajouter un hashtag de section..." style="width:100%;min-height:110px;border:none;background:transparent;font-size:15.5px;line-height:1.55;color:#0B0B0C;resize:none;outline:none;box-sizing:border-box;font-family:inherit;">' + safeHtml(S.postText||'') + '</textarea>' +
               '</form>'
           ) +
           (S.postBg ? '<form id="createPostForm" onsubmit="App.submitPost(event)" style="display:none;"></form>' : '') +
         '</div>' +
 
-        '<div style="padding:0 16px 10px;">' +
-          '<div style="background:#FAFAFA;border-radius:16px;padding:12px;margin-bottom:10px;border:1px solid #E5E5EA;">' +
-            '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">' +
-              '<span style="font-size:12.5px;font-weight:800;color:#000;">🔒 Qui peut voir ?</span>' +
-              '<div style="display:flex;gap:6px;">' +
-                '<button type="button" onclick="App.setPostVisibility(\'all\')" style="padding:4px 10px;border-radius:8px;font-size:11px;font-weight:700;border:none;cursor:pointer;background:' + ((S.postVisibility||'all')==='all'?'#007AFF':'#FFF') + ';color:' + ((S.postVisibility||'all')==='all'?'#FFF':'#3A3A3C') + ';">🌍 Tout le monde</button>' +
-                '<button type="button" onclick="App.setPostVisibility(\'sections\')" style="padding:4px 10px;border-radius:8px;font-size:11px;font-weight:700;border:none;cursor:pointer;background:' + ((S.postVisibility||'all')==='sections'?'#007AFF':'#FFF') + ';color:' + ((S.postVisibility||'all')==='sections'?'#FFF':'#3A3A3C') + ';">🔒 Sections ciblées</button>' +
-              '</div>' +
+        '<div style="padding:0 16px 10px;display:flex;flex-direction:column;gap:10px;">' +
+          '<div style="background:#F6F7F9;border-radius:20px;padding:14px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
+            '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">' +
+              '<span style="font-size:13px;font-weight:800;color:#0B0B0C;display:flex;align-items:center;gap:8px;"><span style="width:26px;height:26px;border-radius:13px;background:#EAF2FF;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">🔒</span>Qui peut voir ?</span>' +
+            '</div>' +
+            '<div style="display:flex;gap:4px;background:#EAEBEF;border-radius:16px;padding:3px;">' +
+              '<button type="button" onclick="App.setPostVisibility(\'all\')" style="flex:1;padding:8px 6px;border-radius:13px;font-size:11.5px;font-weight:800;border:none;cursor:pointer;transition:all 0.2s;background:' + ((S.postVisibility||'all')==='all'?'#FFFFFF':'transparent') + ';color:' + ((S.postVisibility||'all')==='all'?'#007AFF':'#6B7280') + ';box-shadow:' + ((S.postVisibility||'all')==='all'?'0 2px 6px rgba(0,0,0,0.08)':'none') + ';">🌍 Tout le monde</button>' +
+              '<button type="button" onclick="App.setPostVisibility(\'sections\')" style="flex:1;padding:8px 6px;border-radius:13px;font-size:11.5px;font-weight:800;border:none;cursor:pointer;transition:all 0.2s;background:' + ((S.postVisibility||'all')==='sections'?'#FFFFFF':'transparent') + ';color:' + ((S.postVisibility||'all')==='sections'?'#007AFF':'#6B7280') + ';box-shadow:' + ((S.postVisibility||'all')==='sections'?'0 2px 6px rgba(0,0,0,0.08)':'none') + ';">🔒 Sections ciblées</button>' +
             '</div>' +
             (S.postVisibility === 'sections'
-              ? '<div style="margin-top:8px;"><div id="targetSectionBadgesContainer">' + App.renderSectionBadges(S.postTargetSections||[], 'toggleTargetSection') + '</div></div>'
+              ? '<div style="margin-top:10px;"><div id="targetSectionBadgesContainer">' + App.renderSectionBadges(S.postTargetSections||[], 'toggleTargetSection') + '</div></div>'
               : '') +
           '</div>' +
-          '<div style="background:#FAFAFA;border-radius:16px;padding:12px;border:1px solid #E5E5EA;">' +
-            '<span style="font-size:12.5px;font-weight:800;color:#000;display:block;margin-bottom:6px;">⏰ Programmer la publication (optionnel)</span>' +
-            '<div style="display:flex;gap:6px;">' +
-              '<input type="date" id="postScheduleDate" style="flex:1;height:36px;border-radius:8px;border:1px solid #E5E5EA;background:#FFF;padding:0 8px;font-size:12px;outline:none;" />' +
-              '<input type="time" id="postScheduleTime" style="flex:1;height:36px;border-radius:8px;border:1px solid #E5E5EA;background:#FFF;padding:0 8px;font-size:12px;outline:none;" />' +
+          '<div style="background:#F6F7F9;border-radius:20px;padding:14px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
+            '<span style="font-size:13px;font-weight:800;color:#0B0B0C;display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="width:26px;height:26px;border-radius:13px;background:#FFF3E5;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">⏰</span>Programmer <span style="font-weight:600;color:#9AA0A8;font-size:11px;">(optionnel)</span></span>' +
+            '<div style="display:flex;gap:8px;">' +
+              '<input type="date" id="postScheduleDate" style="flex:1;height:40px;border-radius:12px;border:none;background:#FFF;padding:0 10px;font-size:12.5px;outline:none;box-shadow:0 1px 2px rgba(16,24,40,0.06);" />' +
+              '<input type="time" id="postScheduleTime" style="flex:1;height:40px;border-radius:12px;border:none;background:#FFF;padding:0 10px;font-size:12.5px;outline:none;box-shadow:0 1px 2px rgba(16,24,40,0.06);" />' +
             '</div>' +
           '</div>' +
         '</div>' +
 
-        '<div style="background:#FAFAFA;border-radius:16px;padding:12px;border:1px solid #E5E5EA;margin:0 16px 12px;">' +
+        '<div style="background:#F6F7F9;border-radius:20px;padding:14px;box-shadow:0 1px 2px rgba(16,24,40,0.04);margin:0 16px 12px;">' +
           '<div style="display:flex;align-items:center;justify-content:space-between;">' +
-            '<div style="display:flex;align-items:center;gap:8px;">' +
-              '<span style="font-size:18px;">🕐</span>' +
+            '<div style="display:flex;align-items:center;gap:10px;">' +
+              '<span style="width:26px;height:26px;border-radius:13px;background:#FFEDE0;display:inline-flex;align-items:center;justify-content:center;font-size:14px;">🕐</span>' +
               '<div>' +
-                '<div style="font-size:13px;font-weight:700;color:#000;">Publication éphémère</div>' +
+                '<div style="font-size:13px;font-weight:800;color:#0B0B0C;">Publication éphémère</div>' +
                 '<div style="font-size:11px;color:#8E8E93;">Disparaît automatiquement après 24h</div>' +
               '</div>' +
             '</div>' +
-            '<label style="position:relative;display:inline-block;width:50px;height:30px;">' +
-              '<input type="checkbox" id="postEphemeral" style="opacity:0;width:0;height:0;" onchange="this.nextElementSibling.style.background=this.checked?\'#FF9500\':\'#E5E5EA\'; this.nextElementSibling.children[0].style.transform=this.checked?\'translateX(20px)\':\'translateX(0)\';"/>' +
-              '<span style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:#E5E5EA;transition:.3s;border-radius:30px;">' +
-                '<span style="position:absolute;content:\'\';height:26px;width:26px;left:2px;bottom:2px;background-color:white;transition:.3s;border-radius:50%;box-shadow:0 2px 4px rgba(0,0,0,0.2);"></span>' +
+            '<label style="position:relative;display:inline-block;width:48px;height:28px;flex-shrink:0;">' +
+              '<input type="checkbox" id="postEphemeral" style="opacity:0;width:0;height:0;" onchange="this.nextElementSibling.style.background=this.checked?\'#FF9500\':\'#DADCE1\'; this.nextElementSibling.children[0].style.transform=this.checked?\'translateX(20px)\':\'translateX(0)\';"/>' +
+              '<span style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:#DADCE1;transition:.25s;border-radius:28px;">' +
+                '<span style="position:absolute;content:\'\';height:22px;width:22px;left:3px;bottom:3px;background-color:white;transition:.25s;border-radius:50%;box-shadow:0 2px 4px rgba(0,0,0,0.2);"></span>' +
               '</span>' +
             '</label>' +
           '</div>' +
         '</div>' +
 
-        '<div style="border-top:0.5px solid #F2F2F7;padding:10px 16px;">' +
+        '<div style="padding:4px 16px 14px;">' +
           // Color palette row
           (S.pendingMedia.length === 0
-            ? '<div style="display:flex;gap:8px;align-items:center;overflow-x:auto;padding-bottom:8px;scrollbar-width:none;">' +
-                '<span style="font-size:11px;font-weight:700;color:#8E8E93;flex-shrink:0;">Fond :</span>' +
+            ? '<div style="display:flex;gap:8px;align-items:center;overflow-x:auto;padding:2px 0 10px;scrollbar-width:none;">' +
+                '<span style="font-size:11px;font-weight:700;color:#9AA0A8;flex-shrink:0;">Fond</span>' +
                 // "No color" option
-                '<div onclick="App.setPostBg(null)" style="width:28px;height:28px;border-radius:14px;background:#FFF;border:2px solid ' + (S.postBg===null?'#007AFF':'#E5E5EA') + ';cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;">Aa</div>' +
+                '<div onclick="App.setPostBg(null)" style="width:30px;height:30px;border-radius:15px;background:#FFF;border:2px solid ' + (S.postBg===null?'#007AFF':'#E5E5EA') + ';cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;font-weight:700;color:#3A3A3C;">Aa</div>' +
                 // Color swatches
                 [
                   'linear-gradient(135deg,#1A1A2E,#16213E)',
@@ -2164,21 +2163,20 @@
                   'linear-gradient(135deg,#F7971E,#FFD200)',
                 ].map(function(bg, idx) {
                   var isSel = S.postBg === bg;
-                  return '<div onclick="App.setPostBgIdx(' + idx + ')" style="width:28px;height:28px;border-radius:14px;background:' + bg + ';cursor:pointer;flex-shrink:0;border:2.5px solid ' + (isSel?'#FFF':'transparent') + ';box-shadow:' + (isSel?'0 0 0 2px #007AFF':'none') + ';transition:0.15s;"></div>';
+                  return '<div onclick="App.setPostBgIdx(' + idx + ')" style="width:30px;height:30px;border-radius:15px;background:' + bg + ';cursor:pointer;flex-shrink:0;border:2.5px solid ' + (isSel?'#FFF':'transparent') + ';box-shadow:' + (isSel?'0 0 0 2px #007AFF':'0 1px 3px rgba(0,0,0,0.15)') + ';transition:0.15s;"></div>';
                 }).join('') +
               '</div>'
             : ''
           ) +
-          '<div style="display:flex;gap:14px;align-items:center;">' +
-            '<label style="cursor:pointer;display:flex;align-items:center;gap:6px;color:#007AFF;font-size:13px;font-weight:700;">' +
-              '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#007AFF" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>' +
+          '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
+            '<label style="cursor:pointer;display:flex;align-items:center;gap:6px;color:#007AFF;font-size:12.5px;font-weight:800;background:#EAF2FF;padding:9px 14px;border-radius:16px;">' +
+              '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#007AFF" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>' +
               'Photo / Vidéo' +
               '<input type="file" accept="image/*,video/*" multiple onchange="App.addMedia(event)" style="display:none;">' +
             '</label>' +
-            '<span style="color:#8E8E93;font-size:13px;">|</span>' +
-            '<span style="font-size:12px;color:#8E8E93;">' + (S.pendingMedia.some(function(m){return isVideoUrl(m);}) ? '1 vidéo' : S.pendingMedia.length + '/10 photos') + '</span>' +
+            '<span style="font-size:11.5px;color:#9AA0A8;font-weight:600;">' + (S.pendingMedia.some(function(m){return isVideoUrl(m);}) ? '1 vidéo' : S.pendingMedia.length + '/10 photos') + '</span>' +
           '</div>' +
-          '<label style="display:flex;align-items:center;gap:6px;margin-top:8px;cursor:pointer;font-size:12px;color:#3A3A3C;font-weight:600;"><input type="checkbox" ' + (S.reduceVideoQuality?'checked':'') + ' onchange="App.toggleReduceVideoQuality()" style="width:16px;height:16px;"> 🎥 Réduire la qualité vidéo à l\'ajout (envoi plus rapide, optionnel)</label>' +
+          '<label style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer;font-size:12px;color:#6B7280;font-weight:600;line-height:1.4;background:#F6F7F9;padding:10px 12px;border-radius:14px;"><input type="checkbox" ' + (S.reduceVideoQuality?'checked':'') + ' onchange="App.toggleReduceVideoQuality()" style="width:17px;height:17px;flex-shrink:0;accent-color:#007AFF;"> 🎥 Nous réduisons la qualité vidéo en HD pour une expérience plus fluide</label>' +
         '</div>' +
 
       '</div>' +
