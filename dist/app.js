@@ -365,6 +365,9 @@
     tab: 'home',
     story: 'all',
     q: '',
+    searchFocused: false,
+    membersListOpen: false,
+    membersSearch: '',
     // Modals
     createOpen: false,
     commentOpen: false,
@@ -695,6 +698,67 @@
     }
   }
 
+  // ============================================================
+  // MODALE — Liste totale des membres
+  // ============================================================
+  function renderMembersModal() {
+    if (!S.membersListOpen) return '';
+    var ROLE_LABELS_M = {
+      GRAND_RESPONSABLE: '👑 Grand Resp.',
+      RESP_SECTION: '🎬 Responsable',
+      MEMBRE: '🎥 Membre',
+      STAGIAIRE: '✏️ Stagiaire'
+    };
+    var allUsers = db(SK.USERS, []).slice().sort(function(a,b){
+      return (a.prenom||'').localeCompare(b.prenom||'', 'fr', {sensitivity:'base'});
+    });
+    var q = (S.membersSearch || '').toLowerCase().trim();
+    var users = q
+      ? allUsers.filter(function(u){
+          var full = ((u.prenom||'') + ' ' + (u.nom||'')).toLowerCase();
+          return full.indexOf(q) !== -1;
+        })
+      : allUsers;
+
+    var listHtml = users.length === 0
+      ? '<div style="padding:60px 24px;text-align:center;color:#8E8E93;">' +
+          '<div style="font-size:44px;margin-bottom:12px;">🔍</div>' +
+          '<div style="font-size:14px;font-weight:700;">Aucun membre trouvé' + (q ? ' pour "' + safeHtml(S.membersSearch) + '"' : '') + '</div>' +
+        '</div>'
+      : users.map(function(u){
+          var initial = (u.prenom||'M').charAt(0).toUpperCase();
+          var avatarNode = u.avatar_url
+            ? '<img src="' + u.avatar_url + '" style="width:48px;height:48px;border-radius:24px;object-fit:cover;flex-shrink:0;" />'
+            : '<div style="width:48px;height:48px;border-radius:24px;background:linear-gradient(135deg,' + (u.avatar_color||'#007AFF') + ',#0040CC);color:#FFF;font-size:18px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + initial + '</div>';
+          var roleLabel = ROLE_LABELS_M[u.role] || '🎥 Membre';
+          var secs = getUserSections(u).map(function(s){ return secNom(s); }).join(' · ');
+          return '<div onclick="App.closeMembersList();App.openUserProfile(\'' + u.id + '\');" style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:0.5px solid #F7F7F7;cursor:pointer;">' +
+            avatarNode +
+            '<div style="flex:1;min-width:0;">' +
+              '<div style="font-size:14.5px;font-weight:800;color:#000;">' + safeHtml((u.prenom||'') + ' ' + (u.nom||'')) + '</div>' +
+              (secs ? '<div style="font-size:12px;color:#8E8E93;margin-top:2px;">' + safeHtml(secs) + '</div>' : '') +
+            '</div>' +
+            '<span style="font-size:11px;font-weight:800;color:#007AFF;background:#F0F6FF;padding:4px 10px;border-radius:10px;white-space:nowrap;flex-shrink:0;">' + roleLabel + '</span>' +
+          '</div>';
+        }).join('');
+
+    return '<div style="position:fixed;inset:0;z-index:9998;background:#FFF;display:flex;flex-direction:column;animation:fadeIn 0.2s ease-out;">' +
+      '<div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:0.5px solid #F2F2F7;">' +
+        '<button onclick="App.closeMembersList()" style="background:#F2F2F7;border:none;width:34px;height:34px;border-radius:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' +
+          '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>' +
+        '</button>' +
+        '<div style="font-size:17px;font-weight:800;color:#000;">Tous les membres <span style="color:#8E8E93;font-weight:600;">(' + allUsers.length + ')</span></div>' +
+      '</div>' +
+      '<div style="padding:10px 14px;border-bottom:0.5px solid #F2F2F7;">' +
+        '<div style="display:flex;align-items:center;gap:8px;background:#F2F2F7;border-radius:12px;height:38px;padding:0 12px;">' +
+          SVG.search +
+          '<input id="membersSearchInput" type="search" value="' + safeHtml(S.membersSearch||'') + '" oninput="App.searchMembers(this.value)" placeholder="Rechercher un membre..." style="flex:1;border:none;background:transparent;font-size:13.5px;color:#000;outline:none;">' +
+        '</div>' +
+      '</div>' +
+      '<div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;">' + listHtml + '</div>' +
+    '</div>';
+  }
+
   function renderLogin() {
     return '<div style="min-height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:28px 24px;box-sizing:border-box;background:linear-gradient(180deg,#F8F9FF 0%,#FFFFFF 100%);">' +
     '<div style="width:100%;max-width:360px;">' +
@@ -974,6 +1038,7 @@
     if (S.optionsOpen && S.optionsPost) modals += renderOptionsModal();
     if (S.commentOpen && S.commentPostId) modals += renderCommentsModal(posts, initial);
     if (S.cropperOpen) modals += renderCropperModal();
+    if (S.membersListOpen) modals += renderMembersModal();
 
     return '<div style="position:relative;width:100%;height:100%;display:flex;flex-direction:column;background:#F2F2F7;font-family:-apple-system,BlinkMacSystemFont,\'SF Pro Text\',sans-serif;">' +
       '<div id="mainContent" style="flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;padding-bottom:70px;">' + content + '</div>' +
@@ -1050,9 +1115,19 @@
       '<div style="padding:0 14px 10px;">' +
         '<div style="display:flex;align-items:center;gap:8px;background:#F2F2F7;border-radius:12px;height:38px;padding:0 12px;">' +
           SVG.search +
-          '<input id="searchInput" type="search" value="' + safeHtml(S.q) + '" oninput="App.search(this.value)" placeholder="Rechercher..." style="flex:1;border:none;background:transparent;font-size:13.5px;color:#000;outline:none;">' +
+          '<input id="searchInput" type="search" value="' + safeHtml(S.q) + '" oninput="App.search(this.value)" onfocus="App.setSearchFocused(true)" onblur="App.setSearchFocused(false)" placeholder="Rechercher..." style="flex:1;border:none;background:transparent;font-size:13.5px;color:#000;outline:none;">' +
           (S.q ? '<button onclick="App.search(\'\')" style="background:none;border:none;cursor:pointer;color:#8E8E93;font-size:18px;line-height:1;padding:0;">×</button>' : '') +
         '</div>' +
+        (S.searchFocused ? '<div style="padding-top:8px;">' +
+          '<div onmousedown="event.preventDefault();App.openMembersList();" style="display:flex;align-items:center;gap:10px;background:#F0F6FF;border-radius:12px;padding:10px 12px;cursor:pointer;">' +
+            '<span style="font-size:18px;">👥</span>' +
+            '<div style="flex:1;min-width:0;">' +
+              '<div style="font-size:13px;font-weight:800;color:#007AFF;">Voir tous les membres</div>' +
+              '<div style="font-size:11px;color:#8E8E93;">' + db(SK.USERS, []).length + ' membre(s) du département</div>' +
+            '</div>' +
+            '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#007AFF" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>' +
+          '</div>' +
+        '</div>' : '') +
       '</div>' +
     '</header>';
 
@@ -3545,10 +3620,36 @@ toggleParticipation: function(postId, status) {
     story: function(s) { S.story=s; S.q=''; render(); },
     search: function(q) {
       S.q = q;
-      // Debounced render (préserve la saisie)
+      // Debounced render (préserve la saisie ET le focus/curseur du champ)
       if (this._searchTimer) clearTimeout(this._searchTimer);
-      this._searchTimer = setTimeout(function(){ render(); }, 250);
+      this._searchTimer = setTimeout(function(){
+        render();
+        var input = document.getElementById('searchInput');
+        if (input) {
+          input.focus();
+          var len = input.value.length;
+          try { input.setSelectionRange(len, len); } catch(e) {}
+        }
+      }, 250);
     },
+    setSearchFocused: function(v) {
+      if (v) {
+        S.searchFocused = true;
+        render();
+        var input = document.getElementById('searchInput');
+        if (input) {
+          input.focus();
+          var len = input.value.length;
+          try { input.setSelectionRange(len, len); } catch(e) {}
+        }
+      } else {
+        // Petit délai pour laisser le clic sur "Voir tous les membres" s'exécuter avant de masquer le bandeau
+        setTimeout(function(){ S.searchFocused = false; render(); }, 180);
+      }
+    },
+    openMembersList: function() { S.membersListOpen = true; S.membersSearch = ''; render(); },
+    closeMembersList: function() { S.membersListOpen = false; render(); },
+    searchMembers: function(q) { S.membersSearch = q; render(); var i=document.getElementById('membersSearchInput'); if(i){i.focus(); var l=i.value.length; try{i.setSelectionRange(l,l);}catch(e){}} },
     filterTag: function(tag) { S.q = decodeURIComponent(tag); S.tab='home'; render(); },
 
     // Posts
