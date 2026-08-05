@@ -67,7 +67,7 @@
     }
     
     if (supabase) {
-      supabase.from('kun_com_profiles').upsert({ id: targetUser.id, content: targetUser }, { onConflict: 'id' }).catch(function(e){});
+      supabase.from('kun_com_profiles').upsert({ id: targetUser.id, content: targetUser }, { onConflict: 'id' }).then(function(){}, function(e){});
     }
     
     if (S.user && S.user.id === targetUserId) {
@@ -214,7 +214,7 @@
         var remotePostIds = (res.data || []).map(function(item){ return item.id; });
         mergedPosts.forEach(function(post) {
           if (post && post.id) {
-            supabase.from('kun_com_posts').upsert({ id: post.id, content: post }, { onConflict: 'id' }).catch(function(e){ console.warn('Push post error:', e); });
+            supabase.from('kun_com_posts').upsert({ id: post.id, content: post }, { onConflict: 'id' }).then(function(){}, function(e){ console.warn('Push post error:', e); });
           }
         });
       }
@@ -235,7 +235,7 @@
         var remoteIds = (resProf.data || []).map(function(item){ return item.id; });
         mergedProfiles.forEach(function(u) {
           if (u && u.id && remoteIds.indexOf(u.id) === -1) {
-            supabase.from('kun_com_profiles').upsert({ id: u.id, content: u }, { onConflict: 'id' }).catch(function(e){ console.warn('Push profile error:', e); });
+            supabase.from('kun_com_profiles').upsert({ id: u.id, content: u }, { onConflict: 'id' }).then(function(){}, function(e){ console.warn('Push profile error:', e); });
           }
         });
       }
@@ -271,7 +271,7 @@
         // Also delete from Supabase
         var expired = allP.filter(function(p) { return p.is_ephemeral && p.ephemeral_expiry && p.ephemeral_expiry < now; });
         expired.forEach(function(ep) {
-          supabase.from('kun_com_posts').delete().eq('id', ep.id).then(function(){}).catch(function(){});
+          supabase.from('kun_com_posts').delete().eq('id', ep.id).then(function(){}, function(){});
         });
       }
 
@@ -3294,7 +3294,7 @@ toggleParticipation: function(postId, status) {
       if (uIdx !== -1) allUsers[uIdx] = S.user;
       dbSet(SK.USERS, allUsers);
       try { localStorage.setItem(SK.SESS, JSON.stringify(S.user)); } catch(e){}
-      if (supabase) supabase.from('kun_com_profiles').upsert({ id: S.user.id, content: S.user }, { onConflict: 'id' }).catch(function(e){});
+      if (supabase) supabase.from('kun_com_profiles').upsert({ id: S.user.id, content: S.user }, { onConflict: 'id' }).then(function(){}, function(e){});
       render();
     },
     clickNotification: function(notifId, targetId) {
@@ -3306,7 +3306,7 @@ toggleParticipation: function(postId, status) {
       if (uIdx !== -1) allUsers[uIdx] = S.user;
       dbSet(SK.USERS, allUsers);
       try { localStorage.setItem(SK.SESS, JSON.stringify(S.user)); } catch(e){}
-      if (supabase) supabase.from('kun_com_profiles').upsert({ id: S.user.id, content: S.user }, { onConflict: 'id' }).catch(function(e){});
+      if (supabase) supabase.from('kun_com_profiles').upsert({ id: S.user.id, content: S.user }, { onConflict: 'id' }).then(function(){}, function(e){});
       
       S.notificationsOpen = false;
       render();
@@ -3462,7 +3462,7 @@ toggleParticipation: function(postId, status) {
       var likeCount = post.likedBy.length;
       dbSet(SK.POSTS, posts);
       if (supabase && post) {
-        supabase.from('kun_com_posts').upsert({ id: post.id, content: post }, { onConflict: 'id' }).catch(function(e){ console.warn(e); });
+        supabase.from('kun_com_posts').upsert({ id: post.id, content: post }, { onConflict: 'id' }).then(function(){}, function(e){ console.warn(e); });
       }
       if (nowLiked && post.userId && post.userId !== S.user.id) {
         sendNotificationToUser(post.userId, {
@@ -3529,7 +3529,7 @@ toggleParticipation: function(postId, status) {
       posts.unshift(repost);
       dbSet(SK.POSTS, posts);
       if (supabase) {
-        supabase.from('kun_com_posts').upsert({ id: repost.id, content: repost, created_at: new Date().toISOString() }, { onConflict: 'id' }).catch(function(e){});
+        supabase.from('kun_com_posts').upsert({ id: repost.id, content: repost, created_at: new Date().toISOString() }, { onConflict: 'id' }).then(function(){}, function(e){});
       }
       updateUserActivity('Partage');
       render();
@@ -3799,7 +3799,7 @@ toggleParticipation: function(postId, status) {
       var newC = { id:'c'+Date.now(), userId:S.user.id, author:(S.user.prenom||'User')+' '+(S.user.nom?S.user.nom.charAt(0):'')+'.', avatarColor:S.user.avatar_color||'#007AFF', text:txt, timestamp:Date.now() };
       if (!Array.isArray(post.comments)) post.comments = [];
       post.comments.push(newC); dbSet(SK.POSTS, posts);
-      if (supabase && post) supabase.from('kun_com_posts').upsert({ id: post.id, content: post }, { onConflict: 'id' }).catch(function(e){});
+      if (supabase && post) supabase.from('kun_com_posts').upsert({ id: post.id, content: post }, { onConflict: 'id' }).then(function(){}, function(e){});
       if (post.userId && post.userId !== S.user.id) {
         sendNotificationToUser(post.userId, {
           type: 'COMMENT',
@@ -3929,7 +3929,7 @@ toggleParticipation: function(postId, status) {
       }
       
       dbSet(SK.POSTS, posts); 
-      if (supabase && newPost) supabase.from('kun_com_posts').upsert({ id: newPost.id, content: newPost }, { onConflict: 'id' }).catch(function(e){});
+      if (supabase && newPost) supabase.from('kun_com_posts').upsert({ id: newPost.id, content: newPost }, { onConflict: 'id' }).then(function(){}, function(e){});
       S.ratings = {};
       S.evalEventId = null;
       S.tab='home'; 
