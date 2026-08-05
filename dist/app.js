@@ -569,19 +569,24 @@
 
     videoEl.onloadedmetadata = function() {
       try {
-        var maxW = 640;
-        var scale = Math.min(1, maxW / (videoEl.videoWidth || maxW));
-        var w = Math.max(2, Math.round((videoEl.videoWidth || maxW) * scale));
-        var h = Math.max(2, Math.round((videoEl.videoHeight || maxW) * scale));
+        // Qualité cible : HD (1280px sur le plus grand côté, portrait ou paysage) à 30 im/s,
+        // comme les réseaux sociaux — on ne réduit jamais en dessous du HD.
+        var maxLongSide = 1280;
+        var srcW = videoEl.videoWidth || maxLongSide;
+        var srcH = videoEl.videoHeight || maxLongSide;
+        var longSide = Math.max(srcW, srcH);
+        var scale = Math.min(1, maxLongSide / longSide);
+        var w = Math.max(2, Math.round(srcW * scale));
+        var h = Math.max(2, Math.round(srcH * scale));
         var canvas = document.createElement('canvas');
         canvas.width = w; canvas.height = h;
         var ctx = canvas.getContext('2d');
-        var stream = canvas.captureStream(25);
+        var stream = canvas.captureStream(30);
         var mimeType = 'video/webm;codecs=vp8';
         if (typeof MediaRecorder.isTypeSupported === 'function' && !MediaRecorder.isTypeSupported(mimeType)) {
           mimeType = 'video/webm';
         }
-        var recorder = new MediaRecorder(stream, { mimeType: mimeType, videoBitsPerSecond: 700000 });
+        var recorder = new MediaRecorder(stream, { mimeType: mimeType, videoBitsPerSecond: 2500000 });
         var chunks = [];
         recorder.ondataavailable = function(e) { if (e.data && e.data.size > 0) chunks.push(e.data); };
         recorder.onerror = function() {
