@@ -970,9 +970,9 @@
         '<div style="width:72px;height:72px;border-radius:24px;background:linear-gradient(135deg,#007AFF 0%,#0040CC 100%);display:flex;align-items:center;justify-content:center;margin:0 auto 18px;box-shadow:0 8px 28px rgba(0,122,255,0.4);">' +
           '<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' +
         '</div>' +
-        '<div style="font-size:11px;font-weight:800;color:#007AFF;text-transform:uppercase;letter-spacing:2px;margin-bottom:6px;">Église Vase d\'Honneur</div>' +
-        '<h1 style="font-size:32px;font-weight:900;color:#000;margin:0;letter-spacing:-1px;">Commit</h1>' +
-        '<p style="font-size:14px;color:#8E8E93;margin:6px 0 0;">Département Communication</p>' +
+        '<h1 style="font-size:32px;font-weight:900;color:#000;margin:0 0 6px;letter-spacing:-1px;">Commit</h1>' +
+        '<div style="font-size:11px;font-weight:800;color:#007AFF;text-transform:uppercase;letter-spacing:2px;margin-bottom:6px;">Église Vase d\'Honneur AEV</div>' +
+        '<p style="font-size:14px;color:#8E8E93;margin:6px 0 0;">Plateforme du département de la COM</p>' +
       '</div>' +
 
       '<form onsubmit="event.preventDefault(); App.login(event);" style="display:flex;flex-direction:column;gap:14px;">' +
