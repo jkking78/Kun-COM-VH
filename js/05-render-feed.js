@@ -168,6 +168,9 @@
   }
 
   function renderNav(initial) {
+    // Seuls les Grands Responsables évaluent : l'onglet Notation n'apparaît pas
+    // pour les autres profils (et App.tab refuse aussi l'accès direct).
+    var canEvaluate = S.user && S.user.role === 'GRAND_RESPONSABLE';
     function nb(id, iconFn, lbl) {
       var a = S.tab === id;
       return '<button onclick="App.tab(\'' + id + '\')" style="flex:1;background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 2px 4px;position:relative;-webkit-tap-highlight-color:transparent;">' +
@@ -182,7 +185,9 @@
       '<button onclick="App.openCreate()" style="flex:1;background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent;">' +
         '<div style="width:46px;height:46px;border-radius:23px;background:linear-gradient(135deg,#007AFF,#0040CC);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,122,255,0.4);margin-bottom:8px;">' + SVG.plus + '</div>' +
       '</button>' +
-      nb('debrief', SVG.star, 'Notation') +
+      // Espace neutre pour les non-Grands Responsables : la barre garde le même
+      // équilibre visuel sans exposer un onglet auquel ils n'ont pas accès.
+      (canEvaluate ? nb('debrief', SVG.star, 'Notation') : '<div style="flex:1;"></div>') +
       nb('profile', SVG.person, 'Profil') +
     '</nav>';
   }
@@ -467,6 +472,76 @@
     '</article>';
   }
 
+  // Bloc visuel d'UNE section évaluée (utilisé seul ou dans le carrousel).
+  function renderEvaluationSlide(ev) {
+    var score = ev.globalScore;
+    var badgeBg = score>=4 ? 'linear-gradient(135deg,#DCFCE7,#22C55E)' : score>=2 ? 'linear-gradient(135deg,#FEF3C7,#F59E0B)' : 'linear-gradient(135deg,#FEE2E2,#EF4444)';
+    var badgeShadow = score>=4 ? 'rgba(34,197,94,0.3)' : score>=2 ? 'rgba(245,158,11,0.3)' : 'rgba(239,68,68,0.3)';
+    var crit = ev.criteria || {};
+    return '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">' +
+        '<div>' +
+          '<div style="display:inline-flex;align-items:center;gap:4px;background:#FFF;padding:4px 8px;border-radius:8px;font-size:10px;font-weight:800;color:#64748B;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05);"><span>📊</span> Évaluation</div>' +
+          '<div style="font-size:20px;font-weight:900;color:#0F172A;letter-spacing:-0.5px;">' + (ev.emoji ? ev.emoji + ' ' : '') + safeHtml(ev.teamName || '') + '</div>' +
+        '</div>' +
+        '<div style="background:' + badgeBg + ';color:#FFF;padding:12px 16px;border-radius:16px;font-size:24px;font-weight:900;box-shadow:0 6px 16px ' + badgeShadow + ';text-shadow:0 2px 4px rgba(0,0,0,0.1);white-space:nowrap;">' + score + '/5</div>' +
+      '</div>' +
+      '<div style="display:flex;flex-direction:column;gap:14px;">' +
+        Object.keys(crit).map(function(k) {
+          var v = crit[k];
+          var pct = (v/5)*100;
+          var cCol = v>=4?'linear-gradient(90deg,#34D399,#10B981)':v>=2?'linear-gradient(90deg,#FBBF24,#F59E0B)':'linear-gradient(90deg,#F87171,#EF4444)';
+          return '<div style="display:flex;flex-direction:column;gap:6px;">' +
+                   '<div style="display:flex;justify-content:space-between;font-size:12.5px;font-weight:800;color:#475569;"><span>' + safeHtml(k) + '</span><span style="color:#0F172A;">' + v + '/5</span></div>' +
+                   '<div style="height:10px;background:#E2E8F0;border-radius:5px;overflow:hidden;box-shadow:inset 0 1px 3px rgba(0,0,0,0.06);">' +
+                     '<div style="height:100%;width:' + pct + '%;background:' + cCol + ';border-radius:5px;box-shadow:0 1px 2px rgba(0,0,0,0.1);"></div>' +
+                   '</div>' +
+                 '</div>';
+        }).join('') +
+      '</div>' +
+      (ev.comment ? '<p style="font-size:13px;color:#334155;margin:14px 0 0;line-height:1.4;">' + safeHtml(ev.comment) + '</p>' : '');
+  }
+
+  // Publication d'évaluation. Plusieurs sections évaluées = un carrousel horizontal
+  // dans UNE seule publication (au lieu d'une publication distincte par section).
+  function renderEvaluationContent(post) {
+    var meta = post.metadata || {};
+    var evBadge = meta.eventTitle
+      ? '<div style="font-size:12.5px;font-weight:800;color:#5856D6;background:rgba(88,86,214,0.08);padding:6px 12px;border-radius:10px;margin-bottom:12px;display:flex;align-items:center;gap:6px;"><span>🗓️ Événement :</span> <span>' + safeHtml(meta.eventTitle) + '</span></div>'
+      : '';
+
+    // Ancien format (une seule section, publications déjà en base) ramené au
+    // format liste pour être rendu par le même code.
+    var evals = meta.evaluations;
+    if (!Array.isArray(evals) || evals.length === 0) {
+      evals = [{ teamName: meta.teamName, globalScore: meta.globalScore, criteria: meta.criteria, comment: post.caption || '' }];
+    }
+
+    var boxStyle = 'padding:18px;background:linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%);border-radius:20px;border:1px solid #E2E8F0;box-shadow:inset 0 2px 4px rgba(255,255,255,0.8), 0 4px 12px rgba(0,0,0,0.03);';
+
+    if (evals.length === 1) {
+      return '<div style="margin:10px 14px;' + boxStyle + '">' + evBadge + renderEvaluationSlide(evals[0]) + '</div>';
+    }
+
+    var curIdx = (S.evalCarouselIdx && S.evalCarouselIdx[post.id]) || 0;
+    return '<div style="margin:10px 14px;">' +
+      evBadge +
+      '<div style="position:relative;">' +
+        '<div style="position:absolute;top:10px;right:10px;z-index:3;background:rgba(15,23,42,0.72);color:#FFF;font-size:11.5px;font-weight:800;padding:4px 10px;border-radius:12px;" id="evalBadge-' + post.id + '">' + (curIdx+1) + '/' + evals.length + '</div>' +
+        '<div id="evalCar-' + post.id + '" onscroll="App.evalCarScroll(\'' + post.id + '\', this)" style="display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;gap:0;">' +
+          evals.map(function(ev) {
+            return '<div style="flex:0 0 100%;scroll-snap-align:start;box-sizing:border-box;' + boxStyle + '">' + renderEvaluationSlide(ev) + '</div>';
+          }).join('') +
+        '</div>' +
+      '</div>' +
+      '<div id="evalDots-' + post.id + '" style="display:flex;justify-content:center;gap:5px;margin-top:10px;">' +
+        evals.map(function(_, di) {
+          var a = di === curIdx;
+          return '<div style="width:' + (a?'18':'6') + 'px;height:6px;border-radius:3px;background:' + (a?'#5856D6':'#C7C7CC') + ';transition:all 0.25s;"></div>';
+        }).join('') +
+      '</div>' +
+    '</div>';
+  }
+
   function renderPostCard(post) {
     var iLiked = userIsLiked(post);
     var iSaved = !!S.savedPosts[post.id];
@@ -611,34 +686,8 @@
             '<button onclick="App.toggleParticipation(\''+post.id+'\',\'no\')" style="flex:1;padding:12px;border-radius:12px;font-size:14px;font-weight:800;border:none;cursor:pointer;background:'+((post.metadata.participations||{})[(S.user||{}).id]==='no'?'linear-gradient(135deg,#FF3B30,#D70015)':'#FFF')+';color:'+((post.metadata.participations||{})[(S.user||{}).id]==='no'?'#FFF':'#000')+';box-shadow:'+((post.metadata.participations||{})[(S.user||{}).id]==='no'?'0 4px 12px rgba(255,59,48,0.3)':'0 2px 6px rgba(0,0,0,0.05)')+';transition:all 0.2s;">' + ((post.metadata.participations||{})[(S.user||{}).id]==='no' ? '❌ Indisponible' : '❌ Non dispo') + '</button>' +
           '</div>' +
         '</div>';
-      } else if (post.type === 'EVALUATION' && post.metadata && post.metadata.teamName) {
-         var evBadge = post.metadata.eventTitle 
-            ? '<div style="font-size:12.5px;font-weight:800;color:#5856D6;background:rgba(88,86,214,0.08);padding:6px 12px;border-radius:10px;margin-bottom:12px;display:flex;align-items:center;gap:6px;"><span>🗓️ Événement :</span> <span>' + safeHtml(post.metadata.eventTitle) + '</span></div>'
-            : '';
-         contentZone = '<div style="margin:10px 14px;padding:18px;background:linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%);border-radius:20px;border:1px solid #E2E8F0;box-shadow:inset 0 2px 4px rgba(255,255,255,0.8), 0 4px 12px rgba(0,0,0,0.03);">' +
-          evBadge +
-          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">' +
-            '<div>' +
-              '<div style="display:inline-flex;align-items:center;gap:4px;background:#FFF;padding:4px 8px;border-radius:8px;font-size:10px;font-weight:800;color:#64748B;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05);"><span>📊</span> Évaluation</div>' +
-              '<div style="font-size:20px;font-weight:900;color:#0F172A;letter-spacing:-0.5px;">' + safeHtml(post.metadata.teamName || '') + '</div>' +
-            '</div>' +
-            '<div style="background:' + (post.metadata.globalScore>=4?'linear-gradient(135deg,#DCFCE7,#22C55E)':post.metadata.globalScore>=2?'linear-gradient(135deg,#FEF3C7,#F59E0B)':'linear-gradient(135deg,#FEE2E2,#EF4444)') + ';color:#FFF;padding:12px 16px;border-radius:16px;font-size:24px;font-weight:900;box-shadow:0 6px 16px ' + (post.metadata.globalScore>=4?'rgba(34,197,94,0.3)':post.metadata.globalScore>=2?'rgba(245,158,11,0.3)':'rgba(239,68,68,0.3)') + ';text-shadow:0 2px 4px rgba(0,0,0,0.1);">' + post.metadata.globalScore + '/5</div>' +
-          '</div>' +
-          '<div style="display:flex;flex-direction:column;gap:14px;">' +
-            (post.metadata.criteria ? Object.keys(post.metadata.criteria).map(function(k) {
-              var v = post.metadata.criteria[k];
-              var pct = (v/5)*100;
-              var cCol = v>=4?'linear-gradient(90deg,#34D399,#10B981)':v>=2?'linear-gradient(90deg,#FBBF24,#F59E0B)':'linear-gradient(90deg,#F87171,#EF4444)';
-              return '<div style="display:flex;flex-direction:column;gap:6px;">' +
-                       '<div style="display:flex;justify-content:space-between;font-size:12.5px;font-weight:800;color:#475569;"><span>' + safeHtml(k) + '</span><span style="color:#0F172A;">' + v + '/5</span></div>' +
-                       '<div style="height:10px;background:#E2E8F0;border-radius:5px;overflow:hidden;box-shadow:inset 0 1px 3px rgba(0,0,0,0.06);">' +
-                         '<div style="height:100%;width:' + pct + '%;background:' + cCol + ';border-radius:5px;transition:width 1s cubic-bezier(0.34, 1.56, 0.64, 1);box-shadow:0 1px 2px rgba(0,0,0,0.1);"></div>' +
-                       '</div>' +
-                     '</div>';
-            }).join('') : '') +
-          '</div>' +
-          '<p style="font-size:13px;color:#334155;margin:14px 0 0;line-height:1.4;">' + safeHtml(post.caption||'') + '</p>' +
-        '</div>';
+      } else if (post.type === 'EVALUATION' && post.metadata && (post.metadata.evaluations || post.metadata.teamName)) {
+         contentZone = renderEvaluationContent(post);
       } else {
          // For standard posts: only the media zone goes in contentZone.
          // The caption is rendered separately in finalHtml below.

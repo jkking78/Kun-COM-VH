@@ -407,7 +407,7 @@
     return renderScreenHeader('Notation & Débrief', 'Évaluation Inter-Sections', '') +
 
       '<div style="padding:16px;">' +
-        '<p style="font-size:13.5px;color:#8E8E93;margin:0 0 16px;line-height:1.5;">Notez les performances des autres sections pour un événement. La notation de votre propre section est interdite.</p>' +
+        '<p style="font-size:13.5px;color:#8E8E93;margin:0 0 16px;line-height:1.5;">Notez les performances des pôles pour un événement, critère par critère. Si vous avez déjà publié un bilan pour cet événement, il sera mis à jour.</p>' +
 
         (function(){
           var eventPosts = db(SK.POSTS, []).filter(function(p){ return p.type === 'EVENT'; });
@@ -425,41 +425,69 @@
           '</div>';
         })() +
 
-        SECTIONS.map(function(sec) {
-          var blocked = sec.id === userSec;
-          var r = S.ratings[sec.id] || { score: 0, comment: '' };
-          if (blocked) {
-            return '<div style="background:#F8F8FC;border-radius:18px;padding:14px;margin-bottom:10px;border:1px solid #EFEFEF;">' +
-              '<div style="display:flex;align-items:center;justify-content:space-between;">' +
-                '<div style="display:flex;align-items:center;gap:10px;"><span style="font-size:22px;">' + sec.emoji + '</span><strong style="color:#8E8E93;font-size:14px;">' + sec.nom + '</strong></div>' +
-                '<span style="background:#FFEBEA;color:#FF3B30;font-size:11px;font-weight:800;padding:5px 10px;border-radius:20px;">Votre section</span>' +
-              '</div></div>';
-          }
-          var scoreColor = r.score >= 4 ? '#34C759' : r.score >= 2 ? '#FF9500' : r.score > 0 ? '#FF3B30' : '#C7C7CC';
-          return '<div style="background:#FFF;border-radius:18px;padding:16px;margin-bottom:10px;border:1px solid #EFEFEF;box-shadow:0 2px 8px rgba(0,0,0,0.04);">' +
-            '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">' +
-              '<div style="display:flex;align-items:center;gap:10px;">' +
-                '<div style="width:42px;height:42px;border-radius:21px;background:linear-gradient(135deg,' + sec.color + '20,' + sec.color + '10);display:flex;align-items:center;justify-content:center;font-size:20px;">' + sec.emoji + '</div>' +
-                '<div><strong style="font-size:14.5px;color:#000;display:block;">' + sec.nom + '</strong>' +
-                '<span style="font-size:11.5px;color:#8E8E93;">Cliquez pour noter</span></div>' +
-              '</div>' +
-              '<div style="font-size:20px;font-weight:900;color:' + scoreColor + ';">' + (r.score > 0 ? r.score+'/5' : '—') + '</div>' +
-            '</div>' +
-            '<div id="stars-'+sec.id+'" style="display:flex;gap:6px;margin-bottom:12px;">' +
-              [1,2,3,4,5].map(function(star) {
-                return '<button type="button" onclick="App.rate(\''+sec.id+'\','+star+')" style="font-size:28px;cursor:pointer;background:none;border:none;padding:0;transition:transform 0.1s;color:' + (star<=r.score?'#FFD700':'#D1D1D6') + ';" onmousedown="this.style.transform=\'scale(1.2)\'" onmouseup="this.style.transform=\'scale(1)\'">★</button>';
-              }).join('') +
-            '</div>' +
-            '<input type="text" value="' + safeHtml(r.comment||'') + '" onchange="App.rateComment(\''+sec.id+'\',this.value)" placeholder="Ajouter une observation..." ' +
-            'style="width:100%;height:40px;border:1.5px solid #EFEFEF;border-radius:12px;padding:0 12px;font-size:13.5px;color:#000;box-sizing:border-box;outline:none;background:#FAFAFA;" ' +
-            'onfocus="this.style.borderColor=\'#007AFF\'" onblur="this.style.borderColor=\'#EFEFEF\'">' +
-          '</div>';
-        }).join('') +
+        SECTIONS.map(function(sec) { return renderEvalSectionCard(sec, userSec); }).join('') +
 
-          '<button onclick="App.publishBilan()" style="width:100%;background:linear-gradient(135deg,#34C759,#28A347);color:#FFF;border:none;border-radius:16px;padding:15px;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 4px 14px rgba(52,199,89,0.3);">Valider & Publier le Bilan ✓</button>' +
+          // padding-bottom généreux : la barre de navigation du bas est en position
+          // fixe et recouvrait la moitié du bouton (on ne pouvait pas l'atteindre).
+          '<button id="publishBilanBtn" onclick="App.publishBilan()" style="width:100%;background:linear-gradient(135deg,#34C759,#28A347);color:#FFF;border:none;border-radius:16px;padding:15px;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 4px 14px rgba(52,199,89,0.3);">Valider &amp; Publier le Bilan ✓</button>' +
+          '<div style="height:96px;"></div>' +
         '</div>' +
 
       '</div>';
+  }
+
+  // Une carte de section dans l'écran Notation. Repliée : nom + moyenne.
+  // Dépliée : une ligne d'étoiles par critère, notés indépendamment.
+  function renderEvalSectionCard(sec, userSec) {
+    // Les Grands Responsables (seuls habilités à noter) évaluent toutes les
+    // sections, y compris la leur — l'ancien blocage a été retiré. On garde
+    // simplement un repère visuel.
+    var isOwn = sec.id === userSec;
+    var r = S.ratings[sec.id] || { criteria: {}, comment: '' };
+    if (!r.criteria) r.criteria = {};
+    var avg = ratingAverage(r.criteria);
+    var ratedCount = EVAL_CRITERIA.filter(function(c){ return (r.criteria[c.id]||0) > 0; }).length;
+    var expanded = S.evalExpandedSection === sec.id;
+    var scoreColor = avg >= 4 ? '#34C759' : avg >= 2 ? '#FF9500' : avg > 0 ? '#FF3B30' : '#C7C7CC';
+
+    var criteriaHtml = EVAL_CRITERIA.map(function(c) {
+      var v = r.criteria[c.id] || 0;
+      return '<div style="padding:10px 0;border-top:1px solid #F4F4F6;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
+          '<span style="font-size:13.5px;font-weight:700;color:#1C1C1E;">' + c.nom + '</span>' +
+          '<span id="critval-' + sec.id + '-' + c.id + '" style="font-size:13px;font-weight:800;color:' + (v>0?'#0F172A':'#C7C7CC') + ';">' + (v>0 ? v+'/5' : '—') + '</span>' +
+        '</div>' +
+        '<div id="critstars-' + sec.id + '-' + c.id + '" style="display:flex;gap:5px;">' +
+          [1,2,3,4,5].map(function(star) {
+            return '<button type="button" onclick="App.rateCriterion(\'' + sec.id + '\',\'' + c.id + '\',' + star + ')" style="font-size:26px;cursor:pointer;background:none;border:none;padding:0;line-height:1;color:' + (star<=v?'#FFD700':'#D1D1D6') + ';">★</button>';
+          }).join('') +
+        '</div>' +
+      '</div>';
+    }).join('');
+
+    return '<div style="background:#FFF;border-radius:18px;margin-bottom:10px;border:1px solid #EFEFEF;box-shadow:0 2px 8px rgba(0,0,0,0.04);overflow:hidden;">' +
+      '<div onclick="App.toggleEvalSection(\'' + sec.id + '\')" style="display:flex;align-items:center;justify-content:space-between;padding:16px;cursor:pointer;">' +
+        '<div style="display:flex;align-items:center;gap:10px;">' +
+          '<div style="width:42px;height:42px;border-radius:21px;background:linear-gradient(135deg,' + sec.color + '20,' + sec.color + '10);display:flex;align-items:center;justify-content:center;font-size:20px;">' + sec.emoji + '</div>' +
+          '<div><strong style="font-size:14.5px;color:#000;display:block;">' + sec.nom +
+            (isOwn ? ' <span style="font-size:10px;font-weight:800;color:#007AFF;background:#EBF5FF;padding:2px 7px;border-radius:8px;vertical-align:middle;">Votre pôle</span>' : '') +
+          '</strong>' +
+          '<span id="evalsub-' + sec.id + '" style="font-size:11.5px;color:#8E8E93;">' + (ratedCount > 0 ? ratedCount + '/' + EVAL_CRITERIA.length + ' critères notés' : 'Appuyez pour noter les critères') + '</span></div>' +
+        '</div>' +
+        '<div style="display:flex;align-items:center;gap:8px;">' +
+          '<div id="evalavg-' + sec.id + '" style="font-size:20px;font-weight:900;color:' + scoreColor + ';">' + (avg > 0 ? avg+'/5' : '—') + '</div>' +
+          '<span style="font-size:13px;color:#C7C7CC;transform:rotate(' + (expanded?'90':'0') + 'deg);transition:transform 0.2s;">›</span>' +
+        '</div>' +
+      '</div>' +
+      (expanded
+        ? '<div style="padding:0 16px 16px;">' +
+            criteriaHtml +
+            '<input type="text" value="' + safeHtml(r.comment||'') + '" onchange="App.rateComment(\'' + sec.id + '\',this.value)" placeholder="Ajouter une observation..." ' +
+            'style="width:100%;height:40px;border:1.5px solid #EFEFEF;border-radius:12px;padding:0 12px;font-size:13.5px;color:#000;box-sizing:border-box;outline:none;background:#FAFAFA;margin-top:12px;" ' +
+            'onfocus="this.style.borderColor=\'#007AFF\'" onblur="this.style.borderColor=\'#EFEFEF\'">' +
+          '</div>'
+        : '') +
+    '</div>';
   }
 
   // ============================================================
@@ -600,10 +628,25 @@
       return isEval && (p.timestamp || 0) >= currentCycleStart; 
     });
     
-    // Add bonus points for great evaluations
+    // Une publication de bilan peut désormais contenir plusieurs sections évaluées.
+    // On aplatit donc toutes les notes de toutes les publications (l'ancien format
+    // à une seule section reste géré via metadata.globalScore).
+    var allEvalScores = [];
     evalPosts.forEach(function(ep) {
       var meta = ep.metadata || {};
-      var r = parseFloat(meta.globalScore || 0);
+      if (Array.isArray(meta.evaluations) && meta.evaluations.length > 0) {
+        meta.evaluations.forEach(function(ev) {
+          var v = parseFloat(ev.globalScore || 0);
+          if (v > 0) allEvalScores.push(v);
+        });
+      } else {
+        var r = parseFloat(meta.globalScore || 0);
+        if (r > 0) allEvalScores.push(r);
+      }
+    });
+
+    // Add bonus points for great evaluations
+    allEvalScores.forEach(function(r) {
       if (r >= 4) currentScore = Math.min(20, currentScore + 1); // +1 bonus for good eval
       if (r <= 2 && r > 0) currentScore = Math.max(0, currentScore - 1); // -1 penalty for bad eval
     });
@@ -611,14 +654,10 @@
     var scoreColor = currentScore < 10 ? '#EF4444' : (currentScore < 15 ? '#F59E0B' : '#10B981');
     var scoreLabel = currentScore < 10 ? 'Critique' : (currentScore < 15 ? 'Moyen' : 'Excellent 🌟');
 
-    var evalCount = evalPosts.length;
+    var evalCount = allEvalScores.length;
     var avgRating = '—';
     if (evalCount > 0) {
-      var sumRating = 0;
-      evalPosts.forEach(function(ep){
-        var meta = ep.metadata || {};
-        sumRating += parseFloat(meta.globalScore || 0);
-      });
+      var sumRating = allEvalScores.reduce(function(a,b){ return a+b; }, 0);
       avgRating = (sumRating / evalCount).toFixed(1);
     }
     var trustScore = Math.round((currentScore / 20) * 100);

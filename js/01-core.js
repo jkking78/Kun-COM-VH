@@ -628,15 +628,22 @@
     expandedCaptions: {},
     savedPosts: {},
     // Feed
+    // Chaque section se note désormais critère par critère (voir EVAL_CRITERIA).
+    // La note globale est la moyenne des critères notés, elle n'est plus saisie
+    // directement ni inventée aléatoirement comme avant.
     ratings: {
-      cadrage: { score: 0, comment: '' },
-      web: { score: 0, comment: '' },
-      proj: { score: 0, comment: '' },
-      prod: { score: 0, comment: '' },
-      regie: { score: 0, comment: '' },
-      photo: { score: 0, comment: '' },
-      vente: { score: 0, comment: '' }
+      cadrage: { criteria: {}, comment: '' },
+      web: { criteria: {}, comment: '' },
+      proj: { criteria: {}, comment: '' },
+      prod: { criteria: {}, comment: '' },
+      regie: { criteria: {}, comment: '' },
+      photo: { criteria: {}, comment: '' },
+      vente: { criteria: {}, comment: '' }
     },
+    // Section actuellement dépliée dans l'écran Notation (accordéon)
+    evalExpandedSection: null,
+    // Position courante dans le carrousel d'une publication d'évaluation
+    evalCarouselIdx: {},
     checkedIn: false,
     // Toast
     toast: null,
@@ -778,6 +785,26 @@
     { id: 'vente',   nom: 'Vente',   emoji: '🛒', color: '#AF52DE' }
   ];
   var HASHTAGS = ['#Cadrage','#Régie','#Web','#Projection','#Prod','#Photo','#Vente','#CulteDuDimanche','#Chorale','#Formation','#Bilan'];
+
+  // Critères d'évaluation d'une section. Chacun se note indépendamment des autres
+  // (auparavant une seule note globale était saisie, et les critères affichés dans
+  // la publication étaient générés aléatoirement autour d'elle — d'où des notes
+  // incohérentes avec ce qui avait réellement été saisi).
+  var EVAL_CRITERIA = [
+    { id: 'ponctualite', nom: 'Ponctualité' },
+    { id: 'technique',   nom: 'Technique' },
+    { id: 'reactivite',  nom: 'Réactivité' },
+    { id: 'esprit',      nom: "Esprit d'équipe" }
+  ];
+
+  // Moyenne des critères effectivement notés (0 si aucun).
+  function ratingAverage(critObj) {
+    if (!critObj) return 0;
+    var vals = EVAL_CRITERIA.map(function(c){ return critObj[c.id] || 0; }).filter(function(v){ return v > 0; });
+    if (vals.length === 0) return 0;
+    var sum = vals.reduce(function(a,b){ return a+b; }, 0);
+    return Math.round((sum / vals.length) * 10) / 10;
+  }
 
   var ROLE_LABELS = {
     GRAND_RESPONSABLE: '👑 Grand Resp.',

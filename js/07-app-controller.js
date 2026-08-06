@@ -1353,7 +1353,14 @@ toggleParticipation: function(postId, status) {
     },
 
     // Navigation
-    tab: function(t) { S.tab=t; S.createOpen=false; S.commentOpen=false; S.optionsOpen=false; render(); },
+    tab: function(t) {
+      // L'évaluation est réservée aux Grands Responsables.
+      if (t === 'debrief' && !(S.user && S.user.role === 'GRAND_RESPONSABLE')) {
+        toast('La notation est réservée aux Grands Responsables.', 'error');
+        return;
+      }
+      S.tab=t; S.createOpen=false; S.commentOpen=false; S.optionsOpen=false; render();
+    },
 
     // Charge la page suivante de publications plus anciennes (pagination à la
     // demande — voir POSTS_PAGE_SIZE). N'efface jamais ce qui est déjà affiché :
@@ -2205,6 +2212,27 @@ toggleParticipation: function(postId, status) {
       }
     },
 
+    // Défilement du carrousel d'une publication d'évaluation (une section par vue).
+    evalCarScroll: function(postId, el) {
+      var w = el.clientWidth; if (!w) return;
+      var idx = Math.round(el.scrollLeft / w);
+      if (!S.evalCarouselIdx) S.evalCarouselIdx = {};
+      if (S.evalCarouselIdx[postId] === idx) return;
+      S.evalCarouselIdx[postId] = idx;
+      var total = el.children ? el.children.length : 0;
+      var badge = document.getElementById('evalBadge-' + postId);
+      if (badge && total) badge.textContent = (idx + 1) + '/' + total;
+      var dots = document.getElementById('evalDots-' + postId);
+      if (dots && total) {
+        var html = '';
+        for (var i = 0; i < total; i++) {
+          var a = i === idx;
+          html += '<div style="width:' + (a?'18':'6') + 'px;height:6px;border-radius:3px;background:' + (a?'#5856D6':'#C7C7CC') + ';transition:all 0.25s;"></div>';
+        }
+        dots.innerHTML = html;
+      }
+    },
+
     // Défilement d'un carrousel d'événements d'une même journée. Met à jour le
     // compteur et les pastilles directement dans le DOM (pas de render() global,
     // qui interromprait le défilement en cours).
@@ -2229,20 +2257,45 @@ toggleParticipation: function(postId, status) {
     },
 
     // Debrief
-    rate: function(secId, score) {
-      var u = S.user || {};
-      if (secId === u.section_id) { toast('Vous ne pouvez pas noter votre propre section.', 'error'); return; }
-      if (!S.ratings[secId]) S.ratings[secId] = { score:0, comment:'' };
-      S.ratings[secId].score = score;
-      var starsEl = document.getElementById('stars-'+secId);
+    // Déplie/replie une section dans l'écran Notation (une seule à la fois).
+    // Les Grands Responsables peuvent noter toutes les sections, y compris la leur.
+    toggleEvalSection: function(secId) {
+      S.evalExpandedSection = (S.evalExpandedSection === secId) ? null : secId;
+      render();
+    },
+    // Note un critère précis d'une section. Chaque critère est indépendant ;
+    // la note globale affichée est leur moyenne, recalculée immédiatement dans le
+    // DOM (auparavant le compteur de droite n'était rafraîchi qu'au rendu suivant,
+    // d'où l'impression de latence).
+    rateCriterion: function(secId, critId, score) {
+      if (!S.ratings[secId]) S.ratings[secId] = { criteria:{}, comment:'' };
+      if (!S.ratings[secId].criteria) S.ratings[secId].criteria = {};
+      S.ratings[secId].criteria[critId] = score;
+
+      var starsEl = document.getElementById('critstars-' + secId + '-' + critId);
       if (starsEl) {
         starsEl.innerHTML = [1,2,3,4,5].map(function(s) {
-          return '<button type="button" onclick="App.rate(\''+secId+'\','+s+')" style="font-size:28px;cursor:pointer;background:none;border:none;padding:0;color:'+(s<=score?'#FFD700':'#D1D1D6')+';transition:transform 0.1s;" onmousedown="this.style.transform=\'scale(1.2)\'" onmouseup="this.style.transform=\'scale(1)\'">★</button>';
+          return '<button type="button" onclick="App.rateCriterion(\'' + secId + '\',\'' + critId + '\',' + s + ')" style="font-size:26px;cursor:pointer;background:none;border:none;padding:0;line-height:1;color:' + (s<=score?'#FFD700':'#D1D1D6') + ';">★</button>';
         }).join('');
+      }
+      var valEl = document.getElementById('critval-' + secId + '-' + critId);
+      if (valEl) { valEl.textContent = score + '/5'; valEl.style.color = '#0F172A'; }
+
+      var crit = S.ratings[secId].criteria;
+      var avg = ratingAverage(crit);
+      var avgEl = document.getElementById('evalavg-' + secId);
+      if (avgEl) {
+        avgEl.textContent = avg > 0 ? avg + '/5' : '—';
+        avgEl.style.color = avg >= 4 ? '#34C759' : avg >= 2 ? '#FF9500' : avg > 0 ? '#FF3B30' : '#C7C7CC';
+      }
+      var subEl = document.getElementById('evalsub-' + secId);
+      if (subEl) {
+        var n = EVAL_CRITERIA.filter(function(c){ return (crit[c.id]||0) > 0; }).length;
+        subEl.textContent = n + '/' + EVAL_CRITERIA.length + ' critères notés';
       }
     },
     rateComment: function(secId, val) {
-      if (!S.ratings[secId]) S.ratings[secId] = { score:0, comment:'' };
+      if (!S.ratings[secId]) S.ratings[secId] = { criteria:{}, comment:'' };
       S.ratings[secId].comment = val;
     },
     checkIn: function() {
@@ -2251,6 +2304,9 @@ toggleParticipation: function(postId, status) {
       if (btn) { btn.textContent='✓ Présent'; btn.style.background='linear-gradient(135deg,#34C759,#28A347)'; }
       toast('Présence validée ! ✓', 'success');
     },
+    // Publie UNE seule publication regroupant toutes les sections évaluées
+    // (auparavant : une publication séparée par section, ce qui noyait le fil).
+    // Les sections s'y consultent sous forme de carrousel.
     publishBilan: function() {
       if (!S.user) return;
       var eventSelect = document.getElementById('evalEventSelect');
@@ -2263,60 +2319,72 @@ toggleParticipation: function(postId, status) {
       var selectedEv = posts.find(function(p){ return p.id === eventId; });
       var eventTitle = selectedEv ? (selectedEv.eventTitle || (selectedEv.metadata && selectedEv.metadata.title) || 'Événement') : 'Événement';
 
-      var hasRatings = false;
-      var ts = Date.now();
-      
-      Object.keys(S.ratings).forEach(function(secId) {
-        var r = S.ratings[secId];
-        if (r && r.score > 0) {
-          hasRatings = true;
-          var targetSec = SECTIONS.find(function(s){ return s.id === secId; });
-          var tNom = targetSec ? targetSec.nom : secId;
-          
-          var globalScore = r.score;
-          var crit = {
-             "Ponctualité": Math.min(5, Math.max(1, globalScore + (Math.random()>0.5?1:0))),
-             "Technique": globalScore,
-             "Réactivité": Math.min(5, Math.max(1, globalScore - (Math.random()>0.5?1:0))),
-             "Esprit d'équipe": Math.min(5, Math.max(1, globalScore + (Math.random()>0.5?1:-1)))
-          };
-          
-          var newPost = {
-            id: 'eval-'+secId+'-'+ts, userId: S.user.id, timestamp: ts++,
-            author: S.user.prenom + ' ' + S.user.nom,
-            authorAvatar: S.user.prenom.charAt(0).toUpperCase(),
-            avatarColor: S.user.avatar_color || '#007AFF',
-            avatar_url: S.user.avatar_url || null,
-            sectionId: S.user.section_id || 'general', sectionNom: secNom(S.user.section_id || 'general'),
-            type: 'EVALUATION',
-            metadata: {
-               eventId: eventId,
-               eventTitle: eventTitle,
-               teamName: tNom,
-               globalScore: globalScore,
-               criteria: crit
-            },
-            caption: r.comment || ("Évaluation de l'équipe " + tNom),
-            mediaUrls: [], likes: 0, likedBy: [], comments: []
-          };
-          posts.unshift(newPost);
-        }
+      var evaluations = [];
+      SECTIONS.forEach(function(sec) {
+        var r = S.ratings[sec.id];
+        if (!r || !r.criteria) return;
+        var avg = ratingAverage(r.criteria);
+        if (avg <= 0) return;
+        // Critères libellés en clair pour l'affichage, dans l'ordre défini.
+        var crit = {};
+        EVAL_CRITERIA.forEach(function(c) {
+          var v = r.criteria[c.id] || 0;
+          if (v > 0) crit[c.nom] = v;
+        });
+        evaluations.push({
+          teamId: sec.id,
+          teamName: sec.nom,
+          emoji: sec.emoji,
+          color: sec.color,
+          globalScore: avg,
+          criteria: crit,
+          comment: r.comment || ''
+        });
       });
-      
-      if (!hasRatings) {
-         toast('Veuillez noter au moins une section.', 'error');
-         return;
+
+      if (evaluations.length === 0) {
+        toast('Notez au moins un critère dans une section.', 'error');
+        return;
       }
-      
-      dbSet(SK.POSTS, posts); 
-      if (supabase && newPost) supabase.from('kun_com_posts').upsert({ id: newPost.id, content: newPost }, { onConflict: 'id' }).then(function(){}, function(e){});
+
+      var ts = Date.now();
+      var newPost = {
+        id: 'eval-' + ts, userId: S.user.id, timestamp: ts,
+        author: S.user.prenom + ' ' + S.user.nom,
+        authorAvatar: S.user.prenom.charAt(0).toUpperCase(),
+        avatarColor: S.user.avatar_color || '#007AFF',
+        avatar_url: S.user.avatar_url || null,
+        sectionId: S.user.section_id || 'general', sectionNom: secNom(S.user.section_id || 'general'),
+        type: 'EVALUATION',
+        metadata: {
+          eventId: eventId,
+          eventTitle: eventTitle,
+          evaluations: evaluations,
+          // Champs conservés pour compatibilité avec l'ancien format à une seule
+          // section (profils, statistiques, publications déjà en base).
+          teamName: evaluations[0].teamName,
+          globalScore: evaluations[0].globalScore,
+          criteria: evaluations[0].criteria
+        },
+        caption: evaluations.length > 1
+          ? 'Bilan de ' + evaluations.length + ' pôles — ' + eventTitle
+          : ("Évaluation de l'équipe " + evaluations[0].teamName),
+        mediaUrls: [], likes: 0, likedBy: [], comments: []
+      };
+      posts.unshift(newPost);
+      dbSet(SK.POSTS, posts);
+      if (supabase) supabase.from('kun_com_posts').upsert({ id: newPost.id, content: newPost, created_at: new Date().toISOString() }, { onConflict: 'id' }).then(function(){}, function(e){ console.warn('Erreur publication bilan:', e); });
+
+      // Réinitialise proprement l'écran de notation
       S.ratings = {};
+      SECTIONS.forEach(function(sec){ S.ratings[sec.id] = { criteria:{}, comment:'' }; });
       S.evalEventId = null;
-      S.tab='home'; 
-      S.q = ''; // Reset search
+      S.evalExpandedSection = null;
+      S.tab = 'home';
+      S.q = '';
       render();
       setTimeout(function() { window.scrollTo({ top: 0, behavior: 'smooth' }); }, 50);
-      toast('Évaluations publiées avec succès ! 🎉', 'success');
+      toast('Bilan publié avec succès ! 🎉', 'success');
     }
   };
 
