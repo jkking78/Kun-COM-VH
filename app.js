@@ -307,6 +307,7 @@
       if (window.App && window.App.tab) {
          render();
       }
+      try { tryOpenDeepLinkedPost(); } catch(e){}
     } catch(e) {
       console.warn("Supabase Sync Error:", e);
       // Réessaie automatiquement (réseau instable au démarrage) avant d'abandonner
@@ -460,8 +461,41 @@
     pendingVideoPoster: null,
     postAboutEventId: null,
     aboutEventPickerOpen: false,
-    aboutEventSearch: ''
+    aboutEventSearch: '',
+    videoProcessing: false,
+    deleteAccountOpen: false,
+    deleteAccountBusy: false
 };
+
+  // ============================================================
+  // LIEN PROFOND VERS UNE PUBLICATION (?post=ID)
+  // Utilisé quand quelqu'un ouvre un lien copié/partagé (ex: WhatsApp) via
+  // /api/p/:id, qui redirige vers l'appli avec ce paramètre.
+  // ============================================================
+  var _deepLinkPostId = (function() {
+    try { return new URLSearchParams(location.search).get('post'); } catch(e) { return null; }
+  })();
+  function tryOpenDeepLinkedPost() {
+    if (!_deepLinkPostId || !S.user) return;
+    var posts = db(SK.POSTS, []);
+    var target = posts.find(function(p){ return p.id === _deepLinkPostId; });
+    if (!target) return; // Pas encore chargé (sync en cours) : on retentera au prochain appel.
+    var id = _deepLinkPostId;
+    _deepLinkPostId = null;
+    S.tab = 'home'; S.q = ''; S.story = 'all';
+    render();
+    setTimeout(function() {
+      var el = document.getElementById('post-' + id);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.style.transition = 'box-shadow 0.4s';
+        el.style.boxShadow = '0 0 0 3px #007AFF inset';
+        setTimeout(function(){ el.style.boxShadow = ''; }, 2200);
+      }
+    }, 350);
+    // Nettoie l'URL pour éviter de rejouer le scroll à chaque rafraîchissement.
+    try { history.replaceState(null, '', location.pathname); } catch(e){}
+  }
 
   // ============================================================
   // RESTORE SESSION
@@ -578,12 +612,22 @@
 
     var objectUrl = URL.createObjectURL(file);
     var videoEl = document.createElement('video');
-    videoEl.muted = true;
+    // Volume à 0 (plutôt que muted=true) : certains navigateurs ne capturent pas la piste
+    // audio d'un élément <video> "muted" dans captureStream(), ce qui produisait des
+    // vidéos recompressées sans son. Le volume à 0 garde la lecture silencieuse pour
+    // l'utilisateur sans affecter la piste audio capturée.
+    videoEl.volume = 0;
     videoEl.playsInline = true;
     videoEl.src = objectUrl;
+    document.body.appendChild(videoEl);
+    videoEl.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:2px;height:2px;opacity:0;pointer-events:none;';
 
     var finished = false;
-    function cleanup() { try { URL.revokeObjectURL(objectUrl); } catch(e){} }
+    function cleanup() {
+      try { URL.revokeObjectURL(objectUrl); } catch(e){}
+      try { videoEl.pause(); videoEl.removeAttribute('src'); videoEl.load(); } catch(e){}
+      try { if (videoEl.parentNode) videoEl.parentNode.removeChild(videoEl); } catch(e){}
+    }
 
     videoEl.onerror = function() { if (finished) return; finished = true; cleanup(); passthrough(); };
 
@@ -601,10 +645,29 @@
         var canvas = document.createElement('canvas');
         canvas.width = w; canvas.height = h;
         var ctx = canvas.getContext('2d');
+
+        // Récupère la piste audio de la vidéo source pour la recombiner avec le flux
+        // vidéo du canvas — sans quoi la vidéo recompressée serait muette.
+        var srcStream = (typeof videoEl.captureStream === 'function') ? videoEl.captureStream()
+          : (typeof videoEl.mozCaptureStream === 'function') ? videoEl.mozCaptureStream()
+          : null;
+        var audioTracks = srcStream ? srcStream.getAudioTracks() : [];
+        if (audioTracks.length === 0) {
+          // Impossible de capturer l'audio sur ce navigateur (ex: Safari/iOS) : on ne
+          // recompresse pas plutôt que de publier une vidéo sans son.
+          finished = true;
+          cleanup();
+          passthrough();
+          return;
+        }
+
         var stream = canvas.captureStream(30);
-        var mimeType = 'video/webm;codecs=vp8';
+        audioTracks.forEach(function(t){ stream.addTrack(t); });
+
+        var mimeType = 'video/webm;codecs=vp8,opus';
         if (typeof MediaRecorder.isTypeSupported === 'function' && !MediaRecorder.isTypeSupported(mimeType)) {
-          mimeType = 'video/webm';
+          mimeType = 'video/webm;codecs=vp8';
+          if (!MediaRecorder.isTypeSupported(mimeType)) mimeType = 'video/webm';
         }
         var recorder = new MediaRecorder(stream, { mimeType: mimeType, videoBitsPerSecond: 2500000 });
         var chunks = [];
@@ -635,11 +698,16 @@
         videoEl.onended = function() { if (recorder.state !== 'inactive') recorder.stop(); };
         recorder.start();
         videoEl.play().catch(function() {
-          if (finished) return;
-          finished = true;
-          try { recorder.stop(); } catch(e){}
-          cleanup();
-          passthrough();
+          // Lecture bloquée par la politique autoplay (volume=0 non suffisant) : on
+          // retente en "muted" (requis par certains navigateurs pour l'autoplay).
+          videoEl.muted = true;
+          videoEl.play().catch(function() {
+            if (finished) return;
+            finished = true;
+            try { recorder.stop(); } catch(e){}
+            cleanup();
+            passthrough();
+          });
         });
       } catch (err) {
         if (finished) return;
@@ -849,6 +917,7 @@
     },
     comment: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#262626" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
     share: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#262626" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>',
+    link: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#007AFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>',
     bookmark: function(saved) {
       return '<svg width="24" height="24" viewBox="0 0 24 24" fill="' + (saved ? '#000' : 'none') + '" stroke="#262626" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>';
     },
@@ -1295,6 +1364,7 @@
     if (S.membersListOpen) modals += renderMembersModal();
     if (S.repostPostId) modals += renderRepostModal();
     if (S.aboutEventPickerOpen) modals += renderAboutEventPickerModal();
+    if (S.deleteAccountOpen) modals += renderDeleteAccountModal();
 
     return '<div style="position:relative;width:100%;height:100%;display:flex;flex-direction:column;background:#F2F2F7;font-family:-apple-system,BlinkMacSystemFont,\'SF Pro Text\',sans-serif;">' +
       '<div id="mainContent" style="flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;padding-bottom:70px;">' + content + '</div>' +
@@ -1962,7 +2032,14 @@
     }
 
     var previewHtml = '';
-    if (S.pendingMedia.length > 0) {
+    if (S.videoProcessing) {
+      // Reste affiché tant que la vidéo n'est pas prête (poster généré) — remplace le
+      // toast, trop court pour un traitement pouvant prendre plusieurs secondes.
+      previewHtml = '<div style="display:flex;align-items:center;gap:10px;background:#F6F7F9;border-radius:16px;padding:14px;margin-bottom:12px;">' +
+        '<div style="width:20px;height:20px;border:3px solid #E2E4E9;border-top-color:#007AFF;border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0;"></div>' +
+        '<span style="font-size:12.5px;font-weight:700;color:#3A3A3C;">' + (S.reduceVideoQuality ? 'Traitement de la vidéo (réduction de qualité)…' : 'Traitement de la vidéo…') + '</span>' +
+      '</div>';
+    } else if (S.pendingMedia.length > 0) {
       previewHtml = '<div style="display:flex;gap:8px;overflow-x:auto;margin-bottom:12px;padding-bottom:4px;">' +
         S.pendingMedia.map(function(url, i) {
           var isVid = isVideoUrl(url);
@@ -2252,7 +2329,14 @@
 
   function renderCreateModal(u) {
     var previewHtml = '';
-    if (S.pendingMedia.length > 0) {
+    if (S.videoProcessing) {
+      // Reste affiché tant que la vidéo n'est pas prête (poster généré) — remplace le
+      // toast, trop court pour un traitement pouvant prendre plusieurs secondes.
+      previewHtml = '<div style="display:flex;align-items:center;gap:10px;background:#F6F7F9;border-radius:16px;padding:14px;margin-bottom:12px;">' +
+        '<div style="width:20px;height:20px;border:3px solid #E2E4E9;border-top-color:#007AFF;border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0;"></div>' +
+        '<span style="font-size:12.5px;font-weight:700;color:#3A3A3C;">' + (S.reduceVideoQuality ? 'Traitement de la vidéo (réduction de qualité)…' : 'Traitement de la vidéo…') + '</span>' +
+      '</div>';
+    } else if (S.pendingMedia.length > 0) {
       previewHtml = '<div style="display:flex;gap:8px;overflow-x:auto;margin-bottom:12px;padding-bottom:4px;">' +
         S.pendingMedia.map(function(url, i) {
           var isVid = isVideoUrl(url);
@@ -2430,6 +2514,11 @@
         // Share
         '<button onclick="App.shareExternal(\''+post.id+'\');App.closeOptions();" style="width:100%;background:#F8F8F8;border:none;border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;margin-bottom:10px;text-align:left;">' +
           SVG.share + '<span style="font-size:15px;font-weight:600;color:#000;">Partager</span>' +
+        '</button>' +
+
+        // Copier le lien (utilisable sur WhatsApp etc., avec aperçu miniature)
+        '<button onclick="App.copyPostLink(\''+post.id+'\');App.closeOptions();" style="width:100%;background:#F8F8F8;border:none;border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;margin-bottom:10px;text-align:left;">' +
+          SVG.link + '<span style="font-size:15px;font-weight:600;color:#000;">Copier le lien</span>' +
         '</button>' +
 
         // Save / Unsave
@@ -3079,7 +3168,8 @@
           '</button>' +
           '<button onclick="App.openEditProfile()" style="flex:1;background:#F2F2F7;color:#000;border:none;border-radius:12px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;">✏️ Modifier le profil</button>' +
         '</div>' +
-        '<div style="display:flex;justify-content:flex-end;align-items:center;margin-top:6px;">' +
+        '<div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-top:6px;">' +
+          '<button onclick="App.openDeleteAccount()" style="background:none;color:#B0B4BB;border:none;padding:8px 6px;font-size:11.5px;font-weight:700;cursor:pointer;">Supprimer mon compte</button>' +
           '<button onclick="App.logout()" style="background:#FEE2E2;color:#EF4444;border:none;border-radius:10px;padding:8px 14px;font-size:12.5px;font-weight:800;cursor:pointer;">Se déconnecter 🚪</button>' +
         '</div>' +
       '</div>' : '') +
@@ -3172,6 +3262,36 @@
       '</div>';
     }
   }
+
+    // ============================================================
+    // SUPPRESSION DE COMPTE — action irréversible, double confirmation
+    // ============================================================
+    function renderDeleteAccountModal() {
+      var u = S.user || {};
+      var posts = db(SK.POSTS, []);
+      var myPostsCount = posts.filter(function(p){ return p.userId === u.id; }).length;
+      var busy = S.deleteAccountBusy;
+
+      return '<div onclick="' + (busy?'':'App.closeDeleteAccount()') + '" style="position:fixed;inset:0;background:rgba(15,15,20,0.65);backdrop-filter:blur(2px);z-index:10002;display:flex;justify-content:center;align-items:center;padding:24px;">' +
+        '<div onclick="event.stopPropagation()" style="width:100%;max-width:380px;background:#FFF;border-radius:24px;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
+          '<div style="width:52px;height:52px;border-radius:26px;background:#FFF0EE;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:26px;">⚠️</div>' +
+          '<h3 style="font-size:17px;font-weight:900;color:#000;margin:0 0 8px;text-align:center;">Supprimer définitivement votre compte ?</h3>' +
+          '<p style="font-size:13px;color:#6B7280;line-height:1.5;margin:0 0 4px;text-align:center;">' +
+            'Cette action est <strong>irréversible</strong>. Votre profil ainsi que ' +
+            (myPostsCount > 0 ? '<strong>' + myPostsCount + ' publication' + (myPostsCount>1?'s':'') + '</strong>' : 'toutes vos publications') +
+            ' seront supprimés définitivement. Vous ne pourrez pas les récupérer.' +
+          '</p>' +
+          '<div style="background:#F6F7F9;border-radius:14px;padding:12px;margin:16px 0 10px;">' +
+            '<label style="font-size:11.5px;font-weight:700;color:#6B7280;display:block;margin-bottom:6px;">Tapez <strong style="color:#FF3B30;">SUPPRIMER</strong> pour confirmer</label>' +
+            '<input id="deleteAccountConfirmInput" type="text" placeholder="SUPPRIMER" ' + (busy?'disabled':'') + ' style="width:100%;height:40px;border-radius:10px;border:1.5px solid #E5E5EA;background:#FFF;padding:0 12px;font-size:14px;font-weight:700;outline:none;box-sizing:border-box;text-transform:uppercase;" />' +
+          '</div>' +
+          '<div style="display:flex;flex-direction:column;gap:8px;margin-top:8px;">' +
+            '<button type="button" onclick="App.confirmDeleteAccount()" ' + (busy?'disabled':'') + ' style="width:100%;background:#FF3B30;color:#FFF;border:none;border-radius:14px;padding:13px;font-size:14.5px;font-weight:800;cursor:pointer;opacity:' + (busy?'0.6':'1') + ';">' + (busy ? 'Suppression en cours…' : 'Supprimer définitivement') + '</button>' +
+            '<button type="button" onclick="App.closeDeleteAccount()" ' + (busy?'disabled':'') + ' style="width:100%;background:#F2F2F7;color:#000;border:none;border-radius:14px;padding:13px;font-size:14.5px;font-weight:700;cursor:pointer;">Annuler</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    }
 
     function renderEditProfileModal(u) {
     var freshU = db(SK.USERS, []).find(function(p){ return p.id === u.id; }) || u;
@@ -4028,6 +4148,7 @@ toggleParticipation: function(postId, status) {
       try { localStorage.setItem(SK.SESS, JSON.stringify(user)); } catch(e){}
       render();
       toast('Connexion réussie ! Bienvenue ' + (user.prenom||'Membre') + '. 🎉', 'success');
+      try { tryOpenDeepLinkedPost(); } catch(e){}
     },
     signup: async function(e) {
       e && e.preventDefault();
@@ -4077,6 +4198,65 @@ toggleParticipation: function(postId, status) {
         if (idx !== -1) { users[idx].is_online=false; users[idx].last_action='Déconnexion'; dbSet(SK.USERS, users); }
       }
       localStorage.removeItem(SK.SESS); sessionStorage.removeItem(SK.SESS); S.user=null; S.auth='login'; S.tab='home'; render();
+    },
+
+    // ============================================================
+    // SUPPRESSION DE COMPTE — irréversible : supprime le profil ET
+    // toutes les publications de l'utilisateur (local + Supabase).
+    // ============================================================
+    openDeleteAccount: function() { S.deleteAccountOpen = true; S.deleteAccountBusy = false; render(); setTimeout(function(){ var i=document.getElementById('deleteAccountConfirmInput'); if(i) i.focus(); },150); },
+    closeDeleteAccount: function() { if (S.deleteAccountBusy) return; S.deleteAccountOpen = false; render(); },
+    confirmDeleteAccount: async function() {
+      if (S.deleteAccountBusy) return;
+      var input = document.getElementById('deleteAccountConfirmInput');
+      var val = (input ? input.value : '').trim().toUpperCase();
+      if (val !== 'SUPPRIMER') { toast('Tapez SUPPRIMER pour confirmer.', 'error'); return; }
+      if (!S.user) return;
+      var userId = S.user.id;
+
+      S.deleteAccountBusy = true;
+      render();
+
+      try {
+        // 1) Supprime toutes les publications de l'utilisateur (local + Supabase)
+        var posts = db(SK.POSTS, []);
+        var myPosts = posts.filter(function(p){ return p.userId === userId; });
+        var remainingPosts = posts.filter(function(p){ return p.userId !== userId; });
+        dbSet(SK.POSTS, remainingPosts);
+
+        if (supabase) {
+          myPosts.forEach(function(p) {
+            supabase.from('kun_com_posts').delete().eq('id', p.id).then(function(){}, function(e){ console.warn('Delete post error:', e); });
+          });
+        }
+
+        // 2) Supprime le profil utilisateur (local + Supabase)
+        var users = db(SK.USERS, []);
+        var remainingUsers = users.filter(function(u){ return u.id !== userId; });
+        dbSet(SK.USERS, remainingUsers);
+
+        if (supabase) {
+          try {
+            await supabase.from('kun_com_profiles').delete().eq('id', userId);
+          } catch(e) { console.warn('Delete profile error:', e); }
+        }
+
+        // 3) Nettoie la session locale et revient à l'écran de connexion
+        localStorage.removeItem(SK.SESS);
+        sessionStorage.removeItem(SK.SESS);
+        S.user = null;
+        S.auth = 'login';
+        S.tab = 'home';
+        S.deleteAccountOpen = false;
+        S.deleteAccountBusy = false;
+        render();
+        toast('Votre compte et vos publications ont été supprimés.', 'success');
+      } catch(e) {
+        console.warn('confirmDeleteAccount error:', e);
+        S.deleteAccountBusy = false;
+        render();
+        toast('Une erreur est survenue. Réessayez.', 'error');
+      }
     },
 
     // Navigation
@@ -4237,15 +4417,41 @@ toggleParticipation: function(postId, status) {
       render();
       toast('Publication partagée sur votre mur ! 🔄', 'success');
     },
+    // Construit le lien public d'une publication (page de prévisualisation avec
+    // miniature Open Graph, via la fonction serverless /api/p/:id), utilisable
+    // en dehors de l'appli (WhatsApp, SMS, etc.).
+    postShareUrl: function(postId) {
+      return location.origin + '/api/p/' + encodeURIComponent(postId);
+    },
     shareExternal: function(postId) {
       var posts = db(SK.POSTS, []);
       var post = posts.find(function(p){ return p.id===postId; });
       var txt = post ? (post.caption||'').slice(0,100) : '';
+      var url = App.postShareUrl(postId);
       if (navigator.share) {
-        navigator.share({ title:'Commit VH', text:txt, url:location.href }).catch(function(){});
-      } else if (navigator.clipboard) {
-        navigator.clipboard.writeText(location.href).then(function(){ toast('Lien copié !', 'success'); });
-      } else { toast('Lien copié !', 'success'); }
+        navigator.share({ title:'Commit VH', text:txt, url:url }).catch(function(){});
+      } else {
+        App.copyPostLink(postId);
+      }
+    },
+    copyPostLink: function(postId) {
+      var url = App.postShareUrl(postId);
+      function done(ok) { toast(ok ? 'Lien copié ! Collez-le sur WhatsApp ou ailleurs.' : 'Impossible de copier le lien.', ok ? 'success' : 'error'); }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(function(){ done(true); }, function(){ done(false); });
+      } else {
+        try {
+          var ta = document.createElement('textarea');
+          ta.value = url;
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.focus(); ta.select();
+          var ok = document.execCommand('copy');
+          document.body.removeChild(ta);
+          done(ok);
+        } catch(e) { done(false); }
+      }
     },
 
     // Create post
@@ -4314,6 +4520,7 @@ toggleParticipation: function(postId, status) {
       S.postText = p.caption || '';
       S.pendingVideoPoster = p.videoPoster || null;
       S.postAboutEventId = p.aboutEventId || null;
+      S.videoProcessing = false;
       render();
     },
     closeEditPost: function() {
@@ -4323,9 +4530,11 @@ toggleParticipation: function(postId, status) {
       S.postText = '';
       S.pendingVideoPoster = null;
       S.postAboutEventId = null;
+      S.videoProcessing = false;
       render();
     },
     saveEditPost: async function(postId) {
+      if (S.videoProcessing) { toast('Patientez, la vidéo est en cours de traitement…', 'warning'); return; }
       var ta = document.getElementById('editPostText');
       var txt = (ta ? ta.value : (S.postText||'')).trim();
       if (!txt && S.pendingMedia.length === 0) { toast('Ajoutez du texte ou une photo.', 'error'); return; }
@@ -4388,8 +4597,8 @@ toggleParticipation: function(postId, status) {
       render();
       toast('Publication modifiée ! 🎉', 'success');
     },
-    openCreate: function() { S.createOpen=true; S.pendingMedia=[]; S.pendingVideoPoster=null; S.postAboutEventId=null; render(); setTimeout(function(){ var t=document.getElementById('newPostText'); if(t) t.focus(); },120); },
-    closeCreate: function() { S.createOpen=false; S.pendingMedia=[]; S.hashSuggestions=false; S.postBg=null; S.postText=''; S.pendingVideoPoster=null; S.postAboutEventId=null; render(); },
+    openCreate: function() { S.createOpen=true; S.pendingMedia=[]; S.pendingVideoPoster=null; S.postAboutEventId=null; S.videoProcessing=false; render(); setTimeout(function(){ var t=document.getElementById('newPostText'); if(t) t.focus(); },120); },
+    closeCreate: function() { S.createOpen=false; S.pendingMedia=[]; S.hashSuggestions=false; S.postBg=null; S.postText=''; S.pendingVideoPoster=null; S.postAboutEventId=null; S.videoProcessing=false; render(); },
     onPostInput: function(val) {
       // Préserve le texte tapé à travers les re-render (ex: changement de fond)
       S.postText = val;
@@ -4452,14 +4661,17 @@ toggleParticipation: function(postId, status) {
         }
         S.pendingMedia = [];
         S.pendingVideoPoster = null;
+        S.videoProcessing = true;
         render();
         toast(S.reduceVideoQuality ? 'Traitement de la vidéo (réduction de qualité)…' : 'Traitement de la vidéo…', 'info');
         var finishVideo = function(dataUrl) {
-          if (!dataUrl) { toast('Impossible de traiter cette vidéo.', 'error'); render(); return; }
+          if (!dataUrl) { S.videoProcessing = false; toast('Impossible de traiter cette vidéo.', 'error'); render(); return; }
           S.pendingMedia.push(dataUrl);
-          render();
+          // Le message de traitement reste affiché tant que la vidéo n'est pas
+          // effectivement visible dans le bloc vidéo (poster généré).
           generateVideoPoster(dataUrl, function(poster) {
             S.pendingVideoPoster = poster;
+            S.videoProcessing = false;
             render();
           });
         };
@@ -4534,6 +4746,7 @@ toggleParticipation: function(postId, status) {
     },
     submitPost: function(e) {
       e && e.preventDefault();
+      if (S.videoProcessing) { toast('Patientez, la vidéo est en cours de traitement…', 'warning'); return; }
       var txt = ((document.getElementById('newPostText')||{}).value||'').trim();
       if (!txt && S.pendingMedia.length===0) { toast('Ajoutez du texte ou une photo.', 'error'); return; }
       if (!S.user) { toast('Vous devez être connecté.', 'error'); return; }
@@ -4874,6 +5087,7 @@ toggleParticipation: function(postId, status) {
     try { syncSupabaseToLocal(); } catch(e) { console.warn("syncSupabaseToLocal init error:", e); }
     try { injectCSS(); } catch(e) {}
     render();
+    try { tryOpenDeepLinkedPost(); } catch(e){}
   }
 
   if (document.getElementById('root')) {
