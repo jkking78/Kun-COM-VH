@@ -479,6 +479,9 @@
     cropperAspectRatio: 1,
     cropperTitle: 'Recadrer la photo',
     cropperOnConfirm: null,
+    // Recadrage libre (photo de publication) : affiche la barre Pivoter/Réinitialiser/Carré
+    cropperFreeRatio: false,
+    cropperSquare: false,
     user: null,
     tab: 'home',
     story: 'all',
@@ -1285,16 +1288,48 @@
     function renderCropperModal() {
     if (!S.cropperOpen || !S.cropperDataUrl) return '';
     var title = S.cropperTitle || 'Recadrer la photo';
+    // Barre d'outils (Pivoter / Réinitialiser / Carré) façon Facebook — uniquement
+    // quand le recadrage est libre (photo de publication). Pour l'avatar ou la
+    // couverture, le format est imposé, donc les outils de ratio n'ont pas de sens.
+    var toolbar = '';
+    if (S.cropperFreeRatio) {
+      var sqActive = !!S.cropperSquare;
+      toolbar = '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 26px calc(16px + env(safe-area-inset-bottom));background:rgba(0,0,0,0.85);border-top:0.5px solid rgba(255,255,255,0.12);">' +
+        '<button type="button" onclick="App.cropperRotate()" style="background:none;border:none;color:#FFF;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;padding:4px 8px;">' +
+          '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="13" height="13" rx="2"/><path d="M16 4h3a2 2 0 0 1 2 2v3"/><polyline points="18 2 21 5 18 8"/></svg>' +
+          '<span style="font-size:11.5px;font-weight:700;">Pivoter</span>' +
+        '</button>' +
+        '<button type="button" onclick="App.cropperReset()" style="background:none;border:none;color:#FFF;font-size:14px;font-weight:800;cursor:pointer;padding:8px 10px;">Réinitialiser</button>' +
+        '<button type="button" onclick="App.cropperToggleSquare()" style="background:none;border:none;color:' + (sqActive ? '#007AFF' : '#FFF') + ';display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;padding:4px 8px;">' +
+          '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="' + (sqActive ? '#007AFF' : '#FFF') + '" stroke-width="2" stroke-dasharray="3 2.5" stroke-linecap="round"><rect x="4" y="4" width="16" height="16" rx="1.5"/></svg>' +
+          '<span style="font-size:11.5px;font-weight:700;">' + (sqActive ? 'Libre' : 'Carré') + '</span>' +
+        '</button>' +
+      '</div>';
+    }
     return '<div id="cropperModal" style="position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.94);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);display:flex;flex-direction:column;box-sizing:border-box;animation:fadeIn 0.2s ease-out;">' +
       '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:rgba(0,0,0,0.8);border-bottom:0.5px solid rgba(255,255,255,0.15);box-sizing:border-box;z-index:10;">' +
         '<button onclick="App.closeCropper()" style="background:rgba(255,255,255,0.15);color:#FFF;border:none;border-radius:12px;padding:8px 16px;font-size:13.5px;font-weight:700;cursor:pointer;">Annuler</button>' +
         '<div style="font-size:15px;font-weight:800;color:#FFF;letter-spacing:-0.2px;">' + safeHtml(title) + '</div>' +
-        '<button onclick="App.confirmCropper()" style="background:linear-gradient(135deg,#007AFF,#0040CC);color:#FFF;border:none;border-radius:12px;padding:8px 18px;font-size:13.5px;font-weight:800;cursor:pointer;box-shadow:0 4px 14px rgba(0,122,255,0.4);">Valider ✓</button>' +
+        '<button onclick="App.confirmCropper()" style="background:linear-gradient(135deg,#007AFF,#0040CC);color:#FFF;border:none;border-radius:12px;padding:8px 18px;font-size:13.5px;font-weight:800;cursor:pointer;box-shadow:0 4px 14px rgba(0,122,255,0.4);">Terminé</button>' +
       '</div>' +
       '<div style="flex:1;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;padding:16px;background:#000;">' +
         '<img id="cropperTargetImage" src="' + S.cropperDataUrl + '" style="max-width:100%;max-height:100%;display:block;" />' +
       '</div>' +
+      toolbar +
     '</div>';
+  }
+
+  // Met à jour le bouton "Carré / Libre" directement dans le DOM : un render() global
+  // détruirait l'instance Cropper en cours (l'utilisateur perdrait son recadrage).
+  function syncCropperSquareBtn() {
+    var modal = document.getElementById('cropperModal');
+    if (!modal) return;
+    var btn = modal.querySelector('[onclick="App.cropperToggleSquare()"]');
+    if (!btn) return;
+    var col = S.cropperSquare ? '#007AFF' : '#FFF';
+    btn.style.color = col;
+    var svg = btn.querySelector('svg'); if (svg) svg.setAttribute('stroke', col);
+    var lbl = btn.querySelector('span'); if (lbl) lbl.textContent = S.cropperSquare ? 'Libre' : 'Carré';
   }
 
   function initCropperIfNeeded() {
@@ -1306,7 +1341,9 @@
             aspectRatio: (S.cropperAspectRatio === undefined || S.cropperAspectRatio === null) ? 1 : S.cropperAspectRatio,
             viewMode: 1,
             dragMode: 'move',
-            autoCropArea: 0.9,
+            // Ratio libre : la sélection couvre toute l'image au départ, donc valider
+            // sans rien toucher conserve exactement les proportions d'origine.
+            autoCropArea: S.cropperFreeRatio ? 1 : 0.9,
             restore: false,
             guides: true,
             center: true,
@@ -1890,14 +1927,17 @@
       var isMulti = post.mediaUrls.length > 1;
       mediaZone = '<div style="position:relative;background:#000;">' +
         (isMulti ? '<div id="badge-'+post.id+'" style="position:absolute;top:12px;right:12px;background:rgba(0,0,0,0.6);color:#FFF;font-size:12px;font-weight:700;padding:4px 10px;border-radius:20px;z-index:10;">' + (curIdx+1) + '/' + post.mediaUrls.length + '</div>' : '') +
-        '<div id="car-'+post.id+'" onscroll="App.carScroll(\''+post.id+'\',this)" ondblclick="App.doubleTapLike(\''+post.id+'\')" style="display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;aspect-ratio:1/1;scrollbar-width:none;">' +
+        '<div id="car-'+post.id+'" onscroll="App.carScroll(\''+post.id+'\',this)" ondblclick="App.doubleTapLike(\''+post.id+'\')" style="display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;">' +
           post.mediaUrls.map(function(url) {
+            // Les dimensions réelles du média sont conservées (pas de recadrage forcé en
+            // carré) : width/height:auto + object-fit:contain, limité par max-height pour
+            // ne pas laisser une vidéo très verticale envahir tout l'écran.
             var mediaTag = isVideoUrl(url)
               // preload="auto" + onloadeddata : si aucune vignette n'a pu être générée,
               // on force le navigateur à afficher la première image plutôt qu'un écran noir.
-              ? '<video src="'+url+'"' + (post.videoPoster ? ' poster="'+post.videoPoster+'"' : '') + ' controls playsinline preload="auto" onloadeddata="App.primeVideoFrame(this)" style="width:100%;height:100%;object-fit:cover;display:block;aspect-ratio:1/1;background:#000;"></video>'
-              : '<img src="'+url+'" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;aspect-ratio:1/1;"/>';
-            return '<div style="flex:0 0 100%;scroll-snap-align:start;">'+mediaTag+'</div>';
+              ? '<video src="'+url+'"' + (post.videoPoster ? ' poster="'+post.videoPoster+'"' : '') + ' controls playsinline preload="auto" onloadeddata="App.primeVideoFrame(this)" style="display:block;width:auto;height:auto;max-width:100%;max-height:640px;object-fit:contain;margin:0 auto;background:#000;"></video>'
+              : '<img src="'+url+'" loading="lazy" style="display:block;width:auto;height:auto;max-width:100%;max-height:640px;object-fit:contain;margin:0 auto;"/>';
+            return '<div style="flex:0 0 100%;scroll-snap-align:start;display:flex;justify-content:center;">'+mediaTag+'</div>';
           }).join('') +
         '</div>' +
         (isMulti ? '<div id="dots-'+post.id+'" style="display:flex;justify-content:center;gap:5px;padding:8px 0;background:#FFF;">' +
@@ -2634,6 +2674,12 @@
     '</div>';
   }
 
+  // Copies locales (data:URL) des photos déjà envoyées vers Supabase Storage, gardées
+  // uniquement le temps de la composition : permet de rouvrir le recadrage "Modifier"
+  // sur une image du même domaine. Vidé dès que le composeur se ferme (mémoire).
+  var _pendingLocalCopies = {};
+  function clearPendingLocalCopies() { _pendingLocalCopies = {}; }
+
   // Aperçu des médias en cours de composition (création ET modification).
   // Une vidéo s'affiche en grand avec ses contrôles natifs pour pouvoir être relue
   // avant publication (comme Facebook/Instagram) ; les photos restent en vignettes.
@@ -2647,13 +2693,13 @@
           '<img src="' + S.pendingVideoPoster + '" style="width:100%;max-height:300px;object-fit:contain;display:block;background:#000;" />' +
           '<div style="position:absolute;inset:0;background:rgba(0,0,0,0.35);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;">' +
             '<div style="width:26px;height:26px;border:3px solid rgba(255,255,255,0.35);border-top-color:#FFF;border-radius:50%;animation:spin 0.8s linear infinite;"></div>' +
-            '<span style="font-size:12px;font-weight:700;color:#FFF;text-align:center;padding:0 16px;">' + (S.reduceVideoQuality ? 'Traitement de la vidéo (réduction de qualité)…' : 'Traitement de la vidéo…') + '</span>' +
+            '<span style="font-size:12px;font-weight:700;color:#FFF;text-align:center;padding:0 16px;">' + (S.reduceVideoQuality ? 'Traitement de la vidéo (HD)…' : 'Traitement de la vidéo…') + '</span>' +
           '</div>' +
         '</div>';
       }
       return '<div style="display:flex;align-items:center;gap:10px;background:#F6F7F9;border-radius:16px;padding:14px;margin-bottom:12px;">' +
         '<div style="width:20px;height:20px;border:3px solid #E2E4E9;border-top-color:#007AFF;border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0;"></div>' +
-        '<span style="font-size:12.5px;font-weight:700;color:#3A3A3C;">' + (S.reduceVideoQuality ? 'Traitement de la vidéo (réduction de qualité)…' : 'Traitement de la vidéo…') + '</span>' +
+        '<span style="font-size:12.5px;font-weight:700;color:#3A3A3C;">' + (S.reduceVideoQuality ? 'Traitement de la vidéo (HD)…' : 'Traitement de la vidéo…') + '</span>' +
       '</div>';
     }
     if (S.pendingMedia.length === 0) return '';
@@ -2667,11 +2713,17 @@
       '</div>';
     }
 
-    return '<div style="display:flex;gap:8px;overflow-x:auto;margin-bottom:12px;padding-bottom:4px;">' +
+    // Photos : affichage empilé pleine largeur, chacune à ses proportions réelles
+    // (aucun recadrage imposé), avec les boutons "Modifier" et "✕" façon Facebook.
+    return '<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:12px;">' +
       S.pendingMedia.map(function(url, i) {
-        return '<div style="position:relative;flex-shrink:0;width:72px;height:72px;border-radius:12px;overflow:hidden;border:2px solid #E5E5EA;background:#000;">' +
-          '<img src="'+url+'" style="width:100%;height:100%;object-fit:cover;">' +
-          '<button type="button" onclick="App.removeMedia('+i+')" style="position:absolute;top:3px;right:3px;background:rgba(0,0,0,0.7);border:none;border-radius:8px;width:18px;height:18px;color:#FFF;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:900;">×</button>' +
+        return '<div style="position:relative;border-radius:14px;overflow:hidden;background:#000;">' +
+          '<img src="'+url+'" style="display:block;width:100%;height:auto;max-height:420px;object-fit:contain;background:#000;">' +
+          '<button type="button" onclick="App.editPendingMedia('+i+')" style="position:absolute;top:8px;left:8px;background:rgba(0,0,0,0.72);border:none;border-radius:10px;padding:6px 12px;color:#FFF;font-size:12.5px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:6px;z-index:2;">' +
+            '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>' +
+            'Modifier' +
+          '</button>' +
+          '<button type="button" onclick="App.removeMedia('+i+')" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.72);border:none;border-radius:14px;width:28px;height:28px;color:#FFF;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:900;z-index:2;">×</button>' +
         '</div>';
       }).join('') +
     '</div>';
@@ -4244,10 +4296,36 @@ toggleParticipation: function(postId, status) {
       S.cropperOpen = true;
       S.cropperDataUrl = dataUrl;
       S.cropperAspectRatio = (aspectRatio === undefined || aspectRatio === null) ? 1 : aspectRatio;
+      // Ratio libre = NaN (aucune contrainte) : c'est le cas des photos de publication,
+      // qui gardent leurs proportions d'origine sauf si l'utilisateur choisit "Carré".
+      S.cropperFreeRatio = (typeof S.cropperAspectRatio === 'number' && isNaN(S.cropperAspectRatio));
+      S.cropperSquare = false;
       S.cropperTitle = title || 'Recadrer la photo';
       S.cropperOnConfirm = onConfirm;
       render();
       initCropperIfNeeded();
+    },
+    // Pivote l'image de 90° dans le sens horaire (bouton "Pivoter")
+    cropperRotate: function() {
+      if (!window._currentCropper) return;
+      try { window._currentCropper.rotate(90); } catch(e){}
+    },
+    // Annule recadrage/rotation/zoom et revient à l'image d'origine
+    cropperReset: function() {
+      if (!window._currentCropper) return;
+      S.cropperSquare = false;
+      try {
+        window._currentCropper.reset();
+        window._currentCropper.setAspectRatio(NaN);
+      } catch(e){}
+      syncCropperSquareBtn();
+    },
+    // Bascule entre recadrage libre (proportions réelles) et carré 1:1
+    cropperToggleSquare: function() {
+      if (!window._currentCropper) return;
+      S.cropperSquare = !S.cropperSquare;
+      try { window._currentCropper.setAspectRatio(S.cropperSquare ? 1 : NaN); } catch(e){}
+      syncCropperSquareBtn();
     },
     closeCropper: function() {
       if (window._currentCropper) {
@@ -4257,6 +4335,8 @@ toggleParticipation: function(postId, status) {
       S.cropperOpen = false;
       S.cropperDataUrl = null;
       S.cropperOnConfirm = null;
+      S.cropperFreeRatio = false;
+      S.cropperSquare = false;
       render();
     },
     confirmCropper: function() {
@@ -5076,6 +5156,7 @@ toggleParticipation: function(postId, status) {
     closeEditPost: function() {
       S.editPostId = null;
       S.pendingMedia = [];
+      clearPendingLocalCopies();
       S.postBg = null;
       S.postText = '';
       S.pendingVideoPoster = null;
@@ -5145,6 +5226,7 @@ toggleParticipation: function(postId, status) {
 
       S.editPostId = null;
       S.pendingMedia = [];
+      clearPendingLocalCopies();
       S.postBg = null;
       S.postText = '';
       S.pendingVideoPoster = null;
@@ -5153,7 +5235,7 @@ toggleParticipation: function(postId, status) {
       toast('Publication modifiée ! 🎉', 'success');
     },
     openCreate: function() { S.createOpen=true; S.pendingMedia=[]; S.pendingVideoPoster=null; S.postAboutEventId=null; S.videoProcessing=false; render(); setTimeout(function(){ var t=document.getElementById('newPostText'); if(t) t.focus(); },120); },
-    closeCreate: function() { S.createOpen=false; S.pendingMedia=[]; S.hashSuggestions=false; S.postBg=null; S.postText=''; S.pendingVideoPoster=null; S.postAboutEventId=null; S.videoProcessing=false; render(); },
+    closeCreate: function() { S.createOpen=false; S.pendingMedia=[]; clearPendingLocalCopies(); S.hashSuggestions=false; S.postBg=null; S.postText=''; S.pendingVideoPoster=null; S.postAboutEventId=null; S.videoProcessing=false; render(); },
     onPostInput: function(val) {
       // Préserve le texte tapé à travers les re-render (ex: changement de fond)
       S.postText = val;
@@ -5218,7 +5300,7 @@ toggleParticipation: function(postId, status) {
         S.pendingVideoPoster = null;
         S.videoProcessing = true;
         render();
-        toast(S.reduceVideoQuality ? 'Traitement de la vidéo (réduction de qualité)…' : 'Traitement de la vidéo…', 'info');
+        toast(S.reduceVideoQuality ? 'Traitement de la vidéo (HD)…' : 'Traitement de la vidéo…', 'info');
 
         // 1) Vignette générée EN PREMIER, directement depuis le fichier choisi :
         //    c'est rapide (aucune compression/upload à attendre) et ça permet
@@ -5259,36 +5341,66 @@ toggleParticipation: function(postId, status) {
       var remaining = 10 - S.pendingMedia.length;
       if (imageFiles.length === 0 || remaining <= 0) return;
       var queue = imageFiles.slice(0, remaining);
+      // Comme sur Facebook : les photos sont ajoutées immédiatement avec leurs
+      // proportions d'origine, SANS étape de recadrage obligatoire. Le recadrage
+      // reste disponible ensuite via le bouton "Modifier" sur chaque photo.
       function processNext() {
         if (queue.length === 0) return;
         var file = queue.shift();
         var reader = new FileReader();
         reader.onload = function(evt) {
-          App.openCropper(evt.target.result, NaN, 'Photo Publication (libre)', function(croppedDataUrl) {
-            compressImage(croppedDataUrl, 1080, 1350, 0.8, function(dataUrl) {
-              var idx = S.pendingMedia.length;
-              S.pendingMedia.push(dataUrl); // aperçu instantané, pas d'attente réseau
-              render();
-              // Bascule silencieusement vers l'URL hébergée une fois l'envoi terminé
-              // (le composeur reste réactif pendant l'upload en arrière-plan).
-              uploadMediaToStorage(dataUrl, function(hostedUrl) {
-                if (hostedUrl && S.pendingMedia[idx] === dataUrl) {
-                  S.pendingMedia[idx] = hostedUrl;
-                }
-              });
-              processNext();
+          compressImage(evt.target.result, 1440, 1800, 0.82, function(dataUrl) {
+            var idx = S.pendingMedia.length;
+            S.pendingMedia.push(dataUrl); // aperçu instantané, pas d'attente réseau
+            render();
+            // Bascule silencieusement vers l'URL hébergée une fois l'envoi terminé
+            // (le composeur reste réactif pendant l'upload en arrière-plan).
+            uploadMediaToStorage(dataUrl, function(hostedUrl) {
+              if (hostedUrl && S.pendingMedia[idx] === dataUrl) {
+                S.pendingMedia[idx] = hostedUrl;
+                // Garde la copie locale : le recadrage "Modifier" lit ainsi une image
+                // du même domaine (pas de canvas "tainted" par une URL distante).
+                _pendingLocalCopies[hostedUrl] = dataUrl;
+              }
             });
+            processNext();
           });
         };
         reader.readAsDataURL(file);
       }
       processNext();
     },
+    // Ouvre le recadrage sur une photo déjà ajoutée au composeur (bouton "Modifier"),
+    // exactement comme l'éditeur de Facebook : optionnel, jamais imposé.
+    editPendingMedia: function(i) {
+      var current = S.pendingMedia[i];
+      if (!current || isVideoUrl(current)) return;
+      var source = _pendingLocalCopies[current] || current;
+      App.openCropper(source, NaN, 'Modifier la photo', function(croppedDataUrl) {
+        compressImage(croppedDataUrl, 1440, 1800, 0.82, function(dataUrl) {
+          if (S.pendingMedia[i] === undefined) return;
+          S.pendingMedia[i] = dataUrl;
+          render();
+          uploadMediaToStorage(dataUrl, function(hostedUrl) {
+            if (hostedUrl && S.pendingMedia[i] === dataUrl) {
+              S.pendingMedia[i] = hostedUrl;
+              _pendingLocalCopies[hostedUrl] = dataUrl;
+            }
+          });
+        });
+      });
+    },
     toggleReduceVideoQuality: function() {
       S.reduceVideoQuality = !S.reduceVideoQuality;
       render();
     },
-    removeMedia: function(i) { S.pendingMedia.splice(i,1); if (S.pendingMedia.length === 0) S.pendingVideoPoster = null; render(); },
+    removeMedia: function(i) {
+      var gone = S.pendingMedia[i];
+      if (gone && _pendingLocalCopies[gone]) delete _pendingLocalCopies[gone];
+      S.pendingMedia.splice(i,1);
+      if (S.pendingMedia.length === 0) { S.pendingVideoPoster = null; clearPendingLocalCopies(); }
+      render();
+    },
     setProfileTab: function(tab) {
       S.profileTab = tab;
       render();
@@ -5386,7 +5498,7 @@ toggleParticipation: function(postId, status) {
       saveLinksToProfile(newPost.userId, extractLinks(txt), newPost.id);
 
       updateUserActivity('Publication');
-      S.createOpen=false; S.pendingMedia=[]; S.hashSuggestions=false; S.postBg=null; S.postText=''; S.pendingVideoPoster=null; S.postVisibility='all'; S.postTargetSections=[]; S.postAboutEventId=null;
+      S.createOpen=false; S.pendingMedia=[]; clearPendingLocalCopies(); S.hashSuggestions=false; S.postBg=null; S.postText=''; S.pendingVideoPoster=null; S.postVisibility='all'; S.postTargetSections=[]; S.postAboutEventId=null;
       S.tab = 'home';
       S.q = ''; // Optional: clear search if they were searching
       render();
