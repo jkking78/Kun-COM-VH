@@ -673,6 +673,7 @@
           '<button onclick="App.openEditProfile()" style="flex:1;background:#F2F2F7;color:#000;border:none;border-radius:12px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;">✏️ Modifier le profil</button>' +
         '</div>' +
         '<div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-top:6px;">' +
+          '<button onclick="' + (S.adminUnlocked ? 'App.openStorageStats()' : 'App.openAdminGate()') + '" style="background:none;color:#B0B4BB;border:none;padding:8px 6px;font-size:11.5px;font-weight:700;cursor:pointer;">🔧 Administration</button>' +
           '<button onclick="App.openDeleteAccount()" style="background:none;color:#B0B4BB;border:none;padding:8px 6px;font-size:11.5px;font-weight:700;cursor:pointer;">Supprimer mon compte</button>' +
           '<button onclick="App.logout()" style="background:#FEE2E2;color:#EF4444;border:none;border-radius:10px;padding:8px 14px;font-size:12.5px;font-weight:800;cursor:pointer;">Se déconnecter 🚪</button>' +
         '</div>' +
@@ -839,6 +840,90 @@
           '<div style="display:flex;flex-direction:column;gap:8px;margin-top:18px;">' +
             '<button type="button" onclick="App.confirmBulkDelete()" ' + (busy?'disabled':'') + ' style="width:100%;background:#FF3B30;color:#FFF;border:none;border-radius:14px;padding:13px;font-size:14.5px;font-weight:800;cursor:pointer;opacity:' + (busy?'0.6':'1') + ';">' + (busy ? 'Suppression en cours…' : 'Supprimer définitivement') + '</button>' +
             '<button type="button" onclick="App.closeBulkDeleteConfirm()" ' + (busy?'disabled':'') + ' style="width:100%;background:#F2F2F7;color:#000;border:none;border-radius:14px;padding:13px;font-size:14.5px;font-weight:700;cursor:pointer;">Annuler</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    }
+
+    // ============================================================
+    // PANNEAU ADMIN — code d'accès + statistiques de stockage
+    // ============================================================
+    function renderAdminGateModal() {
+      var err = S.adminCodeError;
+      return '<div onclick="App.closeAdminGate()" style="position:fixed;inset:0;background:rgba(15,15,20,0.65);backdrop-filter:blur(2px);z-index:10004;display:flex;justify-content:center;align-items:center;padding:24px;">' +
+        '<div onclick="event.stopPropagation()" style="width:100%;max-width:340px;background:#FFF;border-radius:24px;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
+          '<div style="width:52px;height:52px;border-radius:26px;background:#F0F6FF;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:24px;">🔧</div>' +
+          '<h3 style="font-size:17px;font-weight:900;color:#000;margin:0 0 6px;text-align:center;">Accès administration</h3>' +
+          '<p style="font-size:12.5px;color:#6B7280;line-height:1.5;margin:0 0 14px;text-align:center;">Entrez le code d\'accès pour voir les statistiques de stockage.</p>' +
+          '<form onsubmit="App.submitAdminCode(event)">' +
+            '<input id="adminCodeInput" type="text" autocapitalize="characters" autocomplete="off" value="' + safeHtml(S.adminCodeInput||'') + '" oninput="App.onAdminCodeInput(this.value)" placeholder="Code d\'accès" style="width:100%;height:44px;border-radius:12px;border:1.5px solid ' + (err?'#FF3B30':'#E5E5EA') + ';background:#F6F7F9;padding:0 14px;font-size:15px;font-weight:700;outline:none;box-sizing:border-box;text-align:center;letter-spacing:1px;text-transform:uppercase;" />' +
+            (err ? '<div style="color:#FF3B30;font-size:12px;font-weight:700;text-align:center;margin-top:8px;">Code incorrect.</div>' : '') +
+            '<div style="display:flex;flex-direction:column;gap:8px;margin-top:16px;">' +
+              '<button type="submit" style="width:100%;background:#007AFF;color:#FFF;border:none;border-radius:14px;padding:13px;font-size:14.5px;font-weight:800;cursor:pointer;">Valider</button>' +
+              '<button type="button" onclick="App.closeAdminGate()" style="width:100%;background:#F2F2F7;color:#000;border:none;border-radius:14px;padding:13px;font-size:14.5px;font-weight:700;cursor:pointer;">Annuler</button>' +
+            '</div>' +
+          '</form>' +
+        '</div>' +
+      '</div>';
+    }
+
+    function renderStorageStatsModal() {
+      var loading = S.storageStatsLoading;
+      var totalBytes = S.storageStatsTotalBytes || 0;
+      var fileCount = S.storageStatsFileCount || 0;
+      // Seuils des forfaits Supabase (indicatif — à ajuster si les tarifs changent)
+      var FREE_LIMIT = 1 * 1024 * 1024 * 1024;      // 1 Go
+      var PRO_LIMIT = 100 * 1024 * 1024 * 1024;      // 100 Go
+      var pctFree = Math.min(100, (totalBytes / FREE_LIMIT) * 100);
+      var pctPro = Math.min(100, (totalBytes / PRO_LIMIT) * 100);
+      var overFree = totalBytes > FREE_LIMIT;
+      var overPro = totalBytes > PRO_LIMIT;
+      var overProCost = overPro ? (((totalBytes - PRO_LIMIT) / (1024*1024*1024)) * 0.0213) : 0;
+
+      var bar = function(label, pct, over, sub) {
+        return '<div style="margin-bottom:14px;">' +
+          '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px;">' +
+            '<span style="font-size:12.5px;font-weight:700;color:#3A3A3C;">' + label + '</span>' +
+            '<span style="font-size:12px;font-weight:800;color:' + (over?'#FF3B30':'#8E8E93') + ';">' + pct.toFixed(1) + '%</span>' +
+          '</div>' +
+          '<div style="height:8px;border-radius:4px;background:#EDEEF1;overflow:hidden;">' +
+            '<div style="height:100%;width:' + pct + '%;background:' + (over?'#FF3B30':'#007AFF') + ';border-radius:4px;transition:width 0.4s;"></div>' +
+          '</div>' +
+          (sub ? '<div style="font-size:11px;color:#8E8E93;margin-top:4px;">' + sub + '</div>' : '') +
+        '</div>';
+      };
+
+      return '<div onclick="App.closeStorageStats()" style="position:fixed;inset:0;background:rgba(15,15,20,0.55);backdrop-filter:blur(2px);z-index:10004;display:flex;justify-content:center;align-items:flex-end;">' +
+        '<div onclick="event.stopPropagation()" style="width:100%;max-width:460px;background:#FFF;border-top-left-radius:28px;border-top-right-radius:28px;max-height:88vh;overflow-y:auto;box-shadow:0 -8px 40px rgba(0,0,0,0.18);animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
+          '<div style="display:flex;justify-content:center;padding:10px 0 0;cursor:pointer;" onclick="App.closeStorageStats()">' +
+            '<div style="width:38px;height:5px;background:#E2E4E9;border-radius:3px;"></div>' +
+          '</div>' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px 4px;">' +
+            '<h3 style="font-size:16px;font-weight:900;margin:0;color:#0B0B0C;">📊 Stockage (Admin)</h3>' +
+            '<button onclick="App.closeStorageStats()" style="background:#F2F2F7;border:none;border-radius:16px;width:32px;height:32px;font-size:14px;cursor:pointer;">✕</button>' +
+          '</div>' +
+          '<div style="padding:6px 20px 28px;">' +
+            (loading ? '<div style="display:flex;align-items:center;gap:10px;justify-content:center;padding:30px 0;">' +
+              '<div style="width:20px;height:20px;border:3px solid #E2E4E9;border-top-color:#007AFF;border-radius:50%;animation:spin 0.8s linear infinite;"></div>' +
+              '<span style="font-size:13px;font-weight:700;color:#6B7280;">Calcul en cours…</span>' +
+            '</div>' :
+            S.storageStatsError ? '<div style="text-align:center;padding:20px 0;">' +
+              '<p style="font-size:13px;color:#FF3B30;font-weight:600;margin:0 0 14px;">' + safeHtml(S.storageStatsError) + '</p>' +
+              '<button onclick="App.loadStorageStats()" style="background:#F2F2F7;border:none;border-radius:12px;padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer;">Réessayer</button>' +
+            '</div>' :
+            (
+              '<div style="text-align:center;padding:8px 0 20px;">' +
+                '<div style="font-size:32px;font-weight:900;color:#000;letter-spacing:-0.5px;">' + formatBytes(totalBytes) + '</div>' +
+                '<div style="font-size:12.5px;color:#8E8E93;font-weight:600;margin-top:2px;">' + fileCount + ' fichier' + (fileCount>1?'s':'') + ' dans le bucket post-media</div>' +
+              '</div>' +
+              bar('Forfait Gratuit (1 Go)', pctFree, overFree, overFree ? 'Dépassé — passage au forfait Pro nécessaire.' : (FREE_LIMIT-totalBytes > 0 ? formatBytes(FREE_LIMIT-totalBytes) + ' restants' : '')) +
+              bar('Forfait Pro (100 Go inclus)', pctPro, overPro, overPro ? '≈ +' + overProCost.toFixed(2) + ' $/mois de dépassement' : formatBytes(PRO_LIMIT-totalBytes) + ' restants') +
+              '<div style="font-size:11px;color:#B0B4BB;text-align:center;margin-top:16px;">Mis à jour ' + (S.storageStatsUpdatedAt ? timeAgo(S.storageStatsUpdatedAt) : '—') + '</div>'
+            )) +
+            '<div style="display:flex;gap:8px;margin-top:20px;">' +
+              '<button onclick="App.loadStorageStats()" ' + (loading?'disabled':'') + ' style="flex:1;background:#F2F2F7;color:#000;border:none;border-radius:14px;padding:12px;font-size:13.5px;font-weight:700;cursor:pointer;">🔄 Actualiser</button>' +
+              '<button onclick="App.lockAdmin()" style="flex:1;background:#FEE2E2;color:#EF4444;border:none;border-radius:14px;padding:12px;font-size:13.5px;font-weight:700;cursor:pointer;">🔒 Verrouiller</button>' +
+            '</div>' +
           '</div>' +
         '</div>' +
       '</div>';

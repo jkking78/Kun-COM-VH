@@ -546,8 +546,24 @@
     selectedProfilePostIds: [],
     bulkDeleteConfirmOpen: false,
     bulkDeleteBusy: false,
-    viewersPostId: null
-};
+    viewersPostId: null,
+    // Panneau admin (stockage Supabase) — accessible depuis le profil via un code
+    adminGateOpen: false,
+    adminCodeInput: '',
+    adminCodeError: false,
+    adminUnlocked: false,
+    storageStatsOpen: false,
+    storageStatsLoading: false,
+    storageStatsError: null,
+    storageStatsTotalBytes: 0,
+    storageStatsFileCount: 0,
+    storageStatsUpdatedAt: null
+  };
+
+  // Code d'accès au panneau admin (stockage). Volontairement en clair côté client
+  // (comme le reste de cette app) — protège juste contre un accès accidentel, pas
+  // contre quelqu'un qui inspecte le code source.
+  var ADMIN_ACCESS_CODE = 'AZ7887';
 
   // ============================================================
   // LIEN PROFOND VERS UNE PUBLICATION (?post=ID)
@@ -596,6 +612,8 @@
     } catch(e) {}
     // Restore saved posts
     S.savedPosts = db(SK.SAVED, {});
+    // Panneau admin déjà déverrouillé sur cet appareil (pas besoin de retaper le code)
+    try { S.adminUnlocked = localStorage.getItem('kc_admin_unlocked') === '1'; } catch(e) {}
   })();
 
   // ============================================================
@@ -634,4 +652,13 @@
     return new Date(ts).toLocaleDateString('fr-FR', {day:'numeric', month:'short'});
   }
 
-  
+  // Formate un nombre d'octets en Ko/Mo/Go lisible (panneau admin — stockage)
+  function formatBytes(bytes) {
+    if (!bytes || bytes <= 0) return '0 Ko';
+    var units = ['Ko', 'Mo', 'Go', 'To'];
+    var val = bytes / 1024;
+    var i = 0;
+    while (val >= 1024 && i < units.length - 1) { val /= 1024; i++; }
+    return val.toFixed(val >= 10 ? 0 : 1) + ' ' + units[i];
+  }
+

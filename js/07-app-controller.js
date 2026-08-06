@@ -932,6 +932,86 @@ toggleParticipation: function(postId, status) {
       }
     },
 
+    // ============================================================
+    // PANNEAU ADMIN — statistiques de stockage Supabase (accès par code)
+    // ============================================================
+    openAdminGate: function() {
+      S.adminGateOpen = true;
+      S.adminCodeInput = '';
+      S.adminCodeError = false;
+      render();
+      setTimeout(function(){ var i = document.getElementById('adminCodeInput'); if (i) i.focus(); }, 120);
+    },
+    closeAdminGate: function() { S.adminGateOpen = false; render(); },
+    onAdminCodeInput: function(val) { S.adminCodeInput = val; S.adminCodeError = false; },
+    submitAdminCode: function(e) {
+      e && e.preventDefault();
+      var v = (S.adminCodeInput || '').trim();
+      if (v.toUpperCase() === ADMIN_ACCESS_CODE) {
+        S.adminUnlocked = true;
+        S.adminGateOpen = false;
+        try { localStorage.setItem('kc_admin_unlocked', '1'); } catch(err) {}
+        render();
+        App.openStorageStats();
+      } else {
+        S.adminCodeError = true;
+        render();
+        setTimeout(function(){ var i = document.getElementById('adminCodeInput'); if (i) i.focus(); }, 120);
+      }
+    },
+    lockAdmin: function() {
+      S.adminUnlocked = false;
+      S.storageStatsOpen = false;
+      try { localStorage.removeItem('kc_admin_unlocked'); } catch(e) {}
+      render();
+      toast('Panneau admin verrouillé.', 'success');
+    },
+    openStorageStats: function() {
+      if (!S.adminUnlocked) { App.openAdminGate(); return; }
+      S.storageStatsOpen = true;
+      render();
+      App.loadStorageStats();
+    },
+    closeStorageStats: function() { S.storageStatsOpen = false; render(); },
+    // Additionne la taille de tous les fichiers du bucket post-media, page par page
+    // (l'API Storage limite à 1000 résultats par appel).
+    loadStorageStats: async function() {
+      if (!supabase) { S.storageStatsError = 'Connexion indisponible.'; render(); return; }
+      S.storageStatsLoading = true;
+      S.storageStatsError = null;
+      render();
+      try {
+        var totalBytes = 0;
+        var fileCount = 0;
+        var offset = 0;
+        var pageSize = 1000;
+        while (true) {
+          var res = await supabase.storage.from('post-media').list('', { limit: pageSize, offset: offset, sortBy: { column: 'name', order: 'asc' } });
+          if (res.error) throw res.error;
+          var items = res.data || [];
+          items.forEach(function(it) {
+            // .list() renvoie aussi les "dossiers" virtuels (sans metadata) — on ne
+            // compte que les vrais fichiers.
+            if (it && it.metadata && typeof it.metadata.size === 'number') {
+              totalBytes += it.metadata.size;
+              fileCount++;
+            }
+          });
+          if (items.length < pageSize) break;
+          offset += pageSize;
+          if (offset > 200000) break; // garde-fou anti-boucle infinie
+        }
+        S.storageStatsTotalBytes = totalBytes;
+        S.storageStatsFileCount = fileCount;
+        S.storageStatsUpdatedAt = Date.now();
+      } catch (e) {
+        console.warn('loadStorageStats error:', e);
+        S.storageStatsError = 'Impossible de lire le stockage (vérifie la permission SELECT sur storage.objects pour le bucket post-media).';
+      }
+      S.storageStatsLoading = false;
+      render();
+    },
+
     // Navigation
     tab: function(t) { S.tab=t; S.createOpen=false; S.commentOpen=false; S.optionsOpen=false; render(); },
 

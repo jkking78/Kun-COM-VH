@@ -156,6 +156,8 @@
     if (S.deleteAccountOpen) modals += renderDeleteAccountModal();
     if (S.bulkDeleteConfirmOpen) modals += renderBulkDeleteConfirmModal();
     if (S.viewersPostId) modals += renderViewersModal();
+    if (S.adminGateOpen) modals += renderAdminGateModal();
+    if (S.storageStatsOpen) modals += renderStorageStatsModal();
 
     return '<div style="position:relative;width:100%;height:100%;display:flex;flex-direction:column;background:#F2F2F7;font-family:-apple-system,BlinkMacSystemFont,\'SF Pro Text\',sans-serif;">' +
       '<div id="mainContent" style="flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;padding-bottom:70px;">' + content + '</div>' +
