@@ -803,20 +803,15 @@
         '</div>'
       : '';
 
-    // Comments link + timestamp, stays below the media/actions
+    // Lien vers les commentaires. L'heure n'est PLUS répétée ici : elle figure
+    // déjà dans l'en-tête, à côté de l'auteur (elle apparaissait deux fois).
+    var commentsLinkLabel = (post.comments || []).length > 0
+      ? 'Voir les ' + (post.comments || []).length + ' commentaire' + ((post.comments || []).length > 1 ? 's' : '')
+      : 'Ajouter un commentaire…';
     var metaFooterBlock =
-      (!post.postBg ? '<div style="padding:0 14px 10px;">' +
-        ((post.comments || []).length > 0
-          ? '<button onclick="App.openComments(\''+post.id+'\')" style="background:none;border:none;padding:0;font-size:13.5px;color:#8E8E93;cursor:pointer;">Voir les '+(post.comments || []).length+' commentaire'+((post.comments || []).length>1?'s':'')+'</button>'
-          : '<button onclick="App.openComments(\''+post.id+'\')" style="background:none;border:none;padding:0;font-size:13.5px;color:#8E8E93;cursor:pointer;">Ajouter un commentaire…</button>'
-        ) +
-        '<div style="font-size:11px;color:#C7C7CC;margin-top:4px;text-transform:uppercase;letter-spacing:0.5px;">' + ago + '</div>' +
-      '</div>' : '') +
-      // For bg posts: show timestamp and comment button below the card
-      (post.postBg ? '<div style="padding:2px 14px 10px;display:flex;justify-content:space-between;align-items:center;">' +
-        '<button onclick="App.openComments(\'' + post.id + '\')" style="background:none;border:none;padding:0;font-size:13.5px;color:#8E8E93;cursor:pointer;">' + ((post.comments || []).length>0?'Voir les '+(post.comments || []).length+' commentaire'+((post.comments || []).length>1?'s':''):' Ajouter un commentaire…') + '</button>' +
-        '<div style="font-size:11px;color:#C7C7CC;text-transform:uppercase;letter-spacing:0.5px;">' + ago + '</div>' +
-      '</div>' : '');
+      '<div style="padding:' + (post.postBg ? '2px' : '0') + ' 14px 10px;">' +
+        '<button onclick="App.openComments(\'' + post.id + '\')" style="background:none;border:none;padding:0;font-size:13.5px;color:#8E8E93;cursor:pointer;">' + commentsLinkLabel + '</button>' +
+      '</div>';
 
     var finalHtml = '<article id="post-'+post.id+'" data-postid="'+post.id+'" style="background:#FFF;margin-bottom:10px;">' +
       repostBanner +

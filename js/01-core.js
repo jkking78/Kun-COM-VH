@@ -141,26 +141,118 @@
   // (publication, commentaire, réponse). Réutilise la même logique de
   // correspondance que hashtagify() dans 02-media.js.
   // ============================================================
+  // Annonce l'arrivée d'un nouveau membre à tous les comptes existants.
+  // Écriture groupée : une seule sauvegarde locale et un seul aller-retour par
+  // profil, plutôt qu'une réécriture complète du fichier des membres par personne.
+  function announceNewMember(newUser) {
+    if (!newUser || !newUser.id) return;
+    var allUsers = db(SK.USERS, []);
+    var secs = getUserSections(newUser).map(function(s){ return secNom(s); }).filter(Boolean).join(' · ');
+    var notif = {
+      id: 'n_new_' + newUser.id,
+      senderId: newUser.id,
+      senderName: (newUser.prenom || '') + ' ' + (newUser.nom ? newUser.nom.charAt(0) + '.' : ''),
+      senderAvatar: newUser.avatar_url || null,
+      senderColor: newUser.avatar_color || '#007AFF',
+      type: 'NEW_MEMBER',
+      title: '🎉 Nouveau membre',
+      text: 'a rejoint Commit' + (secs ? ' · ' + secs : '') + '.',
+      targetId: newUser.id,
+      timestamp: Date.now(),
+      read: false
+    };
+
+    var touched = [];
+    allUsers.forEach(function(u) {
+      if (!u || !u.id || u.id === newUser.id) return;
+      if (!Array.isArray(u.notifications)) u.notifications = [];
+      if (u.notifications.some(function(n){ return n.id === notif.id; })) return;
+      u.notifications.unshift(Object.assign({}, notif));
+      if (u.notifications.length > 50) u.notifications = u.notifications.slice(0, 50);
+      touched.push(u);
+    });
+    if (touched.length === 0) return;
+
+    dbSet(SK.USERS, allUsers);
+    if (supabase) {
+      supabase.from('kun_com_profiles')
+        .upsert(touched.map(function(u){ return { id: u.id, content: u }; }), { onConflict: 'id' })
+        .then(function(){}, function(e){ console.warn('Annonce nouveau membre :', e); });
+    }
+  }
+
+  // Jetons de mention collective : @tous notifie tout le monde.
+  var MENTION_ALL_TOKENS = ['tous', 'toutes', 'all', 'everyone', 'tout'];
+
+  function normalizeMention(s) {
+    return (s || '').toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')   // retire les accents
+      .replace(/[\s_.-]/g, '');
+  }
+
+  // À quoi correspond un jeton @xxx ? Retourne
+  // { kind:'all' } | { kind:'section', section } | { kind:'user', user } | null
+  function resolveMentionToken(token, users) {
+    var clean = normalizeMention(token);
+    if (!clean) return null;
+    if (MENTION_ALL_TOKENS.indexOf(clean) !== -1) return { kind: 'all' };
+    var sec = SECTIONS.find(function(s) {
+      return normalizeMention(s.id) === clean || normalizeMention(s.nom) === clean;
+    });
+    if (sec) return { kind: 'section', section: sec };
+    var list = users || db(SK.USERS, []);
+    var found = list.find(function(u) {
+      var fullName = normalizeMention((u.prenom||'') + (u.nom||''));
+      var prenom = normalizeMention(u.prenom||'');
+      return fullName === clean || prenom === clean;
+    });
+    if (found) return { kind: 'user', user: found };
+    return null;
+  }
+
   function notifyMentionedUsers(text, targetId) {
     if (!text) return;
-    var matches = text.match(/@[\wéèêàâôûîçÉÈÊÀÂÔÛÎÇùÙ_.]+/gi);
+    var matches = text.match(/@[\wéèêàâôûîçÉÈÊÀÂÔÛÎÇùÙ_.-]+/gi);
     if (!matches) return;
     var users = db(SK.USERS, []);
-    var already = {};
+    var meId = S.user ? S.user.id : null;
+    var author = S.user ? S.user.prenom : 'Quelqu\'un';
+    var extract = '"' + text.slice(0, 40) + (text.length > 40 ? '…' : '') + '"';
+
+    // On rassemble d'abord TOUS les destinataires, puis on notifie une seule fois
+    // chacun : sans cela « @tous @Régie » enverrait deux notifications aux membres
+    // de la Régie.
+    var targets = {};
+    var reason = {};
     matches.forEach(function(m) {
-      var clean = m.slice(1).toLowerCase();
-      var found = users.find(function(u) {
-        var fullName = ((u.prenom||'') + (u.nom||'')).toLowerCase().replace(/\s+/g, '');
-        var prenom = (u.prenom||'').toLowerCase();
-        return fullName === clean || prenom === clean;
-      });
-      if (!found || already[found.id]) return;
-      if (S.user && found.id === S.user.id) return;
-      already[found.id] = true;
-      sendNotificationToUser(found.id, {
+      var r = resolveMentionToken(m.slice(1), users);
+      if (!r) return;
+      if (r.kind === 'all') {
+        users.forEach(function(u) {
+          if (!u || !u.id || u.id === meId) return;
+          if (!targets[u.id]) { targets[u.id] = u.id; reason[u.id] = 'tout le monde'; }
+        });
+      } else if (r.kind === 'section') {
+        users.forEach(function(u) {
+          if (!u || !u.id || u.id === meId) return;
+          if (getUserSections(u).indexOf(r.section.id) === -1) return;
+          if (!targets[u.id]) { targets[u.id] = u.id; reason[u.id] = 'le pôle ' + r.section.nom; }
+        });
+      } else if (r.kind === 'user') {
+        if (r.user.id === meId) return;
+        targets[r.user.id] = r.user.id;
+        reason[r.user.id] = null;                 // mention nominative
+      }
+    });
+
+    Object.keys(targets).forEach(function(uid) {
+      var why = reason[uid];
+      sendNotificationToUser(uid, {
         type: 'MENTION',
         title: '📣 Vous avez été mentionné(e)',
-        text: (S.user ? S.user.prenom : 'Quelqu\'un') + ' vous a mentionné : "' + text.slice(0, 40) + (text.length > 40 ? '…' : '') + '"',
+        text: why
+          ? author + ' a mentionné ' + why + ' : ' + extract
+          : author + ' vous a mentionné : ' + extract,
         targetId: targetId
       });
     });
@@ -365,23 +457,43 @@
     try {
       // Publications et profils récupérés EN PARALLÈLE (pas l'un après l'autre) —
       // divise par deux le temps de chargement initial.
+      // 3 requêtes en parallèle :
+      //  - la page récente de publications (fil normal, paginé)
+      //  - TOUS les événements, quel que soit leur âge : un nouveau compte doit voir
+      //    le planning complet, or un événement créé il y a longtemps sort de la
+      //    première page et resterait invisible
+      //  - les profils
       var _results = await Promise.all([
         supabase.from('kun_com_posts').select('*').order('created_at', { ascending: false }).range(0, POSTS_PAGE_SIZE - 1),
-        supabase.from('kun_com_profiles').select('*')
+        supabase.from('kun_com_profiles').select('*'),
+        supabase.from('kun_com_posts').select('*').eq('content->>type', 'EVENT').order('created_at', { ascending: false }).limit(400)
       ]);
       var res = _results[0];
       var resProf = _results[1];
+      var resEvents = _results[2];
       if (res && res.error) { console.warn('Supabase posts fetch error:', res.error); }
+      if (resEvents && resEvents.error) { console.warn('Supabase events fetch error:', resEvents.error); }
       if (res && res.data) {
         S.postsAllLoaded = res.data.length < POSTS_PAGE_SIZE;
+        // La purge se calcule sur la SEULE page courante : y mêler les événements
+        // anciens repousserait la borne "plus ancien de la page" très loin en
+        // arrière et ferait supprimer des publications valides simplement absentes
+        // de cette page.
         var mergedPosts = mergePostsWithLocal(res.data, true);
+        // Les événements sont ensuite ajoutés SANS purge (fusion purement additive),
+        // pour qu'un nouveau compte voie tout le planning même ancien.
+        if (resEvents && resEvents.data && resEvents.data.length) {
+          DB_CACHE[SK.POSTS] = mergedPosts;
+          mergedPosts = mergePostsWithLocal(resEvents.data, false);
+        }
         dbSet(SK.POSTS, mergedPosts);
+        var pageData = res.data;
         // Renvoie vers Supabase les publications créées hors-ligne et pas encore
         // synchronisées — repéré via leur horodatage très récent (pas juste "absent de
         // cette page"), car avec la pagination un post ancien peut légitimement être
         // absent de cette page sans être "local uniquement". On évite ainsi de renvoyer
         // tout l'historique local à chaque sync, ce qui ne passerait pas à l'échelle.
-        var remotePostIds = (res.data || []).map(function(item){ return item.id; });
+        var remotePostIds = pageData.map(function(item){ return item.id; });
         var recentCutoff = Date.now() - 15 * 60 * 1000;
         mergedPosts.forEach(function(post) {
           if (post && post.id && (post.timestamp || 0) > recentCutoff && remotePostIds.indexOf(post.id) === -1) {
