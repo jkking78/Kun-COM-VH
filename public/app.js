@@ -307,6 +307,7 @@
       if (window.App && window.App.tab) {
          render();
       }
+      try { tryOpenDeepLinkedPost(); } catch(e){}
     } catch(e) {
       console.warn("Supabase Sync Error:", e);
       // Réessaie automatiquement (réseau instable au démarrage) avant d'abandonner
@@ -465,6 +466,36 @@
     deleteAccountOpen: false,
     deleteAccountBusy: false
 };
+
+  // ============================================================
+  // LIEN PROFOND VERS UNE PUBLICATION (?post=ID)
+  // Utilisé quand quelqu'un ouvre un lien copié/partagé (ex: WhatsApp) via
+  // /api/p/:id, qui redirige vers l'appli avec ce paramètre.
+  // ============================================================
+  var _deepLinkPostId = (function() {
+    try { return new URLSearchParams(location.search).get('post'); } catch(e) { return null; }
+  })();
+  function tryOpenDeepLinkedPost() {
+    if (!_deepLinkPostId || !S.user) return;
+    var posts = db(SK.POSTS, []);
+    var target = posts.find(function(p){ return p.id === _deepLinkPostId; });
+    if (!target) return; // Pas encore chargé (sync en cours) : on retentera au prochain appel.
+    var id = _deepLinkPostId;
+    _deepLinkPostId = null;
+    S.tab = 'home'; S.q = ''; S.story = 'all';
+    render();
+    setTimeout(function() {
+      var el = document.getElementById('post-' + id);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.style.transition = 'box-shadow 0.4s';
+        el.style.boxShadow = '0 0 0 3px #007AFF inset';
+        setTimeout(function(){ el.style.boxShadow = ''; }, 2200);
+      }
+    }, 350);
+    // Nettoie l'URL pour éviter de rejouer le scroll à chaque rafraîchissement.
+    try { history.replaceState(null, '', location.pathname); } catch(e){}
+  }
 
   // ============================================================
   // RESTORE SESSION
@@ -886,6 +917,7 @@
     },
     comment: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#262626" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
     share: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#262626" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>',
+    link: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#007AFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>',
     bookmark: function(saved) {
       return '<svg width="24" height="24" viewBox="0 0 24 24" fill="' + (saved ? '#000' : 'none') + '" stroke="#262626" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>';
     },
@@ -2482,6 +2514,11 @@
         // Share
         '<button onclick="App.shareExternal(\''+post.id+'\');App.closeOptions();" style="width:100%;background:#F8F8F8;border:none;border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;margin-bottom:10px;text-align:left;">' +
           SVG.share + '<span style="font-size:15px;font-weight:600;color:#000;">Partager</span>' +
+        '</button>' +
+
+        // Copier le lien (utilisable sur WhatsApp etc., avec aperçu miniature)
+        '<button onclick="App.copyPostLink(\''+post.id+'\');App.closeOptions();" style="width:100%;background:#F8F8F8;border:none;border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;margin-bottom:10px;text-align:left;">' +
+          SVG.link + '<span style="font-size:15px;font-weight:600;color:#000;">Copier le lien</span>' +
         '</button>' +
 
         // Save / Unsave
@@ -4111,6 +4148,7 @@ toggleParticipation: function(postId, status) {
       try { localStorage.setItem(SK.SESS, JSON.stringify(user)); } catch(e){}
       render();
       toast('Connexion réussie ! Bienvenue ' + (user.prenom||'Membre') + '. 🎉', 'success');
+      try { tryOpenDeepLinkedPost(); } catch(e){}
     },
     signup: async function(e) {
       e && e.preventDefault();
@@ -4379,15 +4417,41 @@ toggleParticipation: function(postId, status) {
       render();
       toast('Publication partagée sur votre mur ! 🔄', 'success');
     },
+    // Construit le lien public d'une publication (page de prévisualisation avec
+    // miniature Open Graph, via la fonction serverless /api/p/:id), utilisable
+    // en dehors de l'appli (WhatsApp, SMS, etc.).
+    postShareUrl: function(postId) {
+      return location.origin + '/api/p/' + encodeURIComponent(postId);
+    },
     shareExternal: function(postId) {
       var posts = db(SK.POSTS, []);
       var post = posts.find(function(p){ return p.id===postId; });
       var txt = post ? (post.caption||'').slice(0,100) : '';
+      var url = App.postShareUrl(postId);
       if (navigator.share) {
-        navigator.share({ title:'Commit VH', text:txt, url:location.href }).catch(function(){});
-      } else if (navigator.clipboard) {
-        navigator.clipboard.writeText(location.href).then(function(){ toast('Lien copié !', 'success'); });
-      } else { toast('Lien copié !', 'success'); }
+        navigator.share({ title:'Commit VH', text:txt, url:url }).catch(function(){});
+      } else {
+        App.copyPostLink(postId);
+      }
+    },
+    copyPostLink: function(postId) {
+      var url = App.postShareUrl(postId);
+      function done(ok) { toast(ok ? 'Lien copié ! Collez-le sur WhatsApp ou ailleurs.' : 'Impossible de copier le lien.', ok ? 'success' : 'error'); }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(function(){ done(true); }, function(){ done(false); });
+      } else {
+        try {
+          var ta = document.createElement('textarea');
+          ta.value = url;
+          ta.style.position = 'fixed';
+          ta.style.opacity = '0';
+          document.body.appendChild(ta);
+          ta.focus(); ta.select();
+          var ok = document.execCommand('copy');
+          document.body.removeChild(ta);
+          done(ok);
+        } catch(e) { done(false); }
+      }
     },
 
     // Create post
@@ -5023,6 +5087,7 @@ toggleParticipation: function(postId, status) {
     try { syncSupabaseToLocal(); } catch(e) { console.warn("syncSupabaseToLocal init error:", e); }
     try { injectCSS(); } catch(e) {}
     render();
+    try { tryOpenDeepLinkedPost(); } catch(e){}
   }
 
   if (document.getElementById('root')) {
