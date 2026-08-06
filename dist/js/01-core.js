@@ -797,6 +797,18 @@
     { id: 'esprit',      nom: "Esprit d'équipe" }
   ];
 
+  // Retrouve le bilan déjà publié par l'utilisateur courant pour cet événement.
+  // Un responsable n'a qu'un seul bilan par événement : le re-noter met à jour
+  // la publication existante au lieu d'en créer une nouvelle.
+  function findOwnBilan(eventId) {
+    if (!S.user || !eventId) return null;
+    return db(SK.POSTS, []).find(function(p) {
+      return p.type === 'EVALUATION'
+        && p.userId === S.user.id
+        && p.metadata && p.metadata.eventId === eventId;
+    }) || null;
+  }
+
   // Moyenne des critères effectivement notés (0 si aucun).
   function ratingAverage(critObj) {
     if (!critObj) return 0;

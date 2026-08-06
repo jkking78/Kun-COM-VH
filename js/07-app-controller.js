@@ -2348,32 +2348,46 @@ toggleParticipation: function(postId, status) {
       }
 
       var ts = Date.now();
-      var newPost = {
-        id: 'eval-' + ts, userId: S.user.id, timestamp: ts,
-        author: S.user.prenom + ' ' + S.user.nom,
-        authorAvatar: S.user.prenom.charAt(0).toUpperCase(),
-        avatarColor: S.user.avatar_color || '#007AFF',
-        avatar_url: S.user.avatar_url || null,
-        sectionId: S.user.section_id || 'general', sectionNom: secNom(S.user.section_id || 'general'),
-        type: 'EVALUATION',
-        metadata: {
-          eventId: eventId,
-          eventTitle: eventTitle,
-          evaluations: evaluations,
-          // Champs conservés pour compatibilité avec l'ancien format à une seule
-          // section (profils, statistiques, publications déjà en base).
-          teamName: evaluations[0].teamName,
-          globalScore: evaluations[0].globalScore,
-          criteria: evaluations[0].criteria
-        },
-        caption: evaluations.length > 1
-          ? 'Bilan de ' + evaluations.length + ' pôles — ' + eventTitle
-          : ("Évaluation de l'équipe " + evaluations[0].teamName),
-        mediaUrls: [], likes: 0, likedBy: [], comments: []
+      var metadata = {
+        eventId: eventId,
+        eventTitle: eventTitle,
+        evaluations: evaluations,
+        // Champs conservés pour compatibilité avec l'ancien format à une seule
+        // section (profils, statistiques, publications déjà en base).
+        teamName: evaluations[0].teamName,
+        globalScore: evaluations[0].globalScore,
+        criteria: evaluations[0].criteria
       };
-      posts.unshift(newPost);
+      var caption = evaluations.length > 1
+        ? 'Bilan de ' + evaluations.length + ' pôles — ' + eventTitle
+        : ("Évaluation de l'équipe " + evaluations[0].teamName);
+
+      // Un même responsable ne crée qu'UN bilan par événement : s'il en existe
+      // déjà un de sa part, on le met à jour au lieu d'en empiler un second.
+      var existing = findOwnBilan(eventId);
+      var savedPost;
+      if (existing) {
+        existing.metadata = metadata;
+        existing.caption = caption;
+        existing.updatedAt = ts;
+        savedPost = existing;
+      } else {
+        savedPost = {
+          id: 'eval-' + ts, userId: S.user.id, timestamp: ts,
+          author: S.user.prenom + ' ' + S.user.nom,
+          authorAvatar: S.user.prenom.charAt(0).toUpperCase(),
+          avatarColor: S.user.avatar_color || '#007AFF',
+          avatar_url: S.user.avatar_url || null,
+          sectionId: S.user.section_id || 'general', sectionNom: secNom(S.user.section_id || 'general'),
+          type: 'EVALUATION',
+          metadata: metadata,
+          caption: caption,
+          mediaUrls: [], likes: 0, likedBy: [], comments: []
+        };
+        posts.unshift(savedPost);
+      }
       dbSet(SK.POSTS, posts);
-      if (supabase) supabase.from('kun_com_posts').upsert({ id: newPost.id, content: newPost, created_at: new Date().toISOString() }, { onConflict: 'id' }).then(function(){}, function(e){ console.warn('Erreur publication bilan:', e); });
+      if (supabase) supabase.from('kun_com_posts').upsert({ id: savedPost.id, content: savedPost, created_at: new Date(savedPost.timestamp).toISOString() }, { onConflict: 'id' }).then(function(){}, function(e){ console.warn('Erreur publication bilan:', e); });
 
       // Réinitialise proprement l'écran de notation
       S.ratings = {};
@@ -2384,7 +2398,36 @@ toggleParticipation: function(postId, status) {
       S.q = '';
       render();
       setTimeout(function() { window.scrollTo({ top: 0, behavior: 'smooth' }); }, 50);
-      toast('Bilan publié avec succès ! 🎉', 'success');
+      toast(existing ? 'Bilan mis à jour ! ✏️' : 'Bilan publié avec succès ! 🎉', 'success');
+    },
+
+    // Changement d'événement dans l'écran Notation : si un bilan a déjà été publié
+    // par cet utilisateur pour cet événement, on repré-remplit le formulaire avec
+    // ses notes pour qu'il les corrige plutôt que de repartir de zéro.
+    selectEvalEvent: function(eventId) {
+      S.evalEventId = eventId;
+      S.ratings = {};
+      SECTIONS.forEach(function(sec){ S.ratings[sec.id] = { criteria:{}, comment:'' }; });
+      S.evalExpandedSection = null;
+      var existing = eventId ? findOwnBilan(eventId) : null;
+      if (existing && existing.metadata && Array.isArray(existing.metadata.evaluations)) {
+        existing.metadata.evaluations.forEach(function(ev) {
+          var secId = ev.teamId;
+          if (!secId) {
+            var found = SECTIONS.find(function(s){ return s.nom === ev.teamName; });
+            secId = found ? found.id : null;
+          }
+          if (!secId) return;
+          var crit = {};
+          EVAL_CRITERIA.forEach(function(c) {
+            var v = (ev.criteria || {})[c.nom];
+            if (v > 0) crit[c.id] = v;
+          });
+          S.ratings[secId] = { criteria: crit, comment: ev.comment || '' };
+        });
+        toast('Bilan existant chargé — vos modifications le mettront à jour.', 'info');
+      }
+      render();
     }
   };
 

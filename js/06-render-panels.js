@@ -413,15 +413,19 @@
           var eventPosts = db(SK.POSTS, []).filter(function(p){ return p.type === 'EVENT'; });
           return '<div style="background:#FFF;border-radius:18px;padding:16px;margin-bottom:14px;border:1px solid #EFEFEF;box-shadow:0 2px 8px rgba(0,0,0,0.04);">' +
             '<label style="font-size:13px;font-weight:800;color:#000;display:block;margin-bottom:8px;">📍 Événement concerné <span style="color:#FF3B30;">*</span></label>' +
-            '<select id="evalEventSelect" onchange="S.evalEventId=this.value" style="width:100%;height:44px;border-radius:12px;border:1.5px solid #E5E5EA;background:#FAFAFA;padding:0 12px;font-size:14px;color:#000;outline:none;font-weight:600;">' +
+            '<select id="evalEventSelect" onchange="App.selectEvalEvent(this.value)" style="width:100%;height:44px;border-radius:12px;border:1.5px solid #E5E5EA;background:#FAFAFA;padding:0 12px;font-size:14px;color:#000;outline:none;font-weight:600;">' +
               '<option value="">Sélectionner l\'événement à évaluer...</option>' +
               eventPosts.map(function(ev){
                 var evTitle = ev.eventTitle || (ev.metadata && ev.metadata.title) || 'Événement';
                 var evDate = ev.eventDate || (ev.metadata && ev.metadata.date) || '';
                 var sel = S.evalEventId === ev.id ? ' selected' : '';
-                return '<option value="' + ev.id + '"' + sel + '>' + safeHtml(evTitle) + (evDate ? ' (' + evDate + ')' : '') + '</option>';
+                var already = findOwnBilan(ev.id) ? ' ✓ déjà noté' : '';
+                return '<option value="' + ev.id + '"' + sel + '>' + safeHtml(evTitle) + (evDate ? ' (' + evDate + ')' : '') + already + '</option>';
               }).join('') +
             '</select>' +
+            (S.evalEventId && findOwnBilan(S.evalEventId)
+              ? '<div style="margin-top:10px;background:#FFF7E6;border:1px solid #FFE0A3;border-radius:12px;padding:10px 12px;font-size:12.5px;color:#8A5A00;font-weight:600;line-height:1.45;">✏️ Vous avez déjà publié un bilan pour cet événement. Vos notes sont pré-remplies — valider mettra à jour cette publication.</div>'
+              : '') +
           '</div>';
         })() +
 
@@ -429,7 +433,7 @@
 
           // padding-bottom généreux : la barre de navigation du bas est en position
           // fixe et recouvrait la moitié du bouton (on ne pouvait pas l'atteindre).
-          '<button id="publishBilanBtn" onclick="App.publishBilan()" style="width:100%;background:linear-gradient(135deg,#34C759,#28A347);color:#FFF;border:none;border-radius:16px;padding:15px;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 4px 14px rgba(52,199,89,0.3);">Valider &amp; Publier le Bilan ✓</button>' +
+          '<button id="publishBilanBtn" onclick="App.publishBilan()" style="width:100%;background:linear-gradient(135deg,#34C759,#28A347);color:#FFF;border:none;border-radius:16px;padding:15px;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 4px 14px rgba(52,199,89,0.3);">' + (S.evalEventId && findOwnBilan(S.evalEventId) ? 'Mettre à jour le Bilan ✓' : 'Valider &amp; Publier le Bilan ✓') + '</button>' +
           '<div style="height:96px;"></div>' +
         '</div>' +
 

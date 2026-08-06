@@ -407,21 +407,25 @@
     return renderScreenHeader('Notation & Débrief', 'Évaluation Inter-Sections', '') +
 
       '<div style="padding:16px;">' +
-        '<p style="font-size:13.5px;color:#8E8E93;margin:0 0 16px;line-height:1.5;">Notez les performances des autres sections pour un événement. La notation de votre propre section est interdite.</p>' +
+        '<p style="font-size:13.5px;color:#8E8E93;margin:0 0 16px;line-height:1.5;">Notez les performances des pôles pour un événement, critère par critère. Si vous avez déjà publié un bilan pour cet événement, il sera mis à jour.</p>' +
 
         (function(){
           var eventPosts = db(SK.POSTS, []).filter(function(p){ return p.type === 'EVENT'; });
           return '<div style="background:#FFF;border-radius:18px;padding:16px;margin-bottom:14px;border:1px solid #EFEFEF;box-shadow:0 2px 8px rgba(0,0,0,0.04);">' +
             '<label style="font-size:13px;font-weight:800;color:#000;display:block;margin-bottom:8px;">📍 Événement concerné <span style="color:#FF3B30;">*</span></label>' +
-            '<select id="evalEventSelect" onchange="S.evalEventId=this.value" style="width:100%;height:44px;border-radius:12px;border:1.5px solid #E5E5EA;background:#FAFAFA;padding:0 12px;font-size:14px;color:#000;outline:none;font-weight:600;">' +
+            '<select id="evalEventSelect" onchange="App.selectEvalEvent(this.value)" style="width:100%;height:44px;border-radius:12px;border:1.5px solid #E5E5EA;background:#FAFAFA;padding:0 12px;font-size:14px;color:#000;outline:none;font-weight:600;">' +
               '<option value="">Sélectionner l\'événement à évaluer...</option>' +
               eventPosts.map(function(ev){
                 var evTitle = ev.eventTitle || (ev.metadata && ev.metadata.title) || 'Événement';
                 var evDate = ev.eventDate || (ev.metadata && ev.metadata.date) || '';
                 var sel = S.evalEventId === ev.id ? ' selected' : '';
-                return '<option value="' + ev.id + '"' + sel + '>' + safeHtml(evTitle) + (evDate ? ' (' + evDate + ')' : '') + '</option>';
+                var already = findOwnBilan(ev.id) ? ' ✓ déjà noté' : '';
+                return '<option value="' + ev.id + '"' + sel + '>' + safeHtml(evTitle) + (evDate ? ' (' + evDate + ')' : '') + already + '</option>';
               }).join('') +
             '</select>' +
+            (S.evalEventId && findOwnBilan(S.evalEventId)
+              ? '<div style="margin-top:10px;background:#FFF7E6;border:1px solid #FFE0A3;border-radius:12px;padding:10px 12px;font-size:12.5px;color:#8A5A00;font-weight:600;line-height:1.45;">✏️ Vous avez déjà publié un bilan pour cet événement. Vos notes sont pré-remplies — valider mettra à jour cette publication.</div>'
+              : '') +
           '</div>';
         })() +
 
@@ -429,7 +433,7 @@
 
           // padding-bottom généreux : la barre de navigation du bas est en position
           // fixe et recouvrait la moitié du bouton (on ne pouvait pas l'atteindre).
-          '<button id="publishBilanBtn" onclick="App.publishBilan()" style="width:100%;background:linear-gradient(135deg,#34C759,#28A347);color:#FFF;border:none;border-radius:16px;padding:15px;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 4px 14px rgba(52,199,89,0.3);">Valider &amp; Publier le Bilan ✓</button>' +
+          '<button id="publishBilanBtn" onclick="App.publishBilan()" style="width:100%;background:linear-gradient(135deg,#34C759,#28A347);color:#FFF;border:none;border-radius:16px;padding:15px;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 4px 14px rgba(52,199,89,0.3);">' + (S.evalEventId && findOwnBilan(S.evalEventId) ? 'Mettre à jour le Bilan ✓' : 'Valider &amp; Publier le Bilan ✓') + '</button>' +
           '<div style="height:96px;"></div>' +
         '</div>' +
 
@@ -439,14 +443,10 @@
   // Une carte de section dans l'écran Notation. Repliée : nom + moyenne.
   // Dépliée : une ligne d'étoiles par critère, notés indépendamment.
   function renderEvalSectionCard(sec, userSec) {
-    var blocked = sec.id === userSec;
-    if (blocked) {
-      return '<div style="background:#F8F8FC;border-radius:18px;padding:14px;margin-bottom:10px;border:1px solid #EFEFEF;">' +
-        '<div style="display:flex;align-items:center;justify-content:space-between;">' +
-          '<div style="display:flex;align-items:center;gap:10px;"><span style="font-size:22px;">' + sec.emoji + '</span><strong style="color:#8E8E93;font-size:14px;">' + sec.nom + '</strong></div>' +
-          '<span style="background:#FFEBEA;color:#FF3B30;font-size:11px;font-weight:800;padding:5px 10px;border-radius:20px;">Votre section</span>' +
-        '</div></div>';
-    }
+    // Les Grands Responsables (seuls habilités à noter) évaluent toutes les
+    // sections, y compris la leur — l'ancien blocage a été retiré. On garde
+    // simplement un repère visuel.
+    var isOwn = sec.id === userSec;
     var r = S.ratings[sec.id] || { criteria: {}, comment: '' };
     if (!r.criteria) r.criteria = {};
     var avg = ratingAverage(r.criteria);
@@ -473,7 +473,9 @@
       '<div onclick="App.toggleEvalSection(\'' + sec.id + '\')" style="display:flex;align-items:center;justify-content:space-between;padding:16px;cursor:pointer;">' +
         '<div style="display:flex;align-items:center;gap:10px;">' +
           '<div style="width:42px;height:42px;border-radius:21px;background:linear-gradient(135deg,' + sec.color + '20,' + sec.color + '10);display:flex;align-items:center;justify-content:center;font-size:20px;">' + sec.emoji + '</div>' +
-          '<div><strong style="font-size:14.5px;color:#000;display:block;">' + sec.nom + '</strong>' +
+          '<div><strong style="font-size:14.5px;color:#000;display:block;">' + sec.nom +
+            (isOwn ? ' <span style="font-size:10px;font-weight:800;color:#007AFF;background:#EBF5FF;padding:2px 7px;border-radius:8px;vertical-align:middle;">Votre pôle</span>' : '') +
+          '</strong>' +
           '<span id="evalsub-' + sec.id + '" style="font-size:11.5px;color:#8E8E93;">' + (ratedCount > 0 ? ratedCount + '/' + EVAL_CRITERIA.length + ' critères notés' : 'Appuyez pour noter les critères') + '</span></div>' +
         '</div>' +
         '<div style="display:flex;align-items:center;gap:8px;">' +
