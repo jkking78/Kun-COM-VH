@@ -182,6 +182,60 @@
     }).join('');
   }
 
+  // Bandeau de pointage sur la fiche d'un événement (Planning). C'est le point
+  // d'entrée le plus naturel : on regarde le planning, on voit qu'on est de
+  // service, on pointe — sans avoir à deviner qu'il faut passer par le composeur.
+  function renderEventCheckInAction(ev) {
+    if (!S.user || !ev || ev.type !== 'EVENT') return '';
+    var isAssigned = (ev.assignments || []).some(function(a){ return a && a.userId === S.user.id; });
+    if (!isAssigned) return '';
+
+    var posts = db(SK.POSTS, []);
+    var now = Date.now();
+
+    // Déjà pointé : on affiche le résultat obtenu.
+    if (hasCheckedIn(S.user.id, ev.id, posts)) {
+      var p = punctualityStars(S.user.id, ev.id, posts);
+      if (!p) return '';
+      var c = p.stars >= 4 ? '#047857' : p.stars >= 2 ? '#8A5A00' : '#B91C1C';
+      var bg = p.stars >= 4 ? '#ECFDF5' : p.stars >= 2 ? '#FFF7E6' : '#FEF2F2';
+      var bd = p.stars >= 4 ? '#A7F3D0' : p.stars >= 2 ? '#FFE0A3' : '#FECACA';
+      return '<div style="background:' + bg + ';border:1px solid ' + bd + ';border-radius:12px;padding:10px 12px;margin-bottom:10px;">' +
+        '<div style="font-size:12.5px;font-weight:800;color:' + c + ';">✅ Arrivée enregistrée · ' + (p.stars>0?'+':'') + p.stars + '★</div>' +
+        '<div style="font-size:11px;color:#6B7280;margin-top:2px;">' +
+          (p.delayMinutes <= 0 ? "À l'heure" : 'Retard de ' + p.delayMinutes + ' min') +
+          (p.distance !== null && p.distance !== undefined ? ' · ' + (p.onSite ? 'sur place' : 'à ' + formatDistance(p.distance) + ' du lieu') : '') +
+        '</div>' +
+      '</div>';
+    }
+
+    var startTs = eventStartTimestamp(ev);
+    if (!startTs) return '';
+    var endTs = eventEndTimestamp(ev) || startTs;
+
+    if (now < startTs - CHECKIN_EARLY_WINDOW_MS) {
+      return '<div style="background:#F6F7F9;border-radius:12px;padding:10px 12px;margin-bottom:10px;font-size:11.5px;color:#6B7280;line-height:1.4;">' +
+        '⏱️ Vous êtes de service. Le pointage s\'ouvrira 3 h avant le début.' +
+      '</div>';
+    }
+    if (now > endTs + CHECKIN_LATE_WINDOW_MS) {
+      return '<div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:12px;padding:10px 12px;margin-bottom:10px;font-size:11.5px;color:#B91C1C;font-weight:700;line-height:1.4;">' +
+        '⚠️ Vous étiez de service et n\'avez pas enregistré votre arrivée.' +
+      '</div>';
+    }
+
+    var delay = Math.round((now - startTs) / 60000);
+    var stars = starsForDelay(delay);
+    var sc = stars >= 4 ? '#10B981' : stars >= 2 ? '#F59E0B' : '#EF4444';
+    return '<button onclick="App.startCheckIn(\'' + ev.id + '\')" style="width:100%;background:linear-gradient(135deg,#5856D6,#4340B5);color:#FFF;border:none;border-radius:12px;padding:11px;font-size:13.5px;font-weight:800;cursor:pointer;box-shadow:0 4px 12px rgba(88,86,214,0.3);margin-bottom:10px;">' +
+        '⏱️ Je suis arrivé · ' + (stars>0?'+':'') + stars + '★' +
+      '</button>' +
+      '<div style="font-size:10.5px;color:#9AA0A8;text-align:center;margin-bottom:10px;line-height:1.4;">' +
+        (delay > 0 ? 'Retard actuel : ' + delay + ' min. ' : 'Vous êtes à l\'heure. ') +
+        'Votre position sera relevée et visible de tous.' +
+      '</div>';
+  }
+
   // ============================================================
   // GESTION DES ASSIGNATIONS D'UN ÉVÉNEMENT EXISTANT
   // ============================================================
@@ -432,6 +486,7 @@
                 '<span style="min-width:0;overflow-wrap:anywhere;">' + safeHtml(ev.eventLocation || 'Non défini') + '</span>' +
               '</div>' +
               (ev.caption ? '<p style="font-size:13px;color:#3A3A3C;margin:0 0 16px;line-height:1.4;overflow-wrap:anywhere;">' + safeHtml(ev.caption) + '</p>' : '') +
+              renderEventCheckInAction(ev) +
               (function(){
                 var isPart = S.user && Array.isArray(ev.likedBy) && ev.likedBy.indexOf(S.user.id) !== -1;
                 var count = Array.isArray(ev.likedBy) ? ev.likedBy.length : 0;

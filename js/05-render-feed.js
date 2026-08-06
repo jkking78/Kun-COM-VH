@@ -1260,8 +1260,6 @@
             '</div>' +
           '</div>' +
 
-          renderCheckInBlock() +
-
           '<!-- À propos -->' +
           '<div style="background:#F6F7F9;border-radius:20px;padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
             '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:' + (S.postAboutEventId?'10px':'0') + ';">' +
@@ -1543,20 +1541,7 @@
     var now = Date.now();
     var today = new Date().toISOString().split('T')[0];
 
-    // Événements du jour déjà commencés et pas encore terminés, auxquels
-    // l'utilisateur est assigné et pour lesquels il n'a pas encore pointé.
-    var candidates = posts.filter(function(ev) {
-      if (ev.type !== 'EVENT' || ev.eventDate !== today) return false;
-      if (!(ev.assignments || []).some(function(a){ return a && a.userId === S.user.id; })) return false;
-      var startTs = eventStartTimestamp(ev);
-      if (!startTs || startTs > now) return false;
-      var endTs = eventEndTimestamp(ev);
-      if (endTs && now > endTs + 3 * 3600 * 1000) return false;   // trop tard (3 h après la fin)
-      var already = posts.some(function(p) {
-        return p.userId === S.user.id && p.checkInEventId === ev.id && p.type !== 'EVENT' && p.type !== 'EVALUATION';
-      });
-      return !already;
-    }).sort(function(a,b){ return (eventStartTimestamp(a)||0) - (eventStartTimestamp(b)||0); });
+    var candidates = pendingCheckIns(S.user, posts, now);
 
     var selectedId = S.postCheckInEventId;
     if (!candidates.length && !selectedId) return '';
@@ -1634,6 +1619,10 @@
               '<div style="font-size:11.5px;color:#007AFF;font-weight:700;background:#EEF5FF;display:inline-block;padding:2px 8px;border-radius:8px;margin-top:2px;">' + secNom((u&&u.section_id)||'cadrage') + ' · Tapez # pour les hashtags</div>' +
             '</div>' +
           '</div>' +
+
+          // Le pointage passe en tête du formulaire : quand on est de service,
+          // c'est l'action la plus urgente, elle ne doit pas être enfouie tout en bas.
+          renderCheckInBlock() +
 
           hashHtml +
           '<div id="mentionSugg" style="display:none;flex-wrap:wrap;gap:6px;background:#F0F6FF;border:1px solid #CCDEFF;border-radius:14px;padding:10px;margin-bottom:12px;"></div>' +

@@ -1097,6 +1097,37 @@
     return getUserSections(target).some(function(s){ return mine.indexOf(s) !== -1; });
   }
 
+  // Combien de temps AVANT le début on peut déjà pointer. Arriver en avance est
+  // la situation idéale : il serait absurde d'empêcher de l'enregistrer.
+  var CHECKIN_EARLY_WINDOW_MS = 3 * 3600 * 1000;   // 3 h avant
+  var CHECKIN_LATE_WINDOW_MS  = 3 * 3600 * 1000;   // 3 h après la fin
+
+  // Un membre a-t-il déjà pointé pour cet événement ?
+  function hasCheckedIn(userId, eventId, allPosts) {
+    var posts = allPosts || db(SK.POSTS, []);
+    return posts.some(function(p) {
+      return p.userId === userId && p.checkInEventId === eventId
+          && p.type !== 'EVENT' && p.type !== 'EVALUATION';
+    });
+  }
+
+  // Événements pour lesquels l'utilisateur est de service et doit encore pointer.
+  function pendingCheckIns(user, allPosts, nowTs) {
+    if (!user) return [];
+    var posts = allPosts || db(SK.POSTS, []);
+    var now = nowTs || Date.now();
+    return posts.filter(function(ev) {
+      if (ev.type !== 'EVENT') return false;
+      if (!(ev.assignments || []).some(function(a){ return a && a.userId === user.id; })) return false;
+      var startTs = eventStartTimestamp(ev);
+      if (!startTs) return false;
+      if (now < startTs - CHECKIN_EARLY_WINDOW_MS) return false;   // trop tôt
+      var endTs = eventEndTimestamp(ev) || startTs;
+      if (now > endTs + CHECKIN_LATE_WINDOW_MS) return false;      // trop tard
+      return !hasCheckedIn(user.id, ev.id, posts);
+    }).sort(function(a,b){ return (eventStartTimestamp(a)||0) - (eventStartTimestamp(b)||0); });
+  }
+
   // Historique de ponctualité d'un membre sur une période : tous les événements
   // passés auxquels il était assigné. Alimente l'indice de confiance du profil.
   function punctualityHistory(userId, sinceTs, allPosts) {

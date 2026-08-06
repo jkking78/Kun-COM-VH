@@ -1906,6 +1906,22 @@ toggleParticipation: function(postId, status) {
     // Enregistrement d'arrivée : c'est CE choix, et lui seul, qui déclenche le
     // relevé de position et le calcul de ponctualité.
     setCheckInEvent: function(eventId) { S.postCheckInEventId = eventId || null; render(); },
+    // Ouvre le composeur directement en mode pointage pour cet événement.
+    startCheckIn: function(eventId) {
+      var ev = db(SK.POSTS, []).find(function(p){ return p.id === eventId && p.type === 'EVENT'; });
+      if (!ev) { toast('Événement introuvable.', 'error'); return; }
+      S.createOpen = true;
+      S.pendingMedia = []; S.pendingVideoPoster = null; S.postBg = null;
+      S.videoProcessing = false;
+      S.postAboutEventId = null;
+      S.postCheckInEventId = eventId;
+      S.postText = 'Je suis arrivé pour ' + (ev.eventTitle || 'le service') + '.';
+      render();
+      setTimeout(function(){
+        var t = document.getElementById('newPostText');
+        if (t) { t.value = S.postText; t.focus(); t.setSelectionRange(t.value.length, t.value.length); }
+      }, 140);
+    },
     clearCheckInEvent: function() { S.postCheckInEventId = null; render(); },
     goToEvent: function(eventId) {
       var posts = db(SK.POSTS, []);
