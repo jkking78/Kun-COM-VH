@@ -455,15 +455,18 @@
     var users = db(SK.USERS, []);
     var html = safe.replace(/#[\wéèêàâôûîçÉÈÊÀÂÔÛÎÇùÙ]+/gi, function(m) {
       return '<span onclick="App.filterTag(\'' + encodeURIComponent(m) + '\')" style="color:#007AFF;font-weight:700;cursor:pointer;">' + m + '</span>';
-    }).replace(/@[\wéèêàâôûîçÉÈÊÀÂÔÛÎÇùÙ_.]+/gi, function(m) {
-      var clean = m.slice(1).toLowerCase();
-      var found = users.find(function(u) {
-        var fullName = ((u.prenom||'') + (u.nom||'')).toLowerCase().replace(/\s+/g, '');
-        var prenom = (u.prenom||'').toLowerCase();
-        return fullName === clean || prenom === clean;
-      });
-      if (found) {
-        return '<span onclick="App.openUserProfile(\'' + found.id + '\')" style="color:#007AFF;font-weight:800;cursor:pointer;background:#EBF5FF;padding:2px 6px;border-radius:6px;">' + safeHtml(m) + '</span>';
+    }).replace(/@[\wéèêàâôûîçÉÈÊÀÂÔÛÎÇùÙ_.-]+/gi, function(m) {
+      var r = resolveMentionToken(m.slice(1), users);
+      if (r && r.kind === 'user') {
+        return '<span onclick="App.openUserProfile(\'' + r.user.id + '\')" style="color:#007AFF;font-weight:800;cursor:pointer;background:#EBF5FF;padding:2px 6px;border-radius:6px;">' + safeHtml(m) + '</span>';
+      }
+      // Mentions collectives : mises en évidence différemment (violet) pour qu'on
+      // voie d'un coup d'œil qu'elles touchent plusieurs personnes.
+      if (r && r.kind === 'all') {
+        return '<span style="color:#5856D6;font-weight:800;background:#F0EFFF;padding:2px 6px;border-radius:6px;">' + safeHtml(m) + '</span>';
+      }
+      if (r && r.kind === 'section') {
+        return '<span onclick="App.story(\'' + r.section.id + '\')" style="color:#5856D6;font-weight:800;cursor:pointer;background:#F0EFFF;padding:2px 6px;border-radius:6px;">' + safeHtml(m) + '</span>';
       }
       return '<span style="color:#007AFF;font-weight:700;">' + safeHtml(m) + '</span>';
     }).replace(/(https?:\/\/[^\s<]+)/gi, function(m) {

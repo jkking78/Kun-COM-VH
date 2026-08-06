@@ -1125,11 +1125,12 @@
             '</div>' +
             '<div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #E5E5EA;padding-bottom:12px;">' +
               '<label style="font-size:15px;color:#000;font-weight:600;">Heure de début</label>' +
-              '<input type="time" id="eventStart" value="' + startVal + '" style="border:none;font-size:16px;outline:none;background:transparent;color:#007AFF;font-weight:600;" />' +
+              '<input type="time" id="eventStart" value="' + startVal + '" oninput="App.onEventTimeChange()" style="border:none;font-size:16px;outline:none;background:transparent;color:#007AFF;font-weight:600;" />' +
             '</div>' +
             '<div style="display:flex;align-items:center;justify-content:space-between;">' +
               '<label style="font-size:15px;color:#000;font-weight:600;">Heure de fin</label>' +
-              '<input type="time" id="eventEnd" value="' + endVal + '" style="border:none;font-size:16px;outline:none;background:transparent;color:#007AFF;font-weight:600;" />' +
+              '<input type="time" id="eventEnd" value="' + endVal + '" oninput="App.onEventTimeChange()" style="border:none;font-size:16px;outline:none;background:transparent;color:#007AFF;font-weight:600;" />' +
+              '<div id="eventTimeError" style="display:none;font-size:11.5px;color:#FF3B30;font-weight:700;margin-top:4px;">La fin doit être après le début.</div>' +
             '</div>' +
           '</div>' +
         '</div>' +

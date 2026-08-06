@@ -459,14 +459,19 @@
       // divise par deux le temps de chargement initial.
       // 3 requêtes en parallèle :
       //  - la page récente de publications (fil normal, paginé)
-      //  - TOUS les événements, quel que soit leur âge : un nouveau compte doit voir
-      //    le planning complet, or un événement créé il y a longtemps sort de la
-      //    première page et resterait invisible
+      //  - les événements EN COURS ET À VENIR uniquement : un nouveau membre doit
+      //    voir le planning à partir de son arrivée, pas tout l'historique de
+      //    l'équipe. Les événements passés restent visibles pour ceux qui les ont
+      //    déjà en cache (leur propre historique).
       //  - les profils
+      var _todayIso = new Date().toISOString().split('T')[0];
       var _results = await Promise.all([
         supabase.from('kun_com_posts').select('*').order('created_at', { ascending: false }).range(0, POSTS_PAGE_SIZE - 1),
         supabase.from('kun_com_profiles').select('*'),
-        supabase.from('kun_com_posts').select('*').eq('content->>type', 'EVENT').order('created_at', { ascending: false }).limit(400)
+        supabase.from('kun_com_posts').select('*')
+          .eq('content->>type', 'EVENT')
+          .gte('content->>eventDate', _todayIso)
+          .order('created_at', { ascending: false }).limit(400)
       ]);
       var res = _results[0];
       var resProf = _results[1];

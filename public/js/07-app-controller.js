@@ -1198,7 +1198,7 @@ toggleParticipation: function(postId, status) {
         App.openDirectMessage(notif.senderId);
         return;
       }
-      if (notif && notif.type === 'FOLLOW') {
+      if (notif && (notif.type === 'FOLLOW' || notif.type === 'NEW_MEMBER')) {
         App.openUserProfile(notif.senderId);
         return;
       }
@@ -1324,6 +1324,9 @@ toggleParticipation: function(postId, status) {
           console.warn("Supabase signup sync exception:", err);
         }
       }
+
+      // Annonce l'arrivée du nouveau membre à toute l'équipe.
+      announceNewMember(newUser);
 
       S.signupSections = []; S.signupRole = 'MEMBRE';
       render();
@@ -2065,24 +2068,42 @@ toggleParticipation: function(postId, status) {
       var match = val.match(/@([\wéèêàâôûîçÉÈÊÀÂÔÛÎÇùÙ]*)$/);
       var mentionBox = document.getElementById('mentionSugg');
       if (match && mentionBox) {
-        var query = match[1].toLowerCase();
-        var users = db(SK.USERS, []).filter(function(u) {
-          var name = ((u.prenom||'') + ' ' + (u.nom||'')).toLowerCase();
-          return name.indexOf(query) !== -1;
-        }).slice(0, 5);
-
-        if (users.length > 0) {
-          mentionBox.innerHTML = '<div style="font-size:11px;font-weight:800;color:#007AFF;width:100%;margin-bottom:4px;">Membres à mentionner :</div>' +
-            users.map(function(u) {
-              return '<button type="button" onclick="App.insertMention(\'@' + safeHtml(u.prenom + u.nom) + ' \')" style="background:#EBF5FF;color:#007AFF;border:none;padding:5px 10px;border-radius:12px;font-size:12px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:4px;">👤 ' + safeHtml(u.prenom + ' ' + u.nom) + '</button>';
-            }).join('');
-          mentionBox.style.display = 'flex';
-        } else {
-          mentionBox.style.display = 'none';
-        }
+        var html = App.buildMentionSuggestions(match[1], 'insertMention');
+        mentionBox.innerHTML = html;
+        mentionBox.style.display = html ? 'flex' : 'none';
       } else if (mentionBox) {
         mentionBox.style.display = 'none';
       }
+    },
+    // Suggestions de mention : « Tous », les pôles entiers, puis les membres.
+    // Une mention collective notifie tout le groupe concerné.
+    buildMentionSuggestions: function(query, insertFn) {
+      var q = (query || '').toLowerCase();
+      var out = '';
+
+      var collective = '';
+      if (!q || 'tous'.indexOf(q) === 0 || 'all'.indexOf(q) === 0) {
+        collective += '<button type="button" onclick="App.' + insertFn + '(\'@tous \')" style="background:#F0EFFF;color:#5856D6;border:none;padding:5px 10px;border-radius:12px;font-size:12px;font-weight:800;cursor:pointer;">📣 Tous les membres</button>';
+      }
+      SECTIONS.forEach(function(s) {
+        if (q && s.nom.toLowerCase().indexOf(q) !== 0 && s.id.toLowerCase().indexOf(q) !== 0) return;
+        collective += '<button type="button" onclick="App.' + insertFn + '(\'@' + safeHtml(s.nom.replace(/\s+/g,'')) + ' \')" style="background:#F0EFFF;color:#5856D6;border:none;padding:5px 10px;border-radius:12px;font-size:12px;font-weight:700;cursor:pointer;">' + s.emoji + ' Pôle ' + safeHtml(s.nom) + '</button>';
+      });
+      if (collective) {
+        out += '<div style="font-size:11px;font-weight:800;color:#5856D6;width:100%;margin-bottom:4px;">Mentionner un groupe :</div>' + collective;
+      }
+
+      var users = db(SK.USERS, []).filter(function(u) {
+        if (!q) return true;
+        return ((u.prenom||'') + ' ' + (u.nom||'')).toLowerCase().indexOf(q) !== -1;
+      }).slice(0, 5);
+      if (users.length > 0) {
+        out += '<div style="font-size:11px;font-weight:800;color:#007AFF;width:100%;margin:6px 0 4px;">Membres :</div>' +
+          users.map(function(u) {
+            return '<button type="button" onclick="App.' + insertFn + '(\'@' + safeHtml((u.prenom||'') + (u.nom||'')) + ' \')" style="background:#EBF5FF;color:#007AFF;border:none;padding:5px 10px;border-radius:12px;font-size:12px;font-weight:700;cursor:pointer;">👤 ' + safeHtml((u.prenom||'') + ' ' + (u.nom||'')) + '</button>';
+          }).join('');
+      }
+      return out;
     },
     insertTag: function(tag) {
       var ta = document.getElementById('newPostText') || document.getElementById('editPostText') || document.getElementById('repostText'); if (!ta) return;
@@ -2405,19 +2426,9 @@ toggleParticipation: function(postId, status) {
       var match = val.match(/@([\wéèêàâôûîçÉÈÊÀÂÔÛÎÇùÙ]*)$/);
       var box = document.getElementById('commentMentionSugg');
       if (match && box) {
-        var query = match[1].toLowerCase();
-        var users = db(SK.USERS, []).filter(function(u) {
-          var name = ((u.prenom||'') + ' ' + (u.nom||'')).toLowerCase();
-          return name.indexOf(query) !== -1;
-        }).slice(0, 5);
-        if (users.length > 0) {
-          box.innerHTML = users.map(function(u) {
-            return '<button type="button" onclick="App.insertCommentMention(\'@' + safeHtml(u.prenom + u.nom) + ' \')" style="background:#EBF5FF;color:#007AFF;border:none;padding:5px 10px;border-radius:12px;font-size:12px;font-weight:700;cursor:pointer;">👤 ' + safeHtml(u.prenom + ' ' + u.nom) + '</button>';
-          }).join('');
-          box.style.display = 'flex';
-        } else {
-          box.style.display = 'none';
-        }
+        var htmlC = App.buildMentionSuggestions(match[1], 'insertCommentMention');
+        box.innerHTML = htmlC;
+        box.style.display = htmlC ? 'flex' : 'none';
       } else if (box) {
         box.style.display = 'none';
       }

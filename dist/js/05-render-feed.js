@@ -910,8 +910,8 @@
       '</div>';
     } else {
       itemsHtml = notifs.map(function(n) {
-        var icon = n.type === 'LIKE' ? '❤️' : (n.type === 'COMMENT' || n.type === 'REPLY') ? '💬' : n.type === 'EVALUATION' ? '📊' : n.type === 'MENTION' ? '📣' : n.type === 'MESSAGE' ? '✉️' : n.type === 'FOLLOW' ? '👤' : '🗓️';
-        var bgIcon = n.type === 'LIKE' ? '#FF2D55' : (n.type === 'COMMENT' || n.type === 'REPLY') ? '#007AFF' : n.type === 'EVALUATION' ? '#FF9500' : n.type === 'MENTION' ? '#FF9500' : n.type === 'MESSAGE' ? '#34C759' : n.type === 'FOLLOW' ? '#AF52DE' : '#5856D6';
+        var icon = n.type === 'LIKE' ? '❤️' : (n.type === 'COMMENT' || n.type === 'REPLY') ? '💬' : n.type === 'EVALUATION' ? '📊' : n.type === 'MENTION' ? '📣' : n.type === 'MESSAGE' ? '✉️' : n.type === 'FOLLOW' ? '👤' : n.type === 'NEW_MEMBER' ? '🎉' : '🗓️';
+        var bgIcon = n.type === 'LIKE' ? '#FF2D55' : (n.type === 'COMMENT' || n.type === 'REPLY') ? '#007AFF' : n.type === 'EVALUATION' ? '#FF9500' : n.type === 'MENTION' ? '#FF9500' : n.type === 'MESSAGE' ? '#34C759' : n.type === 'FOLLOW' ? '#AF52DE' : n.type === 'NEW_MEMBER' ? '#34C759' : '#5856D6';
         var timeAgoStr = timeAgo(n.timestamp || Date.now());
         var isUnread = !n.read;
 
