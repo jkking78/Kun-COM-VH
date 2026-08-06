@@ -441,7 +441,10 @@
     pendingCommentImage: null,
     showAllLinks: false,
     reduceVideoQuality: true,
-    pendingVideoPoster: null
+    pendingVideoPoster: null,
+    postAboutEventId: null,
+    aboutEventPickerOpen: false,
+    aboutEventSearch: ''
 };
 
   // ============================================================
@@ -1275,6 +1278,7 @@
     if (S.cropperOpen) modals += renderCropperModal();
     if (S.membersListOpen) modals += renderMembersModal();
     if (S.repostPostId) modals += renderRepostModal();
+    if (S.aboutEventPickerOpen) modals += renderAboutEventPickerModal();
 
     return '<div style="position:relative;width:100%;height:100%;display:flex;flex-direction:column;background:#F2F2F7;font-family:-apple-system,BlinkMacSystemFont,\'SF Pro Text\',sans-serif;">' +
       '<div id="mainContent" style="flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;padding-bottom:70px;">' + content + '</div>' +
@@ -1725,6 +1729,21 @@
         '</div>' +
         '<button onclick="App.openOptions(\'' + post.id + '\')" style="background:#F2F2F7;border:none;width:32px;height:32px;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' + SVG.dots + '</button>' +
       '</div>' +
+      (function(){
+        if (!post.aboutEventId) return '';
+        var aboutEv = db(SK.POSTS, []).find(function(p){ return p.id === post.aboutEventId && p.type === 'EVENT'; });
+        if (!aboutEv) return '';
+        var aEvDate = aboutEv.eventDate ? new Date(aboutEv.eventDate + 'T00:00:00') : null;
+        var aEvDateStr = aEvDate ? aEvDate.toLocaleDateString('fr-FR', {weekday:'short', day:'numeric', month:'short'}) : '';
+        return '<div onclick="App.goToEvent(\''+aboutEv.id+'\')" style="margin:0 14px 10px;padding:10px 12px;background:#F0EFFF;border-radius:14px;border:1px solid #E2E0FF;display:flex;align-items:center;gap:10px;cursor:pointer;">' +
+          '<span style="font-size:18px;">🗓️</span>' +
+          '<div style="flex:1;min-width:0;">' +
+            '<div style="font-size:10px;font-weight:800;color:#5856D6;text-transform:uppercase;letter-spacing:0.5px;">À propos de cet événement</div>' +
+            '<div style="font-size:13px;font-weight:800;color:#1C1C1E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(aboutEv.eventTitle||'') + (aEvDateStr ? ' · ' + aEvDateStr : '') + (aboutEv.eventStart ? ' à ' + aboutEv.eventStart : '') + '</div>' +
+          '</div>' +
+          '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5856D6" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>' +
+        '</div>';
+      })() +
       captionTextBlock +
       contentZone +
       // Actions row
@@ -1990,6 +2009,26 @@
             '</div>' +
           '</div>' +
 
+          '<!-- À propos -->' +
+          '<div style="background:#F6F7F9;border-radius:20px;padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
+            '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:' + (S.postAboutEventId?'10px':'0') + ';">' +
+              '<span style="font-size:13px;font-weight:800;color:#0B0B0C;display:flex;align-items:center;gap:8px;"><span style="width:26px;height:26px;border-radius:13px;background:#F0EFFF;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">🗓️</span>À propos <span style="font-weight:600;color:#9AA0A8;font-size:11px;">(optionnel)</span></span>' +
+              (S.postAboutEventId ? '<span onclick="App.clearAboutEvent()" style="color:#FF3B30;font-size:12px;font-weight:700;cursor:pointer;">Retirer</span>' : '') +
+            '</div>' +
+            (function(){
+              if (!S.postAboutEventId) {
+                return '<button type="button" onclick="App.openAboutEventPicker()" style="width:100%;background:#FFF;border:1px dashed #C7C7CC;border-radius:12px;padding:10px;font-size:12.5px;font-weight:700;color:#5856D6;cursor:pointer;">+ Lier à un événement (ex : culte de dimanche)</button>';
+              }
+              var evAbout2 = db(SK.POSTS, []).find(function(p){ return p.id === S.postAboutEventId; });
+              if (!evAbout2) return '';
+              var evAbout2D = evAbout2.eventDate ? new Date(evAbout2.eventDate+'T00:00:00').toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'}) : '';
+              return '<button type="button" onclick="App.openAboutEventPicker()" style="width:100%;display:flex;align-items:center;gap:8px;background:#FFF;border-radius:12px;padding:10px;text-align:left;border:none;cursor:pointer;">' +
+                '<span style="font-size:16px;">🗓️</span>' +
+                '<span style="flex:1;min-width:0;font-size:12.5px;font-weight:700;color:#1C1C1E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(evAbout2.eventTitle||'') + (evAbout2D?' · '+evAbout2D:'') + (evAbout2.eventStart?' à '+evAbout2.eventStart:'') + '</span>' +
+              '</button>';
+            })() +
+          '</div>' +
+
           '<!-- Éphémère -->' +
           '<div style="background:#F6F7F9;border-radius:20px;padding:14px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
             '<div style="display:flex;align-items:center;justify-content:space-between;">' +
@@ -2104,6 +2143,89 @@
     '</div>';
   }
 
+  // ============================================================
+  // "À PROPOS" — sélecteur d'événement à lier à une publication
+  // ============================================================
+  function renderAboutEventItemBtn(ev) {
+    var evDate = ev.eventDate ? new Date(ev.eventDate + 'T00:00:00') : null;
+    var evMonth = evDate ? evDate.toLocaleDateString('fr-FR', {month:'short'}).toUpperCase() : '';
+    var evDay = evDate ? evDate.getDate() : '';
+    var isSel = S.postAboutEventId === ev.id;
+    return '<button type="button" onclick="App.selectAboutEvent(\''+ev.id+'\')" style="width:100%;display:flex;align-items:center;gap:12px;background:' + (isSel?'#F0EFFF':'#F8F8FA') + ';border:1.5px solid ' + (isSel?'#5856D6':'transparent') + ';border-radius:16px;padding:12px;margin-bottom:10px;cursor:pointer;text-align:left;">' +
+      '<div style="background:#FFF;border-radius:10px;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,0.06);width:44px;text-align:center;flex-shrink:0;">' +
+        '<div style="background:#5856D6;color:#FFF;font-size:8.5px;font-weight:900;text-transform:uppercase;padding:3px 0;letter-spacing:0.5px;">' + evMonth + '</div>' +
+        '<div style="font-size:18px;font-weight:900;color:#000;padding:3px 0;">' + evDay + '</div>' +
+      '</div>' +
+      '<div style="flex:1;min-width:0;">' +
+        '<div style="font-size:14px;font-weight:800;color:#1C1C1E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(ev.eventTitle) + '</div>' +
+        '<div style="font-size:12px;color:#8E8E93;margin-top:2px;">' + (ev.eventStart ? '🕒 ' + ev.eventStart + (ev.eventEnd ? ' — ' + ev.eventEnd : '') : '') + '</div>' +
+      '</div>' +
+      (isSel ? '<span style="color:#5856D6;font-size:18px;">✓</span>' : '') +
+    '</button>';
+  }
+
+  // Construit la liste (À venir + Passés, pour permettre de lier une publication à un
+  // récap d'un événement déjà passé), filtrée par la recherche en cours.
+  function renderAboutEventListHtml() {
+    var allPosts = db(SK.POSTS, []);
+    var todayIso = new Date().toISOString().split('T')[0];
+    var q = (S.aboutEventSearch || '').trim().toLowerCase();
+    var all = allPosts.filter(function(p){
+      if (p.type !== 'EVENT' || !p.eventTitle) return false;
+      if (q && p.eventTitle.toLowerCase().indexOf(q) === -1) return false;
+      return true;
+    });
+    var upcoming = all.filter(function(p){ return p.eventDate >= todayIso; }).sort(function(a,b){
+      if (a.eventDate !== b.eventDate) return a.eventDate.localeCompare(b.eventDate);
+      return (a.eventStart||'').localeCompare(b.eventStart||'');
+    });
+    var past = all.filter(function(p){ return p.eventDate < todayIso; }).sort(function(a,b){
+      if (a.eventDate !== b.eventDate) return b.eventDate.localeCompare(a.eventDate);
+      return (b.eventStart||'').localeCompare(a.eventStart||'');
+    });
+
+    if (upcoming.length === 0 && past.length === 0) {
+      return '<div style="text-align:center;padding:36px 20px;color:#8E8E93;">' +
+        '<div style="font-size:38px;margin-bottom:10px;">🗓️</div>' +
+        '<div style="font-size:15px;font-weight:800;color:#000;">' + (q ? 'Aucun résultat' : 'Aucun événement') + '</div>' +
+        '<div style="font-size:13px;margin-top:4px;">' + (q ? 'Essayez un autre mot-clé.' : 'Créez un événement dans Planning & Cultes pour pouvoir le lier ici.') + '</div>' +
+      '</div>';
+    }
+
+    var html = '';
+    if (upcoming.length > 0) {
+      html += '<div style="font-size:11px;font-weight:800;color:#8E8E93;text-transform:uppercase;letter-spacing:0.5px;margin:4px 0 8px;">🔜 À venir</div>' +
+        upcoming.map(renderAboutEventItemBtn).join('');
+    }
+    if (past.length > 0) {
+      html += '<div style="font-size:11px;font-weight:800;color:#8E8E93;text-transform:uppercase;letter-spacing:0.5px;margin:' + (upcoming.length>0?'14px':'4px') + ' 0 8px;">🕰️ Passés · pour un récap</div>' +
+        past.map(renderAboutEventItemBtn).join('');
+    }
+    return html;
+  }
+
+  function renderAboutEventPickerModal() {
+    return '<div onclick="App.closeAboutEventPicker()" style="position:fixed;inset:0;background:rgba(15,15,20,0.55);backdrop-filter:blur(2px);z-index:10001;display:flex;justify-content:center;align-items:flex-end;">' +
+      '<div onclick="event.stopPropagation()" style="width:100%;max-width:460px;background:#FFF;border-top-left-radius:28px;border-top-right-radius:28px;max-height:82vh;display:flex;flex-direction:column;box-shadow:0 -8px 40px rgba(0,0,0,0.18);animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
+        '<div style="display:flex;justify-content:center;padding:10px 0 0;cursor:pointer;" onclick="App.closeAboutEventPicker()">' +
+          '<div style="width:38px;height:5px;background:#E2E4E9;border-radius:3px;"></div>' +
+        '</div>' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px 12px;">' +
+          '<span onclick="App.closeAboutEventPicker()" style="font-size:14.5px;color:#65686F;cursor:pointer;font-weight:700;padding:8px 4px;">Annuler</span>' +
+          '<h3 style="font-size:16px;font-weight:800;margin:0;color:#0B0B0C;">À propos de quel événement ?</h3>' +
+          '<span style="width:52px;"></span>' +
+        '</div>' +
+        '<div style="padding:0 16px 10px;">' +
+          '<div style="display:flex;align-items:center;gap:8px;background:#F2F2F7;border-radius:12px;height:38px;padding:0 12px;">' +
+            SVG.search +
+            '<input id="aboutEventSearchInput" type="search" value="' + safeHtml(S.aboutEventSearch||'') + '" oninput="App.searchAboutEvents(this.value)" placeholder="Rechercher un événement (à venir ou passé)..." style="flex:1;border:none;background:transparent;font-size:13.5px;color:#000;outline:none;">' +
+          '</div>' +
+        '</div>' +
+        '<div id="aboutEventListContainer" style="overflow-y:auto;flex:1;padding:4px 16px 20px;">' + renderAboutEventListHtml() + '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
   function renderCreateModal(u) {
     var previewHtml = '';
     if (S.pendingMedia.length > 0) {
@@ -2185,6 +2307,24 @@
               '<input type="date" id="postScheduleDate" style="flex:1;height:40px;border-radius:12px;border:none;background:#FFF;padding:0 10px;font-size:12.5px;outline:none;box-shadow:0 1px 2px rgba(16,24,40,0.06);" />' +
               '<input type="time" id="postScheduleTime" style="flex:1;height:40px;border-radius:12px;border:none;background:#FFF;padding:0 10px;font-size:12.5px;outline:none;box-shadow:0 1px 2px rgba(16,24,40,0.06);" />' +
             '</div>' +
+          '</div>' +
+          '<div style="background:#F6F7F9;border-radius:20px;padding:14px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
+            '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:' + (S.postAboutEventId?'10px':'0') + ';">' +
+              '<span style="font-size:13px;font-weight:800;color:#0B0B0C;display:flex;align-items:center;gap:8px;"><span style="width:26px;height:26px;border-radius:13px;background:#F0EFFF;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">🗓️</span>À propos <span style="font-weight:600;color:#9AA0A8;font-size:11px;">(optionnel)</span></span>' +
+              (S.postAboutEventId ? '<span onclick="App.clearAboutEvent()" style="color:#FF3B30;font-size:12px;font-weight:700;cursor:pointer;">Retirer</span>' : '') +
+            '</div>' +
+            (function(){
+              if (!S.postAboutEventId) {
+                return '<button type="button" onclick="App.openAboutEventPicker()" style="width:100%;background:#FFF;border:1px dashed #C7C7CC;border-radius:12px;padding:10px;font-size:12.5px;font-weight:700;color:#5856D6;cursor:pointer;">+ Lier à un événement (ex : culte de dimanche)</button>';
+              }
+              var evAbout = db(SK.POSTS, []).find(function(p){ return p.id === S.postAboutEventId; });
+              if (!evAbout) return '';
+              var evAboutD = evAbout.eventDate ? new Date(evAbout.eventDate+'T00:00:00').toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'}) : '';
+              return '<button type="button" onclick="App.openAboutEventPicker()" style="width:100%;display:flex;align-items:center;gap:8px;background:#FFF;border-radius:12px;padding:10px;text-align:left;border:none;cursor:pointer;">' +
+                '<span style="font-size:16px;">🗓️</span>' +
+                '<span style="flex:1;min-width:0;font-size:12.5px;font-weight:700;color:#1C1C1E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(evAbout.eventTitle||'') + (evAboutD?' · '+evAboutD:'') + (evAbout.eventStart?' à '+evAbout.eventStart:'') + '</span>' +
+              '</button>';
+            })() +
           '</div>' +
         '</div>' +
 
@@ -4112,6 +4252,32 @@ toggleParticipation: function(postId, status) {
       S.postVisibility = vis;
       render();
     },
+    // "À propos" : lier une publication à un événement du planning (ex : culte de dimanche 7h30)
+    openAboutEventPicker: function() { S.aboutEventPickerOpen = true; S.aboutEventSearch = ''; render(); },
+    closeAboutEventPicker: function() { S.aboutEventPickerOpen = false; S.aboutEventSearch = ''; render(); },
+    searchAboutEvents: function(val) {
+      S.aboutEventSearch = val;
+      var container = document.getElementById('aboutEventListContainer');
+      if (container) container.innerHTML = renderAboutEventListHtml();
+    },
+    selectAboutEvent: function(eventId) {
+      S.postAboutEventId = eventId;
+      S.aboutEventPickerOpen = false;
+      S.aboutEventSearch = '';
+      render();
+    },
+    clearAboutEvent: function() { S.postAboutEventId = null; render(); },
+    goToEvent: function(eventId) {
+      var posts = db(SK.POSTS, []);
+      var ev = posts.find(function(p){ return p.id === eventId && p.type === 'EVENT'; });
+      if (!ev) { toast('Cet événement n\'existe plus.', 'error'); return; }
+      var todayIso = new Date().toISOString().split('T')[0];
+      S.planningMode = ev.eventDate && ev.eventDate < todayIso ? 'history' : 'upcoming';
+      S.selectedDate = ev.eventDate || todayIso;
+      S.tab = 'planning';
+      S.createOpen = false; S.commentOpen = false; S.optionsOpen = false;
+      render();
+    },
     openEditPost: function(postId) {
       var posts = db(SK.POSTS, []);
       var p = posts.find(function(x){ return x.id === postId; });
@@ -4123,6 +4289,7 @@ toggleParticipation: function(postId, status) {
       S.postBg = p.postBg || null;
       S.postText = p.caption || '';
       S.pendingVideoPoster = p.videoPoster || null;
+      S.postAboutEventId = p.aboutEventId || null;
       render();
     },
     closeEditPost: function() {
@@ -4131,6 +4298,7 @@ toggleParticipation: function(postId, status) {
       S.postBg = null;
       S.postText = '';
       S.pendingVideoPoster = null;
+      S.postAboutEventId = null;
       render();
     },
     saveEditPost: async function(postId) {
@@ -4148,6 +4316,7 @@ toggleParticipation: function(postId, status) {
       post.mediaUrls = S.pendingMedia.slice();
       post.videoPoster = S.pendingMedia.some(function(m){return isVideoUrl(m);}) ? (S.pendingVideoPoster || null) : null;
       post.postBg = S.pendingMedia.length === 0 ? (S.postBg || null) : null;
+      post.aboutEventId = S.postAboutEventId || null;
 
       var ephEl = document.getElementById('editPostEphemeral');
       if (ephEl) {
@@ -4191,11 +4360,12 @@ toggleParticipation: function(postId, status) {
       S.postBg = null;
       S.postText = '';
       S.pendingVideoPoster = null;
+      S.postAboutEventId = null;
       render();
       toast('Publication modifiée ! 🎉', 'success');
     },
-    openCreate: function() { S.createOpen=true; S.pendingMedia=[]; S.pendingVideoPoster=null; render(); setTimeout(function(){ var t=document.getElementById('newPostText'); if(t) t.focus(); },120); },
-    closeCreate: function() { S.createOpen=false; S.pendingMedia=[]; S.hashSuggestions=false; S.postBg=null; S.postText=''; S.pendingVideoPoster=null; render(); },
+    openCreate: function() { S.createOpen=true; S.pendingMedia=[]; S.pendingVideoPoster=null; S.postAboutEventId=null; render(); setTimeout(function(){ var t=document.getElementById('newPostText'); if(t) t.focus(); },120); },
+    closeCreate: function() { S.createOpen=false; S.pendingMedia=[]; S.hashSuggestions=false; S.postBg=null; S.postText=''; S.pendingVideoPoster=null; S.postAboutEventId=null; render(); },
     onPostInput: function(val) {
       // Préserve le texte tapé à travers les re-render (ex: changement de fond)
       S.postText = val;
@@ -4364,7 +4534,8 @@ toggleParticipation: function(postId, status) {
         postBg: S.pendingMedia.length === 0 ? (S.postBg || null) : null,
         likes: 0, likedBy: [], comments: [],
         visibility: S.postVisibility || 'all',
-        targetSections: (S.postTargetSections || []).slice()
+        targetSections: (S.postTargetSections || []).slice(),
+        aboutEventId: S.postAboutEventId || null
       };
 
       // Ephemeral post handling
@@ -4405,7 +4576,7 @@ toggleParticipation: function(postId, status) {
       saveLinksToProfile(newPost.userId, extractLinks(txt), newPost.id);
 
       updateUserActivity('Publication');
-      S.createOpen=false; S.pendingMedia=[]; S.hashSuggestions=false; S.postBg=null; S.postText=''; S.pendingVideoPoster=null; S.postVisibility='all'; S.postTargetSections=[];
+      S.createOpen=false; S.pendingMedia=[]; S.hashSuggestions=false; S.postBg=null; S.postText=''; S.pendingVideoPoster=null; S.postVisibility='all'; S.postTargetSections=[]; S.postAboutEventId=null;
       S.tab = 'home';
       S.q = ''; // Optional: clear search if they were searching
       render();
