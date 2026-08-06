@@ -425,11 +425,19 @@
       }).join('') +
     '</div>';
 
-    var dayEvents = allPosts.filter(function(p) { 
+    // Les événements encore à venir (ou en cours) passent devant, du plus proche
+    // au plus lointain ; les événements déjà terminés viennent ensuite. Le
+    // carrousel s'ouvre donc toujours sur ce qui concerne l'utilisateur maintenant.
+    var nowTs = Date.now();
+    var dayEvents = allPosts.filter(function(p) {
       return p.type === 'EVENT' && p.eventDate === S.selectedDate;
     }).sort(function(a,b) {
-      if (a.eventStart && b.eventStart) return a.eventStart.localeCompare(b.eventStart);
-      return 0;
+      var aPast = isEventPast(a, nowTs) ? 1 : 0;
+      var bPast = isEventPast(b, nowTs) ? 1 : 0;
+      if (aPast !== bPast) return aPast - bPast;
+      var as = a.eventStart || '', bs = b.eventStart || '';
+      // À venir : du plus proche au plus lointain. Terminés : du plus récent d'abord.
+      return aPast ? bs.localeCompare(as) : as.localeCompare(bs);
     });
 
     var timeline = '<div style="padding:20px 16px;min-height:50vh;background:#FAFAFA;">';

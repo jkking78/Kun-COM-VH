@@ -384,6 +384,15 @@
       S.eventImage = null;
       render();
     },
+    // Alerte immédiate à la saisie, sans attendre l'enregistrement.
+    onEventTimeChange: function() {
+      var s = document.getElementById('eventStart');
+      var e = document.getElementById('eventEnd');
+      var err = document.getElementById('eventTimeError');
+      if (!err) return;
+      var invalid = s && e && s.value && e.value && e.value <= s.value;
+      err.style.display = invalid ? 'block' : 'none';
+    },
     selectDate: function(d) { S.selectedDate = d; render(); },
     toggleEventSection: function(sec) {
       var idx = S.eventSections.indexOf(sec);
@@ -412,6 +421,13 @@
       var desc = descEl ? descEl.value.trim() : '';
       var pinned = pinnedEl ? pinnedEl.checked : false;
       if (!title || !date || !start) { toast('Titre, Date et Heure de début requis.', 'error'); return; }
+      // L'heure de fin doit suivre l'heure de début. Sans ce contrôle on pouvait
+      // enregistrer 21:00 → 11:30, ce qui donnait un événement de durée négative :
+      // affiché comme « Terminé » dès sa création et faussant toute la ponctualité.
+      if (end && end <= start) {
+        toast('L\'heure de fin doit être postérieure à l\'heure de début.', 'error');
+        return;
+      }
       if (S.eventImageProcessing) { toast('L\'image est encore en cours de traitement.', 'info'); return; }
 
       // ---- Mode MODIFICATION ----
