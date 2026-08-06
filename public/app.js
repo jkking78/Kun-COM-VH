@@ -226,24 +226,35 @@
     return merged;
   }
 
+  // Pagination des publications : les chargements réguliers (initial + poll) ne
+  // récupèrent que la page la plus récente pour rester rapides même avec beaucoup
+  // de publications ; l'historique plus ancien se charge à la demande via
+  // App.loadMorePosts() (bouton "Charger plus" en bas du fil), jamais en effaçant
+  // ce qui est déjà affiché (mergePostsWithLocal est toujours additif).
+  var POSTS_PAGE_SIZE = 60;
+
   var _syncRetryCount = 0;
   var MAX_SYNC_RETRIES = 4;
   async function syncSupabaseToLocal() {
     if (!supabase) { S.initialLoading = false; render(); return; }
     try {
-      // Fetch posts
-      var res = await supabase.from('kun_com_posts').select('*');
+      // Fetch posts (page la plus récente uniquement)
+      var res = await supabase.from('kun_com_posts').select('*').order('created_at', { ascending: false }).range(0, POSTS_PAGE_SIZE - 1);
       if (res && res.error) { console.warn('Supabase posts fetch error:', res.error); }
       if (res && res.data) {
+        S.postsAllLoaded = res.data.length < POSTS_PAGE_SIZE;
         var mergedPosts = mergePostsWithLocal(res.data);
         DB_CACHE[SK.POSTS] = mergedPosts;
         localStorage.setItem(SK.POSTS, JSON.stringify(mergedPosts));
-        // Ne pousse vers Supabase QUE les publications purement locales (créées hors-ligne,
-        // absentes du serveur) — pas l'intégralité du flux à chaque sync, ce qui devenait
-        // très coûteux et ralentissait le chargement à mesure que le nombre de posts grandit.
+        // Renvoie vers Supabase les publications créées hors-ligne et pas encore
+        // synchronisées — repéré via leur horodatage très récent (pas juste "absent de
+        // cette page"), car avec la pagination un post ancien peut légitimement être
+        // absent de cette page sans être "local uniquement". On évite ainsi de renvoyer
+        // tout l'historique local à chaque sync, ce qui ne passerait pas à l'échelle.
         var remotePostIds = (res.data || []).map(function(item){ return item.id; });
+        var recentCutoff = Date.now() - 15 * 60 * 1000;
         mergedPosts.forEach(function(post) {
-          if (post && post.id && remotePostIds.indexOf(post.id) === -1) {
+          if (post && post.id && (post.timestamp || 0) > recentCutoff && remotePostIds.indexOf(post.id) === -1) {
             supabase.from('kun_com_posts').upsert({ id: post.id, content: post }, { onConflict: 'id' }).then(function(){}, function(e){ console.warn('Push post error:', e); });
           }
         });
@@ -349,9 +360,10 @@
   async function fetchPostsSilently() {
     if (!supabase) return;
     try {
-      var res = await supabase.from('kun_com_posts').select('*');
+      var res = await supabase.from('kun_com_posts').select('*').order('created_at', { ascending: false }).range(0, POSTS_PAGE_SIZE - 1);
       if (res && res.error) { console.warn('Supabase posts poll error:', res.error); }
       if (res && res.data) {
+        if (res.data.length < POSTS_PAGE_SIZE) S.postsAllLoaded = true;
         var mergedPosts = mergePostsWithLocal(res.data);
         var newJson = JSON.stringify(mergedPosts);
         if (newJson !== _lastPostsJson) {
@@ -468,7 +480,10 @@
     aboutEventSearch: '',
     videoProcessing: false,
     deleteAccountOpen: false,
-    deleteAccountBusy: false
+    deleteAccountBusy: false,
+    postsRemotePage: 1,
+    postsAllLoaded: false,
+    loadingMorePosts: false
 };
 
   // ============================================================
@@ -1582,12 +1597,25 @@
           : '<button onclick="App.openCreate()" style="' + btnStyle('#007AFF') + 'height:44px;width:auto;padding:0 22px;font-size:14px;">Créer un post</button>') +
       '</div>';
     } else {
-      feed = filtered.map(renderPostCard).join('') +
-        '<div style="padding:36px 20px;text-align:center;background:#FFF;margin-top:8px;">' +
+      // "Charger plus" ne s'applique qu'au fil principal non filtré (pagination
+      // côté serveur) — avec une recherche ou une section active, on a déjà tout
+      // ce qui est en cache local sous les yeux.
+      var canLoadMore = S.story === 'all' && !S.q && !S.postsAllLoaded;
+      var footerHtml;
+      if (canLoadMore) {
+        footerHtml = '<div style="padding:20px;text-align:center;background:#FFF;margin-top:8px;">' +
+          (S.loadingMorePosts
+            ? '<div style="display:flex;justify-content:center;padding:10px;"><div style="width:22px;height:22px;border:2.5px solid #E5E5EA;border-top-color:#007AFF;border-radius:50%;animation:spin 0.7s linear infinite;"></div></div>'
+            : '<button onclick="App.loadMorePosts()" style="background:#F2F2F7;color:#000;border:none;border-radius:14px;padding:12px 22px;font-size:13.5px;font-weight:800;cursor:pointer;">Charger plus d\'anciennes publications</button>') +
+        '</div>';
+      } else {
+        footerHtml = '<div style="padding:36px 20px;text-align:center;background:#FFF;margin-top:8px;">' +
           '<div style="width:40px;height:40px;border-radius:20px;background:#F0F6FF;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;">' + SVG.check + '</div>' +
           '<h4 style="font-size:15px;font-weight:800;color:#000;margin:0;">Vous êtes à jour ✓</h4>' +
           '<p style="font-size:12.5px;color:#8E8E93;margin:4px 0 0;">Toutes les publications ont été affichées.</p>' +
         '</div>';
+      }
+      feed = filtered.map(renderPostCard).join('') + footerHtml;
     }
 
     return header + trendsHtml + stories + feed;
@@ -4330,6 +4358,36 @@ toggleParticipation: function(postId, status) {
 
     // Navigation
     tab: function(t) { S.tab=t; S.createOpen=false; S.commentOpen=false; S.optionsOpen=false; render(); },
+
+    // Charge la page suivante de publications plus anciennes (pagination à la
+    // demande — voir POSTS_PAGE_SIZE). N'efface jamais ce qui est déjà affiché :
+    // mergePostsWithLocal est purement additif.
+    loadMorePosts: async function() {
+      if (S.loadingMorePosts || S.postsAllLoaded || !supabase) return;
+      S.loadingMorePosts = true;
+      render();
+      try {
+        var offset = S.postsRemotePage * POSTS_PAGE_SIZE;
+        var res = await supabase.from('kun_com_posts').select('*').order('created_at', { ascending: false }).range(offset, offset + POSTS_PAGE_SIZE - 1);
+        if (res && res.error) { console.warn('loadMorePosts error:', res.error); toast('Impossible de charger plus de publications.', 'error'); }
+        if (res && res.data) {
+          if (res.data.length < POSTS_PAGE_SIZE) S.postsAllLoaded = true;
+          if (res.data.length > 0) {
+            var mergedPosts = mergePostsWithLocal(res.data);
+            DB_CACHE[SK.POSTS] = mergedPosts;
+            localStorage.setItem(SK.POSTS, JSON.stringify(mergedPosts));
+            S.postsRemotePage++;
+          } else {
+            S.postsAllLoaded = true;
+          }
+        }
+      } catch (e) {
+        console.warn('loadMorePosts exception:', e);
+        toast('Impossible de charger plus de publications.', 'error');
+      }
+      S.loadingMorePosts = false;
+      render();
+    },
     story: function(s) {
       S.story=s; S.q='';
       if (s !== 'all') {
