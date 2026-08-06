@@ -456,10 +456,12 @@
       '</div>' +
       '<div id="' + carId + '" onscroll="App.eventGroupScroll(\'' + dateIso + '\',\'' + carId + '\',this)" style="display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;gap:0;">' +
         events.map(function(ev) {
+          // La carte entière ouvre l'événement dans le Planning, à la bonne date :
+          // sans cela il fallait quitter le fil et le retrouver à la main.
           return '<div style="flex:0 0 100%;scroll-snap-align:start;padding:0 14px 4px;box-sizing:border-box;">' +
             '<div style="position:relative;">' +
-              renderEventCardInner(ev) +
-              '<button onclick="App.openOptions(\'' + ev.id + '\')" style="position:absolute;top:10px;right:10px;background:rgba(255,255,255,0.92);border:none;width:30px;height:30px;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.08);">' + SVG.dots + '</button>' +
+              '<div onclick="App.goToEvent(\'' + ev.id + '\')" style="cursor:pointer;">' + renderEventCardInner(ev) + '</div>' +
+              '<button onclick="event.stopPropagation();App.openOptions(\'' + ev.id + '\')" style="position:absolute;top:10px;right:10px;background:rgba(255,255,255,0.92);border:none;width:30px;height:30px;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.08);">' + SVG.dots + '</button>' +
             '</div>' +
           '</div>';
         }).join('') +
@@ -719,7 +721,8 @@
       var contentZone = '';
       // Handle new-format EVENT posts (created by saveEvent)
       if (post.type === 'EVENT' && post.eventTitle) {
-         contentZone = '<div style="margin:0 14px 10px;">' + renderEventCardInner(post) + '</div>';
+         // Cliquer sur l'événement dans le fil l'ouvre dans le Planning, à sa date.
+         contentZone = '<div onclick="App.goToEvent(\'' + post.id + '\')" style="margin:0 14px 10px;cursor:pointer;">' + renderEventCardInner(post) + '</div>';
       } else if (post.type === 'EVENT' && post.metadata) {
          var participants = Object.keys(post.metadata.participations || {}).filter(function(k) { return post.metadata.participations[k] === 'yes'; });
          var partAvatars = '';

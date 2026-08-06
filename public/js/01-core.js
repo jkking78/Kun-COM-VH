@@ -1069,12 +1069,23 @@
     return 'Position introuvable';
   }
 
-  // Horodatage de fin d'un événement (eventDate + eventEnd). null si inconnu.
+  // Un événement dont l'heure de fin est antérieure ou égale à l'heure de début
+  // se termine le LENDEMAIN (veillée 21:30 → 00:30, par exemple).
+  function crossesMidnight(ev) {
+    return !!(ev && ev.eventStart && ev.eventEnd && ev.eventEnd <= ev.eventStart);
+  }
+
+  // Horodatage de fin d'un événement. null si inconnu.
   function eventEndTimestamp(ev) {
     if (!ev || !ev.eventDate) return null;
     var hhmm = ev.eventEnd || '23:59';
     var t = new Date(ev.eventDate + 'T' + hhmm + ':00').getTime();
-    return isNaN(t) ? null : t;
+    if (isNaN(t)) return null;
+    // Sans ce décalage, une veillée se terminant à 00:30 était datée au petit matin
+    // du MÊME jour, donc déjà passée : elle s'affichait « Terminé » avant même
+    // d'avoir commencé.
+    if (crossesMidnight(ev)) t += 24 * 3600 * 1000;
+    return t;
   }
 
   // Un événement est "passé" dès qu'il est TERMINÉ, pas seulement quand sa date

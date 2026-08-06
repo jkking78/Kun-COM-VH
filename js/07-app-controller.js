@@ -384,14 +384,25 @@
       S.eventImage = null;
       render();
     },
-    // Alerte immédiate à la saisie, sans attendre l'enregistrement.
+    // Retour immédiat à la saisie : signale une durée nulle (erreur) ou un
+    // événement qui se poursuit après minuit (information, pas une erreur).
     onEventTimeChange: function() {
       var s = document.getElementById('eventStart');
       var e = document.getElementById('eventEnd');
       var err = document.getElementById('eventTimeError');
       if (!err) return;
-      var invalid = s && e && s.value && e.value && e.value <= s.value;
-      err.style.display = invalid ? 'block' : 'none';
+      if (!s || !e || !s.value || !e.value) { err.style.display = 'none'; return; }
+      if (e.value === s.value) {
+        err.textContent = 'La fin ne peut pas être identique au début.';
+        err.style.color = '#FF3B30';
+        err.style.display = 'block';
+      } else if (e.value < s.value) {
+        err.textContent = '🌙 Se termine le lendemain à ' + e.value + '.';
+        err.style.color = '#5856D6';
+        err.style.display = 'block';
+      } else {
+        err.style.display = 'none';
+      }
     },
     selectDate: function(d) { S.selectedDate = d; render(); },
     toggleEventSection: function(sec) {
@@ -421,11 +432,11 @@
       var desc = descEl ? descEl.value.trim() : '';
       var pinned = pinnedEl ? pinnedEl.checked : false;
       if (!title || !date || !start) { toast('Titre, Date et Heure de début requis.', 'error'); return; }
-      // L'heure de fin doit suivre l'heure de début. Sans ce contrôle on pouvait
-      // enregistrer 21:00 → 11:30, ce qui donnait un événement de durée négative :
-      // affiché comme « Terminé » dès sa création et faussant toute la ponctualité.
-      if (end && end <= start) {
-        toast('L\'heure de fin doit être postérieure à l\'heure de début.', 'error');
+      // Une fin antérieure au début signifie que l'événement se poursuit après
+      // minuit (veillée). C'est légitime et désormais géré ; on refuse seulement
+      // une durée nulle, qui n'a pas de sens.
+      if (end && end === start) {
+        toast('L\'heure de fin ne peut pas être identique à l\'heure de début.', 'error');
         return;
       }
       if (S.eventImageProcessing) { toast('L\'image est encore en cours de traitement.', 'info'); return; }
@@ -1947,11 +1958,33 @@ toggleParticipation: function(postId, status) {
       var ev = posts.find(function(p){ return p.id === eventId && p.type === 'EVENT'; });
       if (!ev) { toast('Cet événement n\'existe plus.', 'error'); return; }
       var todayIso = new Date().toISOString().split('T')[0];
-      S.planningMode = ev.eventDate && ev.eventDate < todayIso ? 'history' : 'upcoming';
+      // On bascule sur l'onglet où l'événement se trouve réellement : un culte
+      // terminé ce matin est dans l'Historique, pas dans « À venir ».
+      S.planningMode = isEventPast(ev) ? 'history' : 'upcoming';
       S.selectedDate = ev.eventDate || todayIso;
       S.tab = 'planning';
       S.createOpen = false; S.commentOpen = false; S.optionsOpen = false;
+      // Le carrousel du jour s'ouvre sur l'événement demandé, et non sur le premier.
+      var sameDay = posts.filter(function(p) {
+        return p.type === 'EVENT' && p.eventDate === S.selectedDate;
+      }).sort(function(a,b) {
+        var ap = isEventPast(a) ? 1 : 0, bp = isEventPast(b) ? 1 : 0;
+        if (ap !== bp) return ap - bp;
+        var as = a.eventStart || '', bs = b.eventStart || '';
+        return ap ? bs.localeCompare(as) : as.localeCompare(bs);
+      });
+      var idx = sameDay.findIndex(function(p){ return p.id === eventId; });
+      if (!S.eventGroupIdx) S.eventGroupIdx = {};
+      S.eventGroupIdx[S.selectedDate] = idx > 0 ? idx : 0;
       render();
+      // Le carrousel est un conteneur défilant : on le positionne après le rendu.
+      if (idx > 0) {
+        setTimeout(function() {
+          var carId = 'evgrpplan-' + String(S.selectedDate || '').replace(/-/g, '');
+          var el = document.getElementById(carId);
+          if (el && el.clientWidth) el.scrollLeft = idx * el.clientWidth;
+        }, 60);
+      }
     },
     openEditPost: function(postId) {
       var posts = db(SK.POSTS, []);
