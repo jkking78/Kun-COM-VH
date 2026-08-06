@@ -231,16 +231,20 @@
   async function syncSupabaseToLocal() {
     if (!supabase) { S.initialLoading = false; render(); return; }
     try {
-      // Fetch posts
-      var res = await supabase.from('kun_com_posts').select('*');
+      // Fetch posts — limité aux plus récents pour un chargement rapide même avec
+      // beaucoup de publications (façon Facebook/Instagram) ; les plus anciens déjà
+      // en cache localement restent visibles, seuls les tout premiers sont récupérés ici.
+      var res = await supabase.from('kun_com_posts').select('*').order('created_at', { ascending: false }).limit(120);
       if (res && res.data) {
         var mergedPosts = mergePostsWithLocal(res.data);
         DB_CACHE[SK.POSTS] = mergedPosts;
         localStorage.setItem(SK.POSTS, JSON.stringify(mergedPosts));
-        // Retroactively push local posts, likes & comments to Supabase
+        // Ne pousse vers Supabase QUE les publications purement locales (créées hors-ligne,
+        // absentes du serveur) — pas l'intégralité du flux à chaque sync, ce qui devenait
+        // très coûteux et ralentissait le chargement à mesure que le nombre de posts grandit.
         var remotePostIds = (res.data || []).map(function(item){ return item.id; });
         mergedPosts.forEach(function(post) {
-          if (post && post.id) {
+          if (post && post.id && remotePostIds.indexOf(post.id) === -1) {
             supabase.from('kun_com_posts').upsert({ id: post.id, content: post }, { onConflict: 'id' }).then(function(){}, function(e){ console.warn('Push post error:', e); });
           }
         });
@@ -346,7 +350,7 @@
   async function fetchPostsSilently() {
     if (!supabase) return;
     try {
-      var res = await supabase.from('kun_com_posts').select('*');
+      var res = await supabase.from('kun_com_posts').select('*').order('created_at', { ascending: false }).limit(120);
       if (res && res.data) {
         var mergedPosts = mergePostsWithLocal(res.data);
         var newJson = JSON.stringify(mergedPosts);
@@ -1563,10 +1567,8 @@
     if (filtered.length === 0 && S.initialLoading && !S.q) {
       // Chargement initial en cours (sync Supabase pas encore terminée) : on évite
       // d'afficher un faux "Aucune publication" qui pourrait faire croire à une perte de données.
-      feed = '<div style="display:flex;flex-direction:column;align-items:center;padding:70px 24px;text-align:center;">' +
-        '<div style="width:36px;height:36px;border:3px solid #E5E5EA;border-top-color:#007AFF;border-radius:50%;animation:spin 0.8s linear infinite;margin-bottom:18px;"></div>' +
-        '<h3 style="font-size:16px;font-weight:800;color:#000;margin:0 0 6px;">Chargement des publications…</h3>' +
-        '<p style="font-size:13px;color:#8E8E93;margin:0;max-width:240px;line-height:1.5;">Connexion au serveur en cours.</p>' +
+      feed = '<div style="display:flex;justify-content:center;padding:48px 24px;">' +
+        '<div style="width:26px;height:26px;border:2.5px solid #E5E5EA;border-top-color:#007AFF;border-radius:50%;animation:spin 0.7s linear infinite;"></div>' +
       '</div>';
     } else if (filtered.length === 0) {
       feed = '<div style="display:flex;flex-direction:column;align-items:center;padding:70px 24px;text-align:center;">' +
