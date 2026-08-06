@@ -1420,8 +1420,8 @@
     var header = '<header style="position:sticky;top:0;z-index:200;background:rgba(255,255,255,0.96);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:0.5px solid rgba(0,0,0,0.1);">' +
       '<div style="display:flex;justify-content:space-between;align-items:center;padding:13px 16px 8px;">' +
         '<div>' +
+          '<h1 style="font-size:22px;font-weight:900;color:#007AFF;margin:0 0 2px;letter-spacing:-0.5px;">Commit</h1>' +
           '<div style="font-size:10px;font-weight:800;color:#000;text-transform:uppercase;letter-spacing:1.5px;">Église Vase d\'Honneur</div>' +
-          '<h1 style="font-size:22px;font-weight:900;color:#007AFF;margin:0;letter-spacing:-0.5px;">Commit</h1>' +
         '</div>' +
         '<div style="display:flex;gap:8px;align-items:center;">' +
           (function(){
