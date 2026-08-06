@@ -226,8 +226,10 @@
     return merged;
   }
 
+  var _syncRetryCount = 0;
+  var MAX_SYNC_RETRIES = 4;
   async function syncSupabaseToLocal() {
-    if (!supabase) return;
+    if (!supabase) { S.initialLoading = false; render(); return; }
     try {
       // Fetch posts
       var res = await supabase.from('kun_com_posts').select('*');
@@ -300,11 +302,22 @@
         });
       }
 
+      _syncRetryCount = 0;
+      S.initialLoading = false;
       if (window.App && window.App.tab) {
-         render(); 
+         render();
       }
     } catch(e) {
       console.warn("Supabase Sync Error:", e);
+      // Réessaie automatiquement (réseau instable au démarrage) avant d'abandonner
+      // et d'afficher un état "Aucune publication" définitif.
+      if (_syncRetryCount < MAX_SYNC_RETRIES) {
+        _syncRetryCount++;
+        setTimeout(function(){ syncSupabaseToLocal(); }, 1500 * _syncRetryCount);
+      } else {
+        S.initialLoading = false;
+        render();
+      }
     }
   }
   
@@ -381,6 +394,9 @@
   // ============================================================
   var S = {
     auth: 'login',
+    // Vrai tant que la première synchronisation avec Supabase n'est pas terminée
+    // (permet d'afficher "Chargement..." au lieu d'un faux "Aucune publication" au démarrage).
+    initialLoading: true,
     cropperOpen: false,
     cropperDataUrl: null,
     cropperAspectRatio: 1,
@@ -1410,7 +1426,15 @@
 
     // Feed
     var feed = '';
-    if (filtered.length === 0) {
+    if (filtered.length === 0 && S.initialLoading && !S.q) {
+      // Chargement initial en cours (sync Supabase pas encore terminée) : on évite
+      // d'afficher un faux "Aucune publication" qui pourrait faire croire à une perte de données.
+      feed = '<div style="display:flex;flex-direction:column;align-items:center;padding:70px 24px;text-align:center;">' +
+        '<div style="width:36px;height:36px;border:3px solid #E5E5EA;border-top-color:#007AFF;border-radius:50%;animation:spin 0.8s linear infinite;margin-bottom:18px;"></div>' +
+        '<h3 style="font-size:16px;font-weight:800;color:#000;margin:0 0 6px;">Chargement des publications…</h3>' +
+        '<p style="font-size:13px;color:#8E8E93;margin:0;max-width:240px;line-height:1.5;">Connexion au serveur en cours.</p>' +
+      '</div>';
+    } else if (filtered.length === 0) {
       feed = '<div style="display:flex;flex-direction:column;align-items:center;padding:70px 24px;text-align:center;">' +
         '<div style="font-size:52px;margin-bottom:16px;">📭</div>' +
         '<h3 style="font-size:18px;font-weight:800;color:#000;margin:0 0 8px;">' + (S.q ? 'Aucun résultat' : 'Aucune publication') + '</h3>' +
@@ -4836,6 +4860,7 @@ toggleParticipation: function(postId, status) {
       '@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}',
       '@keyframes heartFloat{0%{transform:translate(-50%,-50%) scale(0);opacity:1}50%{transform:translate(-50%,-80%) scale(1.2);opacity:1}100%{transform:translate(-50%,-120%) scale(0.8);opacity:0}}',
       '@keyframes heartPop{0%{transform:scale(1)}30%{transform:scale(1.35)}60%{transform:scale(0.9)}100%{transform:scale(1)}}',
+      '@keyframes spin{to{transform:rotate(360deg)}}',
       'article{transition:opacity 0.2s;}',
       'nav button:active>div{transform:scale(0.9);}',
     ].join('');
