@@ -141,9 +141,16 @@
   // ============================================================
   var SUPABASE_URL = 'https://yugkryhikrfsxbuyxacl.supabase.co';
   var SUPABASE_KEY = 'sb_publishable_CMnVxHYsKJIP51J0zDRX6w_hdLgiHR7';
+  // ATTENTION : ce fichier s'exécute au niveau global (plus dans une fonction
+  // isolée depuis le découpage en modules). "var supabase" écrase donc
+  // window.supabase, où le SDK Supabase s'était installé. index.html en garde une
+  // copie sous window.__supabaseSdk AVANT que cette ligne ne s'exécute ; c'est
+  // cette copie qu'il faut utiliser pour créer le client.
   var supabase = null;
   try {
-    supabase = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+    var _supabaseSdk = window.__supabaseSdk || window.supabase;
+    supabase = _supabaseSdk ? _supabaseSdk.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+    if (!supabase) console.error('Supabase SDK introuvable — synchronisation impossible.');
   } catch(e) {
     console.error("Supabase init error:", e);
   }
@@ -231,7 +238,13 @@
   var _syncRetryCount = 0;
   var MAX_SYNC_RETRIES = 4;
   async function syncSupabaseToLocal() {
-    if (!supabase) { S.initialLoading = false; render(); return; }
+    if (!supabase) {
+      // Ne jamais échouer en silence : sans client Supabase, l'app n'affiche que le
+      // cache local et donne l'illusion de fonctionner (aucune publication ni membre
+      // des autres utilisateurs). C'est exactement le symptôme à diagnostiquer vite.
+      console.error('Aucun client Supabase : l\'application fonctionne en mode local uniquement.');
+      S.initialLoading = false; render(); return;
+    }
     try {
       // Publications et profils récupérés EN PARALLÈLE (pas l'un après l'autre) —
       // divise par deux le temps de chargement initial.

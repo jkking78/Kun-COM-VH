@@ -192,6 +192,11 @@
 
   <!-- SUPABASE SDK (CDN) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Le SDK s'expose dans window.supabase. Or les scripts de js/ déclarent leur
+       propre "var supabase" au niveau global, ce qui écrase cette référence avant
+       de pouvoir s'en servir. On met donc le SDK de côté ici, juste après son
+       chargement, sous un nom qui ne peut pas entrer en collision. -->
+  <script>window.__supabaseSdk = window.supabase;</script>
 
   <!-- MORPHDOM (CDN) — réconciliation DOM légère : ne patch que ce qui a changé au
        lieu de tout redessiner à chaque rendu (fluidité + stabilité mémoire) -->
@@ -200,14 +205,14 @@
   <!-- BUNDLE PRINCIPAL (PWA Vanilla JS) — anciennement un seul fichier app.js,
        désormais découpé en modules thématiques (même code, chargés dans l'ordre
        d'origine, aucun changement de comportement) pour faciliter la maintenance. -->
-  <script src="js/01-core.js?v=26"></script>
-  <script src="js/02-media.js?v=26"></script>
-  <script src="js/03-render-engine.js?v=26"></script>
-  <script src="js/04-render-auth-cropper.js?v=26"></script>
-  <script src="js/05-render-feed.js?v=26"></script>
-  <script src="js/06-render-panels.js?v=26"></script>
-  <script src="js/07-app-controller.js?v=26"></script>
-  <script src="js/08-bootstrap.js?v=26"></script>
+  <script src="js/01-core.js?v=27"></script>
+  <script src="js/02-media.js?v=27"></script>
+  <script src="js/03-render-engine.js?v=27"></script>
+  <script src="js/04-render-auth-cropper.js?v=27"></script>
+  <script src="js/05-render-feed.js?v=27"></script>
+  <script src="js/06-render-panels.js?v=27"></script>
+  <script src="js/07-app-controller.js?v=27"></script>
+  <script src="js/08-bootstrap.js?v=27"></script>
 
   <!-- DÉBLOCAGE ANTI-SPINNER (Garantie de déblocage 0ms / 400ms max) -->
   <script>
