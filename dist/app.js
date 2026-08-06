@@ -2569,8 +2569,18 @@
   // avant publication (comme Facebook/Instagram) ; les photos restent en vignettes.
   function renderComposerMediaPreview() {
     if (S.videoProcessing) {
-      // Reste affiché tant que la vidéo n'est pas prête (vignette générée) — remplace le
-      // toast, trop court pour un traitement pouvant prendre plusieurs secondes.
+      // Pendant le traitement : dès que la vignette est prête (générée en premier,
+      // avant compression/upload), on l'affiche en grand avec l'indicateur par-dessus
+      // — l'utilisateur voit tout de suite quelle vidéo est en cours d'ajout.
+      if (S.pendingVideoPoster) {
+        return '<div style="position:relative;margin-bottom:12px;border-radius:18px;overflow:hidden;background:#000;">' +
+          '<img src="' + S.pendingVideoPoster + '" style="width:100%;max-height:300px;object-fit:contain;display:block;background:#000;" />' +
+          '<div style="position:absolute;inset:0;background:rgba(0,0,0,0.35);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;">' +
+            '<div style="width:26px;height:26px;border:3px solid rgba(255,255,255,0.35);border-top-color:#FFF;border-radius:50%;animation:spin 0.8s linear infinite;"></div>' +
+            '<span style="font-size:12px;font-weight:700;color:#FFF;text-align:center;padding:0 16px;">' + (S.reduceVideoQuality ? 'Traitement de la vidéo (réduction de qualité)…' : 'Traitement de la vidéo…') + '</span>' +
+          '</div>' +
+        '</div>';
+      }
       return '<div style="display:flex;align-items:center;gap:10px;background:#F6F7F9;border-radius:16px;padding:14px;margin-bottom:12px;">' +
         '<div style="width:20px;height:20px;border:3px solid #E2E4E9;border-top-color:#007AFF;border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0;"></div>' +
         '<span style="font-size:12.5px;font-weight:700;color:#3A3A3C;">' + (S.reduceVideoQuality ? 'Traitement de la vidéo (réduction de qualité)…' : 'Traitement de la vidéo…') + '</span>' +
@@ -2582,7 +2592,7 @@
     if (videoUrl) {
       return '<div style="position:relative;margin-bottom:12px;border-radius:18px;overflow:hidden;background:#000;">' +
         '<video src="' + videoUrl + '"' + (S.pendingVideoPoster ? ' poster="' + S.pendingVideoPoster + '"' : '') +
-          ' controls playsinline preload="metadata" style="width:100%;max-height:300px;display:block;background:#000;"></video>' +
+          ' controls playsinline preload="auto" onloadeddata="App.primeVideoFrame(this)" style="width:100%;max-height:300px;display:block;background:#000;"></video>' +
         '<button type="button" onclick="App.removeMedia(0)" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.65);border:none;border-radius:14px;width:28px;height:28px;color:#FFF;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:900;z-index:2;">×</button>' +
       '</div>';
     }
@@ -5083,23 +5093,25 @@ toggleParticipation: function(postId, status) {
         S.videoProcessing = true;
         render();
         toast(S.reduceVideoQuality ? 'Traitement de la vidéo (réduction de qualité)…' : 'Traitement de la vidéo…', 'info');
+
+        // 1) Vignette générée EN PREMIER, directement depuis le fichier choisi :
+        //    c'est rapide (aucune compression/upload à attendre) et ça permet
+        //    d'afficher un aperçu visible pendant tout le traitement.
+        generateVideoPoster(videoFile, function(poster) {
+          S.pendingVideoPoster = poster;
+          render();
+        });
+
         var finishVideo = function(dataUrl) {
           if (!dataUrl) { S.videoProcessing = false; toast('Impossible de traiter cette vidéo.', 'error'); render(); return; }
-          // Envoie la vidéo vers Supabase Storage (vraie URL hébergée) plutôt que de
-          // la garder en base64 — c'est le plus gros contributeur au poids d'une
-          // publication. En cas d'échec (bucket pas créé, hors-ligne...), on retombe
-          // sur le data:URL pour ne jamais bloquer la publication.
+          // 2) Envoie la vidéo vers Supabase Storage (vraie URL hébergée) plutôt que
+          //    de la garder en base64 — c'est le plus gros contributeur au poids d'une
+          //    publication. En cas d'échec (bucket pas créé, hors-ligne...), on retombe
+          //    sur le data:URL pour ne jamais bloquer la publication.
           uploadMediaToStorage(dataUrl, function(hostedUrl) {
             S.pendingMedia.push(hostedUrl || dataUrl);
-            // La vignette est générée à partir du FICHIER d'origine (Blob) et non du
-            // data:URL : décoder plusieurs dizaines de Mo de base64 dans un <video>
-            // échoue souvent sur mobile, ce qui donnait un aperçu noir.
-            // Le message de traitement reste affiché jusqu'à ce que la vidéo soit prête.
-            generateVideoPoster(videoFile, function(poster) {
-              S.pendingVideoPoster = poster;
-              S.videoProcessing = false;
-              render();
-            });
+            S.videoProcessing = false;
+            render();
           });
         };
         if (S.reduceVideoQuality) {
