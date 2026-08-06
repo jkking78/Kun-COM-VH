@@ -498,6 +498,25 @@
                  '</div>';
         }).join('') +
       '</div>' +
+      // Détail de la ponctualité automatique : qui est arrivé quand, et ce que
+      // chacun a apporté au total du pôle.
+      (ev.punctuality && ev.punctuality.details && ev.punctuality.details.length
+        ? '<div style="margin-top:16px;padding-top:14px;border-top:1px dashed #CBD5E1;">' +
+            '<div style="font-size:10.5px;font-weight:800;color:#64748B;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">⏱️ Ponctualité — calcul automatique</div>' +
+            ev.punctuality.details.map(function(d) {
+              var dc = d.stars >= 4 ? '#10B981' : d.stars >= 2 ? '#F59E0B' : '#EF4444';
+              var when = d.absent ? 'aucune publication' : (d.delayMinutes <= 0 ? "à l'heure" : '+' + d.delayMinutes + ' min');
+              return '<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:3px 0;">' +
+                '<span style="color:#475569;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + safeHtml(d.name) + (d.task ? ' <span style="color:#94A3B8;">· ' + safeHtml(d.task) + '</span>' : '') + '</span>' +
+                '<span style="font-weight:800;color:' + dc + ';white-space:nowrap;margin-left:10px;">' + (d.stars>0?'+':'') + d.stars + '★ · ' + when + '</span>' +
+              '</div>';
+            }).join('') +
+            '<div style="display:flex;justify-content:space-between;align-items:center;font-size:12.5px;font-weight:800;color:#0F172A;padding-top:8px;margin-top:6px;border-top:1px solid #E2E8F0;">' +
+              '<span>Total du pôle (' + ev.punctuality.count + ' membre' + (ev.punctuality.count>1?'s':'') + ')</span>' +
+              '<span>' + ev.punctuality.average + '/5</span>' +
+            '</div>' +
+          '</div>'
+        : '') +
       (ev.comment ? '<p style="font-size:13px;color:#334155;margin:14px 0 0;line-height:1.4;">' + safeHtml(ev.comment) + '</p>' : '');
   }
 
@@ -1067,6 +1086,8 @@
             '</div>' +
           '</div>' +
 
+          renderPunctualityNudge() +
+
           '<!-- À propos -->' +
           '<div style="background:#F6F7F9;border-radius:20px;padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
             '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:' + (S.postAboutEventId?'10px':'0') + ';">' +
@@ -1336,6 +1357,47 @@
           '<button type="button" onclick="App.removeMedia('+i+')" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.72);border:none;border-radius:14px;width:28px;height:28px;color:#FFF;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:900;z-index:2;">×</button>' +
         '</div>';
       }).join('') +
+    '</div>';
+  }
+
+  // Rappel affiché dans le composeur quand l'utilisateur est assigné à un événement
+  // du jour déjà commencé et n'a pas encore publié son arrivée : c'est cette
+  // publication liée à l'événement qui déclenche le calcul de sa ponctualité.
+  function renderPunctualityNudge() {
+    if (!S.user) return '';
+    var posts = db(SK.POSTS, []);
+    var now = Date.now();
+    var today = new Date().toISOString().split('T')[0];
+    var pending = null;
+    for (var i = 0; i < posts.length; i++) {
+      var ev = posts[i];
+      if (ev.type !== 'EVENT' || ev.eventDate !== today) continue;
+      if (!(ev.assignments || []).some(function(a){ return a && a.userId === S.user.id; })) continue;
+      var startTs = eventStartTimestamp(ev);
+      if (!startTs || startTs > now) continue;             // pas encore commencé
+      var alreadyCheckedIn = posts.some(function(p) {
+        return p.userId === S.user.id && p.aboutEventId === ev.id && p.type !== 'EVENT' && p.type !== 'EVALUATION';
+      });
+      if (alreadyCheckedIn) continue;
+      pending = { ev: ev, delay: Math.round((now - startTs) / 60000) };
+      break;
+    }
+    if (!pending) return '';
+    var stars = starsForDelay(pending.delay);
+    var col = stars >= 4 ? '#10B981' : stars >= 2 ? '#F59E0B' : '#EF4444';
+    var already = S.postAboutEventId === pending.ev.id;
+    return '<div style="background:' + (already ? '#ECFDF5' : '#FFF7E6') + ';border:1px solid ' + (already ? '#A7F3D0' : '#FFE0A3') + ';border-radius:16px;padding:12px 14px;margin-bottom:10px;">' +
+      '<div style="font-size:12.5px;font-weight:800;color:' + (already ? '#047857' : '#8A5A00') + ';margin-bottom:4px;">' +
+        (already ? '✅ Arrivée enregistrée pour « ' + safeHtml(pending.ev.eventTitle || 'Événement') + ' »'
+                 : '⏱️ Vous êtes assigné à « ' + safeHtml(pending.ev.eventTitle || 'Événement') + ' »') +
+      '</div>' +
+      '<div style="font-size:11.5px;color:#6B7280;line-height:1.45;">' +
+        (already
+          ? 'Publier maintenant vous attribuera <b style="color:' + col + ';">' + stars + '★</b> de ponctualité.'
+          : 'Liez cette publication à l\'événement ci-dessous pour enregistrer votre arrivée. Actuellement : <b style="color:' + col + ';">' + stars + '★</b>' + (pending.delay > 0 ? ' (+' + pending.delay + ' min)' : ' (à l\'heure)') + '.') +
+      '</div>' +
+      (already ? '' :
+        '<button type="button" onclick="App.selectAboutEvent(\'' + pending.ev.id + '\')" style="margin-top:8px;width:100%;background:#5856D6;color:#FFF;border:none;border-radius:12px;padding:9px;font-size:12.5px;font-weight:800;cursor:pointer;">Enregistrer mon arrivée à cet événement</button>') +
     '</div>';
   }
 

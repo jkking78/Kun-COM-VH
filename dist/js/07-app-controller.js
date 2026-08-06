@@ -2282,7 +2282,11 @@ toggleParticipation: function(postId, status) {
       if (valEl) { valEl.textContent = score + '/5'; valEl.style.color = '#0F172A'; }
 
       var crit = S.ratings[secId].criteria;
-      var avg = ratingAverage(crit);
+      // La note de tête inclut la ponctualité automatique, comme au rendu.
+      var vals = EVAL_CRITERIA.map(function(c){ return crit[c.id] || 0; }).filter(function(v){ return v > 0; });
+      var punc = S.evalEventId ? sectionPunctuality(secId, S.evalEventId) : null;
+      if (punc) vals.push(punc.average);
+      var avg = vals.length ? Math.round((vals.reduce(function(a,b){ return a+b; }, 0) / vals.length) * 10) / 10 : 0;
       var avgEl = document.getElementById('evalavg-' + secId);
       if (avgEl) {
         avgEl.textContent = avg > 0 ? avg + '/5' : '—';
@@ -2319,25 +2323,42 @@ toggleParticipation: function(postId, status) {
       var selectedEv = posts.find(function(p){ return p.id === eventId; });
       var eventTitle = selectedEv ? (selectedEv.eventTitle || (selectedEv.metadata && selectedEv.metadata.title) || 'Événement') : 'Événement';
 
+      var allUsers = db(SK.USERS, []);
       var evaluations = [];
       SECTIONS.forEach(function(sec) {
         var r = S.ratings[sec.id];
-        if (!r || !r.criteria) return;
-        var avg = ratingAverage(r.criteria);
-        if (avg <= 0) return;
+        if (!r) return;
+        if (!r.criteria) r.criteria = {};
+        var manualAvg = ratingAverage(r.criteria);
+        // Ponctualité calculée automatiquement à partir des heures d'arrivée des
+        // membres du pôle assignés à cet événement (aucune saisie manuelle).
+        var punc = sectionPunctuality(sec.id, eventId, posts, allUsers);
+        // Une section n'apparaît dans le bilan que si elle a été notée à la main
+        // OU si elle avait des membres assignés (ponctualité automatique).
+        if (manualAvg <= 0 && !punc) return;
+
         // Critères libellés en clair pour l'affichage, dans l'ordre défini.
         var crit = {};
+        if (punc) crit['Ponctualité'] = punc.average;
         EVAL_CRITERIA.forEach(function(c) {
           var v = r.criteria[c.id] || 0;
           if (v > 0) crit[c.nom] = v;
         });
+
+        // Note globale = moyenne de TOUS les critères retenus, ponctualité incluse.
+        var vals = Object.keys(crit).map(function(k){ return crit[k]; });
+        var globalScore = vals.length
+          ? Math.round((vals.reduce(function(a,b){ return a+b; }, 0) / vals.length) * 10) / 10
+          : 0;
+
         evaluations.push({
           teamId: sec.id,
           teamName: sec.nom,
           emoji: sec.emoji,
           color: sec.color,
-          globalScore: avg,
+          globalScore: globalScore,
           criteria: crit,
+          punctuality: punc || null,
           comment: r.comment || ''
         });
       });

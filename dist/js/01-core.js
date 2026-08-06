@@ -790,12 +790,180 @@
   // (auparavant une seule note globale était saisie, et les critères affichés dans
   // la publication étaient générés aléatoirement autour d'elle — d'où des notes
   // incohérentes avec ce qui avait réellement été saisi).
+  // NOTE : la Ponctualité ne figure PAS ici — elle n'est plus saisie à la main.
+  // Elle est calculée automatiquement à partir de l'heure de publication du membre
+  // assigné (voir punctualityStars / sectionPunctuality ci-dessous) puis injectée
+  // dans le bilan au moment de la publication.
   var EVAL_CRITERIA = [
-    { id: 'ponctualite', nom: 'Ponctualité' },
     { id: 'technique',   nom: 'Technique' },
     { id: 'reactivite',  nom: 'Réactivité' },
     { id: 'esprit',      nom: "Esprit d'équipe" }
   ];
+
+  // ============================================================
+  // PONCTUALITÉ AUTOMATIQUE
+  // ============================================================
+  // Un membre assigné à un événement publie en arrivant sur place, en liant sa
+  // publication à l'événement ("À propos de"). L'écart entre l'heure de début de
+  // l'événement et l'heure de cette publication donne sa note de ponctualité.
+  // Barème par paliers de 15 min ; au-delà d'1h le score devient négatif et devra
+  // être rattrapé lors des événements suivants.
+  var PUNCTUALITY_SCALE = [
+    { maxMinutes: 0,        stars: 5,  label: "À l'heure" },
+    { maxMinutes: 15,       stars: 4,  label: 'Retard léger (≤ 15 min)' },
+    { maxMinutes: 30,       stars: 3,  label: 'Retard toléré (≤ 30 min)' },
+    { maxMinutes: 45,       stars: 2,  label: 'Retard notable (≤ 45 min)' },
+    { maxMinutes: 60,       stars: 1,  label: "Retard important (≤ 1 h)" },
+    { maxMinutes: 90,       stars: -1, label: 'Retard critique (> 1 h)' },
+    { maxMinutes: Infinity, stars: -2, label: 'Retard majeur (> 1 h 30)' }
+  ];
+  var PUNCTUALITY_ABSENT_STARS = -2;
+
+  // Horodatage de début d'un événement (eventDate + eventStart). null si inconnu.
+  function eventStartTimestamp(ev) {
+    if (!ev || !ev.eventDate) return null;
+    var hhmm = ev.eventStart || '00:00';
+    var t = new Date(ev.eventDate + 'T' + hhmm + ':00').getTime();
+    return isNaN(t) ? null : t;
+  }
+
+  // Convertit un retard (en minutes) en note d'étoiles selon le barème.
+  function starsForDelay(delayMinutes) {
+    if (delayMinutes <= 0) return PUNCTUALITY_SCALE[0].stars;
+    for (var i = 0; i < PUNCTUALITY_SCALE.length; i++) {
+      if (delayMinutes <= PUNCTUALITY_SCALE[i].maxMinutes) return PUNCTUALITY_SCALE[i].stars;
+    }
+    return PUNCTUALITY_SCALE[PUNCTUALITY_SCALE.length - 1].stars;
+  }
+
+  function labelForDelay(delayMinutes) {
+    if (delayMinutes <= 0) return PUNCTUALITY_SCALE[0].label;
+    for (var i = 0; i < PUNCTUALITY_SCALE.length; i++) {
+      if (delayMinutes <= PUNCTUALITY_SCALE[i].maxMinutes) return PUNCTUALITY_SCALE[i].label;
+    }
+    return PUNCTUALITY_SCALE[PUNCTUALITY_SCALE.length - 1].label;
+  }
+
+  // Ponctualité d'UN membre sur UN événement.
+  // Retourne { stars, delayMinutes, label, checkInPostId, absent }.
+  // "absent" = assigné mais aucune publication rattachée à l'événement.
+  function punctualityStars(userId, eventId, allPosts) {
+    var posts = allPosts || db(SK.POSTS, []);
+    var ev = posts.find(function(p){ return p.id === eventId && p.type === 'EVENT'; });
+    var startTs = eventStartTimestamp(ev);
+    if (!ev || !startTs) return null;
+
+    // Première publication du membre rattachée à cet événement = son arrivée.
+    var checkIns = posts.filter(function(p) {
+      return p.userId === userId && p.aboutEventId === eventId && p.type !== 'EVENT' && p.type !== 'EVALUATION';
+    }).sort(function(a,b){ return (a.timestamp||0) - (b.timestamp||0); });
+
+    if (checkIns.length === 0) {
+      return { stars: PUNCTUALITY_ABSENT_STARS, delayMinutes: null, label: 'Aucune publication d\'arrivée', checkInPostId: null, absent: true };
+    }
+    var arrival = checkIns[0].timestamp || 0;
+    var delayMinutes = Math.round((arrival - startTs) / 60000);
+    return {
+      stars: starsForDelay(delayMinutes),
+      delayMinutes: delayMinutes,
+      label: labelForDelay(delayMinutes),
+      checkInPostId: checkIns[0].id,
+      absent: false
+    };
+  }
+
+  // Historique de ponctualité d'un membre sur une période : tous les événements
+  // passés auxquels il était assigné. Alimente l'indice de confiance du profil.
+  function punctualityHistory(userId, sinceTs, allPosts) {
+    var posts = allPosts || db(SK.POSTS, []);
+    var now = Date.now();
+    var entries = [];
+    posts.forEach(function(ev) {
+      if (ev.type !== 'EVENT') return;
+      var assigned = (ev.assignments || []).some(function(a){ return a && a.userId === userId; });
+      if (!assigned) return;
+      var startTs = eventStartTimestamp(ev);
+      if (!startTs) return;
+      if (startTs > now) return;                       // événement à venir
+      if (sinceTs && startTs < sinceTs) return;        // hors période
+      var p = punctualityStars(userId, ev.id, posts);
+      if (!p) return;
+      entries.push({
+        eventId: ev.id,
+        eventTitle: ev.eventTitle || 'Événement',
+        eventDate: ev.eventDate || '',
+        startTs: startTs,
+        stars: p.stars,
+        delayMinutes: p.delayMinutes,
+        label: p.label,
+        absent: p.absent
+      });
+    });
+    entries.sort(function(a,b){ return b.startTs - a.startTs; });
+
+    var total = entries.reduce(function(acc, e){ return acc + e.stars; }, 0);
+    var average = entries.length ? Math.round((total / entries.length) * 10) / 10 : 0;
+    var lateEntries = entries.filter(function(e){ return !e.absent && e.delayMinutes > 0; });
+    var avgDelay = lateEntries.length
+      ? Math.round(lateEntries.reduce(function(acc,e){ return acc + e.delayMinutes; }, 0) / lateEntries.length)
+      : 0;
+    var onTimeCount = entries.filter(function(e){ return !e.absent && e.delayMinutes <= 0; }).length;
+    // "Dette" à rattraper : somme des étoiles négatives accumulées.
+    var debt = entries.filter(function(e){ return e.stars < 0; })
+                      .reduce(function(acc,e){ return acc + e.stars; }, 0);
+    return {
+      entries: entries,
+      count: entries.length,
+      total: total,
+      average: average,
+      avgDelay: avgDelay,
+      onTimeCount: onTimeCount,
+      absentCount: entries.filter(function(e){ return e.absent; }).length,
+      debt: debt
+    };
+  }
+
+  // Ponctualité cumulée d'une SECTION sur un événement : moyenne des étoiles de
+  // tous ses membres assignés. C'est le total calculé automatiquement après
+  // l'événement, qui alimente le critère Ponctualité du bilan.
+  function sectionPunctuality(sectionId, eventId, allPosts, allUsers) {
+    var posts = allPosts || db(SK.POSTS, []);
+    var users = allUsers || db(SK.USERS, []);
+    var ev = posts.find(function(p){ return p.id === eventId && p.type === 'EVENT'; });
+    if (!ev) return null;
+
+    var members = (ev.assignments || []).filter(function(a) {
+      if (!a || !a.userId) return false;
+      var u = users.find(function(x){ return x.id === a.userId; });
+      if (!u) return false;
+      return getUserSections(u).indexOf(sectionId) !== -1;
+    });
+    if (members.length === 0) return null;
+
+    var details = [];
+    var seen = {};
+    members.forEach(function(a) {
+      if (seen[a.userId]) return;   // un membre peut avoir plusieurs tâches
+      seen[a.userId] = true;
+      var p = punctualityStars(a.userId, eventId, posts);
+      if (!p) return;
+      var u = users.find(function(x){ return x.id === a.userId; });
+      details.push({
+        userId: a.userId,
+        name: u ? ((u.prenom||'') + ' ' + (u.nom||'')).trim() : 'Membre',
+        task: a.task || '',
+        stars: p.stars,
+        delayMinutes: p.delayMinutes,
+        label: p.label,
+        absent: p.absent
+      });
+    });
+    if (details.length === 0) return null;
+
+    var sum = details.reduce(function(acc, d){ return acc + d.stars; }, 0);
+    var avg = Math.round((sum / details.length) * 10) / 10;
+    return { average: avg, total: sum, count: details.length, details: details };
+  }
 
   // Retrouve le bilan déjà publié par l'utilisateur courant pour cet événement.
   // Un responsable n'a qu'un seul bilan par événement : le re-noter met à jour

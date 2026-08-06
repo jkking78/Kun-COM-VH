@@ -442,6 +442,94 @@
 
   // Une carte de section dans l'écran Notation. Repliée : nom + moyenne.
   // Dépliée : une ligne d'étoiles par critère, notés indépendamment.
+  // Indice de Confiance du profil : entièrement basé sur la ponctualité, calculée
+  // automatiquement à partir des heures d'arrivée. Aucune saisie manuelle.
+  function renderPunctualityCard(freshU, cycleStr) {
+    var h = punctualityHistory(freshU.id);
+    var avg = h.average;                    // de -2 à 5
+    // Conversion en pourcentage pour l'anneau : -2 → 0 %, 5 → 100 %.
+    var pct = h.count ? Math.max(0, Math.min(100, Math.round(((avg + 2) / 7) * 100))) : 0;
+    var col = !h.count ? '#64748B' : avg >= 4 ? '#10B981' : avg >= 2 ? '#F59E0B' : '#EF4444';
+    var label = !h.count ? 'Aucun service' : avg >= 4 ? 'Excellent 🌟' : avg >= 2 ? 'À améliorer' : avg >= 0 ? 'Critique' : 'Rattrapage requis';
+
+    var starsRow = (function(){
+      var n = Math.max(0, Math.round(avg));
+      var out = '';
+      for (var i=1;i<=5;i++) { out += '<span style="font-size:15px;color:' + (i<=n ? '#FBBF24' : '#334155') + ';">★</span>'; }
+      return out;
+    })();
+
+    var recent = h.entries.slice(0, 4).map(function(e) {
+      var ec = e.stars >= 4 ? '#10B981' : e.stars >= 2 ? '#F59E0B' : '#EF4444';
+      var when = e.absent ? 'absent' : (e.delayMinutes <= 0 ? "à l'heure" : '+' + e.delayMinutes + ' min');
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-top:1px solid rgba(255,255,255,0.06);">' +
+        '<div style="min-width:0;flex:1;">' +
+          '<div style="font-size:12px;font-weight:700;color:#E2E8F0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + safeHtml(e.eventTitle) + '</div>' +
+          '<div style="font-size:10.5px;color:#64748B;">' + safeHtml(e.eventDate) + ' · ' + when + '</div>' +
+        '</div>' +
+        '<div style="font-size:13px;font-weight:900;color:' + ec + ';white-space:nowrap;margin-left:10px;">' + (e.stars > 0 ? '+' : '') + e.stars + '★</div>' +
+      '</div>';
+    }).join('');
+
+    return '<div style="margin:16px 0;">' +
+      '<div style="background:linear-gradient(135deg,#0F172A 0%,#1E293B 55%,#0F172A 100%);border-radius:24px;padding:20px;position:relative;overflow:hidden;box-shadow:0 10px 28px rgba(15,23,42,0.28);animation:fadeIn 0.4s ease-out;">' +
+        '<div style="position:absolute;top:-50px;right:-50px;width:160px;height:160px;border-radius:80px;background:' + col + '30;filter:blur(36px);pointer-events:none;"></div>' +
+        '<div style="position:relative;z-index:1;margin-bottom:18px;">' +
+          '<div style="font-size:10.5px;font-weight:800;color:#94A3B8;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:3px;">Cycle ' + cycleStr + '</div>' +
+          '<div style="font-size:17px;font-weight:800;color:#FFF;letter-spacing:-0.3px;">Indice de Confiance</div>' +
+        '</div>' +
+
+        '<div style="display:flex;align-items:center;gap:18px;position:relative;z-index:1;margin-bottom:16px;">' +
+          '<div style="width:78px;height:78px;border-radius:39px;background:conic-gradient(' + col + ' ' + pct + '%, rgba(255,255,255,0.08) 0);display:flex;align-items:center;justify-content:center;flex-shrink:0;">' +
+            '<div style="width:64px;height:64px;background:#0F172A;border-radius:32px;display:flex;flex-direction:column;align-items:center;justify-content:center;">' +
+              '<span style="font-size:19px;font-weight:900;color:#FFF;line-height:1;">' + (h.count ? (avg > 0 ? avg : avg) : '—') + '</span>' +
+              '<span style="font-size:9.5px;color:#94A3B8;">/ 5 ★</span>' +
+            '</div>' +
+          '</div>' +
+          '<div style="flex:1;min-width:0;">' +
+            '<div style="font-size:14.5px;font-weight:800;color:#FFF;margin-bottom:2px;">Ponctualité</div>' +
+            '<div style="font-size:11.5px;color:#94A3B8;margin-bottom:6px;">Calculée automatiquement à l\'arrivée</div>' +
+            '<div style="margin-bottom:6px;">' + starsRow + '</div>' +
+            '<div style="display:inline-block;font-size:10.5px;font-weight:800;color:' + col + ';background:' + col + '22;padding:3px 10px;border-radius:10px;">' + label + '</div>' +
+          '</div>' +
+        '</div>' +
+
+        (h.debt < 0
+          ? '<div style="position:relative;z-index:1;background:rgba(239,68,68,0.14);border:1px solid rgba(239,68,68,0.3);border-radius:14px;padding:10px 12px;margin-bottom:14px;">' +
+              '<div style="font-size:12px;font-weight:800;color:#FCA5A5;margin-bottom:2px;">⚠️ Rattrapage requis : ' + h.debt + '★</div>' +
+              '<div style="font-size:10.5px;color:#94A3B8;line-height:1.4;">Soyez à l\'heure aux prochains services pour revenir au positif.</div>' +
+            '</div>'
+          : '') +
+
+        '<div style="height:1px;background:rgba(255,255,255,0.08);margin-bottom:14px;position:relative;z-index:1;"></div>' +
+
+        '<div style="display:flex;position:relative;z-index:1;text-align:center;">' +
+          '<div style="flex:1;">' +
+            '<div style="font-size:20px;font-weight:900;color:#FFF;">' + h.onTimeCount + '</div>' +
+            '<div style="font-size:10.5px;font-weight:700;color:#CBD5E1;">À l\'heure</div>' +
+          '</div>' +
+          '<div style="width:1px;background:rgba(255,255,255,0.08);margin:2px 8px;"></div>' +
+          '<div style="flex:1;">' +
+            '<div style="font-size:20px;font-weight:900;color:#FFF;">' + (h.avgDelay > 0 ? h.avgDelay + '<span style="font-size:11px;color:#64748B;">min</span>' : '—') + '</div>' +
+            '<div style="font-size:10.5px;font-weight:700;color:#CBD5E1;">Retard moyen</div>' +
+          '</div>' +
+          '<div style="width:1px;background:rgba(255,255,255,0.08);margin:2px 8px;"></div>' +
+          '<div style="flex:1;">' +
+            '<div style="font-size:20px;font-weight:900;color:#FFF;">' + h.count + '</div>' +
+            '<div style="font-size:10.5px;font-weight:700;color:#CBD5E1;">Services</div>' +
+          '</div>' +
+        '</div>' +
+
+        (recent
+          ? '<div style="position:relative;z-index:1;margin-top:14px;">' +
+              '<div style="font-size:10.5px;font-weight:800;color:#94A3B8;text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;">Derniers services</div>' +
+              recent +
+            '</div>'
+          : '<div style="position:relative;z-index:1;margin-top:14px;font-size:11.5px;color:#64748B;text-align:center;">Aucun service assigné pour le moment.</div>') +
+      '</div>' +
+    '</div>';
+  }
+
   function renderEvalSectionCard(sec, userSec) {
     // Les Grands Responsables (seuls habilités à noter) évaluent toutes les
     // sections, y compris la leur — l'ancien blocage a été retiré. On garde
@@ -449,12 +537,52 @@
     var isOwn = sec.id === userSec;
     var r = S.ratings[sec.id] || { criteria: {}, comment: '' };
     if (!r.criteria) r.criteria = {};
-    var avg = ratingAverage(r.criteria);
+
+    // Ponctualité : bloc en lecture seule, calculé automatiquement à partir des
+    // heures d'arrivée (publications "À propos de" des membres assignés).
+    var punc = S.evalEventId ? sectionPunctuality(sec.id, S.evalEventId) : null;
+
+    // La note affichée en tête combine la ponctualité automatique et les critères
+    // saisis à la main — c'est exactement ce qui sera publié dans le bilan.
+    var headVals = EVAL_CRITERIA.map(function(c){ return r.criteria[c.id] || 0; }).filter(function(v){ return v > 0; });
+    if (punc) headVals.push(punc.average);
+    var avg = headVals.length ? Math.round((headVals.reduce(function(a,b){ return a+b; }, 0) / headVals.length) * 10) / 10 : 0;
+
     var ratedCount = EVAL_CRITERIA.filter(function(c){ return (r.criteria[c.id]||0) > 0; }).length;
     var expanded = S.evalExpandedSection === sec.id;
     var scoreColor = avg >= 4 ? '#34C759' : avg >= 2 ? '#FF9500' : avg > 0 ? '#FF3B30' : '#C7C7CC';
 
-    var criteriaHtml = EVAL_CRITERIA.map(function(c) {
+    var puncHtml = '';
+    if (S.evalEventId) {
+      if (punc) {
+        var pc = punc.average >= 4 ? '#34C759' : punc.average >= 2 ? '#FF9500' : punc.average > 0 ? '#FF3B30' : '#FF3B30';
+        puncHtml = '<div style="padding:10px 0;border-top:1px solid #F4F4F6;">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
+            '<span style="font-size:13.5px;font-weight:700;color:#1C1C1E;">Ponctualité <span style="font-size:10px;font-weight:800;color:#8E8E93;background:#F2F2F7;padding:2px 6px;border-radius:6px;">AUTO</span></span>' +
+            '<span style="font-size:13px;font-weight:800;color:' + pc + ';">' + punc.average + '/5</span>' +
+          '</div>' +
+          '<div style="display:flex;flex-direction:column;gap:4px;margin-top:6px;">' +
+            punc.details.map(function(d) {
+              var dc = d.stars >= 4 ? '#34C759' : d.stars >= 2 ? '#FF9500' : '#FF3B30';
+              var when = d.absent ? 'aucune publication' : (d.delayMinutes <= 0 ? "à l'heure" : '+' + d.delayMinutes + ' min');
+              return '<div style="display:flex;justify-content:space-between;align-items:center;font-size:11.5px;color:#6B7280;">' +
+                '<span>' + safeHtml(d.name) + (d.task ? ' · ' + safeHtml(d.task) : '') + '</span>' +
+                '<span style="font-weight:700;color:' + dc + ';white-space:nowrap;">' + d.stars + '★ · ' + when + '</span>' +
+              '</div>';
+            }).join('') +
+          '</div>' +
+        '</div>';
+      } else {
+        puncHtml = '<div style="padding:10px 0;border-top:1px solid #F4F4F6;">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;">' +
+            '<span style="font-size:13.5px;font-weight:700;color:#1C1C1E;">Ponctualité <span style="font-size:10px;font-weight:800;color:#8E8E93;background:#F2F2F7;padding:2px 6px;border-radius:6px;">AUTO</span></span>' +
+            '<span style="font-size:12px;color:#8E8E93;">Aucun membre assigné</span>' +
+          '</div>' +
+        '</div>';
+      }
+    }
+
+    var criteriaHtml = puncHtml + EVAL_CRITERIA.map(function(c) {
       var v = r.criteria[c.id] || 0;
       return '<div style="padding:10px 0;border-top:1px solid #F4F4F6;">' +
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
@@ -746,62 +874,8 @@
         '<span style="font-size:12px;font-weight:800;color:' + theme.badgeText + ';background:' + theme.badgeBg + ';padding:4px 10px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.1);">' + (ROLE_LABELS[freshU.role]||'Membre') + '</span>' +
         (secBadges ? '<span style="color:#D1D1D6;">·</span>' + secBadges : '') +
       '</div>' +
-      // ---- Performances & Suivi (Redesign) ----
-      '<div style="margin:16px 0;">' +
-        '<div style="background:linear-gradient(135deg,#0F172A 0%,#1E293B 55%,#0F172A 100%);border-radius:24px;padding:20px;position:relative;overflow:hidden;box-shadow:0 10px 28px rgba(15,23,42,0.28);animation:fadeIn 0.4s ease-out;">' +
-          '<div style="position:absolute;top:-50px;right:-50px;width:160px;height:160px;border-radius:80px;background:' + trustColor + '30;filter:blur(36px);pointer-events:none;"></div>' +
-          '<div style="display:flex;align-items:center;justify-content:space-between;position:relative;z-index:1;margin-bottom:18px;">' +
-            '<div>' +
-              '<div style="font-size:10.5px;font-weight:800;color:#94A3B8;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:3px;">Cycle ' + cycleStr + '</div>' +
-              '<div style="font-size:17px;font-weight:800;color:#FFF;letter-spacing:-0.3px;">Performances & Suivi</div>' +
-            '</div>' +
-            '<div onclick="App.openRhDetailsModal(\'services\', \'' + freshU.id + '\')" style="background:rgba(255,255,255,0.1);border-radius:18px;padding:7px 12px;font-size:11px;font-weight:700;color:#FFF;cursor:pointer;display:flex;align-items:center;gap:4px;">' +
-              'Détails <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 17l9.2-9.2M17 17V7H7"/></svg>' +
-            '</div>' +
-          '</div>' +
-          '<div onclick="App.openRhDetailsModal(\'services\', \'' + freshU.id + '\')" style="display:flex;align-items:center;gap:18px;position:relative;z-index:1;margin-bottom:18px;cursor:pointer;transition:opacity 0.15s;" onmousedown="this.style.opacity=\'0.7\'" onmouseup="this.style.opacity=\'1\'">' +
-            '<div style="width:78px;height:78px;border-radius:39px;background:conic-gradient(' + trustColor + ' ' + trustScore + '%, rgba(255,255,255,0.08) 0);display:flex;align-items:center;justify-content:center;flex-shrink:0;">' +
-              '<div style="width:64px;height:64px;background:#0F172A;border-radius:32px;display:flex;align-items:center;justify-content:center;">' +
-                '<span style="font-size:19px;font-weight:900;color:#FFF;">' + trustScore + '<span style="font-size:11px;color:#94A3B8;">%</span></span>' +
-              '</div>' +
-            '</div>' +
-            '<div style="flex:1;">' +
-              '<div style="font-size:14.5px;font-weight:800;color:#FFF;margin-bottom:3px;">Indice de Confiance</div>' +
-              '<div style="font-size:12px;color:#94A3B8;margin-bottom:7px;">Présences & fidélité</div>' +
-              '<div style="display:inline-block;font-size:10.5px;font-weight:800;color:' + trustColor + ';background:' + trustColor + '22;padding:3px 10px;border-radius:10px;">' + trustLabel + '</div>' +
-            '</div>' +
-            '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>' +
-          '</div>' +
-          '<div style="height:1px;background:rgba(255,255,255,0.08);margin-bottom:16px;position:relative;z-index:1;"></div>' +
-          '<div style="display:flex;position:relative;z-index:1;">' +
-            '<div onclick="App.openRhDetailsModal(\'services\', \'' + freshU.id + '\')" style="flex:1;cursor:pointer;transition:transform 0.15s;" onmousedown="this.style.transform=\'scale(0.96)\'" onmouseup="this.style.transform=\'scale(1)\'">' +
-              '<div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;">' +
-                '<span style="width:26px;height:26px;border-radius:8px;background:rgba(251,191,36,0.15);display:flex;align-items:center;justify-content:center;font-size:14px;">🏆</span>' +
-                '<span style="font-size:23px;font-weight:900;color:#FFF;">' + myServicesCount + '</span>' +
-              '</div>' +
-              '<div style="font-size:11.5px;font-weight:700;color:#CBD5E1;">Prestations & Cultes</div>' +
-              '<div style="font-size:10.5px;color:#64748B;">Cette quinzaine</div>' +
-            '</div>' +
-            '<div style="width:1px;background:rgba(255,255,255,0.08);margin:2px 16px;"></div>' +
-            '<div onclick="App.openRhDetailsModal(\'ratings\', \'' + freshU.id + '\')" style="flex:1;cursor:pointer;transition:transform 0.15s;" onmousedown="this.style.transform=\'scale(0.96)\'" onmouseup="this.style.transform=\'scale(1)\'">' +
-              '<div style="display:flex;align-items:baseline;gap:4px;margin-bottom:5px;">' +
-                '<span style="font-size:23px;font-weight:900;color:#FFF;">' + (avgRating === '—' ? '—' : avgRating) + '</span>' +
-                '<span style="font-size:11px;font-weight:700;color:#64748B;">/20</span>' +
-              '</div>' +
-              '<div style="display:flex;gap:1.5px;margin-bottom:5px;">' +
-                (function(){
-                  var n = evalCount > 0 ? Math.round((parseFloat(avgRating)/20)*5) : 0;
-                  var out = '';
-                  for (var i=1;i<=5;i++) { out += '<span style="font-size:11px;color:' + (i<=n ? '#FBBF24' : '#334155') + ';">★</span>'; }
-                  return out;
-                })() +
-              '</div>' +
-              '<div style="font-size:11.5px;font-weight:700;color:#CBD5E1;">Note Globale</div>' +
-              '<div style="font-size:10.5px;color:#64748B;">' + (evalCount > 0 ? evalCount + ' évaluation(s)' : 'Pas d\'éval') + '</div>' +
-            '</div>' +
-          '</div>' +
-        '</div>' +
-      '</div>' +
+      // ---- Indice de Confiance : uniquement la PONCTUALITÉ (automatique) ----
+      renderPunctualityCard(freshU, cycleStr) +
       // Bio
       (freshU.bio ? '<div style="font-size:14px;color:#3A3A3C;line-height:1.5;margin-bottom:14px;white-space:pre-wrap;">' + safeHtml(freshU.bio) + '</div>' : '') +
       // Infos personnelles
