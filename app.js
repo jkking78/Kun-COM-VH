@@ -1312,8 +1312,13 @@
         '<div style="font-size:15px;font-weight:800;color:#FFF;letter-spacing:-0.2px;">' + safeHtml(title) + '</div>' +
         '<button onclick="App.confirmCropper()" style="background:linear-gradient(135deg,#007AFF,#0040CC);color:#FFF;border:none;border-radius:12px;padding:8px 18px;font-size:13.5px;font-weight:800;cursor:pointer;box-shadow:0 4px 14px rgba(0,122,255,0.4);">Terminé</button>' +
       '</div>' +
-      '<div style="flex:1;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;padding:16px;background:#000;">' +
-        '<img id="cropperTargetImage" src="' + S.cropperDataUrl + '" style="max-width:100%;max-height:100%;display:block;" />' +
+      // Scène de recadrage : conteneur en position absolue avec des dimensions
+      // explicites. Cropper.js calcule la largeur de sa zone à partir du parent de
+      // l'image — un parent en flex + padding lui faisait dépasser l'écran à droite.
+      '<div style="flex:1;position:relative;overflow:hidden;background:#000;">' +
+        '<div id="cropperStage" style="position:absolute;top:12px;right:12px;bottom:12px;left:12px;overflow:hidden;">' +
+          '<img id="cropperTargetImage" src="' + S.cropperDataUrl + '" style="display:block;max-width:100%;" />' +
+        '</div>' +
       '</div>' +
       toolbar +
     '</div>';
