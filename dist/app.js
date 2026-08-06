@@ -238,8 +238,14 @@
   async function syncSupabaseToLocal() {
     if (!supabase) { S.initialLoading = false; render(); return; }
     try {
-      // Fetch posts (page la plus récente uniquement)
-      var res = await supabase.from('kun_com_posts').select('*').order('created_at', { ascending: false }).range(0, POSTS_PAGE_SIZE - 1);
+      // Publications et profils récupérés EN PARALLÈLE (pas l'un après l'autre) —
+      // divise par deux le temps de chargement initial.
+      var _results = await Promise.all([
+        supabase.from('kun_com_posts').select('*').order('created_at', { ascending: false }).range(0, POSTS_PAGE_SIZE - 1),
+        supabase.from('kun_com_profiles').select('*')
+      ]);
+      var res = _results[0];
+      var resProf = _results[1];
       if (res && res.error) { console.warn('Supabase posts fetch error:', res.error); }
       if (res && res.data) {
         S.postsAllLoaded = res.data.length < POSTS_PAGE_SIZE;
@@ -259,8 +265,7 @@
           }
         });
       }
-      // Fetch profiles
-      var resProf = await supabase.from('kun_com_profiles').select('*');
+      // Profils (déjà récupérés en parallèle ci-dessus)
       if (resProf && resProf.data) {
         var mergedProfiles = mergeProfilesWithLocal(resProf.data);
         DB_CACHE[SK.USERS] = mergedProfiles;
@@ -916,26 +921,42 @@
   // Génère a posteriori la vignette des publications vidéo qui n'en ont pas
   // (publiées avant ce correctif, ou dont la génération avait échoué), puis
   // l'enregistre en local et sur Supabase pour ne le faire qu'une seule fois.
+  // Traite la file un élément à la fois : générer plusieurs vignettes vidéo en
+  // parallèle (un <video> caché par publication, tous en train de décoder en même
+  // temps) surchargeait Safari mobile et faisait échouer ou traîner l'affichage.
   var _posterBackfillTried = {};
+  var _posterBackfillQueue = [];
+  var _posterBackfillBusy = false;
   function backfillVideoPoster(post) {
     if (!post || post.videoPoster) return;
     if (_posterBackfillTried[post.id]) return;
     var vidUrl = (post.mediaUrls || []).find(function(m){ return isVideoUrl(m); });
     if (!vidUrl) return;
     _posterBackfillTried[post.id] = true;
-    generateVideoPoster(vidUrl, function(poster) {
-      if (!poster) return;
-      var posts = db(SK.POSTS, []);
-      var target = posts.find(function(p){ return p.id === post.id; });
-      if (!target || target.videoPoster) return;
-      target.videoPoster = poster;
-      dbSet(SK.POSTS, posts);
-      if (supabase) {
-        try {
-          supabase.from('kun_com_posts').upsert({ id: target.id, content: target }, { onConflict: 'id' }).then(function(){}, function(){});
-        } catch(e){}
+    _posterBackfillQueue.push({ id: post.id, url: vidUrl });
+    processPosterBackfillQueue();
+  }
+  function processPosterBackfillQueue() {
+    if (_posterBackfillBusy || _posterBackfillQueue.length === 0) return;
+    _posterBackfillBusy = true;
+    var item = _posterBackfillQueue.shift();
+    generateVideoPoster(item.url, function(poster) {
+      _posterBackfillBusy = false;
+      if (poster) {
+        var posts = db(SK.POSTS, []);
+        var target = posts.find(function(p){ return p.id === item.id; });
+        if (target && !target.videoPoster) {
+          target.videoPoster = poster;
+          dbSet(SK.POSTS, posts);
+          if (supabase) {
+            try {
+              supabase.from('kun_com_posts').upsert({ id: target.id, content: target }, { onConflict: 'id' }).then(function(){}, function(){});
+            } catch(e){}
+          }
+          render();
+        }
       }
-      render();
+      processPosterBackfillQueue();
     });
   }
 
