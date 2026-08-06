@@ -2383,21 +2383,21 @@
           '<div id="mentionSugg" style="display:none;flex-wrap:wrap;gap:6px;background:#F0F6FF;border:1px solid #CCDEFF;border-radius:14px;padding:10px;margin-bottom:12px;"></div>' +
           previewHtml +
 
-          // Color preview or plain textarea
+          // Color preview or plain textarea — hauteur généreuse et garantie, tout le
+          // reste (options, footer) défile désormais avec elle dans le même conteneur.
           (S.pendingMedia.length === 0 && S.postBg
             ? '<div id="bgPreviewZone" style="border-radius:22px;overflow:hidden;margin-bottom:14px;position:relative;min-height:180px;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 20px rgba(0,0,0,0.14);' + (S.postBg.startsWith('url') ? 'background:' + S.postBg + ';background-size:cover;background-position:center;' : 'background:' + S.postBg + ';') + '">' +
                 (S.postBg && !S.postBg.includes('linear-gradient') && !S.postBg.includes('url') ? '<div style="position:absolute;inset:0;background:rgba(0,0,0,0.18);border-radius:22px;"></div>' : '') +
                 '<textarea id="newPostText" oninput="App.onPostInput(this.value)" placeholder="Quoi de neuf ?" style="width:100%;min-height:180px;border:none;background:transparent;font-size:24px;font-weight:900;line-height:1.4;color:#FFF;resize:none;outline:none;box-sizing:border-box;font-family:inherit;text-align:center;padding:24px 20px;text-shadow:0 2px 12px rgba(0,0,0,0.3);position:relative;z-index:1;">' + safeHtml(S.postText||'') + '</textarea>' +
               '</div>'
             : '<form id="createPostForm" onsubmit="App.submitPost(event)">' +
-                '<textarea id="newPostText" oninput="App.onPostInput(this.value)" placeholder="Quoi de neuf ? Tapez # pour ajouter un hashtag de section..." style="width:100%;min-height:110px;border:none;background:transparent;font-size:15.5px;line-height:1.55;color:#0B0B0C;resize:none;outline:none;box-sizing:border-box;font-family:inherit;">' + safeHtml(S.postText||'') + '</textarea>' +
+                '<textarea id="newPostText" oninput="App.onPostInput(this.value)" placeholder="Quoi de neuf ? Tapez # pour ajouter un hashtag de section..." style="width:100%;min-height:140px;border:none;background:transparent;font-size:15.5px;line-height:1.55;color:#0B0B0C;resize:none;outline:none;box-sizing:border-box;font-family:inherit;">' + safeHtml(S.postText||'') + '</textarea>' +
               '</form>'
           ) +
           (S.postBg ? '<form id="createPostForm" onsubmit="App.submitPost(event)" style="display:none;"></form>' : '') +
-        '</div>' +
 
-        '<div style="padding:0 16px 10px;display:flex;flex-direction:column;gap:10px;">' +
-          '<div style="background:#F6F7F9;border-radius:20px;padding:14px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
+          // Qui peut voir
+          '<div style="background:#F6F7F9;border-radius:20px;padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
             '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">' +
               '<span style="font-size:13px;font-weight:800;color:#0B0B0C;display:flex;align-items:center;gap:8px;"><span style="width:26px;height:26px;border-radius:13px;background:#EAF2FF;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">🔒</span>Qui peut voir ?</span>' +
             '</div>' +
@@ -2409,14 +2409,18 @@
               ? '<div style="margin-top:10px;"><div id="targetSectionBadgesContainer">' + App.renderSectionBadges(S.postTargetSections||[], 'toggleTargetSection') + '</div></div>'
               : '') +
           '</div>' +
-          '<div style="background:#F6F7F9;border-radius:20px;padding:14px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
+
+          // Programmer
+          '<div style="background:#F6F7F9;border-radius:20px;padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
             '<span style="font-size:13px;font-weight:800;color:#0B0B0C;display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="width:26px;height:26px;border-radius:13px;background:#FFF3E5;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">⏰</span>Programmer <span style="font-weight:600;color:#9AA0A8;font-size:11px;">(optionnel)</span></span>' +
             '<div style="display:flex;gap:8px;">' +
               '<input type="date" id="postScheduleDate" style="flex:1;height:40px;border-radius:12px;border:none;background:#FFF;padding:0 10px;font-size:12.5px;outline:none;box-shadow:0 1px 2px rgba(16,24,40,0.06);" />' +
               '<input type="time" id="postScheduleTime" style="flex:1;height:40px;border-radius:12px;border:none;background:#FFF;padding:0 10px;font-size:12.5px;outline:none;box-shadow:0 1px 2px rgba(16,24,40,0.06);" />' +
             '</div>' +
           '</div>' +
-          '<div style="background:#F6F7F9;border-radius:20px;padding:14px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
+
+          // À propos
+          '<div style="background:#F6F7F9;border-radius:20px;padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
             '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:' + (S.postAboutEventId?'10px':'0') + ';">' +
               '<span style="font-size:13px;font-weight:800;color:#0B0B0C;display:flex;align-items:center;gap:8px;"><span style="width:26px;height:26px;border-radius:13px;background:#F0EFFF;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">🗓️</span>À propos <span style="font-weight:600;color:#9AA0A8;font-size:11px;">(optionnel)</span></span>' +
               (S.postAboutEventId ? '<span onclick="App.clearAboutEvent()" style="color:#FF3B30;font-size:12px;font-weight:700;cursor:pointer;">Retirer</span>' : '') +
@@ -2434,27 +2438,28 @@
               '</button>';
             })() +
           '</div>' +
-        '</div>' +
 
-        '<div style="background:#F6F7F9;border-radius:20px;padding:14px;box-shadow:0 1px 2px rgba(16,24,40,0.04);margin:0 16px 12px;">' +
-          '<div style="display:flex;align-items:center;justify-content:space-between;">' +
-            '<div style="display:flex;align-items:center;gap:10px;">' +
-              '<span style="width:26px;height:26px;border-radius:13px;background:#FFEDE0;display:inline-flex;align-items:center;justify-content:center;font-size:14px;">🕐</span>' +
-              '<div>' +
-                '<div style="font-size:13px;font-weight:800;color:#0B0B0C;">Publication éphémère</div>' +
-                '<div style="font-size:11px;color:#8E8E93;">Disparaît automatiquement après 24h</div>' +
+          // Éphémère
+          '<div style="background:#F6F7F9;border-radius:20px;padding:14px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
+            '<div style="display:flex;align-items:center;justify-content:space-between;">' +
+              '<div style="display:flex;align-items:center;gap:10px;">' +
+                '<span style="width:26px;height:26px;border-radius:13px;background:#FFEDE0;display:inline-flex;align-items:center;justify-content:center;font-size:14px;">🕐</span>' +
+                '<div>' +
+                  '<div style="font-size:13px;font-weight:800;color:#0B0B0C;">Publication éphémère</div>' +
+                  '<div style="font-size:11px;color:#8E8E93;">Disparaît automatiquement après 24h</div>' +
+                '</div>' +
               '</div>' +
+              '<label style="position:relative;display:inline-block;width:48px;height:28px;flex-shrink:0;">' +
+                '<input type="checkbox" id="postEphemeral" style="opacity:0;width:0;height:0;" onchange="this.nextElementSibling.style.background=this.checked?\'#FF9500\':\'#DADCE1\'; this.nextElementSibling.children[0].style.transform=this.checked?\'translateX(20px)\':\'translateX(0)\';"/>' +
+                '<span style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:#DADCE1;transition:.25s;border-radius:28px;">' +
+                  '<span style="position:absolute;content:\'\';height:22px;width:22px;left:3px;bottom:3px;background-color:white;transition:.25s;border-radius:50%;box-shadow:0 2px 4px rgba(0,0,0,0.2);"></span>' +
+                '</span>' +
+              '</label>' +
             '</div>' +
-            '<label style="position:relative;display:inline-block;width:48px;height:28px;flex-shrink:0;">' +
-              '<input type="checkbox" id="postEphemeral" style="opacity:0;width:0;height:0;" onchange="this.nextElementSibling.style.background=this.checked?\'#FF9500\':\'#DADCE1\'; this.nextElementSibling.children[0].style.transform=this.checked?\'translateX(20px)\':\'translateX(0)\';"/>' +
-              '<span style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:#DADCE1;transition:.25s;border-radius:28px;">' +
-                '<span style="position:absolute;content:\'\';height:22px;width:22px;left:3px;bottom:3px;background-color:white;transition:.25s;border-radius:50%;box-shadow:0 2px 4px rgba(0,0,0,0.2);"></span>' +
-              '</span>' +
-            '</label>' +
           '</div>' +
         '</div>' +
 
-        '<div style="padding:4px 16px 14px;">' +
+        '<div style="padding:10px 16px 14px;border-top:0.5px solid #F2F2F7;flex-shrink:0;">' +
           // Color palette row
           (S.pendingMedia.length === 0
             ? '<div style="display:flex;gap:8px;align-items:center;overflow-x:auto;padding:2px 0 10px;scrollbar-width:none;">' +
