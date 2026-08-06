@@ -765,6 +765,10 @@
     },
     // Section actuellement dépliée dans l'écran Notation (accordéon)
     evalExpandedSection: null,
+    // Onglet Notation : 'noter' (saisie d'un bilan) ou 'suivi' (tableau de bord)
+    debriefView: 'noter',
+    scoreboardOpen: null,
+    scoreboardAll: false,
     // Position courante dans le carrousel d'une publication d'évaluation
     evalCarouselIdx: {},
     checkedIn: false,
@@ -1387,6 +1391,94 @@
     var sum = details.reduce(function(acc, d){ return acc + d.stars; }, 0);
     var avg = Math.round((sum / details.length) * 10) / 10;
     return { average: avg, total: sum, count: details.length, details: details };
+  }
+
+  // ============================================================
+  // SUIVI DES NOTATIONS PAR PÔLE
+  // ============================================================
+  // Rassemble tous les bilans publiés concernant un pôle sur une période, pour
+  // en sortir une moyenne par critère et une tendance. Sans cela, un bilan publié
+  // il y a trois semaines est enseveli dans le fil et rien ne montre l'évolution.
+  function sectionScoreboard(sectionId, sinceTs, allPosts) {
+    var posts = allPosts || db(SK.POSTS, []);
+    var entries = [];
+
+    posts.forEach(function(p) {
+      if (p.type !== 'EVALUATION' || !p.metadata) return;
+      if (sinceTs && (p.timestamp || 0) < sinceTs) return;
+      var evals = Array.isArray(p.metadata.evaluations) && p.metadata.evaluations.length
+        ? p.metadata.evaluations
+        : [{ teamId: null, teamName: p.metadata.teamName, globalScore: p.metadata.globalScore, criteria: p.metadata.criteria, comment: p.caption || '' }];
+      evals.forEach(function(ev) {
+        // L'ancien format ne portait pas d'identifiant de pôle : on retombe sur le nom.
+        var id = ev.teamId;
+        if (!id && ev.teamName) {
+          var found = SECTIONS.find(function(s){ return s.nom === ev.teamName; });
+          id = found ? found.id : null;
+        }
+        if (id !== sectionId) return;
+        entries.push({
+          postId: p.id,
+          eventId: p.metadata.eventId || null,
+          eventTitle: p.metadata.eventTitle || 'Événement',
+          timestamp: p.timestamp || 0,
+          author: p.author || '',
+          globalScore: parseFloat(ev.globalScore) || 0,
+          criteria: ev.criteria || {},
+          punctuality: ev.punctuality || null,
+          comment: ev.comment || ''
+        });
+      });
+    });
+
+    entries.sort(function(a,b){ return b.timestamp - a.timestamp; });   // plus récent d'abord
+
+    // Moyenne par critère, sur les seules évaluations qui le renseignent.
+    var critTotals = {}, critCounts = {};
+    entries.forEach(function(e) {
+      Object.keys(e.criteria).forEach(function(k) {
+        var v = parseFloat(e.criteria[k]);
+        if (!(v > 0) && v !== 0) return;
+        critTotals[k] = (critTotals[k] || 0) + v;
+        critCounts[k] = (critCounts[k] || 0) + 1;
+      });
+    });
+    var criteriaAvg = {};
+    Object.keys(critTotals).forEach(function(k) {
+      criteriaAvg[k] = Math.round((critTotals[k] / critCounts[k]) * 10) / 10;
+    });
+
+    var count = entries.length;
+    var average = count
+      ? Math.round((entries.reduce(function(a,e){ return a + e.globalScore; }, 0) / count) * 10) / 10
+      : 0;
+
+    // Tendance : moyenne de la moitié récente comparée à la moitié ancienne.
+    var trend = 0;
+    if (count >= 2) {
+      var half = Math.floor(count / 2);
+      var recent = entries.slice(0, half);
+      var older = entries.slice(count - half);
+      var avgR = recent.reduce(function(a,e){ return a + e.globalScore; }, 0) / recent.length;
+      var avgO = older.reduce(function(a,e){ return a + e.globalScore; }, 0) / older.length;
+      trend = Math.round((avgR - avgO) * 10) / 10;
+    }
+
+    return {
+      sectionId: sectionId,
+      entries: entries,
+      count: count,
+      average: average,
+      criteriaAvg: criteriaAvg,
+      trend: trend,
+      lastAt: count ? entries[0].timestamp : null
+    };
+  }
+
+  // Début du cycle de 15 jours en cours (1–15, puis 16–fin de mois).
+  function currentCycleStartTs() {
+    var now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate() <= 15 ? 1 : 16).getTime();
   }
 
   // Retrouve le bilan déjà publié par l'utilisateur courant pour cet événement.

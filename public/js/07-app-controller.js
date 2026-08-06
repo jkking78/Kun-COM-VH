@@ -2676,6 +2676,28 @@ toggleParticipation: function(postId, status) {
     },
 
     // Debrief
+    // ---- Onglet Notation : bascule saisie / suivi ----
+    setDebriefView: function(v) { S.debriefView = v; render(); },
+    setScoreboardPeriod: function(all) { S.scoreboardAll = !!all; render(); },
+    toggleScoreboardSection: function(secId) {
+      S.scoreboardOpen = (S.scoreboardOpen === secId) ? null : secId;
+      render();
+    },
+    // Ouvre un bilan précis dans le fil, plutôt que de le chercher à la main.
+    openBilan: function(postId) {
+      var post = db(SK.POSTS, []).find(function(p){ return p.id === postId; });
+      if (!post) { toast('Ce bilan n\'existe plus.', 'error'); return; }
+      S.tab = 'home';
+      S.q = '';
+      S.story = 'all';
+      render();
+      setTimeout(function() {
+        var el = document.getElementById('post-' + postId);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        else toast('Ce bilan n\'est plus dans le fil chargé.', 'info');
+      }, 120);
+    },
+
     // Déplie/replie une section dans l'écran Notation (une seule à la fois).
     // Les Grands Responsables peuvent noter toutes les sections, y compris la leur.
     toggleEvalSection: function(secId) {

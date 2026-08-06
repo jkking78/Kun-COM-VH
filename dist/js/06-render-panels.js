@@ -556,10 +556,133 @@
   // ============================================================
   // DEBRIEF TAB
   // ============================================================
+  // Onglet Notation : deux vues, la saisie d'un bilan et le suivi dans le temps.
   function renderDebrief(u) {
+    var tabs = '<div style="background:#FFF;padding:10px 16px;display:flex;gap:10px;border-bottom:1px solid #E5E5EA;">' +
+      '<button onclick="App.setDebriefView(\'noter\')" style="flex:1;padding:10px;border-radius:12px;font-weight:800;font-size:13.5px;border:none;cursor:pointer;' + (S.debriefView !== 'suivi' ? 'background:#000;color:#FFF;' : 'background:#F2F2F7;color:#8E8E93;') + '">✍️ Noter</button>' +
+      '<button onclick="App.setDebriefView(\'suivi\')" style="flex:1;padding:10px;border-radius:12px;font-weight:800;font-size:13.5px;border:none;cursor:pointer;' + (S.debriefView === 'suivi' ? 'background:#000;color:#FFF;' : 'background:#F2F2F7;color:#8E8E93;') + '">📊 Suivi</button>' +
+    '</div>';
+
+    if (S.debriefView === 'suivi') {
+      return renderScreenHeader('Notation & Débrief', 'Évaluation Inter-Sections', '') + tabs + renderScoreboard();
+    }
+    return renderScreenHeader('Notation & Débrief', 'Évaluation Inter-Sections', '') + tabs + renderDebriefForm(u);
+  }
+
+  // ============================================================
+  // SUIVI : tableau de bord par pôle
+  // ============================================================
+  function renderScoreboard() {
+    var sinceTs = S.scoreboardAll ? 0 : currentCycleStartTs();
+    var now = new Date();
+    var cycleStr = now.getDate() <= 15 ? '1er – 15 ' + now.toLocaleDateString('fr-FR',{month:'long'})
+                                       : '16 – fin ' + now.toLocaleDateString('fr-FR',{month:'long'});
+    var posts = db(SK.POSTS, []);
+
+    var boards = SECTIONS.map(function(sec) {
+      return { sec: sec, board: sectionScoreboard(sec.id, sinceTs, posts) };
+    }).sort(function(a,b) {
+      if (a.board.count !== b.board.count && (!a.board.count || !b.board.count)) return b.board.count - a.board.count;
+      return b.board.average - a.board.average;   // les mieux notés d'abord
+    });
+
+    var anyData = boards.some(function(b){ return b.board.count > 0; });
+
+    var periodSwitch = '<div style="display:flex;gap:8px;padding:14px 16px 4px;">' +
+      '<button onclick="App.setScoreboardPeriod(false)" style="flex:1;padding:8px;border-radius:10px;font-size:12.5px;font-weight:800;border:none;cursor:pointer;' + (!S.scoreboardAll ? 'background:#5856D6;color:#FFF;' : 'background:#F2F2F7;color:#8E8E93;') + '">Cycle ' + cycleStr + '</button>' +
+      '<button onclick="App.setScoreboardPeriod(true)" style="flex:1;padding:8px;border-radius:10px;font-size:12.5px;font-weight:800;border:none;cursor:pointer;' + (S.scoreboardAll ? 'background:#5856D6;color:#FFF;' : 'background:#F2F2F7;color:#8E8E93;') + '">Depuis le début</button>' +
+    '</div>';
+
+    if (!anyData) {
+      return periodSwitch +
+        '<div style="padding:50px 24px;text-align:center;color:#8E8E93;">' +
+          '<div style="font-size:44px;margin-bottom:12px;">📊</div>' +
+          '<div style="font-size:17px;font-weight:800;color:#000;margin-bottom:6px;">Aucun bilan sur cette période</div>' +
+          '<div style="font-size:13.5px;line-height:1.5;">Publiez un bilan depuis l\'onglet « Noter » : les moyennes et l\'évolution de chaque pôle apparaîtront ici.</div>' +
+        '</div>';
+    }
+
+    return periodSwitch +
+      '<div style="padding:10px 16px 90px;">' +
+        boards.map(function(b){ return renderScoreboardCard(b.sec, b.board); }).join('') +
+      '</div>';
+  }
+
+  function renderScoreboardCard(sec, board) {
+    var open = S.scoreboardOpen === sec.id;
+    var has = board.count > 0;
+    var col = !has ? '#C7C7CC' : board.average >= 4 ? '#34C759' : board.average >= 2 ? '#FF9500' : '#FF3B30';
+
+    var trendHtml = '';
+    if (has && board.count >= 2 && board.trend !== 0) {
+      var up = board.trend > 0;
+      trendHtml = '<span style="font-size:11px;font-weight:800;color:' + (up ? '#34C759' : '#FF3B30') + ';background:' + (up ? '#E8F8ED' : '#FFEBEA') + ';padding:2px 7px;border-radius:8px;white-space:nowrap;">' +
+        (up ? '▲ +' : '▼ ') + board.trend + '</span>';
+    }
+
+    // Barres par critère : Ponctualité en tête (automatique), puis les critères saisis.
+    var order = ['Ponctualité'].concat(EVAL_CRITERIA.map(function(c){ return c.nom; }));
+    var critHtml = order.filter(function(k){ return board.criteriaAvg[k] !== undefined; }).map(function(k) {
+      var v = board.criteriaAvg[k];
+      // La ponctualité peut être négative : on ramène l'échelle -2..5 sur 0..100 %.
+      var pct = Math.max(0, Math.min(100, ((v + 2) / 7) * 100));
+      var cc = v >= 4 ? 'linear-gradient(90deg,#34D399,#10B981)' : v >= 2 ? 'linear-gradient(90deg,#FBBF24,#F59E0B)' : 'linear-gradient(90deg,#F87171,#EF4444)';
+      return '<div style="margin-bottom:10px;">' +
+        '<div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:#475569;margin-bottom:4px;">' +
+          '<span>' + safeHtml(k) + (k === 'Ponctualité' ? ' <span style="font-size:9.5px;font-weight:800;color:#8E8E93;background:#F2F2F7;padding:1px 5px;border-radius:5px;">AUTO</span>' : '') + '</span>' +
+          '<span style="color:#0F172A;">' + v + '/5</span>' +
+        '</div>' +
+        '<div style="height:8px;background:#EDEEF1;border-radius:4px;overflow:hidden;">' +
+          '<div style="height:100%;width:' + pct + '%;background:' + cc + ';border-radius:4px;"></div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+
+    var listHtml = board.entries.slice(0, 8).map(function(e) {
+      var ec = e.globalScore >= 4 ? '#34C759' : e.globalScore >= 2 ? '#FF9500' : '#FF3B30';
+      var d = new Date(e.timestamp).toLocaleDateString('fr-FR', {day:'numeric', month:'short'});
+      return '<div onclick="App.openBilan(\'' + e.postId + '\')" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-top:1px solid #F2F2F7;cursor:pointer;">' +
+        '<div style="min-width:0;">' +
+          '<div style="font-size:12.5px;font-weight:700;color:#1C1C1E;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + safeHtml(e.eventTitle) + '</div>' +
+          '<div style="font-size:10.5px;color:#8E8E93;">' + d + (e.author ? ' · ' + safeHtml(e.author) : '') + '</div>' +
+        '</div>' +
+        '<div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">' +
+          '<span style="font-size:13px;font-weight:900;color:' + ec + ';">' + e.globalScore + '/5</span>' +
+          '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C7C7CC" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+
+    return '<div style="background:#FFF;border-radius:18px;margin-bottom:10px;border:1px solid #EFEFEF;box-shadow:0 2px 8px rgba(0,0,0,0.04);overflow:hidden;">' +
+      '<div onclick="App.toggleScoreboardSection(\'' + sec.id + '\')" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:16px;cursor:pointer;">' +
+        '<div style="display:flex;align-items:center;gap:10px;min-width:0;">' +
+          '<div style="width:42px;height:42px;border-radius:21px;background:linear-gradient(135deg,' + sec.color + '20,' + sec.color + '10);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">' + sec.emoji + '</div>' +
+          '<div style="min-width:0;">' +
+            '<strong style="font-size:14.5px;color:#000;display:block;">' + safeHtml(sec.nom) + '</strong>' +
+            '<span style="font-size:11.5px;color:#8E8E93;">' + (has ? board.count + ' bilan' + (board.count>1?'s':'') : 'Jamais évalué') + '</span>' +
+          '</div>' +
+        '</div>' +
+        '<div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">' +
+          trendHtml +
+          '<div style="font-size:20px;font-weight:900;color:' + col + ';">' + (has ? board.average + '/5' : '—') + '</div>' +
+          '<span style="font-size:13px;color:#C7C7CC;transform:rotate(' + (open?'90':'0') + 'deg);transition:transform 0.2s;">›</span>' +
+        '</div>' +
+      '</div>' +
+      (open && has
+        ? '<div style="padding:0 16px 16px;">' +
+            '<div style="font-size:10.5px;font-weight:800;color:#8E8E93;text-transform:uppercase;letter-spacing:0.8px;margin-bottom:8px;">Moyennes par critère</div>' +
+            critHtml +
+            '<div style="font-size:10.5px;font-weight:800;color:#8E8E93;text-transform:uppercase;letter-spacing:0.8px;margin:14px 0 2px;">Bilans</div>' +
+            listHtml +
+          '</div>'
+        : '') +
+    '</div>';
+  }
+
+  function renderDebriefForm(u) {
     var userSec = (u && u.section_id) || '';
 
-    return renderScreenHeader('Notation & Débrief', 'Évaluation Inter-Sections', '') +
+    return '' +
 
       '<div style="padding:16px;">' +
         '<p style="font-size:13.5px;color:#8E8E93;margin:0 0 16px;line-height:1.5;">Notez les performances des pôles pour un événement, critère par critère. Si vous avez déjà publié un bilan pour cet événement, il sera mis à jour.</p>' +
@@ -913,62 +1036,11 @@
     var cycleStr = now.getDate() <= 15 ? "1er - 15 " + now.toLocaleDateString('fr-FR', {month:'short'}) : "16 - Fin " + now.toLocaleDateString('fr-FR', {month:'short'});
     var currentCycleStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() <= 15 ? 1 : 16).getTime();
 
-    // Calcul Historique Global
-    var eventsList = posts.filter(function(p){ return p.type === 'EVENT' && (p.timestamp || 0) >= currentCycleStart; });
-    var myServicesCount = 0;
-    eventsList.forEach(function(ev) {
-      var isParticipant = (ev.metadata && ev.metadata.participations && ev.metadata.participations[freshU.id] === 'yes');
-      var isAssigned = (ev.assignments || []).some(function(a){ return a.userId === freshU.id; });
-      if (isAssigned || isParticipant) myServicesCount++;
-    });
-
-    var totalEvents = eventsList.length;
-    var baseScore = 20;
-    var missedEvents = Math.max(0, totalEvents - myServicesCount);
-    // Minus 2 points per missed event in the cycle
-    var currentScore = Math.max(0, baseScore - (missedEvents * 2));
-    
-    var evalPosts = posts.filter(function(p){ 
-      var isEval = p.type === 'EVALUATION' || (p.metadata && p.metadata.type === 'EVALUATION');
-      return isEval && (p.timestamp || 0) >= currentCycleStart; 
-    });
-    
-    // Une publication de bilan peut désormais contenir plusieurs sections évaluées.
-    // On aplatit donc toutes les notes de toutes les publications (l'ancien format
-    // à une seule section reste géré via metadata.globalScore).
-    var allEvalScores = [];
-    evalPosts.forEach(function(ep) {
-      var meta = ep.metadata || {};
-      if (Array.isArray(meta.evaluations) && meta.evaluations.length > 0) {
-        meta.evaluations.forEach(function(ev) {
-          var v = parseFloat(ev.globalScore || 0);
-          if (v > 0) allEvalScores.push(v);
-        });
-      } else {
-        var r = parseFloat(meta.globalScore || 0);
-        if (r > 0) allEvalScores.push(r);
-      }
-    });
-
-    // Add bonus points for great evaluations
-    allEvalScores.forEach(function(r) {
-      if (r >= 4) currentScore = Math.min(20, currentScore + 1); // +1 bonus for good eval
-      if (r <= 2 && r > 0) currentScore = Math.max(0, currentScore - 1); // -1 penalty for bad eval
-    });
-
-    var scoreColor = currentScore < 10 ? '#EF4444' : (currentScore < 15 ? '#F59E0B' : '#10B981');
-    var scoreLabel = currentScore < 10 ? 'Critique' : (currentScore < 15 ? 'Moyen' : 'Excellent 🌟');
-
-    var evalCount = allEvalScores.length;
-    var avgRating = '—';
-    if (evalCount > 0) {
-      var sumRating = allEvalScores.reduce(function(a,b){ return a+b; }, 0);
-      avgRating = (sumRating / evalCount).toFixed(1);
-    }
-    var trustScore = Math.round((currentScore / 20) * 100);
-    var trustColor = scoreColor;
-    var trustLabel = scoreLabel;
-
+    // NOTE : l'ancien « indice de confiance » combinait présences et évaluations
+    // (score sur 20, bonus/malus, moyenne des bilans). Il a été remplacé par
+    // renderPunctualityCard, entièrement fondé sur la ponctualité automatique.
+    // Ses calculs ont été retirés : ils tournaient encore à chaque rendu de profil
+    // sans que rien ne les affiche.
 
     var avatarContent = freshU.avatar_url
       ? '<img src="' + freshU.avatar_url + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />'
