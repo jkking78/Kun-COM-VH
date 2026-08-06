@@ -128,7 +128,12 @@
       ? '<img src="' + cAvatarUrl + '" style="width:'+avSize+'px;height:'+avSize+'px;border-radius:'+(avSize/2)+'px;object-fit:cover;flex-shrink:0;" />'
       : '<div style="width:'+avSize+'px;height:'+avSize+'px;border-radius:'+(avSize/2)+'px;background:linear-gradient(135deg,' + cColor + ',#0040CC);color:#FFF;font-size:'+(isReply?'11px':'13px')+';font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + cInitial + '</div>';
 
-    var replyBtn = isReply ? '' : '<button onclick="App.replyToComment(\'' + c.id + '\', ' + JSON.stringify(c.author||'Membre') + ')" style="background:none;border:none;padding:0;font-size:12px;font-weight:700;color:#8E8E93;cursor:pointer;">Répondre</button>';
+    // Le nom passé en 2e argument doit rester une chaîne JS à guillemets simples
+    // (l'attribut onclick est lui-même entre guillemets doubles) : JSON.stringify()
+    // produit des guillemets doubles qui fermaient l'attribut prématurément et
+    // cassaient totalement le bouton (c'était le bug "on ne peut pas répondre").
+    var authorJs = (c.author || 'Membre').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    var replyBtn = isReply ? '' : '<button onclick="App.replyToComment(\'' + c.id + '\', \'' + authorJs + '\')" style="background:none;border:none;padding:0;font-size:12px;font-weight:700;color:#8E8E93;cursor:pointer;">Répondre</button>';
 
     return '<div id="cwrap-' + c.id + '" style="display:flex;align-items:flex-start;gap:10px;margin-bottom:' + (isReply?'10px':'6px') + ';">' +
       '<div onclick="App.openUserProfile(\'' + c.userId + '\')" style="cursor:pointer;">' + cAvatarNode + '</div>' +
