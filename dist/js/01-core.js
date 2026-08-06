@@ -175,6 +175,33 @@
     }
   }
 
+  // Identifiants des comptes créés sur CET appareil. Sert de garde-fou : tant qu'un
+  // compte n'est pas confirmé côté serveur, il ne doit jamais être purgé du cache
+  // local, sinon son propriétaire perd définitivement l'accès (le mot de passe n'est
+  // stocké nulle part ailleurs).
+  var SK_LOCAL_ACCOUNTS = 'kc_local_accounts';
+  function localAccountIds() {
+    try {
+      var raw = localStorage.getItem(SK_LOCAL_ACCOUNTS);
+      var arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr : [];
+    } catch(e) { return []; }
+  }
+  function addLocalAccountId(id) {
+    if (!id) return;
+    try {
+      var arr = localAccountIds();
+      if (arr.indexOf(id) === -1) { arr.push(id); localStorage.setItem(SK_LOCAL_ACCOUNTS, JSON.stringify(arr)); }
+    } catch(e) {}
+  }
+  function removeLocalAccountId(id) {
+    if (!id) return;
+    try {
+      var arr = localAccountIds().filter(function(x){ return x !== id; });
+      localStorage.setItem(SK_LOCAL_ACCOUNTS, JSON.stringify(arr));
+    } catch(e) {}
+  }
+
       function mergeProfilesWithLocal(remoteData) {
     var localUsers = db(SK.USERS, []);
     var map = {};
@@ -182,16 +209,26 @@
     // on récupère tous les profils à chaque fois). Un profil encore en cache local
     // mais absent du serveur a donc été supprimé — on ne le garde pas, sinon il
     // réapparaît indéfiniment et se fait même réinjecter dans la base par le renvoi
-    // rétroactif. Seule exception : le compte connecté sur CET appareil, pour ne pas
-    // perdre une inscription faite hors-ligne pas encore synchronisée.
+    // rétroactif.
+    //
+    // DEUX exceptions, sans lesquelles on pourrait détruire un compte :
+    //  - le compte connecté sur cet appareil ;
+    //  - tout compte CRÉÉ sur cet appareil et pas encore synchronisé (réseau coupé,
+    //    serveur injoignable...). Sans cette garde, un membre inscrit hors-ligne qui
+    //    se déconnecte verrait son compte effacé du cache et ne pourrait plus jamais
+    //    se reconnecter — le mot de passe n'existant que localement.
+    //    La protection est levée dès que le compte est réellement supprimé depuis
+    //    cet appareil (voir removeLocalAccountId dans confirmDeleteAccount).
     var remoteIds = {};
     (remoteData || []).forEach(function(item) {
       var r = item.content || item;
       if (r && r.id) remoteIds[r.id] = true;
     });
+    var ownIds = localAccountIds();
     (localUsers || []).forEach(function(u) {
       if (!u || !u.id) return;
-      if (!remoteIds[u.id] && !(S.user && S.user.id === u.id)) return;
+      var isMine = (S.user && S.user.id === u.id) || ownIds.indexOf(u.id) !== -1;
+      if (!remoteIds[u.id] && !isMine) return;
       map[u.id] = u;
     });
     (remoteData || []).forEach(function(item) {

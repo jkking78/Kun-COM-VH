@@ -775,6 +775,9 @@ toggleParticipation: function(postId, status) {
       var hashedPwd = await hashPassword(pwd);
       var newUser = { id:'u'+Date.now(), prenom:prenom, nom:nom, email:email, sections: userSecs, section_id: userSecs[0], role: finalRole, is_online:true, last_seen_at:new Date().toISOString(), last_action:'Inscription', avatar_color: ['#007AFF','#FF2D55','#34C759','#FF9500','#5856D6','#AF52DE'][Math.floor(Math.random()*6)], pwd: hashedPwd, sec_q1: q1, sec_a1: a1, sec_q2: q2, sec_a2: a2 };
       users.push(newUser); dbSet(SK.USERS, users);
+      // Compte créé sur cet appareil : protégé de la purge du cache tant qu'il n'est
+      // pas confirmé côté serveur (sinon une inscription hors-ligne serait perdue).
+      addLocalAccountId(newUser.id);
       localStorage.setItem(SK.SESS, JSON.stringify(newUser));
       S.user = newUser; S.auth = 'app';
 
@@ -907,6 +910,9 @@ toggleParticipation: function(postId, status) {
         var users = db(SK.USERS, []);
         var remainingUsers = users.filter(function(u){ return u.id !== userId; });
         dbSet(SK.USERS, remainingUsers);
+        // Lève la protection anti-purge : le compte est supprimé volontairement,
+        // il ne doit donc plus être conservé ni réinjecté par la synchronisation.
+        removeLocalAccountId(userId);
 
         if (supabase) {
           try {
