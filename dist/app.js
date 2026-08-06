@@ -609,9 +609,60 @@
     }
   }
 
-  // Une URL (data: ou blob:) de vidéo est reconnue par son préfixe MIME
+  // Une vidéo est reconnue soit par son préfixe MIME (data:video, ancien format
+  // encore présent sur les publications existantes), soit par son extension de
+  // fichier (nouveau format : vraie URL hébergée sur Supabase Storage).
   function isVideoUrl(url) {
-    return typeof url === 'string' && url.indexOf('data:video') === 0;
+    if (typeof url !== 'string') return false;
+    if (url.indexOf('data:video') === 0) return true;
+    return /\.(webm|mp4|mov|m4v|3gp|avi|mkv)(\?|#|$)/i.test(url);
+  }
+
+  // Convertit un data:URL (base64) en Blob, pour pouvoir l'envoyer vers Supabase Storage.
+  function dataUrlToBlob(dataUrl) {
+    var parts = dataUrl.split(',');
+    var mimeMatch = /:(.*?);/.exec(parts[0]);
+    var mime = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+    var bin = atob(parts[1]);
+    var arr = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+    return new Blob([arr], { type: mime });
+  }
+
+  function extFromDataUrl(dataUrl) {
+    var m = /^data:[a-zA-Z0-9]+\/([a-zA-Z0-9.+-]+);/.exec(dataUrl || '');
+    if (!m) return 'bin';
+    var sub = m[1].toLowerCase().split('+')[0];
+    if (sub === 'quicktime') return 'mov';
+    if (sub === 'jpeg') return 'jpg';
+    return sub;
+  }
+
+  // Envoie un média (photo ou vidéo compressée) vers Supabase Storage (bucket
+  // "post-media") plutôt que de le garder en base64 dans la publication —
+  // nécessaire pour que l'appli reste rapide/légère quand le nombre de
+  // publications grandit. En cas d'échec (bucket pas encore créé, hors-ligne,
+  // etc.) on retombe automatiquement sur le data:URL, pour ne jamais bloquer
+  // la publication.
+  function uploadMediaToStorage(dataUrl, callback) {
+    if (!supabase || !supabase.storage) { callback(null); return; }
+    try {
+      var ext = extFromDataUrl(dataUrl);
+      var blob = dataUrlToBlob(dataUrl);
+      var folder = (S.user && S.user.id) ? S.user.id : 'anon';
+      var path = folder + '/' + Date.now() + '_' + Math.random().toString(36).slice(2, 8) + '.' + ext;
+      supabase.storage.from('post-media').upload(path, blob, { contentType: blob.type || undefined, upsert: false }).then(
+        function(res) {
+          if (!res || res.error) { console.warn('Storage upload error:', res && res.error); callback(null); return; }
+          try {
+            var pub = supabase.storage.from('post-media').getPublicUrl(path);
+            var url = pub && pub.data ? pub.data.publicUrl : null;
+            callback(url || null);
+          } catch (e) { callback(null); }
+        },
+        function(err) { console.warn('Storage upload exception:', err); callback(null); }
+      );
+    } catch (e) { callback(null); }
   }
 
   // Réduction de qualité vidéo optionnelle : ré-encode en temps réel via canvas + MediaRecorder
@@ -4808,15 +4859,21 @@ toggleParticipation: function(postId, status) {
         toast(S.reduceVideoQuality ? 'Traitement de la vidéo (réduction de qualité)…' : 'Traitement de la vidéo…', 'info');
         var finishVideo = function(dataUrl) {
           if (!dataUrl) { S.videoProcessing = false; toast('Impossible de traiter cette vidéo.', 'error'); render(); return; }
-          S.pendingMedia.push(dataUrl);
-          // La vignette est générée à partir du FICHIER d'origine (Blob) et non du
-          // data:URL : décoder plusieurs dizaines de Mo de base64 dans un <video>
-          // échoue souvent sur mobile, ce qui donnait un aperçu noir.
-          // Le message de traitement reste affiché jusqu'à ce que la vidéo soit prête.
-          generateVideoPoster(videoFile, function(poster) {
-            S.pendingVideoPoster = poster;
-            S.videoProcessing = false;
-            render();
+          // Envoie la vidéo vers Supabase Storage (vraie URL hébergée) plutôt que de
+          // la garder en base64 — c'est le plus gros contributeur au poids d'une
+          // publication. En cas d'échec (bucket pas créé, hors-ligne...), on retombe
+          // sur le data:URL pour ne jamais bloquer la publication.
+          uploadMediaToStorage(dataUrl, function(hostedUrl) {
+            S.pendingMedia.push(hostedUrl || dataUrl);
+            // La vignette est générée à partir du FICHIER d'origine (Blob) et non du
+            // data:URL : décoder plusieurs dizaines de Mo de base64 dans un <video>
+            // échoue souvent sur mobile, ce qui donnait un aperçu noir.
+            // Le message de traitement reste affiché jusqu'à ce que la vidéo soit prête.
+            generateVideoPoster(videoFile, function(poster) {
+              S.pendingVideoPoster = poster;
+              S.videoProcessing = false;
+              render();
+            });
           });
         };
         if (S.reduceVideoQuality) {
@@ -4845,8 +4902,16 @@ toggleParticipation: function(postId, status) {
         reader.onload = function(evt) {
           App.openCropper(evt.target.result, NaN, 'Photo Publication (libre)', function(croppedDataUrl) {
             compressImage(croppedDataUrl, 1080, 1350, 0.8, function(dataUrl) {
-              S.pendingMedia.push(dataUrl);
+              var idx = S.pendingMedia.length;
+              S.pendingMedia.push(dataUrl); // aperçu instantané, pas d'attente réseau
               render();
+              // Bascule silencieusement vers l'URL hébergée une fois l'envoi terminé
+              // (le composeur reste réactif pendant l'upload en arrière-plan).
+              uploadMediaToStorage(dataUrl, function(hostedUrl) {
+                if (hostedUrl && S.pendingMedia[idx] === dataUrl) {
+                  S.pendingMedia[idx] = hostedUrl;
+                }
+              });
               processNext();
             });
           });
