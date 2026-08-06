@@ -250,8 +250,7 @@
       if (res && res.data) {
         S.postsAllLoaded = res.data.length < POSTS_PAGE_SIZE;
         var mergedPosts = mergePostsWithLocal(res.data);
-        DB_CACHE[SK.POSTS] = mergedPosts;
-        localStorage.setItem(SK.POSTS, JSON.stringify(mergedPosts));
+        dbSet(SK.POSTS, mergedPosts);
         // Renvoie vers Supabase les publications créées hors-ligne et pas encore
         // synchronisées — repéré via leur horodatage très récent (pas juste "absent de
         // cette page"), car avec la pagination un post ancien peut légitimement être
@@ -286,24 +285,31 @@
         });
       }
       
-      // Automatic fast polling fallback (3s) for instant updates across devices
+      // Filet de sécurité si le temps réel Supabase ne fonctionne pas. Espacé à 20 s :
+      // à 3 s, chaque cycle re-téléchargeait tout le lot et reconstruisait tout le DOM,
+      // ce qui faisait planter Safari mobile. Le temps réel (ci-dessous) reste la voie
+      // principale pour les mises à jour instantanées. En pause quand l'onglet est masqué.
       if (!window._postsPollInterval) {
         window._postsPollInterval = setInterval(function() {
+          if (document.hidden) return;
           fetchPostsSilently();
-        }, 3000);
+        }, 20000);
       }
 
-      // Setup Supabase Realtime for Posts, Profiles & Events
-      supabase.channel('public:kun_com_realtime')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'kun_com_posts' }, function(payload) {
-           console.log('⚡ Realtime post update:', payload);
-           fetchPostsSilently();
-        })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'kun_com_profiles' }, function(payload) {
-           console.log('⚡ Realtime profile update:', payload);
-           fetchProfilesSilently();
-        })
-        .subscribe();
+      // Temps réel Supabase — abonné UNE SEULE FOIS : syncSupabaseToLocal() peut être
+      // rappelé (réessais réseau), et sans ce garde-fou chaque appel créait un canal
+      // supplémentaire, multipliant les rafraîchissements jusqu'à faire planter l'onglet.
+      if (!window._realtimeSubscribed) {
+        window._realtimeSubscribed = true;
+        supabase.channel('public:kun_com_realtime')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'kun_com_posts' }, function() {
+             fetchPostsSilently();
+          })
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'kun_com_profiles' }, function() {
+             fetchProfilesSilently();
+          })
+          .subscribe();
+      }
         
       // Clean up expired ephemeral posts
       var allP = db(SK.POSTS, []);
@@ -342,40 +348,62 @@
   }
   
   
+  var _fetchProfilesInFlight = false;
   async function fetchProfilesSilently() {
-    if (!supabase) return;
+    if (!supabase || _fetchProfilesInFlight) return;
+    _fetchProfilesInFlight = true;
     try {
     var resProf = await supabase.from('kun_com_profiles').select('*');
     if (resProf && resProf.data) {
       var mergedProfiles = mergeProfilesWithLocal(resProf.data);
       DB_CACHE[SK.USERS] = mergedProfiles;
-      localStorage.setItem(SK.USERS, JSON.stringify(mergedProfiles));
+      try { localStorage.setItem(SK.USERS, JSON.stringify(mergedProfiles)); } catch(e){}
       if (S.user) {
         var freshMe = mergedProfiles.find(function(x){ return x.id === S.user.id; });
         if (freshMe) {
           S.user = freshMe;
-          localStorage.setItem(SK.SESS, JSON.stringify(freshMe));
+          try { localStorage.setItem(SK.SESS, JSON.stringify(freshMe)); } catch(e){}
         }
       }
-      render();
+      // Ne pas re-rendre si l'utilisateur est en train de saisir (perte de focus/texte)
+      var actEl = document.activeElement;
+      var typing = actEl && (actEl.tagName === 'INPUT' || actEl.tagName === 'TEXTAREA');
+      if (!typing) render();
     }
     } catch(e) { console.warn('fetchProfilesSilently error:', e); }
+    _fetchProfilesInFlight = false;
   }
-  var _lastPostsJson = '';
+  // Empreinte légère d'un lot de publications, pour détecter un changement SANS
+  // sérialiser tout le contenu (les médias base64 pèsent des dizaines de Mo :
+  // faire JSON.stringify dessus toutes les quelques secondes saturait la mémoire
+  // de Safari mobile et faisait planter l'onglet).
+  function postsFingerprint(posts) {
+    var parts = [];
+    (posts || []).forEach(function(p) {
+      if (!p || !p.id) return;
+      parts.push(p.id + ':' + (p.timestamp||0) + ':' + ((p.comments||[]).length) + ':' +
+        ((p.likedBy||[]).length) + ':' + (p.is_edited?1:0) + ':' + ((p.caption||'').length) +
+        ':' + (p.videoPoster?1:0));
+    });
+    return parts.join('|');
+  }
+
+  var _lastPostsFingerprint = '';
+  var _fetchPostsInFlight = false;
   async function fetchPostsSilently() {
-    if (!supabase) return;
+    if (!supabase || _fetchPostsInFlight) return;
+    _fetchPostsInFlight = true;
     try {
       var res = await supabase.from('kun_com_posts').select('*').order('created_at', { ascending: false }).range(0, POSTS_PAGE_SIZE - 1);
       if (res && res.error) { console.warn('Supabase posts poll error:', res.error); }
       if (res && res.data) {
         if (res.data.length < POSTS_PAGE_SIZE) S.postsAllLoaded = true;
         var mergedPosts = mergePostsWithLocal(res.data);
-        var newJson = JSON.stringify(mergedPosts);
-        if (newJson !== _lastPostsJson) {
-          _lastPostsJson = newJson;
-          DB_CACHE[SK.POSTS] = mergedPosts;
-          localStorage.setItem(SK.POSTS, JSON.stringify(mergedPosts));
-          
+        var fp = postsFingerprint(mergedPosts);
+        if (fp !== _lastPostsFingerprint) {
+          _lastPostsFingerprint = fp;
+          dbSet(SK.POSTS, mergedPosts);
+
           var activeEl = document.activeElement;
           var isTyping = activeEl && (activeEl.id === 'commentInput' || activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA');
           if (!isTyping) {
@@ -384,15 +412,42 @@
         }
       }
     } catch(e) { console.warn('fetchPostsSilently error:', e); }
+    _fetchPostsInFlight = false;
   }
 
   function db(key, def) {
     if (DB_CACHE[key] !== undefined) return DB_CACHE[key];
     try { var r = localStorage.getItem(key); var parsed = r ? JSON.parse(r) : def; DB_CACHE[key] = parsed; return parsed; } catch(e) { return def; }
   }
+  // Allège une publication avant sauvegarde locale : les médias encore en base64
+  // (ancien format) pèsent des dizaines de Mo chacun et faisaient exploser le quota
+  // localStorage — et, plus grave, saturaient la mémoire de Safari mobile jusqu'au
+  // plantage de l'onglet. Ils restent disponibles depuis le serveur ; on ne garde
+  // en local que les URL hébergées (légères) et les vignettes.
+  function stripHeavyMediaForStorage(posts) {
+    if (!Array.isArray(posts)) return posts;
+    return posts.map(function(p) {
+      if (!p) return p;
+      var hasHeavy = (p.mediaUrls || []).some(function(u){ return typeof u === 'string' && u.indexOf('data:') === 0 && u.length > 100000; }) ||
+                     (p.originalMediaUrls || []).some(function(u){ return typeof u === 'string' && u.indexOf('data:') === 0 && u.length > 100000; });
+      if (!hasHeavy) return p;
+      var copy = Object.assign({}, p);
+      copy.mediaUrls = (p.mediaUrls || []).filter(function(u){ return !(typeof u === 'string' && u.indexOf('data:') === 0 && u.length > 100000); });
+      copy.originalMediaUrls = (p.originalMediaUrls || []).filter(function(u){ return !(typeof u === 'string' && u.indexOf('data:') === 0 && u.length > 100000); });
+      return copy;
+    });
+  }
+
   function dbSet(key, val) {
     DB_CACHE[key] = val;
-    try { localStorage.setItem(key, JSON.stringify(val)); } catch(e) {}
+    try {
+      var toStore = (key === SK.POSTS) ? stripHeavyMediaForStorage(val) : val;
+      localStorage.setItem(key, JSON.stringify(toStore));
+    } catch(e) {
+      // Quota dépassé : on purge le cache local des publications plutôt que de
+      // laisser l'appli dans un état instable (les données restent sur le serveur).
+      if (key === SK.POSTS) { try { localStorage.removeItem(SK.POSTS); } catch(e2){} }
+    }
   }
 
   // ============================================================
@@ -4592,8 +4647,7 @@ toggleParticipation: function(postId, status) {
           if (res.data.length < POSTS_PAGE_SIZE) S.postsAllLoaded = true;
           if (res.data.length > 0) {
             var mergedPosts = mergePostsWithLocal(res.data);
-            DB_CACHE[SK.POSTS] = mergedPosts;
-            localStorage.setItem(SK.POSTS, JSON.stringify(mergedPosts));
+            dbSet(SK.POSTS, mergedPosts);
             S.postsRemotePage++;
           } else {
             S.postsAllLoaded = true;
