@@ -958,6 +958,10 @@
     { maxMinutes: Infinity, stars: -2, label: 'Retard majeur (> 1 h 30)' }
   ];
   var PUNCTUALITY_ABSENT_STARS = -2;
+  // Pointer loin du lieu, ou sans partager sa position, ne vaut pas une arrivée :
+  // c'est sanctionné comme une absence. Sans cela, il suffisait de refuser la
+  // géolocalisation ou de pointer de chez soi pour obtenir 5★ en toute impunité.
+  var PUNCTUALITY_OFFSITE_STARS = -2;
 
   // ============================================================
   // GÉOLOCALISATION DES ARRIVÉES (transparence anti-triche)
@@ -1151,17 +1155,41 @@
     var arrival = checkIn.checkInAt || checkIn.timestamp || 0;
     var delayMinutes = Math.round((arrival - startTs) / 60000);
     var dist = checkInDistance(checkIn, ev);
+    var geo = checkIn.geo || null;
+    // true = sur place, false = loin, null = impossible à établir
+    var onSite = dist === null ? null : dist <= ON_SITE_RADIUS_M;
+
+    var stars = starsForDelay(delayMinutes);
+    var label = labelForDelay(delayMinutes);
+    var offsite = false;
+
+    // Le lieu ne fait foi que si le responsable l'a renseigné : sans coordonnées
+    // d'événement, on ne peut rien reprocher au membre.
+    var venueKnown = ev && typeof ev.eventLat === 'number' && typeof ev.eventLng === 'number';
+    if (venueKnown) {
+      if (!geo || !geo.available) {
+        offsite = true;
+        stars = PUNCTUALITY_OFFSITE_STARS;
+        label = geoStatusLabel(geo) + ' — pointage non validé';
+      } else if (onSite === false) {
+        offsite = true;
+        stars = PUNCTUALITY_OFFSITE_STARS;
+        label = 'Pointage à ' + formatDistance(dist) + ' du lieu — non validé';
+      }
+    }
+
     return {
-      stars: starsForDelay(delayMinutes),
+      stars: stars,
       delayMinutes: delayMinutes,
-      label: labelForDelay(delayMinutes),
+      label: label,
       checkInPostId: checkIn.id,
       absent: false,
-      geo: checkIn.geo || null,
+      // Pointage effectué, mais invalidé faute d'être sur place.
+      offsite: offsite,
+      geo: geo,
       byEdit: !!checkIn.checkInByEdit,
       distance: dist,
-      // true = sur place, false = loin, null = impossible à établir
-      onSite: dist === null ? null : dist <= ON_SITE_RADIUS_M
+      onSite: onSite
     };
   }
 
@@ -1274,7 +1302,10 @@
       if (!assigned) return;
       var startTs = eventStartTimestamp(ev);
       if (!startTs) return;
-      if (startTs > now) return;                       // événement à venir
+      // Un événement à venir ne compte pas encore… SAUF si le membre a déjà pointé
+      // (arrivée en avance) : sans cette exception, ses étoiles n'apparaissaient
+      // nulle part dans son profil avant l'heure de début.
+      if (startTs > now && !hasCheckedIn(userId, ev.id, posts)) return;
       if (sinceTs && startTs < sinceTs) return;        // hors période
       var p = punctualityStars(userId, ev.id, posts);
       if (!p) return;

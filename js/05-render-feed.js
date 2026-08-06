@@ -586,9 +586,15 @@
     var startTs = eventStartTimestamp(ev);
     var arrival = post.checkInAt || post.timestamp || 0;
     var delay = startTs ? Math.round((arrival - startTs) / 60000) : null;
-    var stars = delay === null ? null : starsForDelay(delay);
     var dist = checkInDistance(post, ev);
     var geo = post.geo;
+
+    // On reprend le calcul officiel (qui invalide un pointage hors du lieu) plutôt
+    // que de recalculer ici : les deux affichages ne peuvent pas diverger.
+    var official = punctualityStars(post.userId, ev.id, db(SK.POSTS, []));
+    var isThisCheckIn = official && official.checkInPostId === post.id;
+    var stars = isThisCheckIn ? official.stars : (delay === null ? null : starsForDelay(delay));
+    var offsite = isThisCheckIn && official.offsite;
 
     var starCol = stars === null ? '#8E8E93' : stars >= 4 ? '#10B981' : stars >= 2 ? '#F59E0B' : '#EF4444';
 
@@ -613,7 +619,7 @@
 
     return '<div style="margin:0 14px 10px;padding:10px 12px;background:' + bg + ';border:1px solid ' + border + ';border-radius:14px;">' +
       '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px;">' +
-        '<span style="font-size:10px;font-weight:800;color:#64748B;text-transform:uppercase;letter-spacing:0.5px;">⏱️ Arrivée enregistrée</span>' +
+        '<span style="font-size:10px;font-weight:800;color:' + (offsite ? '#B91C1C' : '#64748B') + ';text-transform:uppercase;letter-spacing:0.5px;">' + (offsite ? '⛔ Pointage non validé' : '⏱️ Arrivée enregistrée') + '</span>' +
         (stars === null ? '' : '<span style="font-size:12.5px;font-weight:900;color:' + starCol + ';white-space:nowrap;">' + (stars>0?'+':'') + stars + '★</span>') +
       '</div>' +
       '<div style="font-size:11.5px;color:#475569;line-height:1.5;">' +
@@ -621,6 +627,7 @@
         new Date(arrival).toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'}) +
       '</div>' +
       '<div style="font-size:11.5px;line-height:1.5;margin-top:2px;">' + geoBlock + '</div>' +
+      (offsite ? '<div style="font-size:10.5px;color:#B91C1C;margin-top:3px;font-weight:700;line-height:1.4;">Arrivée non comptabilisée : il fallait être à moins de ' + formatDistance(ON_SITE_RADIUS_M) + ' du lieu.</div>' : '') +
       (post.checkInByEdit ? '<div style="font-size:10.5px;color:#B91C1C;margin-top:3px;font-weight:700;">⚠️ Rattaché à l\'événement après publication</div>' : '') +
     '</div>';
   }
@@ -1122,18 +1129,33 @@
         
         '<div style="background:#FFF;border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px;">' +
           '<div style="display:flex;flex-direction:column;gap:16px;">' +
-            '<div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #E5E5EA;padding-bottom:12px;">' +
-              '<label style="font-size:15px;color:#000;font-weight:600;">Date</label>' +
-              '<input type="date" id="eventDate" value="' + dateVal + '" style="border:none;font-size:16px;outline:none;background:transparent;color:#007AFF;font-weight:600;" />' +
+            '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid #E5E5EA;padding-bottom:12px;">' +
+              '<label style="font-size:15px;color:#000;font-weight:600;white-space:nowrap;">Date</label>' +
+              '<input type="date" id="eventDate" value="' + dateVal + '" style="border:none;font-size:16px;outline:none;background:transparent;color:#007AFF;font-weight:600;text-align:right;" />' +
             '</div>' +
-            '<div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #E5E5EA;padding-bottom:12px;">' +
-              '<label style="font-size:15px;color:#000;font-weight:600;">Heure de début</label>' +
-              '<input type="time" id="eventStart" value="' + startVal + '" oninput="App.onEventTimeChange()" style="border:none;font-size:16px;outline:none;background:transparent;color:#007AFF;font-weight:600;" />' +
+            '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid #E5E5EA;padding-bottom:12px;">' +
+              '<label style="font-size:15px;color:#000;font-weight:600;white-space:nowrap;">Heure de début</label>' +
+              '<input type="time" id="eventStart" value="' + startVal + '" oninput="App.onEventTimeChange()" style="border:none;font-size:16px;outline:none;background:transparent;color:#007AFF;font-weight:600;text-align:right;" />' +
             '</div>' +
-            '<div style="display:flex;align-items:center;justify-content:space-between;">' +
-              '<label style="font-size:15px;color:#000;font-weight:600;">Heure de fin</label>' +
-              '<input type="time" id="eventEnd" value="' + endVal + '" oninput="App.onEventTimeChange()" style="border:none;font-size:16px;outline:none;background:transparent;color:#007AFF;font-weight:600;" />' +
-              '<div id="eventTimeError" style="display:none;font-size:11.5px;color:#FF3B30;font-weight:700;margin-top:4px;">La fin doit être après le début.</div>' +
+            // Le message occupe sa PROPRE ligne sous le champ : placé dans la même
+            // rangée que l'heure, il se superposait à la valeur et forçait le
+            // libellé « Heure de fin » à passer sur deux lignes.
+            '<div>' +
+              '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">' +
+                '<label style="font-size:15px;color:#000;font-weight:600;white-space:nowrap;">Heure de fin</label>' +
+                '<input type="time" id="eventEnd" value="' + endVal + '" oninput="App.onEventTimeChange()" style="border:none;font-size:16px;outline:none;background:transparent;color:#007AFF;font-weight:600;text-align:right;" />' +
+              '</div>' +
+              // État initial calculé au rendu : à la réouverture d'une veillée
+              // déjà enregistrée, la mention doit être visible sans toucher au champ.
+              (function(){
+                var msg = '', col = '#5856D6', bg = '#F0EFFF';
+                if (startVal && endVal && endVal === startVal) {
+                  msg = '⚠️ La fin ne peut pas être identique au début.'; col = '#B91C1C'; bg = '#FEF2F2';
+                } else if (startVal && endVal && endVal < startVal) {
+                  msg = '🌙 Se termine le lendemain à ' + endVal + '.';
+                }
+                return '<div id="eventTimeError" style="display:' + (msg ? 'block' : 'none') + ';font-size:11.5px;font-weight:700;line-height:1.4;margin-top:8px;padding:7px 10px;border-radius:10px;background:' + bg + ';color:' + col + ';">' + msg + '</div>';
+              })() +
             '</div>' +
           '</div>' +
         '</div>' +

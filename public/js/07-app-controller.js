@@ -393,12 +393,14 @@
       if (!err) return;
       if (!s || !e || !s.value || !e.value) { err.style.display = 'none'; return; }
       if (e.value === s.value) {
-        err.textContent = 'La fin ne peut pas être identique au début.';
-        err.style.color = '#FF3B30';
+        err.textContent = '⚠️ La fin ne peut pas être identique au début.';
+        err.style.color = '#B91C1C';
+        err.style.background = '#FEF2F2';
         err.style.display = 'block';
       } else if (e.value < s.value) {
         err.textContent = '🌙 Se termine le lendemain à ' + e.value + '.';
         err.style.color = '#5856D6';
+        err.style.background = '#F0EFFF';
         err.style.display = 'block';
       } else {
         err.style.display = 'none';

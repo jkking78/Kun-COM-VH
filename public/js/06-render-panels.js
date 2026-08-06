@@ -201,11 +201,20 @@
       var bg = p.stars >= 4 ? '#ECFDF5' : p.stars >= 2 ? '#FFF7E6' : '#FEF2F2';
       var bd = p.stars >= 4 ? '#A7F3D0' : p.stars >= 2 ? '#FFE0A3' : '#FECACA';
       return '<div style="background:' + bg + ';border:1px solid ' + bd + ';border-radius:12px;padding:10px 12px;margin-bottom:10px;">' +
-        '<div style="font-size:12.5px;font-weight:800;color:' + c + ';">✅ Arrivée enregistrée · ' + (p.stars>0?'+':'') + p.stars + '★</div>' +
-        '<div style="font-size:11px;color:#6B7280;margin-top:2px;">' +
+        '<div style="font-size:12.5px;font-weight:800;color:' + c + ';">' +
+          (p.offsite ? '⛔ Pointage non validé · ' : '✅ Arrivée enregistrée · ') + (p.stars>0?'+':'') + p.stars + '★' +
+        '</div>' +
+        '<div style="font-size:11px;color:#6B7280;margin-top:2px;line-height:1.4;">' +
           (p.delayMinutes <= 0 ? "À l'heure" : 'Retard de ' + p.delayMinutes + ' min') +
           (p.distance !== null && p.distance !== undefined ? ' · ' + (p.onSite ? 'sur place' : 'à ' + formatDistance(p.distance) + ' du lieu') : '') +
         '</div>' +
+        (p.offsite
+          ? '<div style="font-size:11px;color:#B91C1C;font-weight:700;margin-top:4px;line-height:1.4;">' +
+              (p.geo && p.geo.available
+                ? 'Vous deviez être à moins de ' + formatDistance(ON_SITE_RADIUS_M) + ' du lieu.'
+                : geoStatusLabel(p.geo) + '. La position est obligatoire pour valider une arrivée.') +
+            '</div>'
+          : '') +
       '</div>';
     }
 
@@ -456,12 +465,18 @@
       var planBlocks = [];
 
       dayEvents.forEach(function(ev) {
+        // Statut calculé sur des horodatages, pas sur une comparaison de chaînes :
+        // « 21:27 > 01:30 » est vrai en texte, ce qui marquait « Terminé » une
+        // veillée de 22:00 à 01:30 avant même qu'elle ne commence.
         var status = 'upcoming';
         var statusHtml = '';
-        if (ev.eventDate < todayIso) status = 'closed';
-        else if (ev.eventDate === todayIso) {
-          if (nowTime >= ev.eventStart && nowTime <= ev.eventEnd) status = 'active';
-          else if (nowTime > ev.eventEnd) status = 'closed';
+        var evStartTs = eventStartTimestamp(ev);
+        var evEndTs = eventEndTimestamp(ev);
+        if (evStartTs && evEndTs) {
+          if (nowTs > evEndTs) status = 'closed';
+          else if (nowTs >= evStartTs) status = 'active';
+        } else if (ev.eventDate < todayIso) {
+          status = 'closed';
         }
 
         if (status === 'active') {
