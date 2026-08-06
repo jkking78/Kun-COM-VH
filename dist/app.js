@@ -665,6 +665,32 @@
     } catch (e) { callback(null); }
   }
 
+  // Extrait le chemin interne (bucket path) d'une URL publique Supabase Storage,
+  // nécessaire pour demander sa suppression. Retourne null pour tout ce qui n'est
+  // pas une URL de notre bucket "post-media" (ex: data:URL, média externe).
+  function storagePathFromUrl(url) {
+    if (typeof url !== 'string') return null;
+    var marker = '/storage/v1/object/public/post-media/';
+    var idx = url.indexOf(marker);
+    if (idx === -1) return null;
+    try { return decodeURIComponent(url.slice(idx + marker.length)); } catch (e) { return url.slice(idx + marker.length); }
+  }
+
+  // Supprime de Supabase Storage les fichiers médias qui ne sont plus utilisés par
+  // AUCUNE autre publication (un repost peut référencer la même URL que l'original,
+  // donc on vérifie avant de supprimer pour ne jamais casser un partage existant).
+  // Supprime définitivement des fichiers de Supabase Storage — y compris s'ils sont
+  // encore référencés par un partage/repost fait par quelqu'un d'autre (choix
+  // voulu : quand l'original disparaît, le média disparaît partout).
+  function deleteUnusedMediaFromStorage(urls, excludePostId) {
+    if (!supabase || !supabase.storage || !urls || urls.length === 0) return;
+    try {
+      var paths = urls.map(storagePathFromUrl).filter(Boolean);
+      if (paths.length === 0) return;
+      supabase.storage.from('post-media').remove(paths).then(function(){}, function(e){ console.warn('Storage delete error:', e); });
+    } catch (e) { console.warn('deleteUnusedMediaFromStorage error:', e); }
+  }
+
   // Réduction de qualité vidéo optionnelle : ré-encode en temps réel via canvas + MediaRecorder
   // (aucune librairie externe nécessaire). Si l'API n'est pas supportée par le navigateur,
   // on retombe automatiquement sur le fichier original sans compression.
@@ -4377,6 +4403,11 @@ toggleParticipation: function(postId, status) {
             supabase.from('kun_com_posts').delete().eq('id', p.id).then(function(){}, function(e){ console.warn('Delete post error:', e); });
           });
         }
+        // Nettoie les fichiers médias associés dans Storage (sauf s'ils sont encore
+        // utilisés par un partage fait par quelqu'un d'autre).
+        myPosts.forEach(function(p) {
+          deleteUnusedMediaFromStorage((p.mediaUrls || []), p.id);
+        });
 
         // 2) Supprime le profil utilisateur (local + Supabase)
         var users = db(SK.USERS, []);
@@ -4739,7 +4770,12 @@ toggleParticipation: function(postId, status) {
       post.is_edited = true;
       post.visibility = S.postVisibility || 'all';
       post.targetSections = (S.postTargetSections || []).slice();
+      var oldMediaUrls = (post.mediaUrls || []).slice();
       post.mediaUrls = S.pendingMedia.slice();
+      // Nettoie Storage pour les médias retirés pendant la modification (photo/vidéo
+      // supprimée avant d'enregistrer), sauf s'ils sont encore utilisés ailleurs.
+      var removedUrls = oldMediaUrls.filter(function(u){ return post.mediaUrls.indexOf(u) === -1; });
+      if (removedUrls.length > 0) deleteUnusedMediaFromStorage(removedUrls, postId);
       post.videoPoster = S.pendingMedia.some(function(m){return isVideoUrl(m);}) ? (S.pendingVideoPoster || null) : null;
       post.postBg = S.pendingMedia.length === 0 ? (S.postBg || null) : null;
       post.aboutEventId = S.postAboutEventId || null;
@@ -5048,6 +5084,7 @@ toggleParticipation: function(postId, status) {
       if (supabase) {
         supabase.from('kun_com_posts').delete().eq('id', postId).then(function(){}, function(e){ console.warn('Delete post error:', e); });
       }
+      deleteUnusedMediaFromStorage((p.mediaUrls || []), postId);
       S.optionsOpen=false; S.optionsPost=null;
       render();
       toast('Publication supprimée.', 'success');
