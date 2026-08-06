@@ -547,7 +547,8 @@
     profileSelectMode: false,
     selectedProfilePostIds: [],
     bulkDeleteConfirmOpen: false,
-    bulkDeleteBusy: false
+    bulkDeleteBusy: false,
+    viewersPostId: null
 };
 
   // ============================================================
@@ -1015,6 +1016,64 @@
     });
   }
 
+  // ============================================================
+  // COMPTEUR DE VUES (façon Facebook) — une vue est enregistrée quand la
+  // publication apparaît réellement à l'écran (pas au simple rendu), une seule
+  // fois par membre. L'auteur ne se compte pas lui-même comme lecteur.
+  // ============================================================
+  var _viewObserver = null;
+  var _viewMarkedThisSession = {};
+
+  function markPostViewed(postId) {
+    if (!S.user || !S.user.id) return;
+    if (_viewMarkedThisSession[postId]) return;
+    _viewMarkedThisSession[postId] = true;
+
+    var posts = db(SK.POSTS, []);
+    var post = posts.find(function(p){ return p.id === postId; });
+    if (!post) return;
+    if (post.userId === S.user.id) return; // l'auteur ne compte pas
+    if (!Array.isArray(post.viewedBy)) post.viewedBy = [];
+    if (post.viewedBy.indexOf(S.user.id) !== -1) return;
+
+    post.viewedBy.push(S.user.id);
+    dbSet(SK.POSTS, posts);
+    if (supabase) {
+      try {
+        supabase.from('kun_com_posts').upsert({ id: post.id, content: post }, { onConflict: 'id' }).then(function(){}, function(){});
+      } catch(e){}
+    }
+    // Met à jour le compteur affiché sans re-rendre tout le fil (évite de
+    // perturber le défilement pendant la lecture).
+    try {
+      var el = document.getElementById('viewCount-' + post.id);
+      if (el) el.textContent = post.viewedBy.length;
+    } catch(e){}
+  }
+
+  function setupViewTracking() {
+    if (typeof IntersectionObserver === 'undefined') return;
+    try {
+      if (!_viewObserver) {
+        _viewObserver = new IntersectionObserver(function(entries) {
+          entries.forEach(function(entry) {
+            if (!entry.isIntersecting) return;
+            var id = entry.target.getAttribute('data-postid');
+            if (id) {
+              markPostViewed(id);
+              _viewObserver.unobserve(entry.target);
+            }
+          });
+        }, { threshold: 0.55 });
+      }
+      var nodes = document.querySelectorAll('article[data-postid]');
+      for (var i = 0; i < nodes.length; i++) {
+        var pid = nodes[i].getAttribute('data-postid');
+        if (pid && !_viewMarkedThisSession[pid]) _viewObserver.observe(nodes[i]);
+      }
+    } catch(e) { console.warn('setupViewTracking error:', e); }
+  }
+
     function getUserSections(u) {
     if (!u) return [];
     if (Array.isArray(u.sections) && u.sections.length > 0) return u.sections;
@@ -1158,6 +1217,7 @@
     comment: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#262626" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
     share: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#262626" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>',
     link: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#007AFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>',
+    eye: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>',
     bookmark: function(saved) {
       return '<svg width="24" height="24" viewBox="0 0 24 24" fill="' + (saved ? '#000' : 'none') + '" stroke="#262626" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>';
     },
@@ -1214,6 +1274,9 @@
     // Restore scroll position
     var mc = root.querySelector('#mainContent');
     if (mc && scrollTop > 0) mc.scrollTop = scrollTop;
+
+    // Observe les publications visibles pour comptabiliser les vues
+    try { setupViewTracking(); } catch(e){}
   }
 
   // ============================================================
@@ -1606,6 +1669,7 @@
     if (S.aboutEventPickerOpen) modals += renderAboutEventPickerModal();
     if (S.deleteAccountOpen) modals += renderDeleteAccountModal();
     if (S.bulkDeleteConfirmOpen) modals += renderBulkDeleteConfirmModal();
+    if (S.viewersPostId) modals += renderViewersModal();
 
     return '<div style="position:relative;width:100%;height:100%;display:flex;flex-direction:column;background:#F2F2F7;font-family:-apple-system,BlinkMacSystemFont,\'SF Pro Text\',sans-serif;">' +
       '<div id="mainContent" style="flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;padding-bottom:70px;">' + content + '</div>' +
@@ -1794,6 +1858,7 @@
     var ago = timeAgo(post.timestamp);
     var sec = SECTIONS.find(function(s){ return s.id === post.sectionId; }) || { emoji:'📢', color:'#8E8E93' };
     var likeCount = Array.isArray(post.likedBy) ? post.likedBy.length : (post.likes || 0);
+    var viewCount = Array.isArray(post.viewedBy) ? post.viewedBy.length : 0;
     var postAuthorUser = db(SK.USERS, []).find(function(u){ return u.id === post.userId; });
     var postAuthorRoleLabel = roleLabel(postAuthorUser ? postAuthorUser.role : null);
     // Section du PROFIL de l'auteur (affichée dans l'en-tête) — différente du topic
@@ -2048,7 +2113,7 @@
         '<div style="font-size:11px;color:#C7C7CC;text-transform:uppercase;letter-spacing:0.5px;">' + ago + '</div>' +
       '</div>' : '');
 
-    var finalHtml = '<article id="post-'+post.id+'" style="background:#FFF;margin-bottom:10px;">' +
+    var finalHtml = '<article id="post-'+post.id+'" data-postid="'+post.id+'" style="background:#FFF;margin-bottom:10px;">' +
       repostBanner +
       pinnedBadge +
       (post.is_ephemeral ? '<div style="padding:6px 14px 0;"><span style="background:#FFF3E0;color:#FF9500;font-size:10.5px;font-weight:800;padding:3px 8px;border-radius:8px;">🕐 Éphémère · disparaît dans ' + (function(){ var h = Math.max(0, Math.round((post.ephemeral_expiry - Date.now()) / 3600000)); return h > 0 ? h + 'h' : 'bientôt'; })() + '</span></div>' : '') +
@@ -2105,7 +2170,12 @@
           '<button onclick="App.openRepostModal(\''+post.id+'\')" style="background:none;border:none;padding:2px;cursor:pointer;display:flex;align-items:center;">' + SVG.share + '</button>' +
           '<span style="font-size:11px;font-weight:700;color:' + sec.color + ';background:' + sec.color + '18;padding:4px 10px;border-radius:10px;margin-left:2px;">' + sec.emoji + ' ' + (post.sectionNom||'Général') + '</span>' +
         '</div>' +
-        '<button id="saveBtn-'+post.id+'" onclick="App.save(\''+post.id+'\')" style="background:none;border:none;padding:2px;cursor:pointer;display:flex;align-items:center;">' + SVG.bookmark(iSaved) + '</button>' +
+        '<div style="display:flex;align-items:center;gap:12px;">' +
+          '<button onclick="App.openViewers(\''+post.id+'\')" title="Vues" style="background:none;border:none;padding:2px;cursor:pointer;display:flex;align-items:center;gap:5px;">' +
+            SVG.eye + '<span id="viewCount-'+post.id+'" style="font-size:13px;font-weight:700;color:#8E8E93;">' + viewCount + '</span>' +
+          '</button>' +
+          '<button id="saveBtn-'+post.id+'" onclick="App.save(\''+post.id+'\')" style="background:none;border:none;padding:2px;cursor:pointer;display:flex;align-items:center;">' + SVG.bookmark(iSaved) + '</button>' +
+        '</div>' +
       '</div>' +
 
       // Like count
@@ -2758,6 +2828,58 @@
           '<label style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer;font-size:12px;color:#6B7280;font-weight:600;line-height:1.4;background:#F6F7F9;padding:10px 12px;border-radius:14px;"><input type="checkbox" ' + (S.reduceVideoQuality?'checked':'') + ' onchange="App.toggleReduceVideoQuality()" style="width:17px;height:17px;flex-shrink:0;accent-color:#007AFF;"> 🎥 Nous réduisons la qualité vidéo en HD pour une expérience plus fluide</label>' +
         '</div>' +
 
+      '</div>' +
+    '</div>';
+  }
+
+  // ============================================================
+  // VUES — liste des membres ayant vu la publication
+  // ============================================================
+  function renderViewersModal() {
+    var posts = db(SK.POSTS, []);
+    var post = posts.find(function(p){ return p.id === S.viewersPostId; });
+    if (!post) return '';
+    var users = db(SK.USERS, []);
+    var ids = Array.isArray(post.viewedBy) ? post.viewedBy : [];
+
+    var listHtml;
+    if (ids.length === 0) {
+      listHtml = '<div style="text-align:center;padding:40px 20px;color:#8E8E93;">' +
+        '<div style="font-size:38px;margin-bottom:10px;">👀</div>' +
+        '<div style="font-size:15px;font-weight:800;color:#000;">Aucune vue pour l\'instant</div>' +
+        '<div style="font-size:13px;margin-top:4px;">Les membres qui verront cette publication apparaîtront ici.</div>' +
+      '</div>';
+    } else {
+      listHtml = ids.map(function(uid) {
+        var vu = users.find(function(x){ return x.id === uid; });
+        var nom = vu ? ((vu.prenom||'') + ' ' + (vu.nom||'')).trim() : 'Membre';
+        var initial = (vu && vu.prenom ? vu.prenom.charAt(0) : 'M').toUpperCase();
+        var color = (vu && vu.avatar_color) || '#007AFF';
+        var avatarNode = (vu && vu.avatar_url)
+          ? '<img src="' + vu.avatar_url + '" style="width:40px;height:40px;border-radius:20px;object-fit:cover;flex-shrink:0;" />'
+          : '<div style="width:40px;height:40px;border-radius:20px;background:linear-gradient(135deg,' + color + ',#0040CC);color:#FFF;font-size:15px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + initial + '</div>';
+        var secs = getUserSections(vu);
+        var secLabel = secs.length > 0 ? secs.map(function(s){ return secNom(s); }).join(' · ') : '';
+        return '<div onclick="App.closeViewers();App.openUserProfile(\'' + uid + '\')" style="display:flex;align-items:center;gap:12px;padding:10px 4px;cursor:pointer;">' +
+          avatarNode +
+          '<div style="flex:1;min-width:0;">' +
+            '<div style="font-size:14px;font-weight:700;color:#000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(nom) + '</div>' +
+            (secLabel ? '<div style="font-size:12px;color:#8E8E93;margin-top:1px;">' + safeHtml(secLabel) + '</div>' : '') +
+          '</div>' +
+        '</div>';
+      }).join('');
+    }
+
+    return '<div onclick="App.closeViewers()" style="position:fixed;inset:0;background:rgba(15,15,20,0.55);backdrop-filter:blur(2px);z-index:10001;display:flex;justify-content:center;align-items:flex-end;">' +
+      '<div onclick="event.stopPropagation()" style="width:100%;max-width:460px;background:#FFF;border-top-left-radius:28px;border-top-right-radius:28px;max-height:78vh;display:flex;flex-direction:column;box-shadow:0 -8px 40px rgba(0,0,0,0.18);animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
+        '<div style="display:flex;justify-content:center;padding:12px 0 8px;cursor:pointer;" onclick="App.closeViewers()">' +
+          '<div style="width:38px;height:5px;background:#E2E4E9;border-radius:3px;"></div>' +
+        '</div>' +
+        '<div style="text-align:center;padding-bottom:12px;border-bottom:0.5px solid #F2F2F7;">' +
+          '<h3 style="font-size:16px;font-weight:800;margin:0;color:#000;">Vues</h3>' +
+          '<p style="font-size:12px;color:#8E8E93;margin:2px 0 0;">' + ids.length + ' membre' + (ids.length>1?'s':'') + ' ' + (ids.length>1?'ont':'a') + ' vu cette publication</p>' +
+        '</div>' +
+        '<div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:8px 16px 24px;">' + listHtml + '</div>' +
       '</div>' +
     '</div>';
   }
@@ -4516,6 +4638,10 @@ toggleParticipation: function(postId, status) {
     // SUPPRESSION DE COMPTE — irréversible : supprime le profil ET
     // toutes les publications de l'utilisateur (local + Supabase).
     // ============================================================
+    // Vues d'une publication
+    openViewers: function(postId) { S.viewersPostId = postId; render(); },
+    closeViewers: function() { S.viewersPostId = null; render(); },
+
     // ============================================================
     // SUPPRESSION GROUPÉE DE PUBLICATIONS (depuis le profil)
     // ============================================================
