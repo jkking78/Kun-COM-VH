@@ -7,16 +7,24 @@
   window.App = {
     renderAssignmentsList: function() {
       if (!S.eventAssignments || S.eventAssignments.length === 0) {
-        return '<div style="font-size:13px;color:#8E8E93;margin-bottom:12px;">Aucun membre assigné.</div>';
+        return '<div style="font-size:13px;color:#8E8E93;margin-bottom:12px;">Aucune assignation.</div>';
       }
+      var me = S.user;
+      var allU = db(SK.USERS, []);
       return '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;">' +
         S.eventAssignments.map(function(a, idx) {
-          return '<div style="display:flex;align-items:center;justify-content:space-between;background:#F2F2F7;padding:8px 12px;border-radius:8px;">' +
-            '<div style="display:flex;flex-direction:column;">' +
-              '<span style="font-size:13px;font-weight:700;color:#000;">' + safeHtml(a.userName) + '</span>' +
-              '<span style="font-size:12px;color:#8E8E93;">' + safeHtml(a.task) + '</span>' +
+          var mine = canTouchAssignment(a, me, allU);
+          var label = a.isSection
+            ? (a.sectionEmoji ? a.sectionEmoji + ' ' : '') + safeHtml(a.sectionName || '') + ' <span style="font-size:10px;font-weight:800;color:#5856D6;background:#EEF0FF;padding:1px 6px;border-radius:6px;">PÔLE</span>'
+            : safeHtml(a.userName || '');
+          return '<div style="display:flex;align-items:center;justify-content:space-between;background:' + (a.isSection ? '#F5F5FF' : '#F2F2F7') + ';padding:8px 12px;border-radius:8px;">' +
+            '<div style="display:flex;flex-direction:column;min-width:0;">' +
+              '<span style="font-size:13px;font-weight:700;color:#000;">' + label + '</span>' +
+              '<span style="font-size:12px;color:#8E8E93;">' + safeHtml(a.task || '') + '</span>' +
             '</div>' +
-            '<button type="button" onclick="App.removeAssignment(' + idx + ')" style="background:none;border:none;color:#FF3B30;font-size:16px;cursor:pointer;">&times;</button>' +
+            (mine
+              ? '<button type="button" onclick="App.removeAssignment(' + idx + ')" style="background:none;border:none;color:#FF3B30;font-size:16px;cursor:pointer;">&times;</button>'
+              : '<span title="Relève d\'un autre pôle" style="font-size:11px;color:#C7C7CC;white-space:nowrap;">🔒</span>') +
           '</div>';
         }).join('') +
       '</div>';
@@ -24,38 +32,138 @@
     addAssignment: function() {
       var select = document.getElementById('assignUserSelect');
       var taskInput = document.getElementById('assignTaskInput');
-      if (select && select.value && taskInput && taskInput.value.trim()) {
+      if (!select || !select.value || !taskInput || !taskInput.value.trim()) {
+        toast('Choisissez un membre (ou un pôle) et indiquez la tâche.', 'error');
+        return;
+      }
+      var task = taskInput.value.trim();
+      S.eventAssignments = S.eventAssignments || [];
+
+      // Valeur "sec:<id>" = tâche confiée à un pôle entier (Grand Responsable).
+      if (select.value.indexOf('sec:') === 0) {
+        if (!isGrandResponsable(S.user)) { toast('Seul le Grand Responsable peut assigner un pôle entier.', 'error'); return; }
+        var secId = select.value.slice(4);
+        var sec = SECTIONS.find(function(s){ return s.id === secId; });
+        if (!sec) return;
+        if (S.eventAssignments.some(function(a){ return a.isSection && a.sectionId === secId && a.task === task; })) {
+          toast('Cette tâche est déjà confiée à ce pôle.', 'info'); return;
+        }
+        S.eventAssignments.push({
+          isSection: true,
+          sectionId: sec.id,
+          sectionName: sec.nom,
+          sectionEmoji: sec.emoji,
+          task: task
+        });
+      } else {
         var allU = db(SK.USERS, []);
         var u = allU.find(function(user){ return user.id === select.value; });
-        if (u) {
-          S.eventAssignments = S.eventAssignments || [];
-          S.eventAssignments.push({
-            userId: u.id,
-            userName: u.prenom + ' ' + u.nom,
-            task: taskInput.value.trim()
-          });
-          select.value = '';
-          taskInput.value = '';
-          var container = document.getElementById('eventAssignmentsList');
-          if (container) {
-            container.innerHTML = App.renderAssignmentsList();
-          } else {
-            render();
-          }
+        if (!u) return;
+        // Un responsable de section ne peut assigner que ses propres membres.
+        if (!isGrandResponsable(S.user)) {
+          var allowed = assignableMembers(S.user, allU).some(function(x){ return x.id === u.id; });
+          if (!allowed) { toast('Vous ne pouvez assigner que les membres de votre pôle.', 'error'); return; }
         }
+        var uSecs = getUserSections(u);
+        var mineSecs = assignableSectionIds(S.user);
+        var owningSec = uSecs.find(function(s){ return mineSecs.indexOf(s) !== -1; }) || uSecs[0] || null;
+        S.eventAssignments.push({
+          userId: u.id,
+          userName: u.prenom + ' ' + u.nom,
+          sectionId: owningSec,
+          task: task
+        });
       }
+      select.value = '';
+      taskInput.value = '';
+      var container = document.getElementById('eventAssignmentsList');
+      if (container) container.innerHTML = App.renderAssignmentsList();
+      else render();
     },
     removeAssignment: function(idx) {
-      if (S.eventAssignments) {
-        S.eventAssignments.splice(idx, 1);
-        var container = document.getElementById('eventAssignmentsList');
-        if (container) {
-          container.innerHTML = App.renderAssignmentsList();
-        } else {
-          render();
-        }
+      if (!S.eventAssignments) return;
+      var a = S.eventAssignments[idx];
+      if (!canTouchAssignment(a, S.user, db(SK.USERS, []))) {
+        toast('Cette assignation relève d\'un autre pôle.', 'error');
+        return;
       }
+      S.eventAssignments.splice(idx, 1);
+      var container = document.getElementById('eventAssignmentsList');
+      if (container) container.innerHTML = App.renderAssignmentsList();
+      else render();
     },
+    // ============================================================
+    // GESTION DES ASSIGNATIONS SUR UN ÉVÉNEMENT EXISTANT
+    // ============================================================
+    // Permet à un responsable de section de désigner qui est de service dans SON
+    // pôle sur un événement créé par quelqu'un d'autre (le Grand Responsable en
+    // général), sans lui donner le droit de modifier l'événement lui-même.
+    openAssignManager: function(postId) {
+      var post = db(SK.POSTS, []).find(function(p){ return p.id === postId; });
+      if (!post) { toast('Événement introuvable.', 'error'); return; }
+      if (!canManageEventAssignments(post, S.user)) {
+        toast('Vous n\'avez pas le droit d\'assigner sur cet événement.', 'error');
+        return;
+      }
+      S.optionsOpen = false; S.optionsPost = null; S.postOptionsOpen = false;
+      S.assignManagerId = postId;
+      S.eventAssignments = (post.assignments || []).slice();
+      render();
+    },
+    closeAssignManager: function() {
+      S.assignManagerId = null;
+      S.eventAssignments = [];
+      render();
+    },
+    saveAssignManager: async function(btn) {
+      var postId = S.assignManagerId;
+      if (!postId) return;
+      var posts = db(SK.POSTS, []);
+      var idx = posts.findIndex(function(p){ return p.id === postId; });
+      if (idx === -1) { toast('Événement introuvable.', 'error'); return; }
+      var post = posts[idx];
+      if (!canManageEventAssignments(post, S.user)) {
+        toast('Vous n\'avez pas le droit d\'assigner sur cet événement.', 'error');
+        return;
+      }
+      if (btn) { btn.textContent = 'Enregistrement…'; btn.disabled = true; }
+
+      var allU = db(SK.USERS, []);
+      // Fusion prudente : on ne réécrit QUE les assignations qui relèvent de
+      // l'utilisateur. Celles des autres pôles sont reprises telles quelles, pour
+      // éviter qu'un responsable n'efface le travail d'un autre en enregistrant.
+      var others = (post.assignments || []).filter(function(a){ return !canTouchAssignment(a, S.user, allU); });
+      var mine = (S.eventAssignments || []).filter(function(a){ return canTouchAssignment(a, S.user, allU); });
+      var merged = others.concat(mine);
+
+      var before = (post.assignments || []).map(function(a){ return a.userId || ('sec:'+a.sectionId); });
+      var updated = Object.assign({}, post, { assignments: merged, assignmentsUpdatedAt: Date.now() });
+      posts[idx] = updated;
+      dbSet(SK.POSTS, posts);
+      if (supabase) {
+        try { await supabase.from('kun_com_posts').upsert({ id: updated.id, content: updated }, { onConflict: 'id' }); }
+        catch(e) { console.warn('Update assignations supabase error:', e); }
+      }
+
+      // Prévient les membres nouvellement assignés (et eux seuls).
+      mine.forEach(function(a) {
+        if (a.isSection || !a.userId) return;
+        if (before.indexOf(a.userId) !== -1) return;
+        if (S.user && a.userId === S.user.id) return;
+        sendNotificationToUser(a.userId, {
+          type: 'EVENT_ASSIGNED',
+          title: '🗓️ Service assigné',
+          text: 'Vous êtes de service (' + a.task + ') pour ' + (post.eventTitle || 'un événement'),
+          targetId: post.id
+        });
+      });
+
+      S.assignManagerId = null;
+      S.eventAssignments = [];
+      render();
+      toast('Assignations enregistrées ! ✅', 'success');
+    },
+
     syncCreateEventData: function() {
       var titleEl = document.getElementById('eventTitle');
       var locEl = document.getElementById('eventLocation');
@@ -108,7 +216,10 @@
       render();
       App._refocusPlaceInput();
       try {
-        var url = 'https://nominatim.openstreetmap.org/search?format=json&limit=6&addressdetails=1&q=' + encodeURIComponent(q);
+        // countrycodes=ci : la recherche ne renvoie que des lieux ivoiriens.
+        var url = 'https://nominatim.openstreetmap.org/search?format=json&limit=6&addressdetails=1'
+                + '&countrycodes=' + COUNTRY_CODE
+                + '&q=' + encodeURIComponent(q);
         var res = await fetch(url, { headers: { 'Accept': 'application/json' } });
         if (!res.ok) throw new Error('HTTP ' + res.status);
         var data = await res.json();
@@ -119,8 +230,11 @@
             lat: parseFloat(r.lat),
             lng: parseFloat(r.lon)
           };
-        }).filter(function(r){ return !isNaN(r.lat) && !isNaN(r.lng); });
-        if (S.eventPlaceResults.length === 0) S.eventPlaceError = 'Aucun lieu trouvé. Essayez avec le quartier ou la commune.';
+        }).filter(function(r) {
+          // Double filet : on ne retient que ce qui tombe dans les frontières.
+          return !isNaN(r.lat) && !isNaN(r.lng) && isInIvoryCoast(r.lat, r.lng);
+        });
+        if (S.eventPlaceResults.length === 0) S.eventPlaceError = 'Aucun lieu trouvé en Côte d\'Ivoire. Essayez avec le quartier ou la commune.';
       } catch (e) {
         console.warn('Recherche de lieu :', e);
         S.eventPlaceResults = [];

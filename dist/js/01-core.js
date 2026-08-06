@@ -705,6 +705,8 @@
     // Réponses imbriquées aux commentaires
     replyingToCommentId: null,
     replyingToAuthor: null,
+    // Gestion des assignations sur un événement existant (responsables de pôle)
+    assignManagerId: null,
     // Géolocalisation (arrivées + lieu d'un événement)
     geoCapturing: false,
     // Recherche d'adresse pour situer le lieu d'un événement. Le créateur prépare
@@ -836,6 +838,18 @@
   // publications ordinaires : ce serait exposer le domicile des membres.
   // Une fois attachée, la position ne peut plus être retirée — seule la
   // suppression de la publication la fait disparaître, ce qui se voit.
+  // L'application ne sert qu'en Côte d'Ivoire : une position relevée hors des
+  // frontières du pays est forcément erronée ou falsifiée. On la marque comme
+  // invalide plutôt que de l'accepter en silence.
+  var CI_BOUNDS = { minLat: 4.0, maxLat: 10.8, minLng: -8.70, maxLng: -2.40 };
+  var COUNTRY_CODE = 'ci';
+
+  function isInIvoryCoast(lat, lng) {
+    if (typeof lat !== 'number' || typeof lng !== 'number') return false;
+    return lat >= CI_BOUNDS.minLat && lat <= CI_BOUNDS.maxLat
+        && lng >= CI_BOUNDS.minLng && lng <= CI_BOUNDS.maxLng;
+  }
+
   function capturePosition(timeoutMs) {
     return new Promise(function(resolve) {
       if (!navigator || !navigator.geolocation) {
@@ -853,10 +867,23 @@
         function(pos) {
           if (done) return;
           done = true; clearTimeout(timer);
+          var lat = pos.coords.latitude, lng = pos.coords.longitude;
+          // Hors Côte d'Ivoire : on conserve les coordonnées (elles restent
+          // consultables et parlantes) mais la position n'est pas valable.
+          if (!isInIvoryCoast(lat, lng)) {
+            resolve({
+              available: false,
+              reason: 'outside_country',
+              lat: lat, lng: lng,
+              accuracy: Math.round(pos.coords.accuracy || 0),
+              at: Date.now()
+            });
+            return;
+          }
           resolve({
             available: true,
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude,
+            lat: lat,
+            lng: lng,
             accuracy: Math.round(pos.coords.accuracy || 0),
             at: Date.now()
           });
@@ -909,6 +936,7 @@
     if (geo.available) return 'Position enregistrée';
     if (geo.reason === 'denied') return 'Position refusée par le membre';
     if (geo.reason === 'unsupported') return 'Position non disponible sur cet appareil';
+    if (geo.reason === 'outside_country') return 'Position hors Côte d\'Ivoire';
     return 'Position introuvable';
   }
 
@@ -973,6 +1001,72 @@
       // true = sur place, false = loin, null = impossible à établir
       onSite: dist === null ? null : dist <= ON_SITE_RADIUS_M
     };
+  }
+
+  // ============================================================
+  // ASSIGNATIONS : QUI PEUT ASSIGNER QUOI
+  // ============================================================
+  // - Grand Responsable : assigne n'importe quel membre, et peut confier une tâche
+  //   à un pôle entier (à charge pour son responsable de la répartir).
+  // - Responsable de section : assigne uniquement les membres de son ou ses pôles,
+  //   y compris sur un événement créé par quelqu'un d'autre (typiquement le Grand
+  //   Responsable) — c'est lui qui sait qui est de service dans son équipe.
+  function isGrandResponsable(u) {
+    return !!u && u.role === 'GRAND_RESPONSABLE';
+  }
+  function isSectionResponsable(u) {
+    return !!u && u.role === 'RESP_SECTION';
+  }
+  function canAssign(u) {
+    return isGrandResponsable(u) || isSectionResponsable(u);
+  }
+
+  // Pôles sur lesquels l'utilisateur a autorité pour assigner.
+  // Le Grand Responsable les a tous.
+  function assignableSectionIds(u) {
+    if (isGrandResponsable(u)) return SECTIONS.map(function(s){ return s.id; });
+    if (isSectionResponsable(u)) return getUserSections(u).slice();
+    return [];
+  }
+
+  // Membres que l'utilisateur a le droit d'assigner.
+  function assignableMembers(u, allUsers) {
+    var users = allUsers || db(SK.USERS, []);
+    if (isGrandResponsable(u)) return users.slice();
+    if (!isSectionResponsable(u)) return [];
+    var mine = assignableSectionIds(u);
+    return users.filter(function(x) {
+      return getUserSections(x).some(function(s){ return mine.indexOf(s) !== -1; });
+    });
+  }
+
+  // Peut-il intervenir sur les assignations de cet événement ?
+  // Oui pour le Grand Responsable, oui pour un responsable de section (limité à
+  // ses propres membres), même si l'événement a été créé par un autre.
+  function canManageEventAssignments(post, u) {
+    if (!post || post.type !== 'EVENT') return false;
+    return canAssign(u);
+  }
+
+  // Peut-il modifier l'événement lui-même (titre, date, lieu, pôles) ?
+  // Réservé au Grand Responsable et au créateur.
+  function canEditEvent(post, u) {
+    if (!post || !u) return false;
+    return isGrandResponsable(u) || post.userId === u.id;
+  }
+
+  // Cette assignation relève-t-elle de l'autorité de l'utilisateur ?
+  // Sert à empêcher un responsable de retirer les membres d'un autre pôle.
+  function canTouchAssignment(a, u, allUsers) {
+    if (isGrandResponsable(u)) return true;
+    if (!isSectionResponsable(u) || !a) return false;
+    var mine = assignableSectionIds(u);
+    if (a.isSection) return mine.indexOf(a.sectionId) !== -1;
+    if (a.sectionId) return mine.indexOf(a.sectionId) !== -1;
+    var users = allUsers || db(SK.USERS, []);
+    var target = users.find(function(x){ return x.id === a.userId; });
+    if (!target) return false;
+    return getUserSections(target).some(function(s){ return mine.indexOf(s) !== -1; });
   }
 
   // Historique de ponctualité d'un membre sur une période : tous les événements

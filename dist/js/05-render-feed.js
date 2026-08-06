@@ -159,6 +159,7 @@
     if (S.adminGateOpen) modals += renderAdminGateModal();
     if (S.storageStatsOpen) modals += renderStorageStatsModal();
     if (S.dmOpen) modals += renderDirectMessageModal();
+    if (S.assignManagerId) modals += renderAssignManagerModal();
 
     return '<div style="position:relative;width:100%;height:100%;display:flex;flex-direction:column;background:#F2F2F7;font-family:-apple-system,BlinkMacSystemFont,\'SF Pro Text\',sans-serif;">' +
       '<div id="mainContent" style="flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;padding-bottom:70px;">' + content + '</div>' +
@@ -961,6 +962,51 @@
   // Sert à la fois à créer et à modifier un événement (S.editEventId non nul).
   // La modification d'un événement n'utilise donc PLUS l'éditeur de publication
   // générique : elle réutilise ce formulaire, avec les mêmes champs métier.
+  // Options du sélecteur d'assignation, groupées par pôle.
+  // Le Grand Responsable voit tout le monde + une entrée « pôle entier » par
+  // section ; un responsable de section ne voit que ses propres membres.
+  function renderAssignSelectOptions(u) {
+    var allU = db(SK.USERS, []);
+    var members = assignableMembers(u, allU);
+    var secIds = assignableSectionIds(u);
+    var out = '';
+
+    if (isGrandResponsable(u)) {
+      out += '<optgroup label="Confier à un pôle entier">' +
+        SECTIONS.map(function(s) {
+          return '<option value="sec:' + s.id + '">' + s.emoji + ' Pôle ' + safeHtml(s.nom) + '</option>';
+        }).join('') +
+      '</optgroup>';
+    }
+
+    var placed = {};
+    secIds.forEach(function(secId) {
+      var sec = SECTIONS.find(function(s){ return s.id === secId; });
+      if (!sec) return;
+      var inSec = members.filter(function(m){ return getUserSections(m).indexOf(secId) !== -1; });
+      if (inSec.length === 0) return;
+      out += '<optgroup label="' + sec.emoji + ' ' + safeHtml(sec.nom) + '">' +
+        inSec.map(function(m) {
+          placed[m.id] = true;
+          return '<option value="' + m.id + '">' + safeHtml((m.prenom||'') + ' ' + (m.nom||'')) + '</option>';
+        }).join('') +
+      '</optgroup>';
+    });
+
+    // Membres sans pôle reconnu (uniquement visibles du Grand Responsable).
+    var orphans = members.filter(function(m){ return !placed[m.id]; });
+    if (orphans.length > 0) {
+      out += '<optgroup label="Sans pôle">' +
+        orphans.map(function(m) {
+          return '<option value="' + m.id + '">' + safeHtml((m.prenom||'') + ' ' + (m.nom||'')) + '</option>';
+        }).join('') +
+      '</optgroup>';
+    }
+
+    if (!out) out = '<option value="" disabled>Aucun membre dans votre pôle</option>';
+    return out;
+  }
+
   function renderCreateEventModal() {
     var today = new Date().toISOString().split('T')[0];
     var cData = S.createEventData || {};
@@ -1029,6 +1075,7 @@
                     '<div style="display:flex;align-items:center;gap:8px;background:#F6F7F9;border-radius:12px;padding:0 12px;height:44px;">' +
                       '<span style="font-size:15px;">🔎</span>' +
                       '<input type="text" id="eventPlaceInput" value="' + safeHtml(S.eventPlaceQuery || '') + '" oninput="App.onEventPlaceInput(this.value)" placeholder="Ex : Église Vase d\'Honneur, Cocody" style="flex:1;border:none;background:transparent;font-size:14px;color:#000;outline:none;min-width:0;" />' +
+                      '<span style="font-size:10px;font-weight:800;color:#8E8E93;background:#EDEEF1;padding:2px 7px;border-radius:6px;flex-shrink:0;">🇨🇮 CI</span>' +
                       (S.eventPlaceSearching
                         ? '<div style="width:15px;height:15px;border:2.5px solid #E2E4E9;border-top-color:#007AFF;border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0;"></div>'
                         : '') +
@@ -1077,14 +1124,19 @@
           '<textarea id="eventDesc" placeholder="Ajoutez un briefing ou des notes pour les équipes..." style="width:100%;border:none;font-size:15px;outline:none;resize:none;font-family:inherit;min-height:80px;background:#F8F8F8;padding:12px;border-radius:12px;box-sizing:border-box;">' + safeHtml(descVal) + '</textarea>' +
         '</div>' +
         
-        ((S.user && (S.user.role === 'RESP_SECTION' || S.user.role === 'GRAND_RESPONSABLE')) ? 
+        (canAssign(S.user) ?
         '<div style="background:#FFF;border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px;">' +
-          '<label style="font-size:14px;font-weight:700;color:#000;display:block;margin-bottom:12px;">Assignations (Équipe)</label>' +
-'<div id="eventAssignmentsList">' + App.renderAssignmentsList() + '</div>' +
+          '<label style="font-size:14px;font-weight:700;color:#000;display:block;margin-bottom:4px;">Assignations (Équipe)</label>' +
+          '<div style="font-size:11.5px;color:#8E8E93;margin-bottom:12px;line-height:1.4;">' +
+            (isGrandResponsable(S.user)
+              ? 'Vous pouvez confier une tâche à un membre précis ou à un pôle entier — son responsable la répartira ensuite.'
+              : 'Vous assignez les membres de votre pôle. Les autres responsables complètent pour le leur.') +
+          '</div>' +
+          '<div id="eventAssignmentsList">' + App.renderAssignmentsList() + '</div>' +
           '<div style="display:flex;flex-direction:column;gap:8px;border-top:1px solid #E5E5EA;padding-top:12px;">' +
             '<select id="assignUserSelect" style="width:100%;padding:10px;border-radius:8px;border:1px solid #E5E5EA;font-size:14px;outline:none;background:#F8F8F8;">' +
-              '<option value="">Sélectionner un membre...</option>' +
-              db(SK.USERS, []).map(function(u) { return '<option value="' + u.id + '">' + safeHtml(u.prenom + ' ' + u.nom) + '</option>'; }).join('') +
+              '<option value="">Sélectionner un membre…</option>' +
+              renderAssignSelectOptions(S.user) +
             '</select>' +
             '<div style="display:flex;gap:8px;">' +
               '<input type="text" id="assignTaskInput" placeholder="Tâche..." style="flex:1;padding:10px;border-radius:8px;border:1px solid #E5E5EA;font-size:14px;outline:none;background:#F8F8F8;" />' +

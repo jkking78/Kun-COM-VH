@@ -10,6 +10,9 @@
     var u = S.user || {};
     var canDelete = u.role === 'GRAND_RESPONSABLE' || post.userId === u.id;
     var isEventPost = post.type === 'EVENT' && !!post.eventTitle;
+    // Un responsable de pôle peut assigner son équipe sur un événement créé par
+    // quelqu'un d'autre, sans pour autant pouvoir modifier l'événement.
+    var canAssignHere = isEventPost && canManageEventAssignments(post, u);
 
     return '<div onclick="App.closeOptions()" style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:10000;display:flex;justify-content:center;align-items:flex-end;">' +
       '<div onclick="event.stopPropagation()" style="width:100%;max-width:460px;background:#FFF;border-top-left-radius:28px;border-top-right-radius:28px;padding:12px 16px 24px;animation:slideUp 0.25s;">' +
@@ -31,6 +34,13 @@
           SVG.bookmark(S.savedPosts[post.id]) +
           '<span style="font-size:15px;font-weight:600;color:#000;">' + (S.savedPosts[post.id] ? 'Retirer des favoris' : 'Enregistrer') + '</span>' +
         '</button>' +
+
+        (canAssignHere
+          ? '<button onclick="App.openAssignManager(\''+post.id+'\')" style="width:100%;background:#F0EFFF;border:1px solid #E2E0FF;border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;margin-bottom:10px;text-align:left;">' +
+              '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#5856D6" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>' +
+              '<span style="font-size:15px;font-weight:700;color:#5856D6;">👥 Assigner mon équipe</span>' +
+            '</button>'
+          : '') +
 
         (canDelete
           // Un événement s'édite avec le formulaire événement (date, horaires, lieu,
@@ -170,6 +180,56 @@
           replies.map(function(r){ return renderCommentItem(r, true); }).join('') +
         '</div>';
     }).join('');
+  }
+
+  // ============================================================
+  // GESTION DES ASSIGNATIONS D'UN ÉVÉNEMENT EXISTANT
+  // ============================================================
+  // Écran restreint : on n'y touche QUE les assignations, pas l'événement.
+  // C'est ce qui permet au responsable d'un pôle de désigner qui est de service
+  // dans son équipe sur un événement créé par le Grand Responsable.
+  function renderAssignManagerModal() {
+    var post = db(SK.POSTS, []).find(function(p){ return p.id === S.assignManagerId; });
+    if (!post) return '';
+    var u = S.user || {};
+    var evDate = post.eventDate ? new Date(post.eventDate + 'T00:00:00').toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long'}) : '';
+
+    return '<div style="position:fixed;inset:0;background:#FFF;z-index:10001;display:flex;flex-direction:column;animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
+      '<header style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #E5E5EA;">' +
+        '<button onclick="App.closeAssignManager()" style="background:none;border:none;font-size:16px;color:#000;cursor:pointer;">Annuler</button>' +
+        '<div style="font-weight:700;font-size:16px;">Assignations</div>' +
+        '<button onclick="App.saveAssignManager(this)" style="background:none;border:none;font-size:16px;font-weight:700;color:#007AFF;cursor:pointer;">Enregistrer</button>' +
+      '</header>' +
+      '<div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px;background:#F2F2F7;">' +
+
+        '<div style="background:#F0EFFF;border:1px solid #E2E0FF;border-radius:16px;padding:14px;margin-bottom:16px;">' +
+          '<div style="font-size:10px;font-weight:800;color:#5856D6;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px;">Événement</div>' +
+          '<div style="font-size:15px;font-weight:800;color:#1C1C1E;">' + safeHtml(post.eventTitle || 'Événement') + '</div>' +
+          '<div style="font-size:12.5px;color:#6B7280;margin-top:2px;">' + safeHtml(evDate) + (post.eventStart ? ' · ' + safeHtml(post.eventStart) : '') + (post.eventLocation ? ' · ' + safeHtml(post.eventLocation) : '') + '</div>' +
+        '</div>' +
+
+        '<div style="background:#FFF;border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);">' +
+          '<label style="font-size:14px;font-weight:700;color:#000;display:block;margin-bottom:4px;">Qui est de service ?</label>' +
+          '<div style="font-size:11.5px;color:#8E8E93;margin-bottom:12px;line-height:1.4;">' +
+            (isGrandResponsable(u)
+              ? 'Vous pouvez assigner n\'importe quel membre ou confier une tâche à un pôle entier.'
+              : 'Vous gérez les membres de votre pôle. Les assignations des autres pôles sont verrouillées (🔒) et resteront intactes.') +
+          '</div>' +
+          '<div id="eventAssignmentsList">' + App.renderAssignmentsList() + '</div>' +
+          '<div style="display:flex;flex-direction:column;gap:8px;border-top:1px solid #E5E5EA;padding-top:12px;">' +
+            '<select id="assignUserSelect" style="width:100%;padding:10px;border-radius:8px;border:1px solid #E5E5EA;font-size:14px;outline:none;background:#F8F8F8;">' +
+              '<option value="">Sélectionner un membre…</option>' +
+              renderAssignSelectOptions(u) +
+            '</select>' +
+            '<div style="display:flex;gap:8px;">' +
+              '<input type="text" id="assignTaskInput" placeholder="Tâche..." style="flex:1;padding:10px;border-radius:8px;border:1px solid #E5E5EA;font-size:14px;outline:none;background:#F8F8F8;" />' +
+              '<button onclick="App.addAssignment()" style="background:#007AFF;color:#FFF;border:none;border-radius:8px;padding:0 16px;font-weight:700;cursor:pointer;">Ajouter</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div style="height:40px;"></div>' +
+      '</div>' +
+    '</div>';
   }
 
   // ============================================================
