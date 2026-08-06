@@ -1003,7 +1003,9 @@
         (isMe ? '<button onclick="App.openEditProfile()" style="background:rgba(255,255,255,0.15);border:none;width:36px;height:36px;border-radius:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
           '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>' +
         '</button>' : '') +
-        '<button style="background:rgba(255,255,255,0.15);border:none;width:36px;height:36px;border-radius:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
+        // Ouvre l'annuaire des membres (avec champ de recherche) : le bouton
+        // n'était relié à rien jusqu'ici.
+        '<button onclick="App.openMembersList()" title="Rechercher un membre" style="background:rgba(255,255,255,0.15);border:none;width:36px;height:36px;border-radius:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
           '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>' +
         '</button>' +
       '</div>' +

@@ -733,6 +733,41 @@ toggleParticipation: function(postId, status) {
       }
     },
 
+    // Détail d'une métrique RH (fenêtre encore présente dans le code, sa fermeture
+    // n'était reliée à rien : le panneau serait resté bloqué à l'écran).
+    openRhDetailsModal: function(metric, userId) { S.rhMetricModal = metric; S.rhMetricUserId = userId || null; render(); },
+    closeRhDetailsModal: function() { S.rhMetricModal = null; S.rhMetricUserId = null; render(); },
+
+    // Participation à un événement depuis le Planning. La liste des participants
+    // est stockée dans ev.likedBy (c'est elle qu'affiche le compteur de la fiche).
+    toggleEventParticipation: function(eventId) {
+      if (!S.user) { toast('Vous devez être connecté.', 'error'); return; }
+      var posts = db(SK.POSTS, []);
+      var ev = posts.find(function(p){ return p.id === eventId && p.type === 'EVENT'; });
+      if (!ev) { toast('Événement introuvable.', 'error'); return; }
+      if (!Array.isArray(ev.likedBy)) ev.likedBy = [];
+      var idx = ev.likedBy.indexOf(S.user.id);
+      var joining;
+      if (idx === -1) { ev.likedBy.push(S.user.id); joining = true; }
+      else { ev.likedBy.splice(idx, 1); joining = false; }
+      dbSet(SK.POSTS, posts);
+      if (supabase) {
+        supabase.from('kun_com_posts').upsert({ id: ev.id, content: ev }, { onConflict: 'id' })
+          .then(function(){}, function(e){ console.warn('Participation :', e); });
+      }
+      // Prévient l'organisateur, sauf s'il s'agit de lui-même.
+      if (joining && ev.userId && ev.userId !== S.user.id) {
+        sendNotificationToUser(ev.userId, {
+          type: 'EVENT_PARTICIPATION',
+          title: '👍 Nouvelle participation',
+          text: (S.user.prenom || 'Quelqu\'un') + ' participera à « ' + (ev.eventTitle || 'votre événement') + ' ».',
+          targetId: ev.id
+        });
+      }
+      render();
+      toast(joining ? 'Participation confirmée ! 👍' : 'Participation retirée.', joining ? 'success' : 'info');
+    },
+
     openUserProfile: async function(userId) {
       if (!userId) return;
       if (S.user && userId === S.user.id) {
