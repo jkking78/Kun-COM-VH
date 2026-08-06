@@ -719,10 +719,21 @@
   }
 
   // Génère une image d'aperçu (poster) à partir d'une vidéo, en capturant une image
-  // à un instant proche du début. Utilisé pour éviter l'écran noir avant lecture.
-  function generateVideoPoster(videoDataUrl, callback) {
-    if (!videoDataUrl) { callback(null); return; }
+  // à un instant proche du début — évite l'écran noir avant lecture (façon Facebook/Instagram).
+  // `source` peut être un File/Blob (fortement recommandé : bien plus rapide et fiable
+  // sur mobile qu'un data:URL de plusieurs dizaines de Mo) ou un data:URL.
+  function generateVideoPoster(source, callback) {
+    if (!source) { callback(null); return; }
+    var objUrl = null;
     try {
+      var src;
+      if (typeof source === 'string') {
+        src = source;
+      } else {
+        objUrl = URL.createObjectURL(source);
+        src = objUrl;
+      }
+
       var v = document.createElement('video');
       v.muted = true;
       v.defaultMuted = true;
@@ -730,6 +741,7 @@
       v.setAttribute('muted', '');
       v.setAttribute('playsinline', '');
       v.setAttribute('webkit-playsinline', '');
+      v.setAttribute('crossorigin', 'anonymous');
       v.preload = 'auto';
       // Safari/iOS ne charge et ne décode pas de façon fiable un <video> qui n'est pas
       // attaché au DOM : on l'insère donc hors écran (invisible) le temps de la capture.
@@ -738,41 +750,93 @@
 
       var done = false;
       var captured = false;
+      var timer = null;
       function cleanupEl() {
+        if (timer) { clearTimeout(timer); timer = null; }
         try { v.pause(); } catch(e){}
         try { v.removeAttribute('src'); v.load(); } catch(e){}
         try { if (v.parentNode) v.parentNode.removeChild(v); } catch(e){}
+        if (objUrl) { try { URL.revokeObjectURL(objUrl); } catch(e){} objUrl = null; }
       }
       function finish(poster) { if (done) return; done = true; cleanupEl(); callback(poster); }
       function capture() {
-        if (captured) return;
+        if (captured || done) return;
+        var w = v.videoWidth, h = v.videoHeight;
+        if (!w || !h) return; // Dimensions pas encore connues : on retentera.
         try {
-          var w = v.videoWidth || 320, h = v.videoHeight || 320;
           var c = document.createElement('canvas');
           c.width = w; c.height = h;
           var ctx = c.getContext('2d');
           ctx.drawImage(v, 0, 0, w, h);
+          var dataUrl = c.toDataURL('image/jpeg', 0.72);
+          // Un canvas vide produit une image très courte : on la rejette pour ne pas
+          // enregistrer une vignette noire/transparente inutile.
+          if (!dataUrl || dataUrl.length < 1200) return;
           captured = true;
-          finish(c.toDataURL('image/jpeg', 0.72));
+          finish(dataUrl);
         } catch (e) { finish(null); }
       }
       function trySeek() {
         try {
-          var t = Math.min(0.2, (v.duration || 1) / 4);
-          if (t > 0 && isFinite(t)) { v.currentTime = t; } else { capture(); }
+          var d = v.duration;
+          var t = (isFinite(d) && d > 0) ? Math.min(0.15, d / 10) : 0.1;
+          if (v.currentTime < t) { v.currentTime = t; } else { capture(); }
         } catch (e) { capture(); }
       }
-      v.onloadeddata = trySeek;
-      v.onloadedmetadata = function() { if (!captured) trySeek(); };
+      v.onloadedmetadata = trySeek;
+      v.onloadeddata = function() { if (!captured) { capture(); trySeek(); } };
       v.onseeked = capture;
-      // Filet de sécurité : certains navigateurs mobiles ne déclenchent jamais 'seeked'
-      // pour une très courte vidéo — on capture dès qu'une image est disponible.
-      v.oncanplay = function() { if (!captured) capture(); };
+      v.oncanplay = capture;
+      v.oncanplaythrough = capture;
       v.ontimeupdate = function() { if (!captured && v.currentTime > 0) capture(); };
       v.onerror = function() { finish(null); };
+
+      // Filet de sécurité iOS : certains navigateurs ne décodent une image qu'une fois
+      // la lecture réellement démarrée. On lance une lecture muette très brève.
+      setTimeout(function() {
+        if (captured || done) return;
+        try {
+          var pr = v.play();
+          if (pr && pr.then) {
+            pr.then(function() {
+              setTimeout(function() { capture(); try { v.pause(); } catch(e){} }, 240);
+            }, function() {});
+          }
+        } catch(e){}
+      }, 700);
+
       try { v.load(); } catch(e){}
-      setTimeout(function() { finish(null); }, 4000);
-    } catch (e) { callback(null); }
+      timer = setTimeout(function() { finish(null); }, 10000);
+    } catch (e) {
+      if (objUrl) { try { URL.revokeObjectURL(objUrl); } catch(e2){} }
+      callback(null);
+    }
+  }
+
+  // Génère a posteriori la vignette des publications vidéo qui n'en ont pas
+  // (publiées avant ce correctif, ou dont la génération avait échoué), puis
+  // l'enregistre en local et sur Supabase pour ne le faire qu'une seule fois.
+  var _posterBackfillTried = {};
+  function backfillVideoPoster(post) {
+    if (!post || post.videoPoster) return;
+    if (_posterBackfillTried[post.id]) return;
+    var vidUrl = (post.mediaUrls || []).find(function(m){ return isVideoUrl(m); });
+    if (!vidUrl) return;
+    _posterBackfillTried[post.id] = true;
+    generateVideoPoster(vidUrl, function(poster) {
+      if (!poster) return;
+      var posts = db(SK.POSTS, []);
+      var target = posts.find(function(p){ return p.id === post.id; });
+      if (!target || target.videoPoster) return;
+      target.videoPoster = poster;
+      dbSet(SK.POSTS, posts);
+      if (supabase) {
+        try {
+          supabase.from('kun_com_posts').upsert({ id: target.id, content: target }, { onConflict: 'id' }).then(function(){}, function(){});
+        } catch(e){}
+      }
+      render();
+    });
   }
 
     function getUserSections(u) {
@@ -1534,6 +1598,9 @@
     var iLiked = userIsLiked(post);
     var iSaved = !!S.savedPosts[post.id];
     var hasMedia = post.mediaUrls && post.mediaUrls.length > 0;
+    // Rattrapage : publications vidéo déjà en ligne sans vignette (générée trop tôt
+    // ou échouée sur mobile). On la fabrique une fois puis on l'enregistre.
+    backfillVideoPoster(post);
     var curIdx = S.carouselIdx[post.id] || 0;
     var expanded = !!S.expandedCaptions[post.id];
     var ago = timeAgo(post.timestamp);
@@ -1573,7 +1640,9 @@
         '<div id="car-'+post.id+'" onscroll="App.carScroll(\''+post.id+'\',this)" ondblclick="App.doubleTapLike(\''+post.id+'\')" style="display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;aspect-ratio:1/1;scrollbar-width:none;">' +
           post.mediaUrls.map(function(url) {
             var mediaTag = isVideoUrl(url)
-              ? '<video src="'+url+'"' + (post.videoPoster ? ' poster="'+post.videoPoster+'"' : '') + ' controls playsinline preload="metadata" style="width:100%;height:100%;object-fit:cover;display:block;aspect-ratio:1/1;background:#000;"></video>'
+              // preload="auto" + onloadeddata : si aucune vignette n'a pu être générée,
+              // on force le navigateur à afficher la première image plutôt qu'un écran noir.
+              ? '<video src="'+url+'"' + (post.videoPoster ? ' poster="'+post.videoPoster+'"' : '') + ' controls playsinline preload="auto" onloadeddata="App.primeVideoFrame(this)" style="width:100%;height:100%;object-fit:cover;display:block;aspect-ratio:1/1;background:#000;"></video>'
               : '<img src="'+url+'" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;aspect-ratio:1/1;"/>';
             return '<div style="flex:0 0 100%;scroll-snap-align:start;">'+mediaTag+'</div>';
           }).join('') +
@@ -2031,27 +2100,7 @@
       schedTimeVal = d.toTimeString().split(' ')[0].slice(0, 5);
     }
 
-    var previewHtml = '';
-    if (S.videoProcessing) {
-      // Reste affiché tant que la vidéo n'est pas prête (poster généré) — remplace le
-      // toast, trop court pour un traitement pouvant prendre plusieurs secondes.
-      previewHtml = '<div style="display:flex;align-items:center;gap:10px;background:#F6F7F9;border-radius:16px;padding:14px;margin-bottom:12px;">' +
-        '<div style="width:20px;height:20px;border:3px solid #E2E4E9;border-top-color:#007AFF;border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0;"></div>' +
-        '<span style="font-size:12.5px;font-weight:700;color:#3A3A3C;">' + (S.reduceVideoQuality ? 'Traitement de la vidéo (réduction de qualité)…' : 'Traitement de la vidéo…') + '</span>' +
-      '</div>';
-    } else if (S.pendingMedia.length > 0) {
-      previewHtml = '<div style="display:flex;gap:8px;overflow-x:auto;margin-bottom:12px;padding-bottom:4px;">' +
-        S.pendingMedia.map(function(url, i) {
-          var isVid = isVideoUrl(url);
-          return '<div style="position:relative;flex-shrink:0;width:72px;height:72px;border-radius:12px;overflow:hidden;border:2px solid #E5E5EA;background:#000;">' +
-            (isVid
-              ? '<video src="'+url+'"' + (S.pendingVideoPoster ? ' poster="'+S.pendingVideoPoster+'"' : '') + ' muted style="width:100%;height:100%;object-fit:cover;"></video><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;"><svg width="22" height="22" viewBox="0 0 24 24" fill="rgba(255,255,255,0.9)"><path d="M8 5v14l11-7z"/></svg></div>'
-              : '<img src="'+url+'" style="width:100%;height:100%;object-fit:cover;">') +
-            '<button type="button" onclick="App.removeMedia('+i+')" style="position:absolute;top:3px;right:3px;background:rgba(0,0,0,0.7);border:none;border-radius:8px;width:18px;height:18px;color:#FFF;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:900;">×</button>' +
-          '</div>';
-        }).join('') +
-      '</div>';
-    }
+    var previewHtml = renderComposerMediaPreview();
 
     var hashHtml = '<div id="hashSugg" style="display:none;flex-wrap:wrap;gap:6px;background:#F0F6FF;border:1px solid #CCDEFF;border-radius:14px;padding:10px;margin-bottom:12px;">' +
       '<div style="font-size:11px;font-weight:800;color:#007AFF;width:100%;margin-bottom:4px;">Hashtags suggérés :</div>' +
@@ -2327,28 +2376,41 @@
     '</div>';
   }
 
-  function renderCreateModal(u) {
-    var previewHtml = '';
+  // Aperçu des médias en cours de composition (création ET modification).
+  // Une vidéo s'affiche en grand avec ses contrôles natifs pour pouvoir être relue
+  // avant publication (comme Facebook/Instagram) ; les photos restent en vignettes.
+  function renderComposerMediaPreview() {
     if (S.videoProcessing) {
-      // Reste affiché tant que la vidéo n'est pas prête (poster généré) — remplace le
+      // Reste affiché tant que la vidéo n'est pas prête (vignette générée) — remplace le
       // toast, trop court pour un traitement pouvant prendre plusieurs secondes.
-      previewHtml = '<div style="display:flex;align-items:center;gap:10px;background:#F6F7F9;border-radius:16px;padding:14px;margin-bottom:12px;">' +
+      return '<div style="display:flex;align-items:center;gap:10px;background:#F6F7F9;border-radius:16px;padding:14px;margin-bottom:12px;">' +
         '<div style="width:20px;height:20px;border:3px solid #E2E4E9;border-top-color:#007AFF;border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0;"></div>' +
         '<span style="font-size:12.5px;font-weight:700;color:#3A3A3C;">' + (S.reduceVideoQuality ? 'Traitement de la vidéo (réduction de qualité)…' : 'Traitement de la vidéo…') + '</span>' +
       '</div>';
-    } else if (S.pendingMedia.length > 0) {
-      previewHtml = '<div style="display:flex;gap:8px;overflow-x:auto;margin-bottom:12px;padding-bottom:4px;">' +
-        S.pendingMedia.map(function(url, i) {
-          var isVid = isVideoUrl(url);
-          return '<div style="position:relative;flex-shrink:0;width:72px;height:72px;border-radius:12px;overflow:hidden;border:2px solid #E5E5EA;background:#000;">' +
-            (isVid
-              ? '<video src="'+url+'"' + (S.pendingVideoPoster ? ' poster="'+S.pendingVideoPoster+'"' : '') + ' muted style="width:100%;height:100%;object-fit:cover;"></video><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;"><svg width="22" height="22" viewBox="0 0 24 24" fill="rgba(255,255,255,0.9)"><path d="M8 5v14l11-7z"/></svg></div>'
-              : '<img src="'+url+'" style="width:100%;height:100%;object-fit:cover;">') +
-            '<button type="button" onclick="App.removeMedia('+i+')" style="position:absolute;top:3px;right:3px;background:rgba(0,0,0,0.7);border:none;border-radius:8px;width:18px;height:18px;color:#FFF;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:900;">×</button>' +
-          '</div>';
-        }).join('') +
+    }
+    if (S.pendingMedia.length === 0) return '';
+
+    var videoUrl = S.pendingMedia.find(function(m){ return isVideoUrl(m); });
+    if (videoUrl) {
+      return '<div style="position:relative;margin-bottom:12px;border-radius:18px;overflow:hidden;background:#000;">' +
+        '<video src="' + videoUrl + '"' + (S.pendingVideoPoster ? ' poster="' + S.pendingVideoPoster + '"' : '') +
+          ' controls playsinline preload="metadata" style="width:100%;max-height:300px;display:block;background:#000;"></video>' +
+        '<button type="button" onclick="App.removeMedia(0)" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.65);border:none;border-radius:14px;width:28px;height:28px;color:#FFF;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:900;z-index:2;">×</button>' +
       '</div>';
     }
+
+    return '<div style="display:flex;gap:8px;overflow-x:auto;margin-bottom:12px;padding-bottom:4px;">' +
+      S.pendingMedia.map(function(url, i) {
+        return '<div style="position:relative;flex-shrink:0;width:72px;height:72px;border-radius:12px;overflow:hidden;border:2px solid #E5E5EA;background:#000;">' +
+          '<img src="'+url+'" style="width:100%;height:100%;object-fit:cover;">' +
+          '<button type="button" onclick="App.removeMedia('+i+')" style="position:absolute;top:3px;right:3px;background:rgba(0,0,0,0.7);border:none;border-radius:8px;width:18px;height:18px;color:#FFF;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:900;">×</button>' +
+        '</div>';
+      }).join('') +
+    '</div>';
+  }
+
+  function renderCreateModal(u) {
+    var previewHtml = renderComposerMediaPreview();
 
     var hashHtml = '<div id="hashSugg" style="display:none;flex-wrap:wrap;gap:6px;background:#F0F6FF;border:1px solid #CCDEFF;border-radius:14px;padding:10px;margin-bottom:12px;">' +
       '<div style="font-size:11px;font-weight:800;color:#007AFF;width:100%;margin-bottom:4px;">Hashtags suggérés :</div>' +
@@ -4422,6 +4484,21 @@ toggleParticipation: function(postId, status) {
       render();
       toast('Publication partagée sur votre mur ! 🔄', 'success');
     },
+    // Force l'affichage de la première image d'une vidéo sans vignette (poster).
+    // Sans cela, un <video> non lu reste noir sur mobile. On avance très légèrement
+    // la tête de lecture, ce qui oblige le navigateur à décoder et peindre une image.
+    primeVideoFrame: function(el) {
+      try {
+        if (!el || el.getAttribute('poster')) return;
+        if (el.dataset && el.dataset.framePrimed === '1') return;
+        if (el.dataset) el.dataset.framePrimed = '1';
+        if (el.currentTime < 0.1) {
+          var d = el.duration;
+          el.currentTime = (isFinite(d) && d > 0) ? Math.min(0.1, d / 10) : 0.1;
+        }
+      } catch(e){}
+    },
+
     // Construit le lien public d'une publication (page de prévisualisation avec
     // miniature Open Graph, via la fonction serverless /api/p/:id), utilisable
     // en dehors de l'appli (WhatsApp, SMS, etc.).
@@ -4672,9 +4749,11 @@ toggleParticipation: function(postId, status) {
         var finishVideo = function(dataUrl) {
           if (!dataUrl) { S.videoProcessing = false; toast('Impossible de traiter cette vidéo.', 'error'); render(); return; }
           S.pendingMedia.push(dataUrl);
-          // Le message de traitement reste affiché tant que la vidéo n'est pas
-          // effectivement visible dans le bloc vidéo (poster généré).
-          generateVideoPoster(dataUrl, function(poster) {
+          // La vignette est générée à partir du FICHIER d'origine (Blob) et non du
+          // data:URL : décoder plusieurs dizaines de Mo de base64 dans un <video>
+          // échoue souvent sur mobile, ce qui donnait un aperçu noir.
+          // Le message de traitement reste affiché jusqu'à ce que la vidéo soit prête.
+          generateVideoPoster(videoFile, function(poster) {
             S.pendingVideoPoster = poster;
             S.videoProcessing = false;
             render();
