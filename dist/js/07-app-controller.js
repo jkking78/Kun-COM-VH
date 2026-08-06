@@ -761,7 +761,6 @@ toggleParticipation: function(postId, status) {
       var a1 = ((document.getElementById('signupA1')||{}).value||'').trim().toLowerCase();
       var q2 = ((document.getElementById('signupQ2')||{}).value||'');
       var a2 = ((document.getElementById('signupA2')||{}).value||'').trim().toLowerCase();
-      var autreVal = ((document.getElementById('signupAutre')||{}).value||'').trim();
       if (!prenom||!nom||!email||!pwd||!a1||!a2) { toast('Veuillez remplir tous les champs et questions de sécurité.', 'error'); return; }
       if (S.signupSections.length === 0) { toast('Veuillez choisir au moins 1 section.', 'error'); return; }
 
@@ -770,8 +769,9 @@ toggleParticipation: function(postId, status) {
         toast('Un compte existe déjà avec cet e-mail.', 'error'); return;
       }
       var userSecs = S.signupSections.length > 0 ? S.signupSections.slice() : ['cadrage'];
-      // Le champ "Autre" n'est jamais obligatoire : seul le code exact "Admin78" a un effet (accès Grand Responsable).
-      var finalRole = (autreVal.toUpperCase() === 'ADMIN78') ? 'GRAND_RESPONSABLE' : (S.signupRole === 'RESP_SECTION' ? 'RESP_SECTION' : 'MEMBRE');
+      // L'accès Grand Responsable ne se donne plus à l'inscription (champ "Autre"
+      // retiré) — il se fait désormais depuis le profil, panneau Administration.
+      var finalRole = (S.signupRole === 'RESP_SECTION' ? 'RESP_SECTION' : 'MEMBRE');
       var hashedPwd = await hashPassword(pwd);
       var newUser = { id:'u'+Date.now(), prenom:prenom, nom:nom, email:email, sections: userSecs, section_id: userSecs[0], role: finalRole, is_online:true, last_seen_at:new Date().toISOString(), last_action:'Inscription', avatar_color: ['#007AFF','#FF2D55','#34C759','#FF9500','#5856D6','#AF52DE'][Math.floor(Math.random()*6)], pwd: hashedPwd, sec_q1: q1, sec_a1: a1, sec_q2: q2, sec_a2: a2 };
       users.push(newUser); dbSet(SK.USERS, users);
@@ -944,20 +944,49 @@ toggleParticipation: function(postId, status) {
     },
     closeAdminGate: function() { S.adminGateOpen = false; render(); },
     onAdminCodeInput: function(val) { S.adminCodeInput = val; S.adminCodeError = false; },
+    // Ce même champ gère deux codes distincts, historiquement séparés (le code
+    // stockage AZ7887 et l'ancien code "Admin78" du champ "Autre" à l'inscription,
+    // désormais retiré du formulaire) :
+    // - AZ7887 ouvre le panneau de statistiques de stockage
+    // - Admin78 promeut le compte actuellement connecté au rôle Grand Responsable
     submitAdminCode: function(e) {
       e && e.preventDefault();
-      var v = (S.adminCodeInput || '').trim();
-      if (v.toUpperCase() === ADMIN_ACCESS_CODE) {
+      var v = (S.adminCodeInput || '').trim().toUpperCase();
+      if (v === ADMIN_ACCESS_CODE) {
         S.adminUnlocked = true;
         S.adminGateOpen = false;
         try { localStorage.setItem('kc_admin_unlocked', '1'); } catch(err) {}
         render();
         App.openStorageStats();
+      } else if (v === GRAND_RESPONSABLE_CODE) {
+        App.grantGrandResponsable();
       } else {
         S.adminCodeError = true;
         render();
         setTimeout(function(){ var i = document.getElementById('adminCodeInput'); if (i) i.focus(); }, 120);
       }
+    },
+    // Promeut le compte connecté au rôle Grand Responsable (accès complet : création
+    // de publications, suppression de n'importe quelle publication, etc.).
+    grantGrandResponsable: function() {
+      if (!S.user) { S.adminCodeError = true; render(); return; }
+      if (S.user.role === 'GRAND_RESPONSABLE') {
+        S.adminGateOpen = false;
+        render();
+        toast('Ce compte est déjà Grand Responsable.', 'info');
+        return;
+      }
+      S.user.role = 'GRAND_RESPONSABLE';
+      var allUsers = db(SK.USERS, []);
+      var uIdx = allUsers.findIndex(function(u){ return u.id === S.user.id; });
+      if (uIdx !== -1) allUsers[uIdx] = S.user;
+      dbSet(SK.USERS, allUsers);
+      try { localStorage.setItem(SK.SESS, JSON.stringify(S.user)); } catch(e) {}
+      if (supabase) supabase.from('kun_com_profiles').upsert({ id: S.user.id, content: S.user }, { onConflict: 'id' }).then(function(){}, function(e){});
+      S.adminGateOpen = false;
+      S.adminCodeInput = '';
+      render();
+      toast('Accès Grand Responsable accordé. 👑', 'success');
     },
     lockAdmin: function() {
       S.adminUnlocked = false;

@@ -237,9 +237,6 @@
             '<button type="button" id="signupRoleResp" onclick="App.setSignupRole(\'RESP_SECTION\')" style="flex:1;height:44px;border-radius:12px;border:1.5px solid #E5E5EA;background:#FAFAFA;color:#3A3A3C;font-size:13.5px;font-weight:800;cursor:pointer;">🎬 Responsable</button>' +
           '</div>' +
         '</div>' +
-        '<div><label style="font-size:12px;font-weight:700;color:#3A3A3C;display:block;margin-bottom:5px;">Autre <span style="font-weight:500;color:#8E8E93;">(optionnel)</span></label>' +
-          '<input id="signupAutre" type="text" placeholder="Laisser vide si non concerné" style="width:100%;height:44px;border-radius:12px;border:1.5px solid #E5E5EA;background:#FAFAFA;padding:0 14px;font-size:13px;box-sizing:border-box;outline:none;" />' +
-        '</div>' +
         renderField('signupPwd', 'password', 'Mot de passe', '8 caractères minimum', 'new-password') +
         '<div style="margin-top:10px;border-top:1px dashed #E5E5EA;padding-top:12px;"><p style="font-size:13px;font-weight:800;margin:0 0 10px;">Questions de sécurité (Récupération)</p>' +
         '<div><label style="font-size:12px;font-weight:700;color:#3A3A3C;display:block;margin-bottom:5px;">Question 1</label>' +

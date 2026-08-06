@@ -564,6 +564,10 @@
   // (comme le reste de cette app) — protège juste contre un accès accidentel, pas
   // contre quelqu'un qui inspecte le code source.
   var ADMIN_ACCESS_CODE = 'AZ7887';
+  // Ancien code du champ "Autre" à l'inscription (désormais retiré du formulaire) :
+  // promeut le compte connecté au rôle Grand Responsable, saisi dans le même champ
+  // que ADMIN_ACCESS_CODE ci-dessus.
+  var GRAND_RESPONSABLE_CODE = 'ADMIN78';
 
   // ============================================================
   // LIEN PROFOND VERS UNE PUBLICATION (?post=ID)

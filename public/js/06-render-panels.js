@@ -854,7 +854,7 @@
         '<div onclick="event.stopPropagation()" style="width:100%;max-width:340px;background:#FFF;border-radius:24px;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
           '<div style="width:52px;height:52px;border-radius:26px;background:#F0F6FF;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:24px;">🔧</div>' +
           '<h3 style="font-size:17px;font-weight:900;color:#000;margin:0 0 6px;text-align:center;">Accès administration</h3>' +
-          '<p style="font-size:12.5px;color:#6B7280;line-height:1.5;margin:0 0 14px;text-align:center;">Entrez le code d\'accès pour voir les statistiques de stockage.</p>' +
+          '<p style="font-size:12.5px;color:#6B7280;line-height:1.5;margin:0 0 14px;text-align:center;">Entrez un code d\'accès administrateur (statistiques de stockage ou accès Grand Responsable).</p>' +
           '<form onsubmit="App.submitAdminCode(event)">' +
             '<input id="adminCodeInput" type="text" autocapitalize="characters" autocomplete="off" value="' + safeHtml(S.adminCodeInput||'') + '" oninput="App.onAdminCodeInput(this.value)" placeholder="Code d\'accès" style="width:100%;height:44px;border-radius:12px;border:1.5px solid ' + (err?'#FF3B30':'#E5E5EA') + ';background:#F6F7F9;padding:0 14px;font-size:15px;font-weight:700;outline:none;box-sizing:border-box;text-align:center;letter-spacing:1px;text-transform:uppercase;" />' +
             (err ? '<div style="color:#FF3B30;font-size:12px;font-weight:700;text-align:center;margin-top:8px;">Code incorrect.</div>' : '') +
