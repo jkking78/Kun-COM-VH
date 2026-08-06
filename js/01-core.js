@@ -421,10 +421,16 @@
       var serverReturnedEverything = remoteData.length < POSTS_PAGE_SIZE;
       // Publications créées à l'instant : peut-être pas encore remontées au serveur.
       var tooRecentToJudge = Date.now() - 15 * 60 * 1000;
+      // Les événements PASSÉS ne sont plus rapatriés (la synchronisation ne demande
+      // que les événements en cours et à venir, pour qu'un nouveau membre n'hérite
+      // pas de tout l'historique). Leur absence de la réponse ne prouve donc rien :
+      // les purger effacerait l'historique de planning des membres déjà en place.
+      var todayIso = new Date().toISOString().split('T')[0];
       Object.keys(map).forEach(function(id) {
         var p = map[id];
         if (!p) return;
         if (remotePostIds[id]) return;                        // toujours présente
+        if (p.type === 'EVENT' && p.eventDate && p.eventDate < todayIso) return;  // hors périmètre de la requête
         var ts = p.timestamp || 0;
         if (ts > tooRecentToJudge) return;                    // envoi possiblement en cours
         if (!serverReturnedEverything && ts < oldestInPage) return;  // hors fenêtre connue
