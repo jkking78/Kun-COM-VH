@@ -58,7 +58,7 @@
     var u = S.user || {};
 
     var commentItems = (post.comments || []).length > 0
-      ? post.comments.map(function(c) { return renderCommentItem(c); }).join('')
+      ? renderCommentsList(post.comments)
       : '<div style="display:flex;flex-direction:column;align-items:center;padding:44px 20px;text-align:center;"><div style="font-size:44px;margin-bottom:10px;">💬</div><strong style="font-size:15px;color:#000;">Aucun commentaire</strong><p style="font-size:13px;color:#8E8E93;margin:4px 0 0;">Soyez le premier à commenter !</p></div>';
 
     var emojis = ['❤️','👏','🔥','🙌','😍','😂','😮','💪'];
@@ -80,6 +80,10 @@
         '</div>' +
 
         '<div style="border-top:0.5px solid #F2F2F7;">' +
+          '<div id="replyingToBanner" style="display:' + (S.replyingToCommentId ? 'flex' : 'none') + ';align-items:center;justify-content:space-between;background:#F0F6FF;padding:7px 14px;font-size:12.5px;color:#007AFF;border-top:1px solid #CCDEFF;">' +
+            '<span>Réponse à <b>' + safeHtml(S.replyingToAuthor||'') + '</b></span>' +
+            '<button type="button" onclick="App.cancelReply()" style="background:none;border:none;color:#007AFF;font-size:13px;font-weight:800;cursor:pointer;padding:2px 6px;">✕</button>' +
+          '</div>' +
           '<div id="commentMentionSugg" style="display:none;flex-wrap:wrap;gap:6px;background:#F0F6FF;border-top:1px solid #CCDEFF;padding:8px 14px;"></div>' +
           '<div id="commentImagePreview" style="padding:' + (S.pendingCommentImage ? '10px 14px 0' : '0') + ';">' +
             (S.pendingCommentImage
@@ -97,7 +101,7 @@
           '<form onsubmit="event.preventDefault(); App.submitComment(event);" style="display:flex;align-items:center;gap:8px;padding:10px 14px;">' +
             (u.avatar_url ? '<img src="' + u.avatar_url + '" style="width:34px;height:34px;border-radius:17px;object-fit:cover;flex-shrink:0;" />' : '<div style="width:34px;height:34px;border-radius:17px;background:linear-gradient(135deg,' + (u.avatar_color||'#007AFF') + ',#0040CC);color:#FFF;font-weight:800;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + userInitial + '</div>') +
             '<div style="flex:1;display:flex;align-items:center;background:#F2F2F7;border-radius:22px;height:40px;padding:0 6px 0 14px;">' +
-              '<input id="commentInput" type="text" oninput="App.onCommentInput(this.value)" placeholder="Ajouter un commentaire… (@ pour taguer)" style="flex:1;border:none;background:transparent;font-size:14px;color:#000;outline:none;">' +
+              '<input id="commentInput" type="text" oninput="App.onCommentInput(this.value)" placeholder="' + (S.replyingToCommentId ? 'Répondre à ' + safeHtml(S.replyingToAuthor||'') + '…' : 'Ajouter un commentaire… (@ pour taguer)') + '" style="flex:1;border:none;background:transparent;font-size:14px;color:#000;outline:none;">' +
               '<label style="cursor:pointer;padding:6px;display:flex;align-items:center;flex-shrink:0;">' +
                 '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>' +
                 '<input type="file" accept="image/*" onchange="App.addCommentImage(event)" style="display:none;">' +
@@ -110,7 +114,7 @@
     '</div>';
   }
 
-  function renderCommentItem(c) {
+  function renderCommentItem(c, isReply) {
     var likedComments = db(SK.LIKED_COMMENTS, {});
     var isLiked = !!likedComments[c.id];
     var allU = db(SK.USERS, []);
@@ -118,12 +122,15 @@
     var cAvatarUrl = (cAuthor && cAuthor.avatar_url) ? cAuthor.avatar_url : c.avatar_url;
     var cColor = (cAuthor && cAuthor.avatar_color) ? cAuthor.avatar_color : (c.avatarColor || '#007AFF');
     var cInitial = (cAuthor && cAuthor.prenom) ? cAuthor.prenom.charAt(0).toUpperCase() : ((c.author||'U').charAt(0));
+    var avSize = isReply ? 28 : 36;
 
     var cAvatarNode = cAvatarUrl
-      ? '<img src="' + cAvatarUrl + '" style="width:36px;height:36px;border-radius:18px;object-fit:cover;flex-shrink:0;" />'
-      : '<div style="width:36px;height:36px;border-radius:18px;background:linear-gradient(135deg,' + cColor + ',#0040CC);color:#FFF;font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + cInitial + '</div>';
+      ? '<img src="' + cAvatarUrl + '" style="width:'+avSize+'px;height:'+avSize+'px;border-radius:'+(avSize/2)+'px;object-fit:cover;flex-shrink:0;" />'
+      : '<div style="width:'+avSize+'px;height:'+avSize+'px;border-radius:'+(avSize/2)+'px;background:linear-gradient(135deg,' + cColor + ',#0040CC);color:#FFF;font-size:'+(isReply?'11px':'13px')+';font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + cInitial + '</div>';
 
-    return '<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:16px;">' +
+    var replyBtn = isReply ? '' : '<button onclick="App.replyToComment(\'' + c.id + '\', ' + JSON.stringify(c.author||'Membre') + ')" style="background:none;border:none;padding:0;font-size:12px;font-weight:700;color:#8E8E93;cursor:pointer;">Répondre</button>';
+
+    return '<div id="cwrap-' + c.id + '" style="display:flex;align-items:flex-start;gap:10px;margin-bottom:' + (isReply?'10px':'6px') + ';">' +
       '<div onclick="App.openUserProfile(\'' + c.userId + '\')" style="cursor:pointer;">' + cAvatarNode + '</div>' +
       '<div style="flex:1;">' +
         '<div style="display:flex;align-items:baseline;gap:6px;">' +
@@ -132,10 +139,83 @@
         '</div>' +
         (c.text ? '<p style="font-size:14px;color:#1C1C1E;margin:3px 0 5px;line-height:1.4;">' + hashtagify(c.text) + '</p>' : '') +
         (c.imageUrl ? '<img src="'+c.imageUrl+'" style="max-width:180px;max-height:180px;border-radius:12px;margin:2px 0 6px;display:block;object-fit:cover;">' : '') +
-        '<button style="background:none;border:none;padding:0;font-size:12px;font-weight:700;color:#8E8E93;cursor:pointer;">Répondre</button>' +
+        replyBtn +
       '</div>' +
       '<div id="clike-'+c.id+'" onclick="App.likeComment(\''+c.id+'\')" style="cursor:pointer;padding:4px;margin-top:2px;">' +
         SVG.heart(isLiked, 15) +
+      '</div>' +
+    '</div>';
+  }
+
+  // Regroupe les commentaires en fil principal + réponses imbriquées (1 niveau,
+  // à la Instagram). Chaque commentaire racine porte un conteneur "replies-<id>"
+  // où les réponses s'ajoutent, y compris via App.submitComment sans re-render complet.
+  function renderCommentsList(comments) {
+    var top = (comments || []).filter(function(c){ return !c.parentId; });
+    var byParent = {};
+    (comments || []).forEach(function(c) {
+      if (!c.parentId) return;
+      if (!byParent[c.parentId]) byParent[c.parentId] = [];
+      byParent[c.parentId].push(c);
+    });
+    return top.map(function(c) {
+      var replies = byParent[c.id] || [];
+      return renderCommentItem(c, false) +
+        '<div id="replies-' + c.id + '" style="margin-left:44px;">' +
+          replies.map(function(r){ return renderCommentItem(r, true); }).join('') +
+        '</div>';
+    }).join('');
+  }
+
+  // ============================================================
+  // MESSAGERIE PRIVÉE (simple, 1-à-1)
+  // ============================================================
+  function renderDmBubble(m) {
+    var mine = S.user && m.fromId === S.user.id;
+    return '<div style="display:flex;justify-content:' + (mine ? 'flex-end' : 'flex-start') + ';margin-bottom:8px;">' +
+      '<div style="max-width:72%;background:' + (mine ? '#007AFF' : '#F2F2F7') + ';color:' + (mine ? '#FFF' : '#000') + ';padding:9px 13px;border-radius:16px;' + (mine ? 'border-bottom-right-radius:4px;' : 'border-bottom-left-radius:4px;') + 'font-size:14.5px;line-height:1.4;word-break:break-word;">' +
+        safeHtml(m.text) +
+        '<div style="font-size:10px;margin-top:3px;opacity:0.7;text-align:right;">' + timeAgo(m.timestamp) + '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function renderDirectMessageModal() {
+    if (!S.dmWithUserId) return '';
+    var allU = db(SK.USERS, []);
+    var other = allU.find(function(u){ return u.id === S.dmWithUserId; }) || {};
+    var otherName = (other.prenom || 'Membre') + ' ' + (other.nom || '');
+    var otherAvatar = other.avatar_url
+      ? '<img src="' + other.avatar_url + '" style="width:34px;height:34px;border-radius:17px;object-fit:cover;flex-shrink:0;" />'
+      : '<div style="width:34px;height:34px;border-radius:17px;background:linear-gradient(135deg,' + (other.avatar_color||'#007AFF') + ',#0040CC);color:#FFF;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + (other.prenom||'M').charAt(0).toUpperCase() + '</div>';
+
+    var messagesHtml = S.dmLoading
+      ? '<div style="padding:40px 20px;text-align:center;color:#8E8E93;font-size:13px;">Chargement…</div>'
+      : (S.dmMessages.length > 0
+          ? S.dmMessages.map(function(m){ return renderDmBubble(m); }).join('')
+          : '<div style="display:flex;flex-direction:column;align-items:center;padding:44px 20px;text-align:center;"><div style="font-size:40px;margin-bottom:8px;">💬</div><strong style="font-size:14px;color:#000;">Aucun message</strong><p style="font-size:12.5px;color:#8E8E93;margin:4px 0 0;">Envoyez le premier message à ' + safeHtml(other.prenom||'ce membre') + '.</p></div>');
+
+    return '<div onclick="App.closeDirectMessage()" style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:10000;display:flex;justify-content:center;align-items:flex-end;">' +
+      '<div onclick="event.stopPropagation()" style="width:100%;max-width:460px;background:#FFF;border-top-left-radius:28px;border-top-right-radius:28px;height:82vh;display:flex;flex-direction:column;animation:slideUp 0.3s;">' +
+        '<div onclick="App.closeDirectMessage()" style="display:flex;justify-content:center;padding:12px 0 8px;cursor:pointer;">' +
+          '<div style="width:40px;height:4px;background:#D1D1D6;border-radius:2px;"></div>' +
+        '</div>' +
+        '<div style="display:flex;align-items:center;gap:10px;padding:6px 16px 12px;border-bottom:0.5px solid #F2F2F7;">' +
+          '<div onclick="App.closeDirectMessage()" style="cursor:pointer;padding:4px;margin-left:-4px;">' +
+            '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.3"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>' +
+          '</div>' +
+          otherAvatar +
+          '<strong style="font-size:15px;color:#000;">' + safeHtml(otherName) + '</strong>' +
+        '</div>' +
+        '<div id="dmMessagesList" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px;">' +
+          messagesHtml +
+        '</div>' +
+        '<form onsubmit="event.preventDefault(); App.sendDirectMessage(event);" style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-top:0.5px solid #F2F2F7;">' +
+          '<div style="flex:1;display:flex;align-items:center;background:#F2F2F7;border-radius:22px;height:40px;padding:0 6px 0 14px;">' +
+            '<input id="dmInput" type="text" placeholder="Écrire un message…" style="flex:1;border:none;background:transparent;font-size:14px;color:#000;outline:none;">' +
+            '<button type="submit" style="background:none;border:none;padding:0 6px;cursor:pointer;display:flex;align-items:center;">' + SVG.send + '</button>' +
+          '</div>' +
+        '</form>' +
       '</div>' +
     '</div>';
   }

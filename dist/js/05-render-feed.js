@@ -158,6 +158,7 @@
     if (S.viewersPostId) modals += renderViewersModal();
     if (S.adminGateOpen) modals += renderAdminGateModal();
     if (S.storageStatsOpen) modals += renderStorageStatsModal();
+    if (S.dmOpen) modals += renderDirectMessageModal();
 
     return '<div style="position:relative;width:100%;height:100%;display:flex;flex-direction:column;background:#F2F2F7;font-family:-apple-system,BlinkMacSystemFont,\'SF Pro Text\',sans-serif;">' +
       '<div id="mainContent" style="flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;padding-bottom:70px;">' + content + '</div>' +
@@ -783,8 +784,8 @@
       '</div>';
     } else {
       itemsHtml = notifs.map(function(n) {
-        var icon = n.type === 'LIKE' ? '❤️' : n.type === 'COMMENT' ? '💬' : n.type === 'EVALUATION' ? '📊' : '🗓️';
-        var bgIcon = n.type === 'LIKE' ? '#FF2D55' : n.type === 'COMMENT' ? '#007AFF' : n.type === 'EVALUATION' ? '#FF9500' : '#5856D6';
+        var icon = n.type === 'LIKE' ? '❤️' : (n.type === 'COMMENT' || n.type === 'REPLY') ? '💬' : n.type === 'EVALUATION' ? '📊' : n.type === 'MENTION' ? '📣' : n.type === 'MESSAGE' ? '✉️' : n.type === 'FOLLOW' ? '👤' : '🗓️';
+        var bgIcon = n.type === 'LIKE' ? '#FF2D55' : (n.type === 'COMMENT' || n.type === 'REPLY') ? '#007AFF' : n.type === 'EVALUATION' ? '#FF9500' : n.type === 'MENTION' ? '#FF9500' : n.type === 'MESSAGE' ? '#34C759' : n.type === 'FOLLOW' ? '#AF52DE' : '#5856D6';
         var timeAgoStr = timeAgo(n.timestamp || Date.now());
         var isUnread = !n.read;
 

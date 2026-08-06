@@ -491,6 +491,152 @@ toggleParticipation: function(postId, status) {
       render();
     },
 
+    // ============================================================
+    // ABONNEMENT (bouton "Suivre" sur un profil)
+    // ============================================================
+    toggleFollow: function(targetUserId) {
+      if (!S.user || !targetUserId || targetUserId === S.user.id) return;
+      if (!Array.isArray(S.user.following)) S.user.following = [];
+      var idx = S.user.following.indexOf(targetUserId);
+      var nowFollowing;
+      if (idx !== -1) { S.user.following.splice(idx, 1); nowFollowing = false; }
+      else { S.user.following.push(targetUserId); nowFollowing = true; }
+      var allUsers = db(SK.USERS, []);
+      var uIdx = allUsers.findIndex(function(u){ return u.id === S.user.id; });
+      if (uIdx !== -1) allUsers[uIdx] = S.user;
+      dbSet(SK.USERS, allUsers);
+      try { localStorage.setItem(SK.SESS, JSON.stringify(S.user)); } catch(e){}
+      if (supabase) supabase.from('kun_com_profiles').upsert({ id: S.user.id, content: S.user }, { onConflict: 'id' }).then(function(){}, function(e){});
+      if (nowFollowing) {
+        sendNotificationToUser(targetUserId, {
+          type: 'FOLLOW',
+          title: '👤 Nouvel abonné',
+          text: (S.user.prenom || 'Quelqu\'un') + ' a commencé à vous suivre.',
+          targetId: targetUserId
+        });
+      }
+      render();
+    },
+
+    // ============================================================
+    // MESSAGERIE PRIVÉE (simple, 1-à-1)
+    // ============================================================
+    openDirectMessage: async function(userId) {
+      if (!S.user || !userId || userId === S.user.id) return;
+      S.dmOpen = true;
+      S.dmWithUserId = userId;
+      S.dmLoading = true;
+      var local = db(SK.DMS, []);
+      S.dmMessages = local.filter(function(m) {
+        return (m.fromId === S.user.id && m.toId === userId) || (m.fromId === userId && m.toId === S.user.id);
+      }).sort(function(a,b){ return a.timestamp - b.timestamp; });
+      render();
+      setTimeout(function(){ var el = document.getElementById('dmMessagesList'); if (el) el.scrollTop = el.scrollHeight; }, 50);
+
+      if (supabase) {
+        try {
+          var res = await supabase.from('kun_com_dms')
+            .select('*')
+            .or('and(from_id.eq.' + S.user.id + ',to_id.eq.' + userId + '),and(from_id.eq.' + userId + ',to_id.eq.' + S.user.id + ')')
+            .order('sent_at', { ascending: true });
+          if (res && res.data) {
+            var all = db(SK.DMS, []);
+            var byId = {};
+            all.forEach(function(m){ byId[m.id] = m; });
+            res.data.forEach(function(row) {
+              var m = row.content;
+              if (m && m.id) byId[m.id] = m;
+            });
+            var merged = Object.keys(byId).map(function(k){ return byId[k]; });
+            dbSet(SK.DMS, merged);
+            S.dmMessages = merged.filter(function(m) {
+              return (m.fromId === S.user.id && m.toId === userId) || (m.fromId === userId && m.toId === S.user.id);
+            }).sort(function(a,b){ return a.timestamp - b.timestamp; });
+          }
+        } catch(e) { console.warn('Erreur chargement messages:', e); }
+      }
+      S.dmLoading = false;
+      render();
+      setTimeout(function(){ var el = document.getElementById('dmMessagesList'); if (el) el.scrollTop = el.scrollHeight; }, 50);
+      App._startDmPolling();
+    },
+    closeDirectMessage: function() {
+      S.dmOpen = false;
+      S.dmWithUserId = null;
+      S.dmMessages = [];
+      App._stopDmPolling();
+      render();
+    },
+    _startDmPolling: function() {
+      App._stopDmPolling();
+      if (!supabase) return;
+      window._dmPollInterval = setInterval(async function() {
+        if (!S.dmOpen || !S.dmWithUserId || !S.user) return;
+        var otherId = S.dmWithUserId;
+        try {
+          var res = await supabase.from('kun_com_dms')
+            .select('*')
+            .or('and(from_id.eq.' + S.user.id + ',to_id.eq.' + otherId + '),and(from_id.eq.' + otherId + ',to_id.eq.' + S.user.id + ')')
+            .order('sent_at', { ascending: true });
+          if (res && res.data) {
+            var all = db(SK.DMS, []);
+            var byId = {};
+            all.forEach(function(m){ byId[m.id] = m; });
+            var hadNew = false;
+            res.data.forEach(function(row) {
+              var m = row.content;
+              if (m && m.id && !byId[m.id]) hadNew = true;
+              if (m && m.id) byId[m.id] = m;
+            });
+            if (hadNew) {
+              var merged = Object.keys(byId).map(function(k){ return byId[k]; });
+              dbSet(SK.DMS, merged);
+              S.dmMessages = merged.filter(function(m) {
+                return (m.fromId === S.user.id && m.toId === otherId) || (m.fromId === otherId && m.toId === S.user.id);
+              }).sort(function(a,b){ return a.timestamp - b.timestamp; });
+              var list = document.getElementById('dmMessagesList');
+              if (list) {
+                var wasAtBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 60;
+                list.innerHTML = S.dmMessages.map(function(m){ return renderDmBubble(m); }).join('');
+                if (wasAtBottom) list.scrollTop = list.scrollHeight;
+              }
+            }
+          }
+        } catch(e) { /* silencieux : nouvelle tentative au prochain cycle */ }
+      }, 4000);
+    },
+    _stopDmPolling: function() {
+      if (window._dmPollInterval) { clearInterval(window._dmPollInterval); window._dmPollInterval = null; }
+    },
+    sendDirectMessage: function(ev) {
+      ev && ev.preventDefault();
+      var input = document.getElementById('dmInput');
+      var txt = input ? input.value.trim() : '';
+      if (!txt || !S.user || !S.dmWithUserId) return;
+      var newMsg = { id: 'dm' + Date.now() + Math.floor(Math.random()*1000), fromId: S.user.id, toId: S.dmWithUserId, text: txt, timestamp: Date.now() };
+      var all = db(SK.DMS, []);
+      all.push(newMsg);
+      dbSet(SK.DMS, all);
+      S.dmMessages.push(newMsg);
+      if (supabase) {
+        supabase.from('kun_com_dms').upsert({ id: newMsg.id, from_id: newMsg.fromId, to_id: newMsg.toId, content: newMsg, sent_at: new Date(newMsg.timestamp).toISOString() }, { onConflict: 'id' }).then(function(){}, function(e){ console.warn('Erreur envoi message:', e); });
+      }
+      sendNotificationToUser(S.dmWithUserId, {
+        type: 'MESSAGE',
+        title: '💬 Nouveau message',
+        text: (S.user.prenom || 'Quelqu\'un') + ' : "' + txt.slice(0, 40) + (txt.length > 40 ? '…' : '') + '"',
+        targetId: S.user.id
+      });
+      if (input) input.value = '';
+      var list = document.getElementById('dmMessagesList');
+      if (list) {
+        var div = document.createElement('div');
+        div.innerHTML = renderDmBubble(newMsg);
+        list.appendChild(div.firstChild || div);
+        list.scrollTop = list.scrollHeight;
+      } else { render(); }
+    },
+
     // Role Unlock Methods
     openCropper: function(dataUrl, aspectRatio, title, onConfirm) {
       if (window._currentCropper) {
@@ -786,7 +932,16 @@ toggleParticipation: function(postId, status) {
       
       S.notificationsOpen = false;
       render();
-      
+
+      if (notif && (notif.type === 'MESSAGE')) {
+        App.openDirectMessage(notif.senderId);
+        return;
+      }
+      if (notif && notif.type === 'FOLLOW') {
+        App.openUserProfile(notif.senderId);
+        return;
+      }
+
       if (targetId) {
         var posts = db(SK.POSTS, []);
         var targetPost = posts.find(function(p){ return p.id === targetId; });
@@ -1345,6 +1500,7 @@ toggleParticipation: function(postId, status) {
         supabase.from('kun_com_posts').upsert({ id: repost.id, content: repost, created_at: new Date().toISOString() }, { onConflict: 'id' }).then(function(){}, function(e){});
       }
       saveLinksToProfile(repost.userId, extractLinks(txt), repost.id);
+      notifyMentionedUsers(txt, repost.id);
       updateUserActivity('Partage');
       S.repostPostId = null;
       S.postText = '';
@@ -1813,6 +1969,11 @@ toggleParticipation: function(postId, status) {
         sendTargetedSectionPostNotifications(newPost);
       }
 
+      // Notifie les membres mentionnés (@Prénom Nom) dans le texte
+      if (!newPost.status || newPost.status !== 'scheduled') {
+        notifyMentionedUsers(txt, newPost.id);
+      }
+
       // Enregistre automatiquement les liens partagés dans le profil
       saveLinksToProfile(newPost.userId, extractLinks(txt), newPost.id);
 
@@ -1851,10 +2012,10 @@ toggleParticipation: function(postId, status) {
 
     // Comments
     openComments: function(postId) {
-      S.commentPostId=postId; S.commentOpen=true; S.pendingCommentImage=null; render();
+      S.commentPostId=postId; S.commentOpen=true; S.pendingCommentImage=null; S.replyingToCommentId=null; S.replyingToAuthor=null; render();
       window.setTimeout(function(){ var i=document.getElementById('commentInput'); if(i) i.focus(); },150);
     },
-    closeComments: function() { S.commentOpen=false; S.commentPostId=null; S.pendingCommentImage=null; render(); },
+    closeComments: function() { S.commentOpen=false; S.commentPostId=null; S.pendingCommentImage=null; S.replyingToCommentId=null; S.replyingToAuthor=null; render(); },
     addEmoji: function(e) { var i=document.getElementById('commentInput'); if(i){i.value+=e;i.focus();} },
     addCommentImage: function(e) {
       var file = (e.target && e.target.files && e.target.files[0]) || null;
@@ -1908,6 +2069,27 @@ toggleParticipation: function(postId, status) {
       if (box) box.style.display = 'none';
       input.focus();
     },
+    // Réponse directe à un commentaire (fil imbriqué, 1 niveau)
+    replyToComment: function(commentId, authorName) {
+      S.replyingToCommentId = commentId;
+      S.replyingToAuthor = authorName;
+      var banner = document.getElementById('replyingToBanner');
+      if (banner) {
+        banner.style.display = 'flex';
+        var b = banner.querySelector('b');
+        if (b) b.textContent = authorName;
+      }
+      var input = document.getElementById('commentInput');
+      if (input) { input.placeholder = 'Répondre à ' + authorName + '…'; input.focus(); }
+    },
+    cancelReply: function() {
+      S.replyingToCommentId = null;
+      S.replyingToAuthor = null;
+      var banner = document.getElementById('replyingToBanner');
+      if (banner) banner.style.display = 'none';
+      var input = document.getElementById('commentInput');
+      if (input) input.placeholder = 'Ajouter un commentaire… (@ pour taguer)';
+    },
     submitComment: function(ev) {
       ev && ev.preventDefault();
       var input = document.getElementById('commentInput');
@@ -1916,11 +2098,20 @@ toggleParticipation: function(postId, status) {
       var posts = db(SK.POSTS, []);
       var post = posts.find(function(p){ return p.id===S.commentPostId; });
       if (!post) return;
-      var newC = { id:'c'+Date.now(), userId:S.user.id, author:(S.user.prenom||'User')+' '+(S.user.nom?S.user.nom.charAt(0):'')+'.', avatarColor:S.user.avatar_color||'#007AFF', text:txt, imageUrl:S.pendingCommentImage||null, timestamp:Date.now() };
       if (!Array.isArray(post.comments)) post.comments = [];
+      var parentId = S.replyingToCommentId || null;
+      var parentComment = parentId ? post.comments.find(function(c){ return c.id === parentId; }) : null;
+      var newC = { id:'c'+Date.now(), userId:S.user.id, author:(S.user.prenom||'User')+' '+(S.user.nom?S.user.nom.charAt(0):'')+'.', avatarColor:S.user.avatar_color||'#007AFF', text:txt, imageUrl:S.pendingCommentImage||null, timestamp:Date.now(), parentId: parentId };
       post.comments.push(newC); dbSet(SK.POSTS, posts);
       if (supabase && post) supabase.from('kun_com_posts').upsert({ id: post.id, content: post }, { onConflict: 'id' }).then(function(){}, function(e){});
-      if (post.userId && post.userId !== S.user.id) {
+      if (parentComment && parentComment.userId && parentComment.userId !== S.user.id) {
+        sendNotificationToUser(parentComment.userId, {
+          type: 'REPLY',
+          title: '💬 Nouvelle réponse',
+          text: S.user.prenom + ' a répondu à votre commentaire : "' + (txt ? txt.slice(0, 40) : '📷 Photo') + '"',
+          targetId: post.id
+        });
+      } else if (!parentComment && post.userId && post.userId !== S.user.id) {
         sendNotificationToUser(post.userId, {
           type: 'COMMENT',
           title: '💬 Nouveau Commentaire',
@@ -1928,15 +2119,26 @@ toggleParticipation: function(postId, status) {
           targetId: post.id
         });
       }
+      notifyMentionedUsers(txt, post.id);
       updateUserActivity('Commentaire');
-      // DOM update: append to list without full re-render
-      var list = document.getElementById('commentsList');
-      if (list) {
-        var div = document.createElement('div');
-        div.style.cssText = 'animation:fadeIn 0.3s;';
-        div.innerHTML = renderCommentItem(newC);
-        list.appendChild(div);
-      } else { render(); }
+      // DOM update: insère dans le fil racine ou dans le conteneur de réponses du parent
+      if (parentId) {
+        var repliesContainer = document.getElementById('replies-' + parentId);
+        if (repliesContainer) {
+          var rdiv = document.createElement('div');
+          rdiv.style.cssText = 'animation:fadeIn 0.3s;';
+          rdiv.innerHTML = renderCommentItem(newC, true);
+          repliesContainer.appendChild(rdiv);
+        } else { render(); }
+      } else {
+        var list = document.getElementById('commentsList');
+        if (list) {
+          var div = document.createElement('div');
+          div.style.cssText = 'animation:fadeIn 0.3s;';
+          div.innerHTML = renderCommentItem(newC, false) + '<div id="replies-' + newC.id + '" style="margin-left:44px;"></div>';
+          list.appendChild(div);
+        } else { render(); }
+      }
       // Update comment count on post card (outside modal)
       var ccBtn = document.querySelector('#post-'+S.commentPostId+' button[onclick*="openComments"]');
       if (ccBtn && ccBtn.textContent.indexOf('commentaire') !== -1) {
@@ -1944,7 +2146,8 @@ toggleParticipation: function(postId, status) {
       }
       if (input) input.value = '';
       App.removeCommentImage();
-      toast('Commentaire ajouté !', 'success');
+      App.cancelReply();
+      toast(parentId ? 'Réponse ajoutée !' : 'Commentaire ajouté !', 'success');
     },
     likeComment: function(cId) {
       var likedComments = db(SK.LIKED_COMMENTS, {});

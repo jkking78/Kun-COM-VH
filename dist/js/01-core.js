@@ -12,7 +12,8 @@
     SESS: 'kc_user',
     SAVED: 'kc_saved',
     LIKED_COMMENTS: 'kc_liked_comments',
-    SECTION_SEEN: 'kc_section_seen'
+    SECTION_SEEN: 'kc_section_seen',
+    DMS: 'kc_dms'
   };
 
   var DB_CACHE = {};
@@ -132,6 +133,36 @@
           targetId: post.id
         });
       }
+    });
+  }
+
+  // ============================================================
+  // MENTIONS (@Prénom Nom) — notifie chaque membre tagué dans un texte
+  // (publication, commentaire, réponse). Réutilise la même logique de
+  // correspondance que hashtagify() dans 02-media.js.
+  // ============================================================
+  function notifyMentionedUsers(text, targetId) {
+    if (!text) return;
+    var matches = text.match(/@[\wéèêàâôûîçÉÈÊÀÂÔÛÎÇùÙ_.]+/gi);
+    if (!matches) return;
+    var users = db(SK.USERS, []);
+    var already = {};
+    matches.forEach(function(m) {
+      var clean = m.slice(1).toLowerCase();
+      var found = users.find(function(u) {
+        var fullName = ((u.prenom||'') + (u.nom||'')).toLowerCase().replace(/\s+/g, '');
+        var prenom = (u.prenom||'').toLowerCase();
+        return fullName === clean || prenom === clean;
+      });
+      if (!found || already[found.id]) return;
+      if (S.user && found.id === S.user.id) return;
+      already[found.id] = true;
+      sendNotificationToUser(found.id, {
+        type: 'MENTION',
+        title: '📣 Vous avez été mentionné(e)',
+        text: (S.user ? S.user.prenom : 'Quelqu\'un') + ' vous a mentionné : "' + text.slice(0, 40) + (text.length > 40 ? '…' : '') + '"',
+        targetId: targetId
+      });
     });
   }
 
@@ -663,7 +694,15 @@
     eventImageProcessing: false,
     editEventId: null,
     // Position courante dans chaque carrousel d'événements, par date
-    eventGroupIdx: {}
+    eventGroupIdx: {},
+    // Réponses imbriquées aux commentaires
+    replyingToCommentId: null,
+    replyingToAuthor: null,
+    // Messagerie privée simple (1-à-1)
+    dmOpen: false,
+    dmWithUserId: null,
+    dmMessages: [],
+    dmLoading: false
   };
 
   // Code d'accès au panneau admin (stockage). Volontairement en clair côté client
