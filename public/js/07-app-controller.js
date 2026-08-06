@@ -1273,6 +1273,21 @@ toggleParticipation: function(postId, status) {
       render();
       toast('Panneau admin verrouillé.', 'success');
     },
+    // Rétrograde le compte connecté au rôle MEMBRE (seul moyen de sortir du rôle
+    // Grand Responsable — il n'existait auparavant aucun bouton pour cela).
+    revokeGrandResponsable: function() {
+      if (!S.user || S.user.role !== 'GRAND_RESPONSABLE') return;
+      if (!window.confirm('Quitter le rôle Grand Responsable et repasser en Membre simple ?')) return;
+      S.user.role = 'MEMBRE';
+      var allUsers = db(SK.USERS, []);
+      var uIdx = allUsers.findIndex(function(u){ return u.id === S.user.id; });
+      if (uIdx !== -1) allUsers[uIdx] = S.user;
+      dbSet(SK.USERS, allUsers);
+      try { localStorage.setItem(SK.SESS, JSON.stringify(S.user)); } catch(e) {}
+      if (supabase) supabase.from('kun_com_profiles').upsert({ id: S.user.id, content: S.user }, { onConflict: 'id' }).then(function(){}, function(e){});
+      render();
+      toast('Rôle Grand Responsable retiré — vous êtes de nouveau Membre.', 'success');
+    },
     openStorageStats: function() {
       if (!S.adminUnlocked) { App.openAdminGate(); return; }
       S.storageStatsOpen = true;
@@ -1287,13 +1302,28 @@ toggleParticipation: function(postId, status) {
       S.storageStatsLoading = true;
       S.storageStatsError = null;
       render();
+      // Garde-fou : si l'appel Storage reste bloqué (réseau, CORS, policy manquante
+      // qui ne renvoie jamais), on n'affiche pas un spinner infini — on bascule sur
+      // un message d'erreur après 15s au lieu de laisser croire que "ça ne marche pas"
+      // sans explication.
+      function withTimeout(p, ms) {
+        return Promise.race([
+          p,
+          new Promise(function(_, reject) {
+            setTimeout(function() { reject(new Error('Délai dépassé après ' + (ms/1000) + 's — vérifie la connexion ou les permissions Supabase.')); }, ms);
+          })
+        ]);
+      }
       try {
         var totalBytes = 0;
         var fileCount = 0;
         var offset = 0;
         var pageSize = 1000;
         while (true) {
-          var res = await supabase.storage.from('post-media').list('', { limit: pageSize, offset: offset, sortBy: { column: 'name', order: 'asc' } });
+          var res = await withTimeout(
+            supabase.storage.from('post-media').list('', { limit: pageSize, offset: offset, sortBy: { column: 'name', order: 'asc' } }),
+            15000
+          );
           if (res.error) throw res.error;
           var items = res.data || [];
           items.forEach(function(it) {
@@ -1313,7 +1343,10 @@ toggleParticipation: function(postId, status) {
         S.storageStatsUpdatedAt = Date.now();
       } catch (e) {
         console.warn('loadStorageStats error:', e);
-        S.storageStatsError = 'Impossible de lire le stockage (vérifie la permission SELECT sur storage.objects pour le bucket post-media).';
+        // On affiche le détail réel de l'erreur Supabase (au lieu d'un message
+        // générique) pour pouvoir diagnostiquer immédiatement depuis l'app.
+        var detail = e && (e.message || e.error_description || e.msg || e.statusText);
+        S.storageStatsError = 'Impossible de lire le stockage' + (detail ? ' : ' + detail : ' (vérifie la permission SELECT sur storage.objects pour le bucket post-media).');
       }
       S.storageStatsLoading = false;
       render();
