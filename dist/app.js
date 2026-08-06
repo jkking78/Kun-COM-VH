@@ -231,10 +231,9 @@
   async function syncSupabaseToLocal() {
     if (!supabase) { S.initialLoading = false; render(); return; }
     try {
-      // Fetch posts — limité aux plus récents pour un chargement rapide même avec
-      // beaucoup de publications (façon Facebook/Instagram) ; les plus anciens déjà
-      // en cache localement restent visibles, seuls les tout premiers sont récupérés ici.
-      var res = await supabase.from('kun_com_posts').select('*').order('created_at', { ascending: false }).limit(120);
+      // Fetch posts
+      var res = await supabase.from('kun_com_posts').select('*');
+      if (res && res.error) { console.warn('Supabase posts fetch error:', res.error); }
       if (res && res.data) {
         var mergedPosts = mergePostsWithLocal(res.data);
         DB_CACHE[SK.POSTS] = mergedPosts;
@@ -350,7 +349,8 @@
   async function fetchPostsSilently() {
     if (!supabase) return;
     try {
-      var res = await supabase.from('kun_com_posts').select('*').order('created_at', { ascending: false }).limit(120);
+      var res = await supabase.from('kun_com_posts').select('*');
+      if (res && res.error) { console.warn('Supabase posts poll error:', res.error); }
       if (res && res.data) {
         var mergedPosts = mergePostsWithLocal(res.data);
         var newJson = JSON.stringify(mergedPosts);
