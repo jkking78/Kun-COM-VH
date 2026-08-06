@@ -530,6 +530,22 @@
     '</div>';
   }
 
+  // Mention de position à côté d'un membre dans le détail de ponctualité :
+  // signale clairement une arrivée enregistrée loin du lieu ou sans position.
+  function renderGeoFlag(d) {
+    if (d.absent) return '';
+    if (!d.geo || !d.geo.available) {
+      return '<span style="display:block;color:#B91C1C;font-weight:700;font-size:10.5px;">⚠️ ' + geoStatusLabel(d.geo) + '</span>';
+    }
+    if (d.distance === null || d.distance === undefined) {
+      return '<span style="display:block;color:#9AA0A8;font-size:10.5px;">📍 position enregistrée (lieu non défini)</span>';
+    }
+    if (d.onSite) {
+      return '<span style="display:block;color:#047857;font-size:10.5px;">📍 sur place (' + formatDistance(d.distance) + ')</span>';
+    }
+    return '<span style="display:block;color:#B91C1C;font-weight:700;font-size:10.5px;">⚠️ à ' + formatDistance(d.distance) + ' du lieu</span>';
+  }
+
   function renderEvalSectionCard(sec, userSec) {
     // Les Grands Responsables (seuls habilités à noter) évaluent toutes les
     // sections, y compris la leur — l'ancien blocage a été retiré. On garde
@@ -565,8 +581,10 @@
             punc.details.map(function(d) {
               var dc = d.stars >= 4 ? '#34C759' : d.stars >= 2 ? '#FF9500' : '#FF3B30';
               var when = d.absent ? 'aucune publication' : (d.delayMinutes <= 0 ? "à l'heure" : '+' + d.delayMinutes + ' min');
-              return '<div style="display:flex;justify-content:space-between;align-items:center;font-size:11.5px;color:#6B7280;">' +
-                '<span>' + safeHtml(d.name) + (d.task ? ' · ' + safeHtml(d.task) : '') + '</span>' +
+              return '<div style="display:flex;justify-content:space-between;align-items:flex-start;font-size:11.5px;color:#6B7280;gap:8px;">' +
+                '<span style="min-width:0;">' + safeHtml(d.name) + (d.task ? ' · ' + safeHtml(d.task) : '') +
+                  renderGeoFlag(d) +
+                '</span>' +
                 '<span style="font-weight:700;color:' + dc + ';white-space:nowrap;">' + d.stars + '★ · ' + when + '</span>' +
               '</div>';
             }).join('') +

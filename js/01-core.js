@@ -705,6 +705,15 @@
     // Réponses imbriquées aux commentaires
     replyingToCommentId: null,
     replyingToAuthor: null,
+    // Géolocalisation (arrivées + lieu d'un événement)
+    geoCapturing: false,
+    // Recherche d'adresse pour situer le lieu d'un événement. Le créateur prépare
+    // souvent l'événement à l'avance depuis chez lui : on ne relève donc JAMAIS sa
+    // position, il désigne le lieu en le cherchant par son nom ou son adresse.
+    eventPlaceQuery: '',
+    eventPlaceResults: [],
+    eventPlaceSearching: false,
+    eventPlaceError: null,
     // Messagerie privée simple (1-à-1)
     dmOpen: false,
     dmWithUserId: null,
@@ -819,6 +828,90 @@
   ];
   var PUNCTUALITY_ABSENT_STARS = -2;
 
+  // ============================================================
+  // GÉOLOCALISATION DES ARRIVÉES (transparence anti-triche)
+  // ============================================================
+  // La position n'est capturée QUE pour les publications rattachées à un
+  // événement (enregistrement d'arrivée). On ne géolocalise jamais les
+  // publications ordinaires : ce serait exposer le domicile des membres.
+  // Une fois attachée, la position ne peut plus être retirée — seule la
+  // suppression de la publication la fait disparaître, ce qui se voit.
+  function capturePosition(timeoutMs) {
+    return new Promise(function(resolve) {
+      if (!navigator || !navigator.geolocation) {
+        resolve({ available: false, reason: 'unsupported' });
+        return;
+      }
+      var done = false;
+      var timer = setTimeout(function() {
+        if (done) return;
+        done = true;
+        resolve({ available: false, reason: 'timeout' });
+      }, timeoutMs || 12000);
+
+      navigator.geolocation.getCurrentPosition(
+        function(pos) {
+          if (done) return;
+          done = true; clearTimeout(timer);
+          resolve({
+            available: true,
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+            accuracy: Math.round(pos.coords.accuracy || 0),
+            at: Date.now()
+          });
+        },
+        function(err) {
+          if (done) return;
+          done = true; clearTimeout(timer);
+          // code 1 = permission refusée, 2 = position indisponible, 3 = délai dépassé
+          resolve({ available: false, reason: err && err.code === 1 ? 'denied' : 'unavailable' });
+        },
+        { enableHighAccuracy: true, timeout: timeoutMs || 12000, maximumAge: 0 }
+      );
+    });
+  }
+
+  // Distance en mètres entre deux points (formule de haversine).
+  function geoDistance(lat1, lng1, lat2, lng2) {
+    var R = 6371000;
+    var toRad = function(d){ return d * Math.PI / 180; };
+    var dLat = toRad(lat2 - lat1);
+    var dLng = toRad(lng2 - lng1);
+    var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+            Math.sin(dLng/2) * Math.sin(dLng/2);
+    return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+  }
+
+  function formatDistance(m) {
+    if (m === null || m === undefined) return '—';
+    if (m < 1000) return m + ' m';
+    return (Math.round(m / 100) / 10).toString().replace('.', ',') + ' km';
+  }
+
+  // Rayon en deçà duquel on considère le membre "sur place". Large à dessein :
+  // le GPS est imprécis en intérieur, mieux vaut ne pas accuser à tort.
+  var ON_SITE_RADIUS_M = 1500;
+
+  // Distance entre une publication d'arrivée et le lieu de son événement.
+  // Retourne null si l'un des deux n'a pas de coordonnées.
+  function checkInDistance(post, ev) {
+    if (!post || !ev) return null;
+    if (!post.geo || !post.geo.available) return null;
+    if (typeof ev.eventLat !== 'number' || typeof ev.eventLng !== 'number') return null;
+    return geoDistance(post.geo.lat, post.geo.lng, ev.eventLat, ev.eventLng);
+  }
+
+  // Libellé lisible de l'état de position d'une publication d'arrivée.
+  function geoStatusLabel(geo) {
+    if (!geo) return 'Position non enregistrée';
+    if (geo.available) return 'Position enregistrée';
+    if (geo.reason === 'denied') return 'Position refusée par le membre';
+    if (geo.reason === 'unsupported') return 'Position non disponible sur cet appareil';
+    return 'Position introuvable';
+  }
+
   // Horodatage de début d'un événement (eventDate + eventStart). null si inconnu.
   function eventStartTimestamp(ev) {
     if (!ev || !ev.eventDate) return null;
@@ -856,19 +949,29 @@
     // Première publication du membre rattachée à cet événement = son arrivée.
     var checkIns = posts.filter(function(p) {
       return p.userId === userId && p.aboutEventId === eventId && p.type !== 'EVENT' && p.type !== 'EVALUATION';
-    }).sort(function(a,b){ return (a.timestamp||0) - (b.timestamp||0); });
+    }).sort(function(a,b){ return (a.checkInAt||a.timestamp||0) - (b.checkInAt||b.timestamp||0); });
 
     if (checkIns.length === 0) {
-      return { stars: PUNCTUALITY_ABSENT_STARS, delayMinutes: null, label: 'Aucune publication d\'arrivée', checkInPostId: null, absent: true };
+      return { stars: PUNCTUALITY_ABSENT_STARS, delayMinutes: null, label: 'Aucune publication d\'arrivée', checkInPostId: null, absent: true, geo: null, distance: null, onSite: null };
     }
-    var arrival = checkIns[0].timestamp || 0;
+    var checkIn = checkIns[0];
+    // checkInAt = moment où le lien avec l'événement a été établi (voir submitPost /
+    // saveEditPost). On retombe sur timestamp pour les publications antérieures à
+    // cette mécanique.
+    var arrival = checkIn.checkInAt || checkIn.timestamp || 0;
     var delayMinutes = Math.round((arrival - startTs) / 60000);
+    var dist = checkInDistance(checkIn, ev);
     return {
       stars: starsForDelay(delayMinutes),
       delayMinutes: delayMinutes,
       label: labelForDelay(delayMinutes),
-      checkInPostId: checkIns[0].id,
-      absent: false
+      checkInPostId: checkIn.id,
+      absent: false,
+      geo: checkIn.geo || null,
+      byEdit: !!checkIn.checkInByEdit,
+      distance: dist,
+      // true = sur place, false = loin, null = impossible à établir
+      onSite: dist === null ? null : dist <= ON_SITE_RADIUS_M
     };
   }
 
@@ -955,7 +1058,10 @@
         stars: p.stars,
         delayMinutes: p.delayMinutes,
         label: p.label,
-        absent: p.absent
+        absent: p.absent,
+        geo: p.geo,
+        distance: p.distance,
+        onSite: p.onSite
       });
     });
     if (details.length === 0) return null;

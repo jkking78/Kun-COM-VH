@@ -73,9 +73,102 @@
           start: startEl ? startEl.value : (prev.start || ''),
           end: endEl ? endEl.value : (prev.end || ''),
           desc: descEl ? descEl.value : (prev.desc || ''),
-          pinned: pinnedEl ? pinnedEl.checked : !!prev.pinned
+          pinned: pinnedEl ? pinnedEl.checked : !!prev.pinned,
+          // Coordonnées du lieu : pas de champ de saisie, elles viennent de la
+          // recherche d'adresse — on les reporte telles quelles.
+          lat: prev.lat,
+          lng: prev.lng,
+          accuracy: prev.accuracy,
+          placeName: prev.placeName,
+          placeLabel: prev.placeLabel
         };
       }
+    },
+    // Recherche du lieu par son nom ou son adresse. On ne relève JAMAIS la position
+    // du créateur : il prépare généralement l'événement à l'avance depuis chez lui,
+    // sa position n'a donc aucun rapport avec le lieu de l'événement.
+    onEventPlaceInput: function(val) {
+      S.eventPlaceQuery = val;
+      S.eventPlaceError = null;
+      if (App._placeTimer) clearTimeout(App._placeTimer);
+      if (!val || val.trim().length < 3) {
+        S.eventPlaceResults = [];
+        var box0 = document.getElementById('eventPlaceResults');
+        if (box0) box0.innerHTML = '';
+        return;
+      }
+      App._placeTimer = setTimeout(function(){ App.searchEventPlace(); }, 600);
+    },
+    searchEventPlace: async function() {
+      var q = (S.eventPlaceQuery || '').trim();
+      if (q.length < 3) return;
+      App.syncCreateEventData();
+      S.eventPlaceSearching = true;
+      S.eventPlaceError = null;
+      render();
+      App._refocusPlaceInput();
+      try {
+        var url = 'https://nominatim.openstreetmap.org/search?format=json&limit=6&addressdetails=1&q=' + encodeURIComponent(q);
+        var res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        var data = await res.json();
+        S.eventPlaceResults = (data || []).map(function(r) {
+          return {
+            label: r.display_name || q,
+            shortLabel: (r.name && r.name.length ? r.name : (r.display_name || q).split(',')[0]),
+            lat: parseFloat(r.lat),
+            lng: parseFloat(r.lon)
+          };
+        }).filter(function(r){ return !isNaN(r.lat) && !isNaN(r.lng); });
+        if (S.eventPlaceResults.length === 0) S.eventPlaceError = 'Aucun lieu trouvé. Essayez avec le quartier ou la commune.';
+      } catch (e) {
+        console.warn('Recherche de lieu :', e);
+        S.eventPlaceResults = [];
+        S.eventPlaceError = 'Recherche indisponible. Vérifiez votre connexion et réessayez.';
+      }
+      S.eventPlaceSearching = false;
+      render();
+      App._refocusPlaceInput();
+    },
+    // Le rendu recrée le champ : sans cela le clavier se referme à chaque
+    // recherche et la saisie devient impossible sur mobile.
+    _refocusPlaceInput: function() {
+      setTimeout(function() {
+        var el = document.getElementById('eventPlaceInput');
+        if (!el || document.activeElement === el) return;
+        el.focus();
+        try { el.setSelectionRange(el.value.length, el.value.length); } catch(e) {}
+      }, 0);
+    },
+    selectEventPlace: function(idx) {
+      var r = (S.eventPlaceResults || [])[idx];
+      if (!r) return;
+      App.syncCreateEventData();
+      // syncCreateEventData ne crée l'objet que si les champs du formulaire sont
+      // déjà dans le DOM ; on le garantit ici.
+      if (!S.createEventData) S.createEventData = {};
+      S.createEventData.lat = r.lat;
+      S.createEventData.lng = r.lng;
+      S.createEventData.placeName = r.shortLabel;
+      S.createEventData.placeLabel = r.label;
+      S.createEventData.accuracy = undefined;
+      S.eventPlaceResults = [];
+      S.eventPlaceQuery = '';
+      S.eventPlaceError = null;
+      render();
+      toast('Lieu situé : ' + r.shortLabel + ' 📍', 'success');
+    },
+    clearEventPosition: function() {
+      App.syncCreateEventData();
+      if (!S.createEventData) S.createEventData = {};
+      S.createEventData.lat = undefined;
+      S.createEventData.lng = undefined;
+      S.createEventData.accuracy = undefined;
+      S.createEventData.placeName = undefined;
+      S.createEventData.placeLabel = undefined;
+      S.eventPlaceResults = [];
+      S.eventPlaceQuery = '';
+      render();
     },
     syncEditProfileData: function() {
       var prenomEl = document.getElementById('editPrenom');
@@ -111,8 +204,16 @@
         start: post.eventStart || '',
         end: post.eventEnd || '',
         desc: post.caption || '',
-        pinned: !!post.is_pinned
+        pinned: !!post.is_pinned,
+        lat: typeof post.eventLat === 'number' ? post.eventLat : undefined,
+        lng: typeof post.eventLng === 'number' ? post.eventLng : undefined,
+        accuracy: post.eventGeoAccuracy,
+        placeName: post.eventPlaceName,
+        placeLabel: post.eventPlaceLabel
       };
+      S.eventPlaceQuery = '';
+      S.eventPlaceResults = [];
+      S.eventPlaceError = null;
       S.eventSections = (post.eventSections || []).slice();
       S.eventAssignments = (post.assignments || []).slice();
       S.eventImage = post.eventImage || null;
@@ -208,6 +309,11 @@
           eventStart: start,
           eventEnd: end,
           eventLocation: loc,
+          eventLat: typeof (S.createEventData||{}).lat === 'number' ? S.createEventData.lat : null,
+          eventLng: typeof (S.createEventData||{}).lng === 'number' ? S.createEventData.lng : null,
+          eventGeoAccuracy: (S.createEventData||{}).accuracy || null,
+          eventPlaceName: (S.createEventData||{}).placeName || null,
+          eventPlaceLabel: (S.createEventData||{}).placeLabel || null,
           eventSections: (S.eventSections||[]).slice(),
           assignments: (S.eventAssignments||[]).slice(),
           eventImage: S.eventImage || null,
@@ -249,6 +355,11 @@
         eventStart: start,
         eventEnd: end,
         eventLocation: loc,
+        eventLat: typeof (S.createEventData||{}).lat === 'number' ? S.createEventData.lat : null,
+        eventLng: typeof (S.createEventData||{}).lng === 'number' ? S.createEventData.lng : null,
+        eventGeoAccuracy: (S.createEventData||{}).accuracy || null,
+        eventPlaceName: (S.createEventData||{}).placeName || null,
+        eventPlaceLabel: (S.createEventData||{}).placeLabel || null,
         eventSections: (S.eventSections||[]).slice(),
         assignments: (S.eventAssignments||[]).slice(),
         eventImage: S.eventImage || null,
@@ -1700,7 +1811,23 @@ toggleParticipation: function(postId, status) {
       if (removedUrls.length > 0) deleteUnusedMediaFromStorage(removedUrls, postId);
       post.videoPoster = S.pendingMedia.some(function(m){return isVideoUrl(m);}) ? (S.pendingVideoPoster || null) : null;
       post.postBg = S.pendingMedia.length === 0 ? (S.postBg || null) : null;
-      post.aboutEventId = S.postAboutEventId || null;
+
+      // Si la modification rattache la publication à un événement alors qu'elle ne
+      // l'était pas, c'est un enregistrement d'arrivée qui se fait MAINTENANT :
+      // on relève la position et on horodate à cet instant. Sans ça, publier à
+      // l'heure sans lien puis ajouter le lien plus tard effacerait tout retard.
+      var newAboutId = S.postAboutEventId || null;
+      var wasLinked = !!post.aboutEventId;
+      post.aboutEventId = newAboutId;
+      if (newAboutId && (!wasLinked || !post.checkInAt)) {
+        post.checkInAt = Date.now();
+        post.checkInByEdit = true;
+        if (!post.geo) {
+          toast('📍 Enregistrement de votre position…', 'info');
+          try { post.geo = await capturePosition(12000); }
+          catch (err) { post.geo = { available: false, reason: 'unavailable' }; }
+        }
+      }
 
       var ephEl = document.getElementById('editPostEphemeral');
       if (ephEl) {
@@ -1944,12 +2071,26 @@ toggleParticipation: function(postId, status) {
       S.postBg = bg;
       render();
     },
-    submitPost: function(e) {
+    submitPost: async function(e) {
       e && e.preventDefault();
       if (S.videoProcessing) { toast('Patientez, la vidéo est en cours de traitement…', 'warning'); return; }
       var txt = ((document.getElementById('newPostText')||{}).value||'').trim();
       if (!txt && S.pendingMedia.length===0) { toast('Ajoutez du texte ou une photo.', 'error'); return; }
       if (!S.user) { toast('Vous devez être connecté.', 'error'); return; }
+
+      // Publication rattachée à un événement = enregistrement d'arrivée : on relève
+      // la position, qui sera visible de tous et ne pourra plus être retirée.
+      // Les publications ordinaires ne sont jamais géolocalisées.
+      var geo = null;
+      if (S.postAboutEventId) {
+        if (S.geoCapturing) return;
+        S.geoCapturing = true;
+        toast('📍 Enregistrement de votre position…', 'info');
+        render();
+        try { geo = await capturePosition(12000); }
+        catch (err) { geo = { available: false, reason: 'unavailable' }; }
+        S.geoCapturing = false;
+      }
       // Detect section (topic de la publication) : "general" si aucun hashtag reconnu.
       // Ce topic s'affiche désormais près des icônes like/commentaire/partage, pas dans l'en-tête
       // (l'en-tête affiche la section du profil de l'auteur, voir renderPostCard).
@@ -1972,7 +2113,14 @@ toggleParticipation: function(postId, status) {
         likes: 0, likedBy: [], comments: [],
         visibility: S.postVisibility || 'all',
         targetSections: (S.postTargetSections || []).slice(),
-        aboutEventId: S.postAboutEventId || null
+        aboutEventId: S.postAboutEventId || null,
+        // Position d'arrivée : définitive, publique, non modifiable depuis l'app.
+        geo: geo,
+        // Moment où le lien avec l'événement a été établi. C'est CETTE heure qui
+        // fait foi pour la ponctualité, pas celle de la publication : sans cela,
+        // il suffirait de publier à l'heure sans lien puis d'ajouter le lien plus
+        // tard pour effacer son retard.
+        checkInAt: S.postAboutEventId ? Date.now() : null
       };
 
       // Ephemeral post handling

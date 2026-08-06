@@ -506,9 +506,16 @@
             ev.punctuality.details.map(function(d) {
               var dc = d.stars >= 4 ? '#10B981' : d.stars >= 2 ? '#F59E0B' : '#EF4444';
               var when = d.absent ? 'aucune publication' : (d.delayMinutes <= 0 ? "à l'heure" : '+' + d.delayMinutes + ' min');
-              return '<div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:3px 0;">' +
-                '<span style="color:#475569;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + safeHtml(d.name) + (d.task ? ' <span style="color:#94A3B8;">· ' + safeHtml(d.task) + '</span>' : '') + '</span>' +
-                '<span style="font-weight:800;color:' + dc + ';white-space:nowrap;margin-left:10px;">' + (d.stars>0?'+':'') + d.stars + '★ · ' + when + '</span>' +
+              var geoNote = '';
+              if (!d.absent) {
+                if (!d.geo || !d.geo.available) geoNote = '<span style="display:block;font-size:10.5px;color:#B91C1C;font-weight:700;">⚠️ ' + geoStatusLabel(d.geo) + '</span>';
+                else if (d.distance === null || d.distance === undefined) geoNote = '';
+                else if (d.onSite) geoNote = '<span style="display:block;font-size:10.5px;color:#047857;">📍 sur place (' + formatDistance(d.distance) + ')</span>';
+                else geoNote = '<span style="display:block;font-size:10.5px;color:#B91C1C;font-weight:700;">⚠️ à ' + formatDistance(d.distance) + ' du lieu</span>';
+              }
+              return '<div style="display:flex;justify-content:space-between;align-items:flex-start;font-size:12px;padding:3px 0;gap:10px;">' +
+                '<span style="color:#475569;min-width:0;">' + safeHtml(d.name) + (d.task ? ' <span style="color:#94A3B8;">· ' + safeHtml(d.task) + '</span>' : '') + geoNote + '</span>' +
+                '<span style="font-weight:800;color:' + dc + ';white-space:nowrap;">' + (d.stars>0?'+':'') + d.stars + '★ · ' + when + '</span>' +
               '</div>';
             }).join('') +
             '<div style="display:flex;justify-content:space-between;align-items:center;font-size:12.5px;font-weight:800;color:#0F172A;padding-top:8px;margin-top:6px;border-top:1px solid #E2E8F0;">' +
@@ -558,6 +565,60 @@
           return '<div style="width:' + (a?'18':'6') + 'px;height:6px;border-radius:3px;background:' + (a?'#5856D6':'#C7C7CC') + ';transition:all 0.25s;"></div>';
         }).join('') +
       '</div>' +
+    '</div>';
+  }
+
+  // Bandeau d'arrivée affiché publiquement sur une publication rattachée à un
+  // événement : heure d'enregistrement, ponctualité obtenue et — c'est le point
+  // essentiel — la distance au lieu. Tout le monde le voit, personne ne peut le
+  // retirer : seule la suppression de la publication le fait disparaître, et cette
+  // suppression est elle-même visible de tous.
+  function renderCheckInBadge(post) {
+    if (!post || !post.aboutEventId) return '';
+    var ev = db(SK.POSTS, []).find(function(p){ return p.id === post.aboutEventId && p.type === 'EVENT'; });
+    if (!ev) return '';
+    var isAssigned = (ev.assignments || []).some(function(a){ return a && a.userId === post.userId; });
+    if (!isAssigned) return '';   // seuls les membres assignés « pointent »
+
+    var startTs = eventStartTimestamp(ev);
+    var arrival = post.checkInAt || post.timestamp || 0;
+    var delay = startTs ? Math.round((arrival - startTs) / 60000) : null;
+    var stars = delay === null ? null : starsForDelay(delay);
+    var dist = checkInDistance(post, ev);
+    var geo = post.geo;
+
+    var starCol = stars === null ? '#8E8E93' : stars >= 4 ? '#10B981' : stars >= 2 ? '#F59E0B' : '#EF4444';
+
+    // Bloc position : c'est lui qui rend la triche visible.
+    var geoBlock;
+    if (geo && geo.available) {
+      if (dist === null) {
+        geoBlock = '<span style="color:#6B7280;">📍 Position enregistrée' + (geo.accuracy ? ' (±' + geo.accuracy + ' m)' : '') + ' · lieu de l\'événement non défini</span>';
+      } else {
+        var near = dist <= ON_SITE_RADIUS_M;
+        geoBlock = '<span style="color:' + (near ? '#047857' : '#B91C1C') + ';font-weight:800;">' +
+          (near ? '📍 Sur place' : '⚠️ À ' + formatDistance(dist) + ' du lieu') +
+          '</span>' +
+          (near ? '<span style="color:#6B7280;"> · à ' + formatDistance(dist) + ' du point de référence</span>' : '');
+      }
+    } else {
+      geoBlock = '<span style="color:#B91C1C;font-weight:800;">⚠️ ' + geoStatusLabel(geo) + '</span>';
+    }
+
+    var bg = (geo && geo.available && (dist === null || dist <= ON_SITE_RADIUS_M)) ? '#F8FAFC' : '#FEF2F2';
+    var border = (geo && geo.available && (dist === null || dist <= ON_SITE_RADIUS_M)) ? '#E2E8F0' : '#FECACA';
+
+    return '<div style="margin:0 14px 10px;padding:10px 12px;background:' + bg + ';border:1px solid ' + border + ';border-radius:14px;">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px;">' +
+        '<span style="font-size:10px;font-weight:800;color:#64748B;text-transform:uppercase;letter-spacing:0.5px;">⏱️ Arrivée enregistrée</span>' +
+        (stars === null ? '' : '<span style="font-size:12.5px;font-weight:900;color:' + starCol + ';white-space:nowrap;">' + (stars>0?'+':'') + stars + '★</span>') +
+      '</div>' +
+      '<div style="font-size:11.5px;color:#475569;line-height:1.5;">' +
+        (delay === null ? '' : (delay <= 0 ? "À l'heure" : 'Retard de ' + delay + ' min') + ' · ') +
+        new Date(arrival).toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'}) +
+      '</div>' +
+      '<div style="font-size:11.5px;line-height:1.5;margin-top:2px;">' + geoBlock + '</div>' +
+      (post.checkInByEdit ? '<div style="font-size:10.5px;color:#B91C1C;margin-top:3px;font-weight:700;">⚠️ Rattaché à l\'événement après publication</div>' : '') +
     '</div>';
   }
 
@@ -803,6 +864,7 @@
           '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5856D6" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>' +
         '</div>';
       })() +
+      renderCheckInBadge(post) +
       captionTextBlock +
       contentZone +
       // Actions row
@@ -949,6 +1011,41 @@
             '<div style="display:flex;flex-direction:column;gap:4px;">' +
               '<label style="font-size:13px;color:#8E8E93;font-weight:600;">Lieu / Salle</label>' +
               '<input type="text" id="eventLocation" value="' + safeHtml(locVal) + '" placeholder="Ex: Salle Principale" style="border:none;border-bottom:1px solid #E5E5EA;font-size:16px;outline:none;padding-bottom:8px;border-radius:0;" />' +
+            '</div>' +
+            // Position du lieu : recherchée par son nom/adresse. On ne relève jamais
+            // la position du créateur — il prépare l'événement à l'avance, souvent
+            // de chez lui, sa position n'a donc rien à voir avec le lieu.
+            '<div style="display:flex;flex-direction:column;gap:8px;">' +
+              '<label style="font-size:13px;color:#8E8E93;font-weight:600;">Situer le lieu sur la carte <span style="font-weight:500;">(optionnel)</span></label>' +
+              (typeof cData.lat === 'number'
+                ? '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;background:#ECFDF5;border:1px solid #A7F3D0;border-radius:12px;padding:10px 12px;">' +
+                    '<div style="min-width:0;">' +
+                      '<div style="font-size:12.5px;font-weight:800;color:#047857;">📍 ' + safeHtml(cData.placeName || 'Lieu situé') + '</div>' +
+                      '<div style="font-size:11px;color:#6B7280;line-height:1.35;">' + safeHtml(cData.placeLabel || (cData.lat.toFixed(5) + ', ' + cData.lng.toFixed(5))) + '</div>' +
+                    '</div>' +
+                    '<button type="button" onclick="App.clearEventPosition()" style="background:none;border:none;color:#FF3B30;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">Changer</button>' +
+                  '</div>'
+                : '<div>' +
+                    '<div style="display:flex;align-items:center;gap:8px;background:#F6F7F9;border-radius:12px;padding:0 12px;height:44px;">' +
+                      '<span style="font-size:15px;">🔎</span>' +
+                      '<input type="text" id="eventPlaceInput" value="' + safeHtml(S.eventPlaceQuery || '') + '" oninput="App.onEventPlaceInput(this.value)" placeholder="Ex : Église Vase d\'Honneur, Cocody" style="flex:1;border:none;background:transparent;font-size:14px;color:#000;outline:none;min-width:0;" />' +
+                      (S.eventPlaceSearching
+                        ? '<div style="width:15px;height:15px;border:2.5px solid #E2E4E9;border-top-color:#007AFF;border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0;"></div>'
+                        : '') +
+                    '</div>' +
+                    (S.eventPlaceError
+                      ? '<div style="font-size:11.5px;color:#B91C1C;font-weight:600;margin-top:6px;">' + safeHtml(S.eventPlaceError) + '</div>'
+                      : '') +
+                    '<div id="eventPlaceResults" style="margin-top:' + ((S.eventPlaceResults||[]).length ? '6px' : '0') + ';">' +
+                      (S.eventPlaceResults||[]).map(function(r, i) {
+                        return '<button type="button" onclick="App.selectEventPlace(' + i + ')" style="width:100%;text-align:left;background:#FFF;border:1px solid #EFEFEF;border-radius:12px;padding:9px 11px;margin-bottom:5px;cursor:pointer;display:block;">' +
+                          '<div style="font-size:13px;font-weight:800;color:#1C1C1E;">' + safeHtml(r.shortLabel) + '</div>' +
+                          '<div style="font-size:11px;color:#8E8E93;line-height:1.35;">' + safeHtml(r.label) + '</div>' +
+                        '</button>';
+                      }).join('') +
+                    '</div>' +
+                  '</div>') +
+              '<div style="font-size:11px;color:#9AA0A8;line-height:1.4;">Un membre est considéré « sur place » s\'il enregistre son arrivée à moins de ' + formatDistance(ON_SITE_RADIUS_M) + ' de ce point. La distance de chacun sera visible de tous.</div>' +
             '</div>' +
           '</div>' +
         '</div>' +
@@ -1396,6 +1493,7 @@
           ? 'Publier maintenant vous attribuera <b style="color:' + col + ';">' + stars + '★</b> de ponctualité.'
           : 'Liez cette publication à l\'événement ci-dessous pour enregistrer votre arrivée. Actuellement : <b style="color:' + col + ';">' + stars + '★</b>' + (pending.delay > 0 ? ' (+' + pending.delay + ' min)' : ' (à l\'heure)') + '.') +
       '</div>' +
+      '<div style="font-size:10.5px;color:#9AA0A8;line-height:1.4;margin-top:6px;">📍 Votre position sera enregistrée avec la publication et visible de tous. Elle ne pourra plus être retirée.</div>' +
       (already ? '' :
         '<button type="button" onclick="App.selectAboutEvent(\'' + pending.ev.id + '\')" style="margin-top:8px;width:100%;background:#5856D6;color:#FFF;border:none;border-radius:12px;padding:9px;font-size:12.5px;font-weight:800;cursor:pointer;">Enregistrer mon arrivée à cet événement</button>') +
     '</div>';
