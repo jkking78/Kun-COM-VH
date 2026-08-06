@@ -1272,11 +1272,36 @@
       }
     }
 
-    root.innerHTML = html;
+    // Réconciliation DOM : on ne remplace plus tout le contenu à chaque appel
+    // (root.innerHTML = html) mais on ne patch que ce qui a réellement changé, via
+    // morphdom. Bénéfices concrets : une vidéo en cours de lecture n'est plus coupée
+    // par le sondage périodique des publications (avant : tout le DOM était détruit et
+    // recréé toutes les 20s), le focus/curseur des champs de saisie n'est plus perdu,
+    // et on évite le travail de rendu inutile (moins de saccades, moins de mémoire).
+    // Si morphdom n'est pas chargé (CDN indisponible) ou lève une erreur, on retombe
+    // sur l'ancien comportement pour ne jamais bloquer l'application.
+    if (typeof morphdom === 'function') {
+      try {
+        morphdom(root, '<div id="root">' + html + '</div>', {
+          onBeforeElUpdated: function(fromEl) {
+            // Sous-arbres gérés par une librairie externe qui injecte son propre DOM
+            // (ex: Cropper.js) : ne jamais les re-générer / re-differ.
+            if (fromEl.getAttribute && fromEl.getAttribute('data-no-morph') === 'true') return false;
+            return true;
+          }
+        });
+      } catch (morphErr) {
+        console.warn('morphdom error, fallback complet:', morphErr);
+        root.innerHTML = html;
+      }
+    } else {
+      root.innerHTML = html;
+    }
 
-    // Restore scroll position
+    // Restore scroll position (filet de sécurité — morphdom préserve déjà le scroll
+    // dans la grande majorité des cas puisque le nœud #mainContent n'est pas recréé)
     var mc = root.querySelector('#mainContent');
-    if (mc && scrollTop > 0) mc.scrollTop = scrollTop;
+    if (mc && scrollTop > 0 && mc.scrollTop !== scrollTop) mc.scrollTop = scrollTop;
 
     // Observe les publications visibles pour comptabiliser les vues
     try { setupViewTracking(); } catch(e){}
@@ -1316,7 +1341,11 @@
       // explicites. Cropper.js calcule la largeur de sa zone à partir du parent de
       // l'image — un parent en flex + padding lui faisait dépasser l'écran à droite.
       '<div style="flex:1;position:relative;overflow:hidden;background:#000;">' +
-        '<div id="cropperStage" style="position:absolute;top:12px;right:12px;bottom:12px;left:12px;overflow:hidden;">' +
+        // data-no-morph : Cropper.js injecte son propre DOM (poignées, canvas) à
+        // l'intérieur de ce conteneur, en dehors de ce que ce template génère — il ne
+        // faut jamais laisser le diffing DOM (morphdom) toucher ce sous-arbre, sous
+        // peine de détruire l'instance de recadrage en cours à chaque re-render.
+        '<div id="cropperStage" data-no-morph="true" style="position:absolute;top:12px;right:12px;bottom:12px;left:12px;overflow:hidden;">' +
           '<img id="cropperTargetImage" src="' + S.cropperDataUrl + '" style="display:block;max-width:100%;" />' +
         '</div>' +
       '</div>' +
