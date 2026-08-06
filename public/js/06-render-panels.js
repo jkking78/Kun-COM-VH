@@ -9,6 +9,7 @@
     if (!post) return '';
     var u = S.user || {};
     var canDelete = u.role === 'GRAND_RESPONSABLE' || post.userId === u.id;
+    var isEventPost = post.type === 'EVENT' && !!post.eventTitle;
 
     return '<div onclick="App.closeOptions()" style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:10000;display:flex;justify-content:center;align-items:flex-end;">' +
       '<div onclick="event.stopPropagation()" style="width:100%;max-width:460px;background:#FFF;border-top-left-radius:28px;border-top-right-radius:28px;padding:12px 16px 24px;animation:slideUp 0.25s;">' +
@@ -32,9 +33,11 @@
         '</button>' +
 
         (canDelete
-          ? '<button onclick="App.openEditPost(\''+post.id+'\');App.closeOptions();" style="width:100%;background:#F8F8F8;border:none;border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;margin-bottom:10px;text-align:left;">' +
+          // Un événement s'édite avec le formulaire événement (date, horaires, lieu,
+          // pôles, assignations, image), pas avec l'éditeur de publication générique.
+          ? '<button onclick="' + (isEventPost ? 'App.openEditEvent(\''+post.id+'\')' : 'App.openEditPost(\''+post.id+'\');App.closeOptions();') + '" style="width:100%;background:#F8F8F8;border:none;border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;margin-bottom:10px;text-align:left;">' +
               '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#007AFF" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>' +
-              '<span style="font-size:15px;font-weight:600;color:#000;">✏️ Modifier la publication</span>' +
+              '<span style="font-size:15px;font-weight:600;color:#000;">' + (isEventPost ? '✏️ Modifier l\'événement' : '✏️ Modifier la publication') + '</span>' +
             '</button>' +
             '<button onclick="App.deletePost(\''+post.id+'\')" style="width:100%;background:#FFF5F5;border:1px solid #FFE0E0;border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;margin-bottom:10px;text-align:left;">' +
               SVG.trash + '<span style="font-size:15px;font-weight:700;color:#FF3B30;">Supprimer</span>' +
@@ -229,7 +232,11 @@
       '</div>';
     } else {
       var nowTime = new Date().toTimeString().slice(0,5);
-      
+      // Chaque événement produit un bloc ; on décide ensuite de l'affichage :
+      // liste verticale habituelle s'il n'y en a qu'un, carrousel horizontal dès
+      // que la journée en compte plusieurs (ordonnés par heure de début).
+      var planBlocks = [];
+
       dayEvents.forEach(function(ev) {
         var status = 'upcoming';
         var statusHtml = '';
@@ -249,7 +256,7 @@
           return '<span style="font-size:12px;font-weight:700;color:#007AFF;">' + secNom(s) + '</span>';
         }).join('<span style="color:#D1D1D6;margin:0 4px;">•</span>');
 
-        timeline += '<div style="display:flex;margin-bottom:24px;">' +
+        planBlocks.push('<div style="display:flex;margin-bottom:24px;">' +
           '<div style="width:60px;flex-shrink:0;text-align:right;padding-right:12px;padding-top:2px;">' +
             '<div style="font-size:14px;font-weight:800;color:#000;">' + (ev.eventStart||'--:--') + '</div>' +
             '<div style="font-size:12px;font-weight:600;color:#8E8E93;margin-top:2px;">' + (ev.eventEnd||'--:--') + '</div>' +
@@ -275,10 +282,33 @@
               })() +
             '</div>' +
           '</div>' +
-        '</div>';
+        '</div>');
       });
+
+      if (planBlocks.length === 1) {
+        timeline += planBlocks[0];
+      } else {
+        var planCarId = 'evgrpplan-' + String(S.selectedDate || '').replace(/-/g, '');
+        var planIdx = (S.eventGroupIdx && S.eventGroupIdx[S.selectedDate]) || 0;
+        if (planIdx >= planBlocks.length) planIdx = 0;
+        timeline += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">' +
+            '<div style="font-size:13px;font-weight:800;color:#3A3A3C;">' + planBlocks.length + ' événements ce jour · faites défiler</div>' +
+            '<div id="evgrpBadge-' + planCarId + '" style="background:#F0EFFF;color:#5856D6;font-size:12px;font-weight:800;padding:4px 10px;border-radius:20px;">' + (planIdx + 1) + '/' + planBlocks.length + '</div>' +
+          '</div>' +
+          '<div id="' + planCarId + '" onscroll="App.eventGroupScroll(\'' + S.selectedDate + '\',\'' + planCarId + '\',this)" style="display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;">' +
+            planBlocks.map(function(b) {
+              return '<div style="flex:0 0 100%;scroll-snap-align:start;box-sizing:border-box;padding-right:4px;">' + b + '</div>';
+            }).join('') +
+          '</div>' +
+          '<div id="evgrpDots-' + planCarId + '" style="display:flex;justify-content:center;gap:5px;padding:4px 0 8px;">' +
+            planBlocks.map(function(_, di) {
+              var a = di === planIdx;
+              return '<div style="width:' + (a?'18':'6') + 'px;height:6px;border-radius:3px;background:' + (a?'#5856D6':'#C7C7CC') + ';transition:all 0.25s;"></div>';
+            }).join('') +
+          '</div>';
+      }
     }
-    
+
     timeline += '</div>';
 
     return header + modeSwitch + slider + timeline;

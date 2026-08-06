@@ -65,14 +65,15 @@
       var descEl = document.getElementById('eventDesc');
       var pinnedEl = document.getElementById('eventPinned');
       if (titleEl || locEl || descEl) {
+        var prev = S.createEventData || {};
         S.createEventData = {
-          title: titleEl ? titleEl.value : '',
-          location: locEl ? locEl.value : '',
-          date: dateEl ? dateEl.value : '',
-          start: startEl ? startEl.value : '',
-          end: endEl ? endEl.value : '',
-          desc: descEl ? descEl.value : '',
-          pinned: pinnedEl ? pinnedEl.checked : false
+          title: titleEl ? titleEl.value : (prev.title || ''),
+          location: locEl ? locEl.value : (prev.location || ''),
+          date: dateEl ? dateEl.value : (prev.date || ''),
+          start: startEl ? startEl.value : (prev.start || ''),
+          end: endEl ? endEl.value : (prev.end || ''),
+          desc: descEl ? descEl.value : (prev.desc || ''),
+          pinned: pinnedEl ? pinnedEl.checked : !!prev.pinned
         };
       }
     },
@@ -88,8 +89,83 @@
         };
       }
     },
-    openCreateEvent: function() { S.createEventOpen = true; S.eventSections = []; S.eventAssignments = []; S.createEventData = null; render(); },
-    closeCreateEvent: function() { S.createEventOpen = false; S.createEventData = null; render(); },
+    openCreateEvent: function() {
+      S.createEventOpen = true; S.editEventId = null;
+      S.eventSections = []; S.eventAssignments = []; S.createEventData = null;
+      S.eventImage = null; S.eventImageProcessing = false;
+      render();
+    },
+    // Modification d'un événement : on rouvre le formulaire ÉVÉNEMENT pré-rempli,
+    // et non l'éditeur de publication générique (champs sans rapport : fond coloré,
+    // éphémère, médias multiples...).
+    openEditEvent: function(postId) {
+      var post = db(SK.POSTS, []).find(function(p){ return p.id === postId; });
+      if (!post) { toast('Événement introuvable.', 'error'); return; }
+      S.optionsOpen = false; S.optionsPost = null; S.postOptionsOpen = false;
+      S.createEventOpen = true;
+      S.editEventId = post.id;
+      S.createEventData = {
+        title: post.eventTitle || '',
+        location: post.eventLocation || '',
+        date: post.eventDate || '',
+        start: post.eventStart || '',
+        end: post.eventEnd || '',
+        desc: post.caption || '',
+        pinned: !!post.is_pinned
+      };
+      S.eventSections = (post.eventSections || []).slice();
+      S.eventAssignments = (post.assignments || []).slice();
+      S.eventImage = post.eventImage || null;
+      S.eventImageProcessing = false;
+      render();
+    },
+    closeCreateEvent: function() {
+      S.createEventOpen = false; S.createEventData = null; S.editEventId = null;
+      S.eventImage = null; S.eventImageProcessing = false;
+      render();
+    },
+    // --- Image d'un événement (une seule) ---
+    addEventImage: function(e) {
+      var file = e && e.target && e.target.files && e.target.files[0];
+      if (!file || !file.type || file.type.indexOf('image/') !== 0) return;
+      App.syncCreateEventData();
+      S.eventImageProcessing = true;
+      render();
+      var reader = new FileReader();
+      reader.onload = function(evt) {
+        compressImage(evt.target.result, 1440, 1440, 0.82, function(dataUrl) {
+          if (!dataUrl) { S.eventImageProcessing = false; render(); toast('Image illisible.', 'error'); return; }
+          S.eventImage = dataUrl;          // aperçu immédiat
+          S.eventImageProcessing = false;
+          render();
+          // Bascule vers l'URL hébergée en arrière-plan (évite le base64 en base)
+          uploadMediaToStorage(dataUrl, function(hostedUrl) {
+            if (hostedUrl && S.eventImage === dataUrl) S.eventImage = hostedUrl;
+          });
+        });
+      };
+      reader.onerror = function() { S.eventImageProcessing = false; render(); toast('Image illisible.', 'error'); };
+      reader.readAsDataURL(file);
+    },
+    editEventImage: function() {
+      if (!S.eventImage) return;
+      App.syncCreateEventData();
+      App.openCropper(S.eventImage, NaN, 'Modifier l\'image', function(croppedDataUrl) {
+        compressImage(croppedDataUrl, 1440, 1440, 0.82, function(dataUrl) {
+          if (!dataUrl) return;
+          S.eventImage = dataUrl;
+          render();
+          uploadMediaToStorage(dataUrl, function(hostedUrl) {
+            if (hostedUrl && S.eventImage === dataUrl) S.eventImage = hostedUrl;
+          });
+        });
+      });
+    },
+    removeEventImage: function() {
+      App.syncCreateEventData();
+      S.eventImage = null;
+      render();
+    },
     selectDate: function(d) { S.selectedDate = d; render(); },
     toggleEventSection: function(sec) {
       var idx = S.eventSections.indexOf(sec);
@@ -118,6 +194,45 @@
       var desc = descEl ? descEl.value.trim() : '';
       var pinned = pinnedEl ? pinnedEl.checked : false;
       if (!title || !date || !start) { toast('Titre, Date et Heure de début requis.', 'error'); return; }
+      if (S.eventImageProcessing) { toast('L\'image est encore en cours de traitement.', 'info'); return; }
+
+      // ---- Mode MODIFICATION : on met à jour l'événement existant ----
+      if (S.editEventId) {
+        var allP = db(SK.POSTS, []);
+        var idxE = allP.findIndex(function(p){ return p.id === S.editEventId; });
+        if (idxE === -1) { toast('Événement introuvable.', 'error'); return; }
+        if (btn) { btn.textContent = 'Enregistrement...'; btn.disabled = true; }
+        var updated = Object.assign({}, allP[idxE], {
+          eventTitle: title,
+          eventDate: date,
+          eventStart: start,
+          eventEnd: end,
+          eventLocation: loc,
+          eventSections: (S.eventSections||[]).slice(),
+          assignments: (S.eventAssignments||[]).slice(),
+          eventImage: S.eventImage || null,
+          caption: desc,
+          is_pinned: pinned,
+          edited: true,
+          editedAt: Date.now()
+        });
+        allP[idxE] = updated;
+        dbSet(SK.POSTS, allP);
+        if (supabase) {
+          try {
+            await supabase.from('kun_com_posts').upsert({ id: updated.id, content: updated }, { onConflict: 'id' });
+          } catch(e) { console.warn('Update event supabase error:', e); }
+        }
+        S.createEventOpen = false;
+        S.editEventId = null;
+        S.createEventData = null;
+        S.eventImage = null;
+        S.selectedDate = date;
+        render();
+        toast('Événement modifié ! 🎉', 'success');
+        return;
+      }
+
       if (btn) { btn.textContent = 'Création...'; btn.disabled = true; }
       var newPost = {
         id: 'evt_' + Date.now(),
@@ -136,6 +251,7 @@
         eventLocation: loc,
         eventSections: (S.eventSections||[]).slice(),
         assignments: (S.eventAssignments||[]).slice(),
+        eventImage: S.eventImage || null,
         caption: desc,
         is_pinned: pinned,
         timestamp: Date.now(),
@@ -155,6 +271,7 @@
         }
       }
       S.createEventOpen = false;
+      S.eventImage = null;
       S.selectedDate = date;
       S.tab = pinned ? 'home' : 'planning';
       render();
@@ -1849,6 +1966,29 @@ toggleParticipation: function(postId, status) {
         dots.innerHTML = post.mediaUrls.map(function(_,di){
           var a=di===idx; return '<div style="width:'+(a?'18':'6')+'px;height:6px;border-radius:3px;background:'+(a?'#007AFF':'#C7C7CC')+';transition:all 0.25s;"></div>';
         }).join('');
+      }
+    },
+
+    // Défilement d'un carrousel d'événements d'une même journée. Met à jour le
+    // compteur et les pastilles directement dans le DOM (pas de render() global,
+    // qui interromprait le défilement en cours).
+    eventGroupScroll: function(dateIso, carId, el) {
+      var w = el.clientWidth; if (!w) return;
+      var idx = Math.round(el.scrollLeft / w);
+      if (!S.eventGroupIdx) S.eventGroupIdx = {};
+      if (S.eventGroupIdx[dateIso] === idx) return;
+      S.eventGroupIdx[dateIso] = idx;
+      var total = el.children ? el.children.length : 0;
+      var badge = document.getElementById('evgrpBadge-' + carId);
+      if (badge && total) badge.textContent = (idx + 1) + '/' + total;
+      var dots = document.getElementById('evgrpDots-' + carId);
+      if (dots && total) {
+        var html = '';
+        for (var i = 0; i < total; i++) {
+          var a = i === idx;
+          html += '<div style="width:' + (a?'18':'6') + 'px;height:6px;border-radius:3px;background:' + (a?'#5856D6':'#C7C7CC') + ';transition:all 0.25s;"></div>';
+        }
+        dots.innerHTML = html;
       }
     },
 

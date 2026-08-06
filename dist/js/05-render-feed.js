@@ -325,7 +325,13 @@
           '<p style="font-size:12.5px;color:#8E8E93;margin:4px 0 0;">Toutes les publications ont été affichées.</p>' +
         '</div>';
       }
-      feed = filtered.map(renderPostCard).join('') + footerHtml;
+      // Les événements d'une même journée sont fusionnés en un carrousel unique ;
+      // une journée à un seul événement garde exactement la carte habituelle.
+      feed = groupSameDayEvents(filtered).map(function(item) {
+        if (item.kind === 'post') return renderPostCard(item.post);
+        if (item.events.length === 1) return renderPostCard(item.events[0]);
+        return renderEventGroupCard(item.date, item.events);
+      }).join('') + footerHtml;
     }
 
     return header + trendsHtml + stories + feed;
@@ -334,6 +340,132 @@
   // ============================================================
   // POST CARD — Style Instagram complet
   // ============================================================
+  // Corps visuel d'un événement (pastille de date, titre, horaires, lieu, équipe,
+  // image éventuelle). Extrait dans sa propre fonction pour être réutilisé tel quel
+  // par la carte du fil, le carrousel des journées à plusieurs événements et le
+  // Planning — un seul endroit à faire évoluer.
+  function renderEventCardInner(post) {
+    var evDate = post.eventDate ? new Date(post.eventDate + 'T00:00:00') : null;
+    var evMonth = evDate ? evDate.toLocaleDateString('fr-FR', {month:'short'}).toUpperCase() : '';
+    var evDay = evDate ? evDate.getDate() : '';
+    var evSections = (post.eventSections || []).map(function(s){ return '<span style="font-size:12px;font-weight:700;color:#5856D6;">' + s.charAt(0).toUpperCase() + s.slice(1) + '</span>'; }).join(' ');
+    var nowDateStr = new Date().toISOString().split('T')[0];
+    var nowTimeStr = new Date().toTimeString().slice(0,5);
+    var evStatus;
+    if (post.eventDate < nowDateStr || (post.eventDate === nowDateStr && post.eventEnd && nowTimeStr > post.eventEnd)) {
+      evStatus = '<span style="background:#F2F2F7;color:#8E8E93;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:800;white-space:nowrap;">✅ Terminé</span>';
+    } else if (post.eventDate === nowDateStr && post.eventStart && nowTimeStr >= post.eventStart) {
+      evStatus = '<span style="background:#E5F4E9;color:#28A347;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:800;white-space:nowrap;">🟢 En cours</span>';
+    } else {
+      evStatus = '<span style="background:#F0EFFF;color:#5856D6;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:800;white-space:nowrap;">🗓 À venir</span>';
+    }
+
+    // Image de l'événement (une seule) — affichée en tête, proportions d'origine.
+    var evImage = post.eventImage
+      ? '<img src="' + post.eventImage + '" loading="lazy" style="display:block;width:100%;height:auto;max-height:260px;object-fit:cover;border-radius:14px;margin-bottom:14px;background:#000;" />'
+      : '';
+
+    return '<div style="padding:16px;background:linear-gradient(145deg,#F9F9FF,#F0F0FA);border-radius:18px;border-left:4px solid #5856D6;">' +
+      evImage +
+      '<div style="display:flex;gap:14px;align-items:flex-start;">' +
+        (evDate ? '<div style="background:#FFF;border-radius:12px;overflow:hidden;box-shadow:0 4px 10px rgba(0,0,0,0.08);width:54px;text-align:center;flex-shrink:0;border:1px solid #EFEFFF;">' +
+          '<div style="background:#5856D6;color:#FFF;font-size:9px;font-weight:900;text-transform:uppercase;padding:4px 0;letter-spacing:1px;">' + evMonth + '</div>' +
+          '<div style="font-size:24px;font-weight:900;color:#000;padding:4px 0;">' + evDay + '</div>' +
+        '</div>' : '') +
+        '<div style="flex:1;min-width:0;">' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">' +
+            '<h3 style="font-size:16px;font-weight:900;color:#1C1C1E;margin:0;flex:1;min-width:0;">' + safeHtml(post.eventTitle) + '</h3>' +
+            evStatus +
+          '</div>' +
+          (evSections ? '<div style="margin-bottom:6px;">' + evSections + '</div>' : '') +
+          '<div style="font-size:13px;color:#8E8E93;display:flex;flex-wrap:wrap;gap:8px;">' +
+            (post.eventStart ? '<span>🕒 ' + post.eventStart + (post.eventEnd ? ' — ' + post.eventEnd : '') + '</span>' : '') +
+            (post.eventLocation ? '<span>📍 ' + safeHtml(post.eventLocation) + '</span>' : '') +
+          '</div>' +
+          (post.assignments && post.assignments.length > 0 ?
+            '<div style="margin-top:12px;border-top:1px solid rgba(88,86,214,0.15);padding-top:12px;">' +
+              '<div style="font-size:11px;font-weight:800;color:#5856D6;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Équipe Assignée</div>' +
+              '<div style="display:flex;flex-direction:column;gap:6px;">' +
+              post.assignments.map(function(a) {
+                var isMeAssigned = S.user && S.user.id === a.userId;
+                var bg = isMeAssigned ? '#E5F4E9' : '#FFF';
+                var border = isMeAssigned ? '1px solid #34C759' : '1px solid #EFEFFF';
+                var nameColor = isMeAssigned ? '#28A347' : '#000';
+                return '<div style="background:' + bg + ';border:' + border + ';border-radius:10px;padding:8px 12px;display:flex;flex-direction:column;">' +
+                  '<span style="font-size:13px;font-weight:800;color:' + nameColor + ';">@' + safeHtml(a.userName) + (isMeAssigned ? ' (Vous)' : '') + '</span>' +
+                  '<span style="font-size:13px;color:#3A3A3C;margin-top:2px;font-weight:500;">' + safeHtml(a.task) + '</span>' +
+                '</div>';
+              }).join('') +
+              '</div>' +
+            '</div>'
+          : '') +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  // Regroupe les événements partageant la même date : ils s'affichent alors dans un
+  // seul carrousel plutôt qu'en cartes successives. Le groupe prend la place du
+  // premier événement rencontré, et les événements y sont ordonnés par heure de
+  // début croissante (de la première à la dernière de la journée).
+  function groupSameDayEvents(list) {
+    var out = [];
+    var indexByDate = {};
+    (list || []).forEach(function(p) {
+      var isEvent = p && p.type === 'EVENT' && p.eventTitle && p.eventDate;
+      if (!isEvent) { out.push({ kind: 'post', post: p }); return; }
+      if (indexByDate[p.eventDate] === undefined) {
+        indexByDate[p.eventDate] = out.length;
+        out.push({ kind: 'eventGroup', date: p.eventDate, events: [p] });
+      } else {
+        out[indexByDate[p.eventDate]].events.push(p);
+      }
+    });
+    out.forEach(function(item) {
+      if (item.kind !== 'eventGroup') return;
+      item.events.sort(function(a, b) {
+        return String(a.eventStart || '').localeCompare(String(b.eventStart || ''));
+      });
+    });
+    return out;
+  }
+
+  // Carrousel horizontal des événements d'une même journée.
+  function renderEventGroupCard(dateIso, events) {
+    var d = new Date(dateIso + 'T00:00:00');
+    var dateLabel = d.toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long' });
+    var carId = 'evgrp-' + dateIso.replace(/-/g, '');
+    var curIdx = S.eventGroupIdx && S.eventGroupIdx[dateIso] ? S.eventGroupIdx[dateIso] : 0;
+    var anyPinned = events.some(function(e){ return e.is_pinned; });
+
+    return '<article style="background:#FFF;margin-bottom:10px;">' +
+      (anyPinned ? '<div style="background:#5856D6;color:#FFF;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:1px;padding:4px 12px;display:flex;align-items:center;gap:6px;"><span style="font-size:12px;">📌</span> ÉPINGLÉ</div>' : '') +
+      '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px 8px;">' +
+        '<div style="min-width:0;">' +
+          '<div style="font-size:15px;font-weight:900;color:#0B0B0C;text-transform:capitalize;">🗓 ' + safeHtml(dateLabel) + '</div>' +
+          '<div style="font-size:12px;color:#8E8E93;font-weight:600;margin-top:2px;">' + events.length + ' événements · faites défiler</div>' +
+        '</div>' +
+        '<div id="evgrpBadge-' + carId + '" style="background:#F0EFFF;color:#5856D6;font-size:12px;font-weight:800;padding:4px 10px;border-radius:20px;flex-shrink:0;">' + (curIdx + 1) + '/' + events.length + '</div>' +
+      '</div>' +
+      '<div id="' + carId + '" onscroll="App.eventGroupScroll(\'' + dateIso + '\',\'' + carId + '\',this)" style="display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;gap:0;">' +
+        events.map(function(ev) {
+          return '<div style="flex:0 0 100%;scroll-snap-align:start;padding:0 14px 4px;box-sizing:border-box;">' +
+            '<div style="position:relative;">' +
+              renderEventCardInner(ev) +
+              '<button onclick="App.openOptions(\'' + ev.id + '\')" style="position:absolute;top:10px;right:10px;background:rgba(255,255,255,0.92);border:none;width:30px;height:30px;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.08);">' + SVG.dots + '</button>' +
+            '</div>' +
+          '</div>';
+        }).join('') +
+      '</div>' +
+      '<div id="evgrpDots-' + carId + '" style="display:flex;justify-content:center;gap:5px;padding:8px 0 12px;">' +
+        events.map(function(_, di) {
+          var a = di === curIdx;
+          return '<div style="width:' + (a?'18':'6') + 'px;height:6px;border-radius:3px;background:' + (a?'#5856D6':'#C7C7CC') + ';transition:all 0.25s;"></div>';
+        }).join('') +
+      '</div>' +
+    '</article>';
+  }
+
   function renderPostCard(post) {
     var iLiked = userIsLiked(post);
     var iSaved = !!S.savedPosts[post.id];
@@ -430,56 +562,7 @@
       var contentZone = '';
       // Handle new-format EVENT posts (created by saveEvent)
       if (post.type === 'EVENT' && post.eventTitle) {
-         var evDate = post.eventDate ? new Date(post.eventDate + 'T00:00:00') : null;
-         var evMonth = evDate ? evDate.toLocaleDateString('fr-FR', {month:'short'}).toUpperCase() : '';
-         var evDay = evDate ? evDate.getDate() : '';
-         var evSections = (post.eventSections || []).map(function(s){ return '<span style="font-size:12px;font-weight:700;color:#5856D6;">' + s.charAt(0).toUpperCase() + s.slice(1) + '</span>'; }).join(' ');
-         var evStatus = '';
-         var nowDateStr = new Date().toISOString().split('T')[0];
-         var nowTimeStr = new Date().toTimeString().slice(0,5);
-         if (post.eventDate < nowDateStr || (post.eventDate === nowDateStr && post.eventEnd && nowTimeStr > post.eventEnd)) {
-           evStatus = '<span style="background:#F2F2F7;color:#8E8E93;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:800;">✅ Terminé</span>';
-         } else if (post.eventDate === nowDateStr && post.eventStart && nowTimeStr >= post.eventStart) {
-           evStatus = '<span style="background:#E5F4E9;color:#28A347;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:800;">🟢 En cours</span>';
-         } else {
-           evStatus = '<span style="background:#F0EFFF;color:#5856D6;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:800;">🗓 À venir</span>';
-         }
-         contentZone = '<div style="margin:0 14px 10px;padding:16px;background:linear-gradient(145deg,#F9F9FF,#F0F0FA);border-radius:18px;border-left:4px solid #5856D6;">' +
-           '<div style="display:flex;gap:14px;align-items:flex-start;">' +
-             (evDate ? '<div style="background:#FFF;border-radius:12px;overflow:hidden;box-shadow:0 4px 10px rgba(0,0,0,0.08);width:54px;text-align:center;flex-shrink:0;border:1px solid #EFEFFF;">' +
-               '<div style="background:#5856D6;color:#FFF;font-size:9px;font-weight:900;text-transform:uppercase;padding:4px 0;letter-spacing:1px;">' + evMonth + '</div>' +
-               '<div style="font-size:24px;font-weight:900;color:#000;padding:4px 0;">' + evDay + '</div>' +
-             '</div>' : '') +
-             '<div style="flex:1;min-width:0;">' +
-               '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">' +
-                 '<h3 style="font-size:16px;font-weight:900;color:#1C1C1E;margin:0;flex:1;">' + safeHtml(post.eventTitle) + '</h3>' +
-                 evStatus +
-               '</div>' +
-               (evSections ? '<div style="margin-bottom:6px;">' + evSections + '</div>' : '') +
-               '<div style="font-size:13px;color:#8E8E93;display:flex;flex-wrap:wrap;gap:8px;">' +
-                 (post.eventStart ? '<span>🕒 ' + post.eventStart + (post.eventEnd ? ' — ' + post.eventEnd : '') + '</span>' : '') +
-                 (post.eventLocation ? '<span>📍 ' + safeHtml(post.eventLocation) + '</span>' : '') +
-               '</div>' +
-               (post.assignments && post.assignments.length > 0 ? 
-                 '<div style="margin-top:12px;border-top:1px solid rgba(88,86,214,0.15);padding-top:12px;">' +
-                   '<div style="font-size:11px;font-weight:800;color:#5856D6;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Équipe Assignée</div>' +
-                   '<div style="display:flex;flex-direction:column;gap:6px;">' +
-                   post.assignments.map(function(a) {
-                     var isMeAssigned = S.user && S.user.id === a.userId;
-                     var bg = isMeAssigned ? '#E5F4E9' : '#FFF';
-                     var border = isMeAssigned ? '1px solid #34C759' : '1px solid #EFEFFF';
-                     var nameColor = isMeAssigned ? '#28A347' : '#000';
-                     return '<div style="background:' + bg + ';border:' + border + ';border-radius:10px;padding:8px 12px;display:flex;flex-direction:column;">' +
-                       '<span style="font-size:13px;font-weight:800;color:' + nameColor + ';">@' + safeHtml(a.userName) + (isMeAssigned ? ' (Vous)' : '') + '</span>' +
-                       '<span style="font-size:13px;color:#3A3A3C;margin-top:2px;font-weight:500;">' + safeHtml(a.task) + '</span>' +
-                     '</div>';
-                   }).join('') +
-                   '</div>' +
-                 '</div>' 
-               : '') +
-             '</div>' +
-           '</div>' +
-         '</div>';
+         contentZone = '<div style="margin:0 14px 10px;">' + renderEventCardInner(post) + '</div>';
       } else if (post.type === 'EVENT' && post.metadata) {
          var participants = Object.keys(post.metadata.participations || {}).filter(function(k) { return post.metadata.participations[k] === 'yes'; });
          var partAvatars = '';
@@ -744,24 +827,50 @@
     '</div>';
   }
 
+  // Sert à la fois à créer et à modifier un événement (S.editEventId non nul).
+  // La modification d'un événement n'utilise donc PLUS l'éditeur de publication
+  // générique : elle réutilise ce formulaire, avec les mêmes champs métier.
   function renderCreateEventModal() {
     var today = new Date().toISOString().split('T')[0];
     var cData = S.createEventData || {};
+    var isEdit = !!S.editEventId;
     var titleVal = cData.title !== undefined ? cData.title : '';
     var locVal = cData.location !== undefined ? cData.location : '';
     var dateVal = cData.date !== undefined ? cData.date : today;
     var startVal = cData.start !== undefined ? cData.start : '09:00';
     var endVal = cData.end !== undefined ? cData.end : '11:30';
     var descVal = cData.desc !== undefined ? cData.desc : '';
+    var pinnedVal = !!cData.pinned;
+
+    // Bloc image (une seule image par événement)
+    var imageBlock = '<div style="background:#FFF;border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px;">' +
+      '<label style="font-size:14px;font-weight:700;color:#000;display:block;margin-bottom:12px;">Image de l\'événement <span style="font-weight:500;color:#8E8E93;">(optionnelle)</span></label>' +
+      (S.eventImageProcessing
+        ? '<div style="display:flex;align-items:center;gap:10px;background:#F6F7F9;border-radius:12px;padding:14px;">' +
+            '<div style="width:18px;height:18px;border:3px solid #E2E4E9;border-top-color:#007AFF;border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0;"></div>' +
+            '<span style="font-size:12.5px;font-weight:700;color:#3A3A3C;">Traitement de l\'image…</span>' +
+          '</div>'
+        : (S.eventImage
+          ? '<div style="position:relative;border-radius:14px;overflow:hidden;background:#000;">' +
+              '<img src="' + S.eventImage + '" style="display:block;width:100%;height:auto;max-height:260px;object-fit:contain;background:#000;" />' +
+              '<button type="button" onclick="App.editEventImage()" style="position:absolute;top:8px;left:8px;background:rgba(0,0,0,0.72);border:none;border-radius:10px;padding:6px 12px;color:#FFF;font-size:12.5px;font-weight:800;cursor:pointer;">✏️ Modifier</button>' +
+              '<button type="button" onclick="App.removeEventImage()" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.72);border:none;border-radius:14px;width:28px;height:28px;color:#FFF;font-size:15px;font-weight:900;cursor:pointer;">×</button>' +
+            '</div>'
+          : '<label style="display:flex;align-items:center;justify-content:center;gap:8px;border:1.5px dashed #C7C7CC;border-radius:14px;padding:22px;cursor:pointer;color:#007AFF;font-size:14px;font-weight:700;">' +
+              '🖼️ Ajouter une image' +
+              '<input type="file" accept="image/*" onchange="App.addEventImage(event)" style="display:none;" />' +
+            '</label>')) +
+    '</div>';
 
     return '<div style="position:fixed;inset:0;background:#FFF;z-index:10000;display:flex;flex-direction:column;animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
       '<header style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #E5E5EA;background:#FFF;z-index:2;">' +
         '<button onclick="App.closeCreateEvent()" style="background:none;border:none;font-size:16px;color:#000;cursor:pointer;">Annuler</button>' +
-        '<div style="font-weight:700;font-size:16px;">Nouvel Événement</div>' +
-        '<button onclick="App.saveEvent(this)" style="background:none;border:none;font-size:16px;font-weight:700;color:#007AFF;cursor:pointer;">Créer</button>' +
+        '<div style="font-weight:700;font-size:16px;">' + (isEdit ? 'Modifier l\'événement' : 'Nouvel Événement') + '</div>' +
+        '<button onclick="App.saveEvent(this)" style="background:none;border:none;font-size:16px;font-weight:700;color:#007AFF;cursor:pointer;">' + (isEdit ? 'Enregistrer' : 'Créer') + '</button>' +
       '</header>' +
       '<div style="flex:1;overflow-y:auto;background:#FAFAFA;padding:16px;">' +
-        
+        imageBlock +
+
         '<div style="background:#FFF;border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px;">' +
           '<div style="display:flex;flex-direction:column;gap:16px;">' +
             '<div style="display:flex;flex-direction:column;gap:4px;">' +
@@ -824,9 +933,9 @@
             '<div style="font-size:12px;color:#8E8E93;margin-top:2px;">Rend l\'événement très visible</div>' +
           '</div>' +
           '<label style="position:relative;display:inline-block;width:50px;height:30px;">' +
-            '<input type="checkbox" id="eventPinned" style="opacity:0;width:0;height:0;" onchange="this.nextElementSibling.style.background=this.checked?\'#34C759\':\'#E5E5EA\'; this.nextElementSibling.children[0].style.transform=this.checked?\'translateX(20px)\':\'translateX(0)\';">' +
-            '<span style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:#E5E5EA;transition:.3s;border-radius:30px;">' +
-              '<span style="position:absolute;content:\'\';height:26px;width:26px;left:2px;bottom:2px;background-color:white;transition:.3s;border-radius:50%;box-shadow:0 2px 4px rgba(0,0,0,0.2);"></span>' +
+            '<input type="checkbox" id="eventPinned"' + (pinnedVal ? ' checked' : '') + ' style="opacity:0;width:0;height:0;" onchange="this.nextElementSibling.style.background=this.checked?\'#34C759\':\'#E5E5EA\'; this.nextElementSibling.children[0].style.transform=this.checked?\'translateX(20px)\':\'translateX(0)\';">' +
+            '<span style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:' + (pinnedVal ? '#34C759' : '#E5E5EA') + ';transition:.3s;border-radius:30px;">' +
+              '<span style="position:absolute;content:\'\';height:26px;width:26px;left:2px;bottom:2px;background-color:white;transition:.3s;border-radius:50%;box-shadow:0 2px 4px rgba(0,0,0,0.2);transform:' + (pinnedVal ? 'translateX(20px)' : 'translateX(0)') + ';"></span>' +
             '</span>' +
           '</label>' +
         '</div>' +

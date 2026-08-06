@@ -1,11 +1,11 @@
 // ============================================================
-// SERVICE WORKER — Kun COM VH PWA (v29)
+// SERVICE WORKER — Kun COM VH PWA (v30)
 // Stratégie : Network-First pour JS/HTML (Garantie de mise à jour instantanée)
 // app.js a été découpé en modules (voir dossier js/) pour la maintenabilité —
 // même stratégie de cache, juste plus de fichiers listés ci-dessous.
 // ============================================================
 
-const CACHE_NAME = 'kun-com-pwa-v29';
+const CACHE_NAME = 'kun-com-pwa-v30';
 const STATIC_ASSETS = [
   './',
   './index.html',

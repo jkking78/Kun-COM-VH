@@ -657,7 +657,13 @@
     storageStatsError: null,
     storageStatsTotalBytes: 0,
     storageStatsFileCount: 0,
-    storageStatsUpdatedAt: null
+    storageStatsUpdatedAt: null,
+    // Événements : image unique + modification via le formulaire dédié
+    eventImage: null,
+    eventImageProcessing: false,
+    editEventId: null,
+    // Position courante dans chaque carrousel d'événements, par date
+    eventGroupIdx: {}
   };
 
   // Code d'accès au panneau admin (stockage). Volontairement en clair côté client
