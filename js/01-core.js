@@ -702,11 +702,17 @@
     editEventId: null,
     // Position courante dans chaque carrousel d'événements, par date
     eventGroupIdx: {},
+    // Enregistrement d'arrivée : événement pour lequel la publication en cours
+    // vaut pointage (distinct de postAboutEventId, purement informatif).
+    postCheckInEventId: null,
     // Réponses imbriquées aux commentaires
     replyingToCommentId: null,
     replyingToAuthor: null,
     // Gestion des assignations sur un événement existant (responsables de pôle)
     assignManagerId: null,
+    // Enregistrement d'une modification d'événement : écraser ou dupliquer
+    eventSaveChoiceOpen: false,
+    eventSaveMode: null,
     // Géolocalisation (arrivées + lieu d'un événement)
     geoCapturing: false,
     // Recherche d'adresse pour situer le lieu d'un événement. Le créateur prépare
@@ -940,6 +946,26 @@
     return 'Position introuvable';
   }
 
+  // Horodatage de fin d'un événement (eventDate + eventEnd). null si inconnu.
+  function eventEndTimestamp(ev) {
+    if (!ev || !ev.eventDate) return null;
+    var hhmm = ev.eventEnd || '23:59';
+    var t = new Date(ev.eventDate + 'T' + hhmm + ':00').getTime();
+    return isNaN(t) ? null : t;
+  }
+
+  // Un événement est "passé" dès qu'il est TERMINÉ, pas seulement quand sa date
+  // est dépassée : un culte du matin doit basculer dans l'historique l'après-midi
+  // même, sans attendre le lendemain.
+  function isEventPast(ev, nowTs) {
+    if (!ev || ev.type !== 'EVENT' || !ev.eventDate) return false;
+    var now = nowTs || Date.now();
+    var endTs = eventEndTimestamp(ev);
+    if (endTs) return endTs < now;
+    // Sans heure de fin exploitable, on retombe sur la comparaison de dates.
+    return ev.eventDate < new Date(now).toISOString().split('T')[0];
+  }
+
   // Horodatage de début d'un événement (eventDate + eventStart). null si inconnu.
   function eventStartTimestamp(ev) {
     if (!ev || !ev.eventDate) return null;
@@ -974,9 +1000,11 @@
     var startTs = eventStartTimestamp(ev);
     if (!ev || !startTs) return null;
 
-    // Première publication du membre rattachée à cet événement = son arrivée.
+    // Première publication d'ARRIVÉE du membre pour cet événement.
+    // On s'appuie sur checkInEventId, distinct du lien générique aboutEventId :
+    // parler d'un événement dans une publication ne vaut pas pointage.
     var checkIns = posts.filter(function(p) {
-      return p.userId === userId && p.aboutEventId === eventId && p.type !== 'EVENT' && p.type !== 'EVALUATION';
+      return p.userId === userId && p.checkInEventId === eventId && p.type !== 'EVENT' && p.type !== 'EVALUATION';
     }).sort(function(a,b){ return (a.checkInAt||a.timestamp||0) - (b.checkInAt||b.timestamp||0); });
 
     if (checkIns.length === 0) {

@@ -300,6 +300,7 @@
       S.createEventOpen = true; S.editEventId = null;
       S.eventSections = []; S.eventAssignments = []; S.createEventData = null;
       S.eventImage = null; S.eventImageProcessing = false;
+      S.eventSaveChoiceOpen = false; S.eventSaveMode = null;
       render();
     },
     // Modification d'un événement : on rouvre le formulaire ÉVÉNEMENT pré-rempli,
@@ -332,11 +333,13 @@
       S.eventAssignments = (post.assignments || []).slice();
       S.eventImage = post.eventImage || null;
       S.eventImageProcessing = false;
+      S.eventSaveChoiceOpen = false; S.eventSaveMode = null;
       render();
     },
     closeCreateEvent: function() {
       S.createEventOpen = false; S.createEventData = null; S.editEventId = null;
       S.eventImage = null; S.eventImageProcessing = false;
+      S.eventSaveChoiceOpen = false; S.eventSaveMode = null;
       render();
     },
     // --- Image d'un événement (une seule) ---
@@ -411,7 +414,23 @@
       if (!title || !date || !start) { toast('Titre, Date et Heure de début requis.', 'error'); return; }
       if (S.eventImageProcessing) { toast('L\'image est encore en cours de traitement.', 'info'); return; }
 
-      // ---- Mode MODIFICATION : on met à jour l'événement existant ----
+      // ---- Mode MODIFICATION ----
+      // Deux issues possibles : écraser l'événement existant, ou en créer un
+      // nouveau en conservant l'ancien (pratique pour les événements répétitifs :
+      // on rouvre le culte de dimanche dernier, on change la date, on duplique).
+      // On demande à l'utilisateur, sauf s'il a déjà choisi.
+      if (S.editEventId && !S.eventSaveMode) {
+        S.eventSaveChoiceOpen = true;
+        render();
+        return;
+      }
+
+      // Choix « nouvel événement » : on retombe volontairement sur la branche de
+      // création, en oubliant l'identifiant d'origine.
+      if (S.editEventId && S.eventSaveMode === 'duplicate') {
+        S.editEventId = null;
+      }
+
       if (S.editEventId) {
         var allP = db(SK.POSTS, []);
         var idxE = allP.findIndex(function(p){ return p.id === S.editEventId; });
@@ -445,6 +464,7 @@
         }
         S.createEventOpen = false;
         S.editEventId = null;
+        S.eventSaveMode = null;
         S.createEventData = null;
         S.eventImage = null;
         S.selectedDate = date;
@@ -495,13 +515,29 @@
           console.warn("Save event supabase error:", e);
         }
       }
+      var wasDuplicate = S.eventSaveMode === 'duplicate';
       S.createEventOpen = false;
       S.eventImage = null;
+      S.eventSaveMode = null;
+      S.createEventData = null;
       S.selectedDate = date;
       S.tab = pinned ? 'home' : 'planning';
       render();
       setTimeout(function() { window.scrollTo({ top: 0, behavior: 'smooth' }); }, 50);
-      toast('Événement créé avec succès ! 🎉', 'success');
+      toast(wasDuplicate ? 'Nouvel événement créé, l\'ancien est conservé ! 🎉' : 'Événement créé avec succès ! 🎉', 'success');
+    },
+    // Choix proposé à l'enregistrement d'une modification.
+    chooseEventSaveMode: function(mode) {
+      S.eventSaveMode = mode;              // 'overwrite' | 'duplicate'
+      S.eventSaveChoiceOpen = false;
+      render();
+      // Le formulaire est de nouveau dans le DOM : on relance l'enregistrement.
+      setTimeout(function(){ App.saveEvent(null); }, 0);
+    },
+    cancelEventSaveChoice: function() {
+      S.eventSaveChoiceOpen = false;
+      S.eventSaveMode = null;
+      render();
     },
     submitEvent: function() {
       var title = (document.getElementById('evTitle')||{}).value;
@@ -1867,6 +1903,10 @@ toggleParticipation: function(postId, status) {
       render();
     },
     clearAboutEvent: function() { S.postAboutEventId = null; render(); },
+    // Enregistrement d'arrivée : c'est CE choix, et lui seul, qui déclenche le
+    // relevé de position et le calcul de ponctualité.
+    setCheckInEvent: function(eventId) { S.postCheckInEventId = eventId || null; render(); },
+    clearCheckInEvent: function() { S.postCheckInEventId = null; render(); },
     goToEvent: function(eventId) {
       var posts = db(SK.POSTS, []);
       var ev = posts.find(function(p){ return p.id === eventId && p.type === 'EVENT'; });
@@ -1890,6 +1930,7 @@ toggleParticipation: function(postId, status) {
       S.postText = p.caption || '';
       S.pendingVideoPoster = p.videoPoster || null;
       S.postAboutEventId = p.aboutEventId || null;
+      S.postCheckInEventId = p.checkInEventId || null;
       S.videoProcessing = false;
       render();
     },
@@ -1926,14 +1967,16 @@ toggleParticipation: function(postId, status) {
       post.videoPoster = S.pendingMedia.some(function(m){return isVideoUrl(m);}) ? (S.pendingVideoPoster || null) : null;
       post.postBg = S.pendingMedia.length === 0 ? (S.postBg || null) : null;
 
-      // Si la modification rattache la publication à un événement alors qu'elle ne
-      // l'était pas, c'est un enregistrement d'arrivée qui se fait MAINTENANT :
-      // on relève la position et on horodate à cet instant. Sans ça, publier à
-      // l'heure sans lien puis ajouter le lien plus tard effacerait tout retard.
-      var newAboutId = S.postAboutEventId || null;
-      var wasLinked = !!post.aboutEventId;
-      post.aboutEventId = newAboutId;
-      if (newAboutId && (!wasLinked || !post.checkInAt)) {
+      post.aboutEventId = S.postAboutEventId || null;
+
+      // Si la modification transforme la publication en enregistrement d'arrivée,
+      // le pointage se fait MAINTENANT : position relevée et horodatage à cet
+      // instant. Sans ça, publier à l'heure puis pointer plus tard effacerait
+      // tout retard.
+      var newCheckInId = S.postCheckInEventId || null;
+      var wasCheckIn = !!post.checkInEventId;
+      post.checkInEventId = newCheckInId;
+      if (newCheckInId && (!wasCheckIn || !post.checkInAt)) {
         post.checkInAt = Date.now();
         post.checkInByEdit = true;
         if (!post.geo) {
@@ -1990,8 +2033,8 @@ toggleParticipation: function(postId, status) {
       render();
       toast('Publication modifiée ! 🎉', 'success');
     },
-    openCreate: function() { S.createOpen=true; S.pendingMedia=[]; S.pendingVideoPoster=null; S.postAboutEventId=null; S.videoProcessing=false; render(); setTimeout(function(){ var t=document.getElementById('newPostText'); if(t) t.focus(); },120); },
-    closeCreate: function() { S.createOpen=false; S.pendingMedia=[]; clearPendingLocalCopies(); S.hashSuggestions=false; S.postBg=null; S.postText=''; S.pendingVideoPoster=null; S.postAboutEventId=null; S.videoProcessing=false; render(); },
+    openCreate: function() { S.createOpen=true; S.pendingMedia=[]; S.pendingVideoPoster=null; S.postAboutEventId=null; S.postCheckInEventId=null; S.videoProcessing=false; render(); setTimeout(function(){ var t=document.getElementById('newPostText'); if(t) t.focus(); },120); },
+    closeCreate: function() { S.createOpen=false; S.pendingMedia=[]; clearPendingLocalCopies(); S.hashSuggestions=false; S.postBg=null; S.postText=''; S.pendingVideoPoster=null; S.postAboutEventId=null; S.postCheckInEventId=null; S.videoProcessing=false; render(); },
     onPostInput: function(val) {
       // Préserve le texte tapé à travers les re-render (ex: changement de fond)
       S.postText = val;
@@ -2192,11 +2235,11 @@ toggleParticipation: function(postId, status) {
       if (!txt && S.pendingMedia.length===0) { toast('Ajoutez du texte ou une photo.', 'error'); return; }
       if (!S.user) { toast('Vous devez être connecté.', 'error'); return; }
 
-      // Publication rattachée à un événement = enregistrement d'arrivée : on relève
-      // la position, qui sera visible de tous et ne pourra plus être retirée.
-      // Les publications ordinaires ne sont jamais géolocalisées.
+      // Seul un ENREGISTREMENT D'ARRIVÉE relève la position. Un simple lien
+      // « À propos » vers un événement ne géolocalise rien : c'est une mention,
+      // pas un pointage.
       var geo = null;
-      if (S.postAboutEventId) {
+      if (S.postCheckInEventId) {
         if (S.geoCapturing) return;
         S.geoCapturing = true;
         toast('📍 Enregistrement de votre position…', 'info');
@@ -2228,13 +2271,14 @@ toggleParticipation: function(postId, status) {
         visibility: S.postVisibility || 'all',
         targetSections: (S.postTargetSections || []).slice(),
         aboutEventId: S.postAboutEventId || null,
+        // Enregistrement d'arrivée (pointage) — distinct du lien informatif.
+        checkInEventId: S.postCheckInEventId || null,
         // Position d'arrivée : définitive, publique, non modifiable depuis l'app.
         geo: geo,
-        // Moment où le lien avec l'événement a été établi. C'est CETTE heure qui
-        // fait foi pour la ponctualité, pas celle de la publication : sans cela,
-        // il suffirait de publier à l'heure sans lien puis d'ajouter le lien plus
-        // tard pour effacer son retard.
-        checkInAt: S.postAboutEventId ? Date.now() : null
+        // Moment du pointage. C'est CETTE heure qui fait foi pour la ponctualité,
+        // pas celle de la publication : sans cela, il suffirait de publier à
+        // l'heure puis de pointer plus tard pour effacer son retard.
+        checkInAt: S.postCheckInEventId ? Date.now() : null
       };
 
       // Ephemeral post handling
@@ -2280,7 +2324,7 @@ toggleParticipation: function(postId, status) {
       saveLinksToProfile(newPost.userId, extractLinks(txt), newPost.id);
 
       updateUserActivity('Publication');
-      S.createOpen=false; S.pendingMedia=[]; clearPendingLocalCopies(); S.hashSuggestions=false; S.postBg=null; S.postText=''; S.pendingVideoPoster=null; S.postVisibility='all'; S.postTargetSections=[]; S.postAboutEventId=null;
+      S.createOpen=false; S.pendingMedia=[]; clearPendingLocalCopies(); S.hashSuggestions=false; S.postBg=null; S.postText=''; S.pendingVideoPoster=null; S.postVisibility='all'; S.postTargetSections=[]; S.postAboutEventId=null; S.postCheckInEventId=null;
       S.tab = 'home';
       S.q = ''; // Optional: clear search if they were searching
       render();

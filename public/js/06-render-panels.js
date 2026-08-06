@@ -305,17 +305,28 @@
     var todayIso = new Date().toISOString().split('T')[0];
 
     if (S.planningMode === 'history') {
-      var pastEvents = allPosts.filter(function(p) { return p.type === 'EVENT' && p.eventDate < todayIso; });
-      pastEvents.sort(function(a,b) { return b.eventDate.localeCompare(a.eventDate); });
+      // Un événement bascule ici dès qu'il est terminé (heure de fin dépassée),
+      // pas seulement le lendemain.
+      var pastEvents = allPosts.filter(function(p) { return isEventPast(p); });
+      pastEvents.sort(function(a,b) { return (eventEndTimestamp(b)||0) - (eventEndTimestamp(a)||0); });
       var historyHtml = '<div style="padding:20px 16px;min-height:50vh;background:#FAFAFA;">';
       if (pastEvents.length === 0) {
          historyHtml += '<div style="text-align:center;padding:40px 20px;color:#8E8E93;"><div style="font-size:40px;margin-bottom:12px;">🕰️</div><div style="font-size:18px;font-weight:700;color:#000;">Aucun historique</div><div style="font-size:14px;margin-top:4px;">Les événements passés s\'afficheront ici.</div></div>';
       } else {
+         var canEvaluate = S.user && S.user.role === 'GRAND_RESPONSABLE';
          pastEvents.forEach(function(ev) {
+            var secTagsH = (ev.eventSections || []).map(function(s){
+              return '<span style="font-size:11.5px;font-weight:700;color:#007AFF;white-space:nowrap;">' + secNom(s) + '</span>';
+            }).join('<span style="color:#D1D1D6;margin:0 4px;">•</span>');
+            var dateStr = new Date(ev.eventDate + 'T00:00:00').toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long'});
             historyHtml += '<div style="background:#FFF;border-radius:16px;padding:16px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,0.04);border:1px solid #EFEFEF;">' +
-              '<div style="font-size:12px;font-weight:800;color:#8E8E93;margin-bottom:6px;">📅 ' + (new Date(ev.eventDate).toLocaleDateString('fr-FR')) + '</div>' +
-              '<h3 style="font-size:17px;font-weight:800;color:#000;margin:0 0 12px;">' + safeHtml(ev.eventTitle) + '</h3>' +
-              '<button onclick="S.evalEventId=\''+ev.id+'\';S.tab=\'debrief\';render()" style="width:100%;background:linear-gradient(135deg,#FF9500,#FF3B30);color:#FFF;border:none;border-radius:12px;padding:10px;font-size:13.5px;font-weight:800;cursor:pointer;box-shadow:0 4px 12px rgba(255,59,48,0.3);">✍️ Évaluer / Débriefer</button>' +
+              '<div style="font-size:12px;font-weight:800;color:#8E8E93;margin-bottom:6px;">📅 ' + safeHtml(dateStr) + (ev.eventStart ? ' · ' + safeHtml(ev.eventStart) : '') + (ev.eventEnd ? ' – ' + safeHtml(ev.eventEnd) : '') + '</div>' +
+              '<h3 style="font-size:17px;font-weight:800;color:#000;margin:0 0 6px;overflow-wrap:anywhere;">' + safeHtml(ev.eventTitle) + '</h3>' +
+              (secTagsH ? '<div style="display:flex;flex-wrap:wrap;align-items:center;margin-bottom:8px;">' + secTagsH + '</div>' : '') +
+              (ev.eventLocation ? '<div style="font-size:12.5px;color:#8E8E93;font-weight:600;margin-bottom:12px;overflow-wrap:anywhere;">📍 ' + safeHtml(ev.eventLocation) + '</div>' : '<div style="margin-bottom:12px;"></div>') +
+              (canEvaluate
+                ? '<button onclick="App.selectEvalEvent(\''+ev.id+'\');S.tab=\'debrief\';render()" style="width:100%;background:linear-gradient(135deg,#FF9500,#FF3B30);color:#FFF;border:none;border-radius:12px;padding:10px;font-size:13.5px;font-weight:800;cursor:pointer;box-shadow:0 4px 12px rgba(255,59,48,0.3);">✍️ Évaluer / Débriefer</button>'
+                : '') +
             '</div>';
          });
       }
@@ -397,26 +408,30 @@
           statusHtml = '<div style="display:inline-block;background:#F2F2F7;color:#8E8E93;padding:4px 8px;border-radius:8px;font-size:11px;font-weight:800;margin-bottom:8px;">✅ Terminé</div>';
         }
 
+        // Les pôles passent à la ligne au lieu de déborder hors de la fiche.
         var secTags = (ev.eventSections || []).map(function(s){
-          return '<span style="font-size:12px;font-weight:700;color:#007AFF;">' + secNom(s) + '</span>';
+          return '<span style="font-size:12px;font-weight:700;color:#007AFF;white-space:nowrap;">' + secNom(s) + '</span>';
         }).join('<span style="color:#D1D1D6;margin:0 4px;">•</span>');
 
-        planBlocks.push('<div style="display:flex;margin-bottom:24px;">' +
+        // min-width:0 est indispensable : sans lui, un élément flex refuse de
+        // rétrécir sous la largeur de son contenu et la fiche déborde de l'écran
+        // (pôles et bouton coupés à droite).
+        planBlocks.push('<div style="display:flex;margin-bottom:24px;max-width:100%;">' +
           '<div style="width:60px;flex-shrink:0;text-align:right;padding-right:12px;padding-top:2px;">' +
             '<div style="font-size:14px;font-weight:800;color:#000;">' + (ev.eventStart||'--:--') + '</div>' +
             '<div style="font-size:12px;font-weight:600;color:#8E8E93;margin-top:2px;">' + (ev.eventEnd||'--:--') + '</div>' +
           '</div>' +
-          '<div style="position:relative;padding-left:16px;border-left:2px solid ' + (status==='active'?'#28A347':(status==='closed'?'#E5E5EA':'#000')) + ';flex:1;">' +
+          '<div style="position:relative;padding-left:16px;border-left:2px solid ' + (status==='active'?'#28A347':(status==='closed'?'#E5E5EA':'#000')) + ';flex:1;min-width:0;">' +
             '<div style="position:absolute;left:-6px;top:4px;width:10px;height:10px;border-radius:5px;background:' + (status==='active'?'#28A347':(status==='closed'?'#E5E5EA':'#000')) + ';border:2px solid #FAFAFA;"></div>' +
-            '<div style="background:#FFF;border-radius:16px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,0.04);border:1px solid #F2F2F7;">' +
+            '<div style="background:#FFF;border-radius:16px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,0.04);border:1px solid #F2F2F7;overflow:hidden;">' +
               statusHtml +
-              '<h3 style="font-size:17px;font-weight:800;color:#000;margin:0 0 6px;">' + safeHtml(ev.eventTitle) + '</h3>' +
-              (secTags ? '<div style="margin-bottom:8px;">' + secTags + '</div>' : '') +
-              '<div style="display:flex;align-items:center;gap:6px;font-size:13px;color:#8E8E93;margin-bottom:12px;font-weight:600;">' +
-                '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>' +
-                safeHtml(ev.eventLocation || 'Non défini') +
+              '<h3 style="font-size:17px;font-weight:800;color:#000;margin:0 0 6px;overflow-wrap:anywhere;">' + safeHtml(ev.eventTitle) + '</h3>' +
+              (secTags ? '<div style="display:flex;flex-wrap:wrap;align-items:center;margin-bottom:8px;">' + secTags + '</div>' : '') +
+              '<div style="display:flex;align-items:flex-start;gap:6px;font-size:13px;color:#8E8E93;margin-bottom:12px;font-weight:600;">' +
+                '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="flex-shrink:0;margin-top:2px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>' +
+                '<span style="min-width:0;overflow-wrap:anywhere;">' + safeHtml(ev.eventLocation || 'Non défini') + '</span>' +
               '</div>' +
-              (ev.caption ? '<p style="font-size:13px;color:#3A3A3C;margin:0 0 16px;line-height:1.4;">' + safeHtml(ev.caption) + '</p>' : '') +
+              (ev.caption ? '<p style="font-size:13px;color:#3A3A3C;margin:0 0 16px;line-height:1.4;overflow-wrap:anywhere;">' + safeHtml(ev.caption) + '</p>' : '') +
               (function(){
                 var isPart = S.user && Array.isArray(ev.likedBy) && ev.likedBy.indexOf(S.user.id) !== -1;
                 var count = Array.isArray(ev.likedBy) ? ev.likedBy.length : 0;
@@ -442,7 +457,7 @@
           '</div>' +
           '<div id="' + planCarId + '" onscroll="App.eventGroupScroll(\'' + S.selectedDate + '\',\'' + planCarId + '\',this)" style="display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;">' +
             planBlocks.map(function(b) {
-              return '<div style="flex:0 0 100%;scroll-snap-align:start;box-sizing:border-box;padding-right:4px;">' + b + '</div>';
+              return '<div style="flex:0 0 100%;min-width:0;scroll-snap-align:start;box-sizing:border-box;padding-right:4px;">' + b + '</div>';
             }).join('') +
           '</div>' +
           '<div id="evgrpDots-' + planCarId + '" style="display:flex;justify-content:center;gap:5px;padding:4px 0 8px;">' +

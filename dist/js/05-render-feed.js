@@ -144,7 +144,7 @@
     if (S.notificationsOpen) modals += renderNotificationsModal(u);
     if (S.editProfileOpen) modals += renderEditProfileModal(u);
     if (S.postOptionsOpen) modals += renderPostOptionsModal(posts.find(function(p){return p.id===S.selectedPostId;}));
-    if (S.createEventOpen) modals += renderCreateEventModal();
+    if (S.createEventOpen) modals += renderCreateEventModal() + renderEventSaveChoice();
     if (S.editPostId) modals += renderEditPostModal();
     if (S.createOpen) modals += renderCreateModal(u);
     if (S.optionsOpen && S.optionsPost) modals += renderOptionsModal();
@@ -575,11 +575,11 @@
   // retirer : seule la suppression de la publication le fait disparaître, et cette
   // suppression est elle-même visible de tous.
   function renderCheckInBadge(post) {
-    if (!post || !post.aboutEventId) return '';
-    var ev = db(SK.POSTS, []).find(function(p){ return p.id === post.aboutEventId && p.type === 'EVENT'; });
+    // Le badge n'apparaît que sur un ENREGISTREMENT D'ARRIVÉE, pas sur une simple
+    // publication mentionnant un événement.
+    if (!post || !post.checkInEventId) return '';
+    var ev = db(SK.POSTS, []).find(function(p){ return p.id === post.checkInEventId && p.type === 'EVENT'; });
     if (!ev) return '';
-    var isAssigned = (ev.assignments || []).some(function(a){ return a && a.userId === post.userId; });
-    if (!isAssigned) return '';   // seuls les membres assignés « pointent »
 
     var startTs = eventStartTimestamp(ev);
     var arrival = post.checkInAt || post.timestamp || 0;
@@ -1007,6 +1007,31 @@
     return out;
   }
 
+  // Choix proposé quand on enregistre la modification d'un événement.
+  // Rendu PAR-DESSUS le formulaire (et non à sa place) pour que les champs
+  // restent dans le DOM : saveEvent les relit juste après le choix.
+  function renderEventSaveChoice() {
+    if (!S.eventSaveChoiceOpen) return '';
+    return '<div onclick="App.cancelEventSaveChoice()" style="position:fixed;inset:0;background:rgba(15,15,20,0.6);z-index:10002;display:flex;justify-content:center;align-items:center;padding:24px;">' +
+      '<div onclick="event.stopPropagation()" style="width:100%;max-width:360px;background:#FFF;border-radius:24px;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
+        '<h3 style="font-size:17px;font-weight:900;color:#000;margin:0 0 6px;text-align:center;">Enregistrer les modifications</h3>' +
+        '<p style="font-size:12.5px;color:#6B7280;line-height:1.5;margin:0 0 18px;text-align:center;">Voulez-vous remplacer cet événement, ou en créer un nouveau en gardant l\'ancien ?</p>' +
+
+        '<button type="button" onclick="App.chooseEventSaveMode(\'overwrite\')" style="width:100%;background:#F2F2F7;border:none;border-radius:16px;padding:14px;margin-bottom:10px;cursor:pointer;text-align:left;">' +
+          '<div style="font-size:14.5px;font-weight:800;color:#000;margin-bottom:2px;">✏️ Mettre à jour cet événement</div>' +
+          '<div style="font-size:11.5px;color:#8E8E93;line-height:1.4;">L\'événement d\'origine est remplacé. Ses assignations et son historique sont conservés.</div>' +
+        '</button>' +
+
+        '<button type="button" onclick="App.chooseEventSaveMode(\'duplicate\')" style="width:100%;background:#EEF5FF;border:1px solid #CCDEFF;border-radius:16px;padding:14px;margin-bottom:14px;cursor:pointer;text-align:left;">' +
+          '<div style="font-size:14.5px;font-weight:800;color:#0055CC;margin-bottom:2px;">➕ Créer un nouvel événement</div>' +
+          '<div style="font-size:11.5px;color:#5A7BAA;line-height:1.4;">L\'ancien reste intact. Idéal pour répéter un événement : changez la date et dupliquez.</div>' +
+        '</button>' +
+
+        '<button type="button" onclick="App.cancelEventSaveChoice()" style="width:100%;background:none;border:none;padding:8px;font-size:13.5px;font-weight:700;color:#8E8E93;cursor:pointer;">Annuler</button>' +
+      '</div>' +
+    '</div>';
+  }
+
   function renderCreateEventModal() {
     var today = new Date().toISOString().split('T')[0];
     var cData = S.createEventData || {};
@@ -1235,7 +1260,7 @@
             '</div>' +
           '</div>' +
 
-          renderPunctualityNudge() +
+          renderCheckInBlock() +
 
           '<!-- À propos -->' +
           '<div style="background:#F6F7F9;border-radius:20px;padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
@@ -1509,45 +1534,70 @@
     '</div>';
   }
 
-  // Rappel affiché dans le composeur quand l'utilisateur est assigné à un événement
-  // du jour déjà commencé et n'a pas encore publié son arrivée : c'est cette
-  // publication liée à l'événement qui déclenche le calcul de sa ponctualité.
-  function renderPunctualityNudge() {
+  // Bloc « Enregistrer mon arrivée » du composeur — distinct du champ « À propos ».
+  // C'est LUI qui déclenche le relevé de position et le calcul de la ponctualité ;
+  // mentionner un événement dans « À propos » ne vaut pas pointage.
+  function renderCheckInBlock() {
     if (!S.user) return '';
     var posts = db(SK.POSTS, []);
     var now = Date.now();
     var today = new Date().toISOString().split('T')[0];
-    var pending = null;
-    for (var i = 0; i < posts.length; i++) {
-      var ev = posts[i];
-      if (ev.type !== 'EVENT' || ev.eventDate !== today) continue;
-      if (!(ev.assignments || []).some(function(a){ return a && a.userId === S.user.id; })) continue;
+
+    // Événements du jour déjà commencés et pas encore terminés, auxquels
+    // l'utilisateur est assigné et pour lesquels il n'a pas encore pointé.
+    var candidates = posts.filter(function(ev) {
+      if (ev.type !== 'EVENT' || ev.eventDate !== today) return false;
+      if (!(ev.assignments || []).some(function(a){ return a && a.userId === S.user.id; })) return false;
       var startTs = eventStartTimestamp(ev);
-      if (!startTs || startTs > now) continue;             // pas encore commencé
-      var alreadyCheckedIn = posts.some(function(p) {
-        return p.userId === S.user.id && p.aboutEventId === ev.id && p.type !== 'EVENT' && p.type !== 'EVALUATION';
+      if (!startTs || startTs > now) return false;
+      var endTs = eventEndTimestamp(ev);
+      if (endTs && now > endTs + 3 * 3600 * 1000) return false;   // trop tard (3 h après la fin)
+      var already = posts.some(function(p) {
+        return p.userId === S.user.id && p.checkInEventId === ev.id && p.type !== 'EVENT' && p.type !== 'EVALUATION';
       });
-      if (alreadyCheckedIn) continue;
-      pending = { ev: ev, delay: Math.round((now - startTs) / 60000) };
-      break;
+      return !already;
+    }).sort(function(a,b){ return (eventStartTimestamp(a)||0) - (eventStartTimestamp(b)||0); });
+
+    var selectedId = S.postCheckInEventId;
+    if (!candidates.length && !selectedId) return '';
+
+    var selectedEv = selectedId ? posts.find(function(p){ return p.id === selectedId; }) : null;
+
+    if (selectedEv) {
+      var startTsSel = eventStartTimestamp(selectedEv);
+      var delay = startTsSel ? Math.round((now - startTsSel) / 60000) : 0;
+      var stars = starsForDelay(delay);
+      var col = stars >= 4 ? '#10B981' : stars >= 2 ? '#F59E0B' : '#EF4444';
+      return '<div style="background:#ECFDF5;border:1px solid #A7F3D0;border-radius:16px;padding:12px 14px;margin-bottom:10px;">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px;">' +
+          '<span style="font-size:12.5px;font-weight:800;color:#047857;min-width:0;overflow-wrap:anywhere;">⏱️ Arrivée : ' + safeHtml(selectedEv.eventTitle || 'Événement') + '</span>' +
+          '<button type="button" onclick="App.clearCheckInEvent()" style="background:none;border:none;color:#FF3B30;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">Retirer</button>' +
+        '</div>' +
+        '<div style="font-size:11.5px;color:#6B7280;line-height:1.45;">' +
+          'En publiant maintenant : <b style="color:' + col + ';">' + (stars>0?'+':'') + stars + '★</b> de ponctualité' +
+          (delay > 0 ? ' (retard de ' + delay + ' min)' : ' (à l\'heure)') + '.' +
+        '</div>' +
+        '<div style="font-size:10.5px;color:#9AA0A8;line-height:1.4;margin-top:6px;">📍 Votre position sera relevée et visible de tous. Elle ne pourra plus être retirée.</div>' +
+      '</div>';
     }
-    if (!pending) return '';
-    var stars = starsForDelay(pending.delay);
-    var col = stars >= 4 ? '#10B981' : stars >= 2 ? '#F59E0B' : '#EF4444';
-    var already = S.postAboutEventId === pending.ev.id;
-    return '<div style="background:' + (already ? '#ECFDF5' : '#FFF7E6') + ';border:1px solid ' + (already ? '#A7F3D0' : '#FFE0A3') + ';border-radius:16px;padding:12px 14px;margin-bottom:10px;">' +
-      '<div style="font-size:12.5px;font-weight:800;color:' + (already ? '#047857' : '#8A5A00') + ';margin-bottom:4px;">' +
-        (already ? '✅ Arrivée enregistrée pour « ' + safeHtml(pending.ev.eventTitle || 'Événement') + ' »'
-                 : '⏱️ Vous êtes assigné à « ' + safeHtml(pending.ev.eventTitle || 'Événement') + ' »') +
-      '</div>' +
-      '<div style="font-size:11.5px;color:#6B7280;line-height:1.45;">' +
-        (already
-          ? 'Publier maintenant vous attribuera <b style="color:' + col + ';">' + stars + '★</b> de ponctualité.'
-          : 'Liez cette publication à l\'événement ci-dessous pour enregistrer votre arrivée. Actuellement : <b style="color:' + col + ';">' + stars + '★</b>' + (pending.delay > 0 ? ' (+' + pending.delay + ' min)' : ' (à l\'heure)') + '.') +
-      '</div>' +
-      '<div style="font-size:10.5px;color:#9AA0A8;line-height:1.4;margin-top:6px;">📍 Votre position sera enregistrée avec la publication et visible de tous. Elle ne pourra plus être retirée.</div>' +
-      (already ? '' :
-        '<button type="button" onclick="App.selectAboutEvent(\'' + pending.ev.id + '\')" style="margin-top:8px;width:100%;background:#5856D6;color:#FFF;border:none;border-radius:12px;padding:9px;font-size:12.5px;font-weight:800;cursor:pointer;">Enregistrer mon arrivée à cet événement</button>') +
+
+    return '<div style="background:#FFF7E6;border:1px solid #FFE0A3;border-radius:16px;padding:12px 14px;margin-bottom:10px;">' +
+      '<div style="font-size:12.5px;font-weight:800;color:#8A5A00;margin-bottom:6px;">⏱️ Enregistrer mon arrivée</div>' +
+      '<div style="font-size:11.5px;color:#6B7280;line-height:1.45;margin-bottom:8px;">Vous êtes de service ' + (candidates.length > 1 ? 'sur ces événements' : 'sur cet événement') + '. Pointez pour valider votre ponctualité.</div>' +
+      candidates.map(function(ev) {
+        var st = eventStartTimestamp(ev);
+        var dl = st ? Math.round((now - st) / 60000) : 0;
+        var sc = starsForDelay(dl);
+        var c = sc >= 4 ? '#10B981' : sc >= 2 ? '#F59E0B' : '#EF4444';
+        return '<button type="button" onclick="App.setCheckInEvent(\'' + ev.id + '\')" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;background:#FFF;border:1px solid #F0E0BC;border-radius:12px;padding:10px 12px;margin-bottom:6px;cursor:pointer;text-align:left;">' +
+          '<span style="min-width:0;">' +
+            '<span style="display:block;font-size:13px;font-weight:800;color:#1C1C1E;overflow-wrap:anywhere;">' + safeHtml(ev.eventTitle || 'Événement') + '</span>' +
+            '<span style="display:block;font-size:11px;color:#8E8E93;">' + safeHtml(ev.eventStart || '') + (dl > 0 ? ' · retard de ' + dl + ' min' : ' · à l\'heure') + '</span>' +
+          '</span>' +
+          '<span style="font-size:13px;font-weight:900;color:' + c + ';white-space:nowrap;">' + (sc>0?'+':'') + sc + '★</span>' +
+        '</button>';
+      }).join('') +
+      '<div style="font-size:10.5px;color:#9AA0A8;line-height:1.4;">📍 Le pointage relève votre position, visible de tous et non retirable.</div>' +
     '</div>';
   }
 
