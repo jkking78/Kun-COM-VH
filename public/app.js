@@ -483,7 +483,11 @@
     deleteAccountBusy: false,
     postsRemotePage: 1,
     postsAllLoaded: false,
-    loadingMorePosts: false
+    loadingMorePosts: false,
+    profileSelectMode: false,
+    selectedProfilePostIds: [],
+    bulkDeleteConfirmOpen: false,
+    bulkDeleteBusy: false
 };
 
   // ============================================================
@@ -1525,6 +1529,7 @@
     if (S.repostPostId) modals += renderRepostModal();
     if (S.aboutEventPickerOpen) modals += renderAboutEventPickerModal();
     if (S.deleteAccountOpen) modals += renderDeleteAccountModal();
+    if (S.bulkDeleteConfirmOpen) modals += renderBulkDeleteConfirmModal();
 
     return '<div style="position:relative;width:100%;height:100%;display:flex;flex-direction:column;background:#F2F2F7;font-family:-apple-system,BlinkMacSystemFont,\'SF Pro Text\',sans-serif;">' +
       '<div id="mainContent" style="flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;padding-bottom:70px;">' + content + '</div>' +
@@ -3406,8 +3411,13 @@
     }
 
     // Section 3: All publications header
-    feed += '<div style="background:#FFF;padding:14px 14px 8px;margin-bottom:1px;">' +
+    var selectMode = isMe && S.profileSelectMode;
+    var selectedIds = S.selectedProfilePostIds || [];
+    feed += '<div style="background:#FFF;padding:14px 14px 8px;margin-bottom:1px;display:flex;align-items:center;justify-content:space-between;">' +
       '<div style="font-size:15px;font-weight:800;color:#000;display:flex;align-items:center;gap:6px;">📝 Publications <span style="font-size:12px;font-weight:600;color:#8E8E93;">(' + myPosts.length + ')</span></div>' +
+      (isMe && myPosts.length > 0
+        ? '<span onclick="App.toggleProfileSelectMode()" style="font-size:12.5px;font-weight:800;color:#007AFF;cursor:pointer;">' + (selectMode ? 'Annuler' : 'Sélectionner') + '</span>'
+        : '') +
     '</div>';
 
     var filteredPosts = myPosts;
@@ -3420,11 +3430,32 @@
       '</div>';
     } else {
       filteredPosts.forEach(function(p) {
-        feed += renderPostCard(p);
+        if (!selectMode) { feed += renderPostCard(p); return; }
+        var isSel = selectedIds.indexOf(p.id) !== -1;
+        feed += '<div style="position:relative;">' +
+          '<div onclick="App.toggleSelectProfilePost(\'' + p.id + '\')" style="position:absolute;inset:0;z-index:5;cursor:pointer;background:' + (isSel ? 'rgba(0,122,255,0.08)' : 'transparent') + ';"></div>' +
+          '<div style="position:absolute;top:12px;left:12px;z-index:6;width:26px;height:26px;border-radius:13px;background:' + (isSel ? '#007AFF' : 'rgba(255,255,255,0.92)') + ';border:2px solid ' + (isSel ? '#007AFF' : '#C7C7CC') + ';display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.12);pointer-events:none;">' +
+            (isSel ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>' : '') +
+          '</div>' +
+          renderPostCard(p) +
+        '</div>';
       });
     }
 
     feed += '</div>';
+
+    // Barre d'action flottante en mode sélection
+    if (selectMode) {
+      feed += '<div style="position:fixed;left:0;right:0;bottom:64px;z-index:500;display:flex;justify-content:center;padding:0 16px;">' +
+        '<div style="width:100%;max-width:460px;background:#1C1C1E;border-radius:18px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 8px 24px rgba(0,0,0,0.28);">' +
+          '<span style="color:#FFF;font-size:13.5px;font-weight:700;">' + selectedIds.length + ' sélectionnée' + (selectedIds.length>1?'s':'') + '</span>' +
+          '<div style="display:flex;gap:8px;">' +
+            '<span onclick="App.selectAllProfilePosts()" style="color:#8E8E93;font-size:13px;font-weight:700;cursor:pointer;padding:8px 4px;">Tout</span>' +
+            '<button onclick="App.openBulkDeleteConfirm()" ' + (selectedIds.length===0?'disabled':'') + ' style="background:#FF3B30;color:#FFF;border:none;border-radius:12px;padding:9px 16px;font-size:13px;font-weight:800;cursor:pointer;opacity:' + (selectedIds.length===0?'0.4':'1') + ';">Supprimer</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    }
 
     return topBar + hero + infoBlock + tabBar + feed;
     } catch(profileErr) {
@@ -3462,6 +3493,27 @@
           '<div style="display:flex;flex-direction:column;gap:8px;margin-top:8px;">' +
             '<button type="button" onclick="App.confirmDeleteAccount()" ' + (busy?'disabled':'') + ' style="width:100%;background:#FF3B30;color:#FFF;border:none;border-radius:14px;padding:13px;font-size:14.5px;font-weight:800;cursor:pointer;opacity:' + (busy?'0.6':'1') + ';">' + (busy ? 'Suppression en cours…' : 'Supprimer définitivement') + '</button>' +
             '<button type="button" onclick="App.closeDeleteAccount()" ' + (busy?'disabled':'') + ' style="width:100%;background:#F2F2F7;color:#000;border:none;border-radius:14px;padding:13px;font-size:14.5px;font-weight:700;cursor:pointer;">Annuler</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    }
+
+    // ============================================================
+    // SUPPRESSION GROUPÉE — confirmation pour la sélection multiple depuis le profil
+    // ============================================================
+    function renderBulkDeleteConfirmModal() {
+      var count = (S.selectedProfilePostIds || []).length;
+      var busy = S.bulkDeleteBusy;
+      return '<div onclick="' + (busy?'':'App.closeBulkDeleteConfirm()') + '" style="position:fixed;inset:0;background:rgba(15,15,20,0.65);backdrop-filter:blur(2px);z-index:10003;display:flex;justify-content:center;align-items:center;padding:24px;">' +
+        '<div onclick="event.stopPropagation()" style="width:100%;max-width:380px;background:#FFF;border-radius:24px;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
+          '<div style="width:52px;height:52px;border-radius:26px;background:#FFF0EE;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:26px;">🗑️</div>' +
+          '<h3 style="font-size:17px;font-weight:900;color:#000;margin:0 0 8px;text-align:center;">Supprimer ' + count + ' publication' + (count>1?'s':'') + ' ?</h3>' +
+          '<p style="font-size:13px;color:#6B7280;line-height:1.5;margin:0;text-align:center;">' +
+            'Cette action est <strong>irréversible</strong>. Les publications et leurs photos/vidéos seront supprimées définitivement.' +
+          '</p>' +
+          '<div style="display:flex;flex-direction:column;gap:8px;margin-top:18px;">' +
+            '<button type="button" onclick="App.confirmBulkDelete()" ' + (busy?'disabled':'') + ' style="width:100%;background:#FF3B30;color:#FFF;border:none;border-radius:14px;padding:13px;font-size:14.5px;font-weight:800;cursor:pointer;opacity:' + (busy?'0.6':'1') + ';">' + (busy ? 'Suppression en cours…' : 'Supprimer définitivement') + '</button>' +
+            '<button type="button" onclick="App.closeBulkDeleteConfirm()" ' + (busy?'disabled':'') + ' style="width:100%;background:#F2F2F7;color:#000;border:none;border-radius:14px;padding:13px;font-size:14.5px;font-weight:700;cursor:pointer;">Annuler</button>' +
           '</div>' +
         '</div>' +
       '</div>';
@@ -4378,6 +4430,69 @@ toggleParticipation: function(postId, status) {
     // SUPPRESSION DE COMPTE — irréversible : supprime le profil ET
     // toutes les publications de l'utilisateur (local + Supabase).
     // ============================================================
+    // ============================================================
+    // SUPPRESSION GROUPÉE DE PUBLICATIONS (depuis le profil)
+    // ============================================================
+    toggleProfileSelectMode: function() {
+      S.profileSelectMode = !S.profileSelectMode;
+      S.selectedProfilePostIds = [];
+      render();
+    },
+    toggleSelectProfilePost: function(postId) {
+      var idx = S.selectedProfilePostIds.indexOf(postId);
+      if (idx !== -1) S.selectedProfilePostIds.splice(idx, 1);
+      else S.selectedProfilePostIds.push(postId);
+      render();
+    },
+    selectAllProfilePosts: function() {
+      if (!S.user) return;
+      var myIds = db(SK.POSTS, []).filter(function(p){ return p.userId === S.user.id; }).map(function(p){ return p.id; });
+      var allSelected = myIds.length > 0 && myIds.every(function(id){ return S.selectedProfilePostIds.indexOf(id) !== -1; });
+      S.selectedProfilePostIds = allSelected ? [] : myIds;
+      render();
+    },
+    openBulkDeleteConfirm: function() {
+      if ((S.selectedProfilePostIds || []).length === 0) return;
+      S.bulkDeleteConfirmOpen = true;
+      S.bulkDeleteBusy = false;
+      render();
+    },
+    closeBulkDeleteConfirm: function() { if (S.bulkDeleteBusy) return; S.bulkDeleteConfirmOpen = false; render(); },
+    confirmBulkDelete: async function() {
+      if (S.bulkDeleteBusy) return;
+      var ids = (S.selectedProfilePostIds || []).slice();
+      if (ids.length === 0) return;
+      S.bulkDeleteBusy = true;
+      render();
+      try {
+        var posts = db(SK.POSTS, []);
+        var toDelete = posts.filter(function(p){ return ids.indexOf(p.id) !== -1; });
+        var remaining = posts.filter(function(p){ return ids.indexOf(p.id) === -1; });
+        dbSet(SK.POSTS, remaining);
+
+        if (supabase) {
+          toDelete.forEach(function(p) {
+            supabase.from('kun_com_posts').delete().eq('id', p.id).then(function(){}, function(e){ console.warn('Bulk delete post error:', e); });
+          });
+        }
+        toDelete.forEach(function(p) {
+          deleteUnusedMediaFromStorage((p.mediaUrls || []), p.id);
+        });
+
+        S.bulkDeleteConfirmOpen = false;
+        S.bulkDeleteBusy = false;
+        S.profileSelectMode = false;
+        S.selectedProfilePostIds = [];
+        render();
+        toast(ids.length + ' publication' + (ids.length>1?'s':'') + ' supprimée' + (ids.length>1?'s':'') + '.', 'success');
+      } catch (e) {
+        console.warn('confirmBulkDelete error:', e);
+        S.bulkDeleteBusy = false;
+        render();
+        toast('Une erreur est survenue. Réessayez.', 'error');
+      }
+    },
+
     openDeleteAccount: function() { S.deleteAccountOpen = true; S.deleteAccountBusy = false; render(); setTimeout(function(){ var i=document.getElementById('deleteAccountConfirmInput'); if(i) i.focus(); },150); },
     closeDeleteAccount: function() { if (S.deleteAccountBusy) return; S.deleteAccountOpen = false; render(); },
     confirmDeleteAccount: async function() {
