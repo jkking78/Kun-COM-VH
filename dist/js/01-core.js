@@ -178,8 +178,21 @@
       function mergeProfilesWithLocal(remoteData) {
     var localUsers = db(SK.USERS, []);
     var map = {};
+    // Le serveur fait autorité sur la liste des comptes (aucune pagination ici :
+    // on récupère tous les profils à chaque fois). Un profil encore en cache local
+    // mais absent du serveur a donc été supprimé — on ne le garde pas, sinon il
+    // réapparaît indéfiniment et se fait même réinjecter dans la base par le renvoi
+    // rétroactif. Seule exception : le compte connecté sur CET appareil, pour ne pas
+    // perdre une inscription faite hors-ligne pas encore synchronisée.
+    var remoteIds = {};
+    (remoteData || []).forEach(function(item) {
+      var r = item.content || item;
+      if (r && r.id) remoteIds[r.id] = true;
+    });
     (localUsers || []).forEach(function(u) {
-      if (u && u.id) map[u.id] = u;
+      if (!u || !u.id) return;
+      if (!remoteIds[u.id] && !(S.user && S.user.id === u.id)) return;
+      map[u.id] = u;
     });
     (remoteData || []).forEach(function(item) {
       var rUser = item.content || item;
@@ -196,7 +209,10 @@
     return Object.keys(map).map(function(k) { return map[k]; });
   }
 
-  function mergePostsWithLocal(remoteData) {
+  // purgeWindow : à activer quand remoteData correspond à la page LA PLUS RÉCENTE
+  // (synchronisation initiale et sondage), jamais pour "Charger plus" qui ne
+  // rapporte qu'une tranche ancienne de l'historique.
+  function mergePostsWithLocal(remoteData, purgeWindow) {
     var localPosts = db(SK.POSTS, []);
     var map = {};
     (localPosts || []).forEach(function(p) {
@@ -223,6 +239,39 @@
         }
       }
     });
+
+    // Purge des publications supprimées côté serveur. Avec la pagination, "absente
+    // de la réponse" ne veut pas dire "supprimée" : elle peut simplement être plus
+    // ancienne que la page reçue. On ne purge donc QUE la fenêtre réellement
+    // couverte — soit les publications au moins aussi récentes que la plus ancienne
+    // de la page. Sans ça, une publication supprimée restait affichée à vie sur les
+    // autres appareils.
+    if (purgeWindow && Array.isArray(remoteData)) {
+      var remotePostIds = {};
+      var oldestInPage = Infinity;
+      remoteData.forEach(function(item) {
+        var p = item.content || item;
+        if (!p || !p.id) return;
+        remotePostIds[p.id] = true;
+        var ts = p.timestamp || 0;
+        if (ts < oldestInPage) oldestInPage = ts;
+      });
+      // Page incomplète = le serveur a renvoyé TOUT l'historique : plus de zone
+      // d'incertitude, on peut purger sans limite d'ancienneté.
+      var serverReturnedEverything = remoteData.length < POSTS_PAGE_SIZE;
+      // Publications créées à l'instant : peut-être pas encore remontées au serveur.
+      var tooRecentToJudge = Date.now() - 15 * 60 * 1000;
+      Object.keys(map).forEach(function(id) {
+        var p = map[id];
+        if (!p) return;
+        if (remotePostIds[id]) return;                        // toujours présente
+        var ts = p.timestamp || 0;
+        if (ts > tooRecentToJudge) return;                    // envoi possiblement en cours
+        if (!serverReturnedEverything && ts < oldestInPage) return;  // hors fenêtre connue
+        delete map[id];                                       // supprimée sur le serveur
+      });
+    }
+
     var merged = Object.keys(map).map(function(k) { return map[k]; });
     merged.sort(function(a, b) { return (b.timestamp || 0) - (a.timestamp || 0); });
     return merged;
@@ -257,7 +306,7 @@
       if (res && res.error) { console.warn('Supabase posts fetch error:', res.error); }
       if (res && res.data) {
         S.postsAllLoaded = res.data.length < POSTS_PAGE_SIZE;
-        var mergedPosts = mergePostsWithLocal(res.data);
+        var mergedPosts = mergePostsWithLocal(res.data, true);
         dbSet(SK.POSTS, mergedPosts);
         // Renvoie vers Supabase les publications créées hors-ligne et pas encore
         // synchronisées — repéré via leur horodatage très récent (pas juste "absent de
@@ -284,13 +333,14 @@
             localStorage.setItem(SK.SESS, JSON.stringify(freshMe));
           }
         }
-        // Retroactively push local users to Supabase if any exist locally but not remotely
-        var remoteIds = (resProf.data || []).map(function(item){ return item.id; });
-        mergedProfiles.forEach(function(u) {
-          if (u && u.id && remoteIds.indexOf(u.id) === -1) {
-            supabase.from('kun_com_profiles').upsert({ id: u.id, content: u }, { onConflict: 'id' }).then(function(){}, function(e){ console.warn('Push profile error:', e); });
-          }
-        });
+        // Renvoi rétroactif LIMITÉ au compte connecté sur cet appareil. Auparavant
+        // on renvoyait tout profil local absent du serveur : un cache périmé
+        // ressuscitait alors les comptes supprimés à chaque synchronisation.
+        // Chaque appareil ne fait autorité que sur son propre compte.
+        var remoteProfileIds = (resProf.data || []).map(function(item){ return item.id; });
+        if (S.user && S.user.id && remoteProfileIds.indexOf(S.user.id) === -1) {
+          supabase.from('kun_com_profiles').upsert({ id: S.user.id, content: S.user }, { onConflict: 'id' }).then(function(){}, function(e){ console.warn('Push profile error:', e); });
+        }
       }
       
       // Filet de sécurité si le temps réel Supabase ne fonctionne pas. Espacé à 20 s :
@@ -406,7 +456,7 @@
       if (res && res.error) { console.warn('Supabase posts poll error:', res.error); }
       if (res && res.data) {
         if (res.data.length < POSTS_PAGE_SIZE) S.postsAllLoaded = true;
-        var mergedPosts = mergePostsWithLocal(res.data);
+        var mergedPosts = mergePostsWithLocal(res.data, true);
         var fp = postsFingerprint(mergedPosts);
         if (fp !== _lastPostsFingerprint) {
           _lastPostsFingerprint = fp;
