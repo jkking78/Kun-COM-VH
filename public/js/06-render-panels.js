@@ -585,43 +585,75 @@
   // SUIVI : tableau de bord par pôle
   // ============================================================
   function renderScoreboard(canEvaluate) {
-    var sinceTs = S.scoreboardAll ? 0 : currentCycleStartTs();
     var now = new Date();
     var cycleStr = now.getDate() <= 15 ? '1er – 15 ' + now.toLocaleDateString('fr-FR',{month:'long'})
                                        : '16 – fin ' + now.toLocaleDateString('fr-FR',{month:'long'});
     var posts = db(SK.POSTS, []);
-
-    var boards = SECTIONS.map(function(sec) {
-      return { sec: sec, board: sectionScoreboard(sec.id, sinceTs, posts) };
-    }).sort(function(a,b) {
-      if (a.board.count !== b.board.count && (!a.board.count || !b.board.count)) return b.board.count - a.board.count;
-      return b.board.average - a.board.average;   // les mieux notés d'abord
-    });
-
-    var anyData = boards.some(function(b){ return b.board.count > 0; });
 
     var periodSwitch = '<div style="display:flex;gap:8px;padding:14px 16px 4px;">' +
       '<button onclick="App.setScoreboardPeriod(false)" style="flex:1;padding:8px;border-radius:10px;font-size:12.5px;font-weight:800;border:none;cursor:pointer;' + (!S.scoreboardAll ? 'background:#5856D6;color:#FFF;' : 'background:#F2F2F7;color:#8E8E93;') + '">Cycle ' + cycleStr + '</button>' +
       '<button onclick="App.setScoreboardPeriod(true)" style="flex:1;padding:8px;border-radius:10px;font-size:12.5px;font-weight:800;border:none;cursor:pointer;' + (S.scoreboardAll ? 'background:#5856D6;color:#FFF;' : 'background:#F2F2F7;color:#8E8E93;') + '">Depuis le début</button>' +
     '</div>';
 
-    if (!anyData) {
-      return periodSwitch +
-        '<div style="padding:50px 24px;text-align:center;color:#8E8E93;">' +
+    var emptyMsg = '<div style="font-size:13.5px;line-height:1.5;">' + (canEvaluate ? 'Publiez un bilan depuis l\'onglet « Noter » : les moyennes et l\'évolution de chaque pôle apparaîtront ici.' : 'Dès qu\'un Grand Responsable publiera un bilan, les moyennes et l\'évolution de chaque pôle apparaîtront ici.') + '</div>';
+    var emptyBlock = function(title) {
+      return '<div style="padding:50px 24px;text-align:center;color:#8E8E93;">' +
           '<div style="font-size:44px;margin-bottom:12px;">📊</div>' +
-          '<div style="font-size:17px;font-weight:800;color:#000;margin-bottom:6px;">Aucun bilan sur cette période</div>' +
-          '<div style="font-size:13.5px;line-height:1.5;">' + (canEvaluate ? 'Publiez un bilan depuis l\'onglet « Noter » : les moyennes et l\'évolution de chaque pôle apparaîtront ici.' : 'Dès qu\'un Grand Responsable publiera un bilan, les moyennes et l\'évolution de chaque pôle apparaîtront ici.') + '</div>' +
+          '<div style="font-size:17px;font-weight:800;color:#000;margin-bottom:6px;">' + title + '</div>' +
+          emptyMsg +
+        '</div>';
+    };
+
+    if (!S.scoreboardAll) {
+      // Vue "Cycle en cours" : un seul classement, comme avant.
+      var sinceTs = currentCycleStartTs();
+      var boards = SECTIONS.map(function(sec) {
+        return { sec: sec, board: sectionScoreboard(sec.id, sinceTs, posts) };
+      }).sort(function(a,b) {
+        if (a.board.count !== b.board.count && (!a.board.count || !b.board.count)) return b.board.count - a.board.count;
+        return b.board.average - a.board.average;   // les mieux notés d'abord
+      });
+      var anyData = boards.some(function(b){ return b.board.count > 0; });
+      if (!anyData) return periodSwitch + emptyBlock('Aucun bilan sur cette période');
+      return periodSwitch +
+        '<div style="padding:10px 16px 90px;">' +
+          boards.map(function(b){ return renderScoreboardCard(b.sec, b.board, b.sec.id); }).join('') +
         '</div>';
     }
 
+    // Vue "Depuis le début" : regroupée cycle par cycle, du plus récent au plus
+    // ancien. Chaque cycle qui voit passer un nouveau bilan apparaît de lui-même
+    // ici, sans rien à configurer — c'est purement dérivé des publications réelles.
+    var cycles = historicalCycles(posts);
+    var groups = cycles.map(function(cy) {
+      var boards = SECTIONS.map(function(sec) {
+        return { sec: sec, board: sectionScoreboard(sec.id, cy.startTs, posts, cy.endTs) };
+      }).filter(function(b){ return b.board.count > 0; })
+        .sort(function(a,b){ return b.board.average - a.board.average; });
+      return { cycle: cy, boards: boards };
+    }).filter(function(g){ return g.boards.length > 0; });
+
+    if (groups.length === 0) return periodSwitch + emptyBlock('Aucun bilan pour le moment');
+
     return periodSwitch +
       '<div style="padding:10px 16px 90px;">' +
-        boards.map(function(b){ return renderScoreboardCard(b.sec, b.board); }).join('') +
+        groups.map(function(g) {
+          var groupKey = 'c' + g.cycle.startTs;
+          return '<div style="margin-bottom:20px;">' +
+            '<div style="font-size:11px;font-weight:900;color:#5856D6;text-transform:uppercase;letter-spacing:0.8px;padding:4px 2px 10px;">' + safeHtml(cycleLabel(g.cycle)) + '</div>' +
+            g.boards.map(function(b){ return renderScoreboardCard(b.sec, b.board, groupKey + '::' + b.sec.id); }).join('') +
+          '</div>';
+        }).join('') +
       '</div>';
   }
 
-  function renderScoreboardCard(sec, board) {
-    var open = S.scoreboardOpen === sec.id;
+  // cardKey identifie la carte dans S.scoreboardOpen : sec.id seul pour la vue
+  // "Cycle en cours" (comportement historique, un pôle = une seule carte), ou
+  // "c<startTs>::<secId>" pour la vue groupée par cycle, où le MÊME pôle peut
+  // avoir une carte distincte (et donc un état ouvert/fermé indépendant) par cycle.
+  function renderScoreboardCard(sec, board, cardKey) {
+    var key = cardKey || sec.id;
+    var open = S.scoreboardOpen === key;
     var has = board.count > 0;
     var col = !has ? '#C7C7CC' : board.average >= 4 ? '#34C759' : board.average >= 2 ? '#FF9500' : '#FF3B30';
 
@@ -667,7 +699,7 @@
     }).join('');
 
     return '<div style="background:#FFF;border-radius:18px;margin-bottom:10px;border:1px solid #EFEFEF;box-shadow:0 2px 8px rgba(0,0,0,0.04);overflow:hidden;">' +
-      '<div onclick="App.toggleScoreboardSection(\'' + sec.id + '\')" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:16px;cursor:pointer;">' +
+      '<div onclick="App.toggleScoreboardSection(\'' + key + '\')" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:16px;cursor:pointer;">' +
         '<div style="display:flex;align-items:center;gap:10px;min-width:0;">' +
           '<div style="width:42px;height:42px;border-radius:21px;background:linear-gradient(135deg,' + sec.color + '20,' + sec.color + '10);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">' + sec.emoji + '</div>' +
           '<div style="min-width:0;">' +

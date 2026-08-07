@@ -1407,13 +1407,17 @@
   // Rassemble tous les bilans publiés concernant un pôle sur une période, pour
   // en sortir une moyenne par critère et une tendance. Sans cela, un bilan publié
   // il y a trois semaines est enseveli dans le fil et rien ne montre l'évolution.
-  function sectionScoreboard(sectionId, sinceTs, allPosts) {
+  // untilTs (optionnel) borne la période en haut, EXCLUSIF : utilisé pour isoler
+  // un cycle précis (vue "Depuis le début" groupée par cycle) plutôt que tout
+  // prendre depuis sinceTs jusqu'à maintenant.
+  function sectionScoreboard(sectionId, sinceTs, allPosts, untilTs) {
     var posts = allPosts || db(SK.POSTS, []);
     var entries = [];
 
     posts.forEach(function(p) {
       if (p.type !== 'EVALUATION' || !p.metadata) return;
       if (sinceTs && (p.timestamp || 0) < sinceTs) return;
+      if (untilTs && (p.timestamp || 0) >= untilTs) return;
       var evals = Array.isArray(p.metadata.evaluations) && p.metadata.evaluations.length
         ? p.metadata.evaluations
         : [{ teamId: null, teamName: p.metadata.teamName, globalScore: p.metadata.globalScore, criteria: p.metadata.criteria, comment: p.caption || '' }];
@@ -1494,6 +1498,48 @@
   function currentCycleStartTs() {
     var now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), now.getDate() <= 15 ? 1 : 16).getTime();
+  }
+
+  // Bornes [début, fin[ (fin EXCLUSIVE) du cycle de 15 jours contenant ts.
+  function cycleBoundsForTs(ts) {
+    var d = new Date(ts);
+    var y = d.getFullYear(), m = d.getMonth(), day = d.getDate();
+    if (day <= 15) {
+      return { startTs: new Date(y, m, 1).getTime(), endTs: new Date(y, m, 16).getTime() };
+    }
+    return { startTs: new Date(y, m, 16).getTime(), endTs: new Date(y, m + 1, 1).getTime() };
+  }
+
+  // Bornes du cycle précédant immédiatement celui donné.
+  function previousCycleBounds(bounds) {
+    return cycleBoundsForTs(bounds.startTs - 1);
+  }
+
+  // Libellé lisible d'un cycle, avec l'année pour ne jamais confondre deux
+  // cycles identiques d'années différentes dans un historique long.
+  function cycleLabel(bounds) {
+    var d = new Date(bounds.startTs);
+    var monthYear = d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+    return (d.getDate() === 1 ? '1er – 15 ' : '16 – fin ') + monthYear;
+  }
+
+  // Tous les cycles, du plus récent (cycle en cours, même incomplet) au plus
+  // ancien cycle contenant au moins un bilan publié. Purement dérivé des
+  // données réelles et de la date du jour : un nouveau cycle apparaît de
+  // lui-même dès qu'un bilan y est publié, sans rien à mettre à jour à la main.
+  function historicalCycles(allPosts) {
+    var posts = allPosts || db(SK.POSTS, []);
+    var evalTimestamps = posts.filter(function(p){ return p.type === 'EVALUATION'; }).map(function(p){ return p.timestamp || 0; });
+    if (evalTimestamps.length === 0) return [];
+    var oldestBounds = cycleBoundsForTs(Math.min.apply(null, evalTimestamps));
+    var cycles = [];
+    var cur = cycleBoundsForTs(Date.now());
+    while (true) {
+      cycles.push(cur);
+      if (cur.startTs <= oldestBounds.startTs) break;
+      cur = previousCycleBounds(cur);
+    }
+    return cycles;
   }
 
   // ============================================================
