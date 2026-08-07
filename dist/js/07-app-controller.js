@@ -2551,14 +2551,37 @@ toggleParticipation: function(postId, status) {
       if (idx === -1) return;
       var p = posts[idx];
       if (u.role !== 'GRAND_RESPONSABLE' && p.userId !== u.id) { toast('Action non autorisée.', 'error'); return; }
-      posts.splice(idx, 1); dbSet(SK.POSTS, posts);
-      if (supabase) {
-        supabase.from('kun_com_posts').delete().eq('id', postId).then(function(){}, function(e){ console.warn('Delete post error:', e); });
+
+      // Un événement auquel des membres ont déjà pointé, été notés, ou même
+      // simplement assignés, ne doit JAMAIS emporter leurs étoiles avec lui.
+      // On l'archive (type -> EVENT_ARCHIVED) au lieu de le détruire : il
+      // disparaît de partout où il s'affiche (fil, Planning, sélecteurs — tous
+      // testent type === 'EVENT' au sens strict), mais punctualityStars et
+      // punctualityHistory continuent de le retrouver via isEventLike().
+      // Sans historique attaché, un événement se supprime normalement.
+      var hasHistory = p.type === 'EVENT' && (
+        posts.some(function(x){ return x.checkInEventId === postId; }) ||
+        posts.some(function(x){ return x.type === 'EVALUATION' && x.metadata && x.metadata.eventId === postId; }) ||
+        (Array.isArray(p.assignments) && p.assignments.length > 0)
+      );
+
+      if (hasHistory) {
+        p.type = 'EVENT_ARCHIVED';
+        p.archivedAt = Date.now();
+        dbSet(SK.POSTS, posts);
+        if (supabase) {
+          supabase.from('kun_com_posts').upsert({ id: p.id, content: p }, { onConflict: 'id' }).then(function(){}, function(e){ console.warn('Archive event error:', e); });
+        }
+      } else {
+        posts.splice(idx, 1); dbSet(SK.POSTS, posts);
+        if (supabase) {
+          supabase.from('kun_com_posts').delete().eq('id', postId).then(function(){}, function(e){ console.warn('Delete post error:', e); });
+        }
+        deleteUnusedMediaFromStorage((p.mediaUrls || []), postId);
       }
-      deleteUnusedMediaFromStorage((p.mediaUrls || []), postId);
       S.optionsOpen=false; S.optionsPost=null;
       render();
-      toast('Publication supprimée.', 'success');
+      toast(hasHistory ? 'Événement supprimé — les étoiles déjà attribuées restent conservées.' : 'Publication supprimée.', 'success');
     },
 
     // Comments

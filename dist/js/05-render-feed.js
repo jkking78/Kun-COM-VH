@@ -14,6 +14,11 @@
         if (a.is_pinned !== b.is_pinned) return a.is_pinned ? -1 : 1;
         return (b.timestamp||0)-(a.timestamp||0); 
       }).filter(function(p) {
+        // Événement supprimé mais archivé pour préserver les étoiles déjà
+        // attribuées (voir App.deletePost) : invisible dans le fil, comme une
+        // suppression normale — seuls les calculs de ponctualité le retrouvent.
+        if (p.type === 'EVENT_ARCHIVED') return false;
+
         // Scheduled post filter
         if (p.status === 'scheduled' && p.scheduled_at && p.scheduled_at > Date.now()) {
           if (u.role !== 'GRAND_RESPONSABLE' && p.userId !== u.id) return false;
@@ -579,7 +584,10 @@
     // Le badge n'apparaît que sur un ENREGISTREMENT D'ARRIVÉE, pas sur une simple
     // publication mentionnant un événement.
     if (!post || !post.checkInEventId) return '';
-    var ev = db(SK.POSTS, []).find(function(p){ return p.id === post.checkInEventId && p.type === 'EVENT'; });
+    // isEventLike : si l'événement a été supprimé puis archivé (voir
+    // App.deletePost), ce badge — et les étoiles qu'il affiche — doit rester
+    // visible sur la publication du membre malgré tout.
+    var ev = db(SK.POSTS, []).find(function(p){ return p.id === post.checkInEventId && isEventLike(p); });
     if (!ev) return '';
 
     var startTs = eventStartTimestamp(ev);

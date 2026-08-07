@@ -348,10 +348,28 @@
       if (r && r.id) remoteIds[r.id] = true;
     });
     var ownIds = localAccountIds();
+
+    // Garde-fou anti-faux-positif : si la réponse serveur revient anormalement
+    // plus courte que ce qu'on a déjà en cache (coupure réseau, timeout partiel,
+    // retard de réplication...), on ne purge AUCUN compte ce cycle-ci — on se
+    // contente de mettre à jour ceux effectivement reçus. Sans cette protection,
+    // le moindre accroc réseau ponctuel faisait disparaître des membres entiers
+    // des recherches, avant qu'ils ne "réapparaissent" tout seuls dès qu'une
+    // synchronisation complète repassait (sondage 20s ou temps réel Supabase).
+    // Une vraie suppression de compte ne fait baisser le total que d'une unité :
+    // la double condition (pourcentage ET absolu) laisse toujours passer une
+    // suppression légitime, même sur une petite équipe où un seul départ peut
+    // représenter une grosse part du total (ex. 2 sur 3 restants = -33 %).
+    var remoteCount = (remoteData || []).length;
+    var localCount = (localUsers || []).length;
+    var suspiciouslyIncomplete = localCount > 0
+      && remoteCount < localCount - 1
+      && remoteCount < localCount * 0.7;
+
     (localUsers || []).forEach(function(u) {
       if (!u || !u.id) return;
       var isMine = (S.user && S.user.id === u.id) || ownIds.indexOf(u.id) !== -1;
-      if (!remoteIds[u.id] && !isMine) return;
+      if (!remoteIds[u.id] && !isMine && !suspiciouslyIncomplete) return;
       map[u.id] = u;
     });
     (remoteData || []).forEach(function(item) {
@@ -431,6 +449,11 @@
         if (!p) return;
         if (remotePostIds[id]) return;                        // toujours présente
         if (p.type === 'EVENT' && p.eventDate && p.eventDate < todayIso) return;  // hors périmètre de la requête
+        // Un événement archivé (supprimé mais conservé pour ses étoiles, voir
+        // App.deletePost) n'est jamais purgé du cache local : son absence de la
+        // page générale récente ne prouve rien, et le perdre reviendrait à faire
+        // disparaître les étoiles qu'il protège.
+        if (p.type === 'EVENT_ARCHIVED') return;
         var ts = p.timestamp || 0;
         if (ts > tooRecentToJudge) return;                    // envoi possiblement en cours
         if (!serverReturnedEverything && ts < oldestInPage) return;  // hors fenêtre connue
@@ -1104,6 +1127,17 @@
     return t;
   }
 
+  // Un événement supprimé qui portait déjà des pointages ou des bilans n'est
+  // jamais vraiment détruit : son type passe à EVENT_ARCHIVED (voir
+  // App.deletePost) au lieu d'être retiré du stockage. Tous les endroits qui
+  // AFFICHENT des événements (fil, Planning, sélecteurs) continuent de tester
+  // strictement type === 'EVENT' et l'ignorent donc automatiquement. Seuls les
+  // calculs de ponctualité doivent encore le retrouver, via ce repère commun —
+  // sans ça, les étoiles déjà attribuées disparaîtraient avec l'événement.
+  function isEventLike(p) {
+    return !!p && (p.type === 'EVENT' || p.type === 'EVENT_ARCHIVED');
+  }
+
   // Un événement est "passé" dès qu'il est TERMINÉ, pas seulement quand sa date
   // est dépassée : un culte du matin doit basculer dans l'historique l'après-midi
   // même, sans attendre le lendemain.
@@ -1146,7 +1180,7 @@
   // "absent" = assigné mais aucune publication rattachée à l'événement.
   function punctualityStars(userId, eventId, allPosts) {
     var posts = allPosts || db(SK.POSTS, []);
-    var ev = posts.find(function(p){ return p.id === eventId && p.type === 'EVENT'; });
+    var ev = posts.find(function(p){ return p.id === eventId && isEventLike(p); });
     var startTs = eventStartTimestamp(ev);
     if (!ev || !startTs) return null;
 
@@ -1309,7 +1343,10 @@
     var now = Date.now();
     var entries = [];
     posts.forEach(function(ev) {
-      if (ev.type !== 'EVENT') return;
+      // isEventLike (pas type==='EVENT' strict) : un événement supprimé après
+      // coup mais archivé (voir App.deletePost) doit continuer à compter dans
+      // l'historique du membre — ses étoiles ne disparaissent pas avec lui.
+      if (!isEventLike(ev)) return;
       var assigned = (ev.assignments || []).some(function(a){ return a && a.userId === userId; });
       if (!assigned) return;
       var startTs = eventStartTimestamp(ev);
@@ -1362,7 +1399,7 @@
   function sectionPunctuality(sectionId, eventId, allPosts, allUsers) {
     var posts = allPosts || db(SK.POSTS, []);
     var users = allUsers || db(SK.USERS, []);
-    var ev = posts.find(function(p){ return p.id === eventId && p.type === 'EVENT'; });
+    var ev = posts.find(function(p){ return p.id === eventId && isEventLike(p); });
     if (!ev) return null;
 
     var members = (ev.assignments || []).filter(function(a) {
