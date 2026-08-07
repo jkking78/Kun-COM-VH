@@ -636,8 +636,9 @@
     var order = ['Ponctualité'].concat(EVAL_CRITERIA.map(function(c){ return c.nom; }));
     var critHtml = order.filter(function(k){ return board.criteriaAvg[k] !== undefined; }).map(function(k) {
       var v = board.criteriaAvg[k];
-      // La ponctualité peut être négative : on ramène l'échelle -2..5 sur 0..100 %.
-      var pct = Math.max(0, Math.min(100, ((v + 2) / 7) * 100));
+      // La ponctualité peut être négative : on ramène l'échelle -4..5 sur 0..100 %
+      // (le plancher correspond à une absence ou un pointage frauduleux, -4★).
+      var pct = Math.max(0, Math.min(100, ((v + 4) / 9) * 100));
       var cc = v >= 4 ? 'linear-gradient(90deg,#34D399,#10B981)' : v >= 2 ? 'linear-gradient(90deg,#FBBF24,#F59E0B)' : 'linear-gradient(90deg,#F87171,#EF4444)';
       return '<div style="margin-bottom:10px;">' +
         '<div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:#475569;margin-bottom:4px;">' +
@@ -736,9 +737,9 @@
   // automatiquement à partir des heures d'arrivée. Aucune saisie manuelle.
   function renderPunctualityCard(freshU, cycleStr) {
     var h = punctualityHistory(freshU.id);
-    var avg = h.average;                    // de -2 à 5
-    // Conversion en pourcentage pour l'anneau : -2 → 0 %, 5 → 100 %.
-    var pct = h.count ? Math.max(0, Math.min(100, Math.round(((avg + 2) / 7) * 100))) : 0;
+    var avg = h.average;                    // de -4 à 5
+    // Conversion en pourcentage pour l'anneau : -4 → 0 %, 5 → 100 %.
+    var pct = h.count ? Math.max(0, Math.min(100, Math.round(((avg + 4) / 9) * 100))) : 0;
     var col = !h.count ? '#64748B' : avg >= 4 ? '#10B981' : avg >= 2 ? '#F59E0B' : '#EF4444';
     var label = !h.count ? 'Aucun service' : avg >= 4 ? 'Excellent 🌟' : avg >= 2 ? 'À améliorer' : avg >= 0 ? 'Critique' : 'Rattrapage requis';
 

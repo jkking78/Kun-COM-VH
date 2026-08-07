@@ -965,11 +965,15 @@
     { maxMinutes: 90,       stars: -1, label: 'Retard critique (> 1 h)' },
     { maxMinutes: Infinity, stars: -2, label: 'Retard majeur (> 1 h 30)' }
   ];
-  var PUNCTUALITY_ABSENT_STARS = -2;
+  // Absence : aucune publication d'arrivée pour un membre assigné. Sanction plus
+  // lourde qu'un simple retard, car rien ne permet même de mesurer une tentative.
+  var PUNCTUALITY_ABSENT_STARS = -4;
   // Pointer loin du lieu, ou sans partager sa position, ne vaut pas une arrivée :
-  // c'est sanctionné comme une absence. Sans cela, il suffisait de refuser la
-  // géolocalisation ou de pointer de chez soi pour obtenir 5★ en toute impunité.
-  var PUNCTUALITY_OFFSITE_STARS = -2;
+  // c'est sanctionné AU MOINS aussi sévèrement qu'une absence (même valeur). Sans
+  // cela, il suffisait de refuser la géolocalisation ou de pointer de chez soi pour
+  // obtenir 5★ en toute impunité — et un pointage frauduleux serait alors mieux
+  // traité qu'une absence honnête, ce qui viderait l'anti-triche de son sens.
+  var PUNCTUALITY_OFFSITE_STARS = -4;
 
   // ============================================================
   // GÉOLOCALISATION DES ARRIVÉES (transparence anti-triche)
@@ -1438,11 +1442,18 @@
     entries.sort(function(a,b){ return b.timestamp - a.timestamp; });   // plus récent d'abord
 
     // Moyenne par critère, sur les seules évaluations qui le renseignent.
+    // La Ponctualité est calculée automatiquement et PEUT légitimement être
+    // négative (absence ou pointage frauduleux) : il ne faut jamais l'exclure,
+    // sous peine de faire disparaître discrètement les sanctions les plus graves
+    // du tableau de bord. Les autres critères sont saisis à la main sur une
+    // échelle 1-5 : une valeur négative n'y a pas de sens et signale une entrée
+    // absente plutôt qu'une vraie note, donc on continue de l'ignorer.
     var critTotals = {}, critCounts = {};
     entries.forEach(function(e) {
       Object.keys(e.criteria).forEach(function(k) {
         var v = parseFloat(e.criteria[k]);
-        if (!(v > 0) && v !== 0) return;
+        if (isNaN(v)) return;
+        if (k !== 'Ponctualité' && !(v > 0) && v !== 0) return;
         critTotals[k] = (critTotals[k] || 0) + v;
         critCounts[k] = (critCounts[k] || 0) + 1;
       });
