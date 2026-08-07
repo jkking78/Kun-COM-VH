@@ -169,9 +169,10 @@
   }
 
   function renderNav(initial) {
-    // Seuls les Grands Responsables évaluent : l'onglet Notation n'apparaît pas
-    // pour les autres profils (et App.tab refuse aussi l'accès direct).
-    var canEvaluate = S.user && S.user.role === 'GRAND_RESPONSABLE';
+    // Seuls les Grands Responsables peuvent NOTER, mais l'onglet Notation reste
+    // visible pour tout le monde : un membre doit pouvoir consulter l'historique
+    // des bilans déjà publiés (le Suivi), même s'ils ont disparu du fil.
+    // App.tab bascule automatiquement les autres profils sur cette vue lecture seule.
     function nb(id, iconFn, lbl) {
       var a = S.tab === id;
       return '<button onclick="App.tab(\'' + id + '\')" style="flex:1;background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 2px 4px;position:relative;-webkit-tap-highlight-color:transparent;">' +
@@ -186,9 +187,7 @@
       '<button onclick="App.openCreate()" style="flex:1;background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent;">' +
         '<div style="width:46px;height:46px;border-radius:23px;background:linear-gradient(135deg,#007AFF,#0040CC);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,122,255,0.4);margin-bottom:8px;">' + SVG.plus + '</div>' +
       '</button>' +
-      // Espace neutre pour les non-Grands Responsables : la barre garde le même
-      // équilibre visuel sans exposer un onglet auquel ils n'ont pas accès.
-      (canEvaluate ? nb('debrief', SVG.star, 'Notation') : '<div style="flex:1;"></div>') +
+      nb('debrief', SVG.star, 'Notation') +
       nb('profile', SVG.person, 'Profil') +
     '</nav>';
   }

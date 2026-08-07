@@ -558,13 +558,25 @@
   // ============================================================
   // Onglet Notation : deux vues, la saisie d'un bilan et le suivi dans le temps.
   function renderDebrief(u) {
-    var tabs = '<div style="background:#FFF;padding:10px 16px;display:flex;gap:10px;border-bottom:1px solid #E5E5EA;">' +
-      '<button onclick="App.setDebriefView(\'noter\')" style="flex:1;padding:10px;border-radius:12px;font-weight:800;font-size:13.5px;border:none;cursor:pointer;' + (S.debriefView !== 'suivi' ? 'background:#000;color:#FFF;' : 'background:#F2F2F7;color:#8E8E93;') + '">✍️ Noter</button>' +
-      '<button onclick="App.setDebriefView(\'suivi\')" style="flex:1;padding:10px;border-radius:12px;font-weight:800;font-size:13.5px;border:none;cursor:pointer;' + (S.debriefView === 'suivi' ? 'background:#000;color:#FFF;' : 'background:#F2F2F7;color:#8E8E93;') + '">📊 Suivi</button>' +
-    '</div>';
+    var canEvaluate = isGrandResponsable(u);
+    // Un membre ne peut pas noter, mais doit pouvoir consulter l'historique des
+    // bilans déjà publiés (ils finissent par disparaître du fil) : on le fige
+    // sur le Suivi, en lecture seule, sans jamais lui proposer l'onglet Noter.
+    var view = canEvaluate ? (S.debriefView === 'suivi' ? 'suivi' : 'noter') : 'suivi';
 
-    if (S.debriefView === 'suivi') {
-      return renderScreenHeader('Notation & Débrief', 'Évaluation Inter-Sections', '') + tabs + renderScoreboard();
+    var tabs = canEvaluate
+      ? '<div style="background:#FFF;padding:10px 16px;display:flex;gap:10px;border-bottom:1px solid #E5E5EA;">' +
+          '<button onclick="App.setDebriefView(\'noter\')" style="flex:1;padding:10px;border-radius:12px;font-weight:800;font-size:13.5px;border:none;cursor:pointer;' + (view !== 'suivi' ? 'background:#000;color:#FFF;' : 'background:#F2F2F7;color:#8E8E93;') + '">✍️ Noter</button>' +
+          '<button onclick="App.setDebriefView(\'suivi\')" style="flex:1;padding:10px;border-radius:12px;font-weight:800;font-size:13.5px;border:none;cursor:pointer;' + (view === 'suivi' ? 'background:#000;color:#FFF;' : 'background:#F2F2F7;color:#8E8E93;') + '">📊 Suivi</button>' +
+        '</div>'
+      : '<div style="padding:12px 16px 0;">' +
+          '<div style="background:#F0F6FF;border-radius:12px;padding:10px 12px;font-size:12px;color:#007AFF;font-weight:700;display:flex;align-items:center;gap:8px;line-height:1.4;">' +
+            '<span style="font-size:16px;">👀</span> Consultation seule : la notation est réservée aux Grands Responsables.' +
+          '</div>' +
+        '</div>';
+
+    if (view === 'suivi') {
+      return renderScreenHeader('Notation & Débrief', 'Évaluation Inter-Sections', '') + tabs + renderScoreboard(canEvaluate);
     }
     return renderScreenHeader('Notation & Débrief', 'Évaluation Inter-Sections', '') + tabs + renderDebriefForm(u);
   }
@@ -572,7 +584,7 @@
   // ============================================================
   // SUIVI : tableau de bord par pôle
   // ============================================================
-  function renderScoreboard() {
+  function renderScoreboard(canEvaluate) {
     var sinceTs = S.scoreboardAll ? 0 : currentCycleStartTs();
     var now = new Date();
     var cycleStr = now.getDate() <= 15 ? '1er – 15 ' + now.toLocaleDateString('fr-FR',{month:'long'})
@@ -598,7 +610,7 @@
         '<div style="padding:50px 24px;text-align:center;color:#8E8E93;">' +
           '<div style="font-size:44px;margin-bottom:12px;">📊</div>' +
           '<div style="font-size:17px;font-weight:800;color:#000;margin-bottom:6px;">Aucun bilan sur cette période</div>' +
-          '<div style="font-size:13.5px;line-height:1.5;">Publiez un bilan depuis l\'onglet « Noter » : les moyennes et l\'évolution de chaque pôle apparaîtront ici.</div>' +
+          '<div style="font-size:13.5px;line-height:1.5;">' + (canEvaluate ? 'Publiez un bilan depuis l\'onglet « Noter » : les moyennes et l\'évolution de chaque pôle apparaîtront ici.' : 'Dès qu\'un Grand Responsable publiera un bilan, les moyennes et l\'évolution de chaque pôle apparaîtront ici.') + '</div>' +
         '</div>';
     }
 

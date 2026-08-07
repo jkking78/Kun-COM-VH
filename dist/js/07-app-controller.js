@@ -1682,10 +1682,11 @@ toggleParticipation: function(postId, status) {
 
     // Navigation
     tab: function(t) {
-      // L'évaluation est réservée aux Grands Responsables.
-      if (t === 'debrief' && !(S.user && S.user.role === 'GRAND_RESPONSABLE')) {
-        toast('La notation est réservée aux Grands Responsables.', 'error');
-        return;
+      // Noter est réservé aux Grands Responsables, mais consulter le Suivi
+      // (historique des bilans déjà publiés) est ouvert à tout le monde : sans
+      // ça, un membre perdait toute trace des notations une fois sorties du fil.
+      if (t === 'debrief' && !(S.user && isGrandResponsable(S.user))) {
+        S.debriefView = 'suivi';
       }
       S.tab=t; S.createOpen=false; S.commentOpen=false; S.optionsOpen=false; render();
     },
@@ -2758,7 +2759,14 @@ toggleParticipation: function(postId, status) {
 
     // Debrief
     // ---- Onglet Notation : bascule saisie / suivi ----
-    setDebriefView: function(v) { S.debriefView = v; render(); },
+    // 'noter' reste réservé aux Grands Responsables : un membre qui forcerait
+    // cet appel (ou un vieux bouton en cache) retombe sur le Suivi, jamais un
+    // formulaire de notation auquel il n'a pas droit.
+    setDebriefView: function(v) {
+      if (v === 'noter' && !(S.user && isGrandResponsable(S.user))) v = 'suivi';
+      S.debriefView = v;
+      render();
+    },
     setScoreboardPeriod: function(all) { S.scoreboardAll = !!all; render(); },
     toggleScoreboardSection: function(secId) {
       S.scoreboardOpen = (S.scoreboardOpen === secId) ? null : secId;
