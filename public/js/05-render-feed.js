@@ -632,6 +632,34 @@
     '</div>';
   }
 
+  // Sondage optionnel attaché à une publication : question + options cliquables.
+  // Une seule réponse par membre ; les résultats (barres + %) n'apparaissent
+  // qu'une fois qu'on a soi-même voté, pour ne pas influencer le vote.
+  function renderPollBlock(post) {
+    if (!post || !post.poll || !Array.isArray(post.poll.options) || post.poll.options.length < 2) return '';
+    var poll = post.poll;
+    var myVote = S.user ? pollUserVote(poll, S.user.id) : null;
+    var total = pollTotalVotes(poll);
+    var hasVoted = myVote !== null;
+
+    return '<div style="margin:0 14px 10px;padding:14px;background:#F6FBF8;border:1px solid #DCF3E6;border-radius:16px;">' +
+      '<div style="font-size:10px;font-weight:800;color:#0EA65C;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;display:flex;align-items:center;gap:6px;"><span>📊</span> Sondage</div>' +
+      '<div style="font-size:14.5px;font-weight:800;color:#1C1C1E;margin-bottom:10px;line-height:1.4;">' + safeHtml(poll.question||'') + '</div>' +
+      poll.options.map(function(opt, idx) {
+        var pct = pollOptionPct(poll, idx);
+        var mine = myVote === idx;
+        return '<div onclick="App.votePoll(\'' + post.id + '\', ' + idx + ')" style="position:relative;margin-bottom:7px;border-radius:12px;overflow:hidden;background:#FFF;border:1.5px solid ' + (mine?'#0EA65C':'#E5E5EA') + ';cursor:pointer;">' +
+          (hasVoted ? '<div style="position:absolute;top:0;left:0;bottom:0;width:' + pct + '%;background:' + (mine?'rgba(14,166,92,0.16)':'rgba(142,142,147,0.12)') + ';transition:width 0.3s;"></div>' : '') +
+          '<div style="position:relative;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;">' +
+            '<span style="font-size:13px;font-weight:' + (mine?'800':'600') + ';color:' + (mine?'#0B7A42':'#1C1C1E') + ';">' + (mine ? '✓ ' : '') + safeHtml(opt) + '</span>' +
+            (hasVoted ? '<span style="font-size:12px;font-weight:800;color:#8E8E93;white-space:nowrap;">' + pct + '%</span>' : '') +
+          '</div>' +
+        '</div>';
+      }).join('') +
+      '<div style="font-size:11px;color:#8E8E93;font-weight:600;margin-top:2px;">' + total + ' vote' + (total!==1?'s':'') + (hasVoted ? ' · touchez pour changer votre choix' : ' · touchez une option pour voter') + '</div>' +
+    '</div>';
+  }
+
   function renderPostCard(post) {
     var iLiked = userIsLiked(post);
     var iSaved = !!S.savedPosts[post.id];
@@ -873,6 +901,7 @@
       renderCheckInBadge(post) +
       captionTextBlock +
       contentZone +
+      renderPollBlock(post) +
       // Actions row
       '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px 6px;">' +
         '<div style="display:flex;gap:14px;align-items:center;">' +
@@ -1703,6 +1732,30 @@
                 '<span style="flex:1;min-width:0;font-size:12.5px;font-weight:700;color:#1C1C1E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(evAbout.eventTitle||'') + (evAboutD?' · '+evAboutD:'') + (evAbout.eventStart?' à '+evAbout.eventStart:'') + '</span>' +
               '</button>';
             })() +
+          '</div>' +
+
+          // Sondage
+          '<div style="background:#F6F7F9;border-radius:20px;padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
+            '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:' + (S.pollOpen?'10px':'0') + ';">' +
+              '<span style="font-size:13px;font-weight:800;color:#0B0B0C;display:flex;align-items:center;gap:8px;"><span style="width:26px;height:26px;border-radius:13px;background:#E6F9F0;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">📊</span>Sondage <span style="font-weight:600;color:#9AA0A8;font-size:11px;">(optionnel)</span></span>' +
+              (S.pollOpen ? '<span onclick="App.togglePoll()" style="color:#FF3B30;font-size:12px;font-weight:700;cursor:pointer;">Retirer</span>' : '') +
+            '</div>' +
+            (S.pollOpen
+              ? (
+                  '<input type="text" value="' + safeHtml(S.pollQuestion||'') + '" oninput="App.setPollQuestion(this.value)" placeholder="Posez votre question…" maxlength="140" style="width:100%;height:40px;border-radius:12px;border:none;background:#FFF;padding:0 12px;font-size:13px;outline:none;box-shadow:0 1px 2px rgba(16,24,40,0.06);margin-bottom:8px;box-sizing:border-box;" />' +
+                  (S.pollOptions||[]).map(function(opt, idx) {
+                    return '<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">' +
+                      '<input type="text" value="' + safeHtml(opt||'') + '" oninput="App.setPollOption(' + idx + ', this.value)" placeholder="Option ' + (idx+1) + '" maxlength="60" style="flex:1;height:38px;border-radius:11px;border:none;background:#FFF;padding:0 12px;font-size:12.5px;outline:none;box-shadow:0 1px 2px rgba(16,24,40,0.06);box-sizing:border-box;" />' +
+                      (S.pollOptions.length > 2 ? '<button type="button" onclick="App.removePollOption(' + idx + ')" style="width:32px;height:32px;flex-shrink:0;border-radius:10px;border:none;background:#FFF0EF;color:#FF3B30;font-size:16px;font-weight:800;cursor:pointer;">×</button>' : '') +
+                    '</div>';
+                  }).join('') +
+                  (S.pollOptions.length < 5
+                    ? '<button type="button" onclick="App.addPollOption()" style="background:#FFF;border:1px dashed #C7C7CC;border-radius:12px;padding:8px 12px;font-size:12px;font-weight:700;color:#007AFF;cursor:pointer;width:100%;margin-top:2px;">+ Ajouter une option</button>'
+                    : '') +
+                  '<div style="font-size:10.5px;color:#9AA0A8;line-height:1.4;margin-top:6px;">Une seule réponse par membre. Question et au moins 2 options requises.</div>'
+                )
+              : '<button type="button" onclick="App.togglePoll()" style="width:100%;background:#FFF;border:1px dashed #C7C7CC;border-radius:12px;padding:10px;font-size:12.5px;font-weight:700;color:#0EA65C;cursor:pointer;">+ Ajouter un sondage</button>'
+            ) +
           '</div>' +
 
           // Éphémère

@@ -2138,8 +2138,76 @@ toggleParticipation: function(postId, status) {
       render();
       toast('Publication modifiée ! 🎉', 'success');
     },
-    openCreate: function() { S.createOpen=true; S.pendingMedia=[]; S.pendingVideoPoster=null; S.postAboutEventId=null; S.postCheckInEventId=null; S.videoProcessing=false; render(); setTimeout(function(){ var t=document.getElementById('newPostText'); if(t) t.focus(); },120); },
-    closeCreate: function() { S.createOpen=false; S.pendingMedia=[]; clearPendingLocalCopies(); S.hashSuggestions=false; S.postBg=null; S.postText=''; S.pendingVideoPoster=null; S.postAboutEventId=null; S.postCheckInEventId=null; S.videoProcessing=false; render(); },
+    openCreate: function() { S.createOpen=true; S.pendingMedia=[]; S.pendingVideoPoster=null; S.postAboutEventId=null; S.postCheckInEventId=null; S.videoProcessing=false; S.pollOpen=false; S.pollQuestion=''; S.pollOptions=['','']; render(); setTimeout(function(){ var t=document.getElementById('newPostText'); if(t) t.focus(); },120); },
+    closeCreate: function() { S.createOpen=false; S.pendingMedia=[]; clearPendingLocalCopies(); S.hashSuggestions=false; S.postBg=null; S.postText=''; S.pendingVideoPoster=null; S.postAboutEventId=null; S.postCheckInEventId=null; S.videoProcessing=false; S.pollOpen=false; S.pollQuestion=''; S.pollOptions=['','']; render(); },
+    // ---- Sondage (composeur) ----
+    togglePoll: function() {
+      S.pollOpen = !S.pollOpen;
+      if (!S.pollOpen) { S.pollQuestion=''; S.pollOptions=['','']; }
+      render();
+    },
+    setPollQuestion: function(val) { S.pollQuestion = val; },
+    setPollOption: function(idx, val) { if (S.pollOptions && S.pollOptions[idx] !== undefined) S.pollOptions[idx] = val; },
+    addPollOption: function() {
+      if (!S.pollOptions) S.pollOptions = ['',''];
+      if (S.pollOptions.length >= 5) return;
+      S.pollOptions.push('');
+      render();
+    },
+    removePollOption: function(idx) {
+      if (!S.pollOptions || S.pollOptions.length <= 2) return;
+      S.pollOptions.splice(idx, 1);
+      render();
+    },
+    // Vote sur un sondage publié : une seule réponse par membre, recliquer son
+    // choix actuel le retire (permet de s'abstenir après coup).
+    votePoll: function(postId, optionIdx) {
+      if (!S.user) { toast('Vous devez être connecté.', 'error'); return; }
+      var posts = db(SK.POSTS, []);
+      var post = posts.find(function(p){ return p.id === postId; });
+      if (!post || !post.poll || !Array.isArray(post.poll.options)) return;
+      if (optionIdx < 0 || optionIdx >= post.poll.options.length) return;
+      var uid = S.user.id;
+
+      // Intention figée AU MOMENT DU CLIC : voter pour optionIdx, ou retirer son
+      // vote s'il avait déjà choisi cette même option. On ne recalculera plus ce
+      // choix ensuite — seulement l'APPLIQUER — pour ne jamais "rebasculer" un
+      // vote deux fois lors de la fusion avec la version serveur la plus fraîche.
+      var already = pollUserVote(post.poll, uid);
+      var intended = (already === optionIdx) ? null : optionIdx;
+      function applyIntent(pollObj) {
+        if (!pollObj.votes) pollObj.votes = {};
+        if (intended === null) delete pollObj.votes[uid];
+        else pollObj.votes[uid] = intended;
+        return pollObj;
+      }
+
+      // Mise à jour optimiste immédiate : le membre voit son vote sans délai,
+      // pas besoin d'attendre l'aller-retour réseau.
+      applyIntent(post.poll);
+      dbSet(SK.POSTS, posts);
+      render();
+
+      if (!supabase) return;
+
+      // Avant d'écrire sur le serveur, on relit la publication la plus récente :
+      // si un autre membre a voté entre-temps, sa réponse est déjà dans cette
+      // version fraîche, et on n'y superpose alors QUE notre propre entrée —
+      // jamais celle des autres. Ça évite qu'un envoi encore en cours n'écrase
+      // le vote de quelqu'un d'autre publié entre-temps.
+      supabase.from('kun_com_posts').select('content').eq('id', postId).single()
+        .then(function(res) {
+          var fresh = (res && res.data && res.data.content && res.data.content.poll) ? res.data.content : post;
+          applyIntent(fresh.poll);
+          // Recale aussi le cache local sur cette version fusionnée, au cas où
+          // d'autres votes concurrents s'y trouvaient déjà.
+          var localPosts = db(SK.POSTS, []);
+          var idx = localPosts.findIndex(function(p){ return p.id === postId; });
+          if (idx !== -1) { localPosts[idx] = fresh; dbSet(SK.POSTS, localPosts); render(); }
+          return supabase.from('kun_com_posts').upsert({ id: postId, content: fresh }, { onConflict: 'id' });
+        })
+        .then(function(){}, function(e){ console.warn('Vote sondage :', e); });
+    },
     onPostInput: function(val) {
       // Préserve le texte tapé à travers les re-render (ex: changement de fond)
       S.postText = val;
@@ -2355,8 +2423,19 @@ toggleParticipation: function(postId, status) {
       e && e.preventDefault();
       if (S.videoProcessing) { toast('Patientez, la vidéo est en cours de traitement…', 'warning'); return; }
       var txt = ((document.getElementById('newPostText')||{}).value||'').trim();
-      if (!txt && S.pendingMedia.length===0) { toast('Ajoutez du texte ou une photo.', 'error'); return; }
+      if (!txt && S.pendingMedia.length===0 && !S.pollOpen) { toast('Ajoutez du texte, une photo ou un sondage.', 'error'); return; }
       if (!S.user) { toast('Vous devez être connecté.', 'error'); return; }
+
+      // Sondage optionnel : validé avant tout appel réseau (géoloc), pour ne
+      // pas faire attendre l'utilisateur pour rien s'il a laissé le formulaire incomplet.
+      var pollData = null;
+      if (S.pollOpen) {
+        var pQuestion = (S.pollQuestion || '').trim();
+        var pOptions = (S.pollOptions || []).map(function(o){ return (o||'').trim(); }).filter(function(o){ return o.length > 0; });
+        if (!pQuestion) { toast('Ajoutez une question à votre sondage.', 'error'); return; }
+        if (pOptions.length < 2) { toast('Le sondage doit avoir au moins 2 options.', 'error'); return; }
+        pollData = { question: pQuestion, options: pOptions, votes: {} };
+      }
 
       // Seul un ENREGISTREMENT D'ARRIVÉE relève la position. Un simple lien
       // « À propos » vers un événement ne géolocalise rien : c'est une mention,
@@ -2401,7 +2480,9 @@ toggleParticipation: function(postId, status) {
         // Moment du pointage. C'est CETTE heure qui fait foi pour la ponctualité,
         // pas celle de la publication : sans cela, il suffirait de publier à
         // l'heure puis de pointer plus tard pour effacer son retard.
-        checkInAt: S.postCheckInEventId ? Date.now() : null
+        checkInAt: S.postCheckInEventId ? Date.now() : null,
+        // Sondage optionnel : question + options figées à la publication, votes vides.
+        poll: pollData
       };
 
       // Ephemeral post handling
@@ -2447,7 +2528,7 @@ toggleParticipation: function(postId, status) {
       saveLinksToProfile(newPost.userId, extractLinks(txt), newPost.id);
 
       updateUserActivity('Publication');
-      S.createOpen=false; S.pendingMedia=[]; clearPendingLocalCopies(); S.hashSuggestions=false; S.postBg=null; S.postText=''; S.pendingVideoPoster=null; S.postVisibility='all'; S.postTargetSections=[]; S.postAboutEventId=null; S.postCheckInEventId=null;
+      S.createOpen=false; S.pendingMedia=[]; clearPendingLocalCopies(); S.hashSuggestions=false; S.postBg=null; S.postText=''; S.pendingVideoPoster=null; S.postVisibility='all'; S.postTargetSections=[]; S.postAboutEventId=null; S.postCheckInEventId=null; S.pollOpen=false; S.pollQuestion=''; S.pollOptions=['',''];
       S.tab = 'home';
       S.q = ''; // Optional: clear search if they were searching
       render();

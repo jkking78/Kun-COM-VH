@@ -832,6 +832,10 @@
     // Enregistrement d'arrivée : événement pour lequel la publication en cours
     // vaut pointage (distinct de postAboutEventId, purement informatif).
     postCheckInEventId: null,
+    // Sondage optionnel attaché à la publication en cours de création.
+    pollOpen: false,
+    pollQuestion: '',
+    pollOptions: ['', ''],
     // Réponses imbriquées aux commentaires
     replyingToCommentId: null,
     replyingToAuthor: null,
@@ -1479,6 +1483,38 @@
   function currentCycleStartTs() {
     var now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), now.getDate() <= 15 ? 1 : 16).getTime();
+  }
+
+  // ============================================================
+  // SONDAGES — sondage optionnel attaché à une publication
+  // ============================================================
+  // Un sondage vit dans post.poll = { question, options:[texte,...], votes:{userId:optionIdx} }.
+  // Une seule réponse par membre : revoter change le choix, recliquer sur son
+  // choix actuel retire son vote (permet de changer d'avis ou de s'abstenir).
+
+  function pollTotalVotes(poll) {
+    if (!poll || !poll.votes) return 0;
+    return Object.keys(poll.votes).length;
+  }
+
+  function pollOptionVotes(poll, idx) {
+    if (!poll || !poll.votes) return 0;
+    var n = 0;
+    Object.keys(poll.votes).forEach(function(uid) { if (poll.votes[uid] === idx) n++; });
+    return n;
+  }
+
+  function pollOptionPct(poll, idx) {
+    var total = pollTotalVotes(poll);
+    if (!total) return 0;
+    return Math.round((pollOptionVotes(poll, idx) / total) * 100);
+  }
+
+  // Choix actuel d'un membre pour ce sondage, ou null s'il n'a pas voté.
+  function pollUserVote(poll, userId) {
+    if (!poll || !poll.votes || !userId) return null;
+    var v = poll.votes[userId];
+    return (v === undefined) ? null : v;
   }
 
   // Retrouve le bilan déjà publié par l'utilisateur courant pour cet événement.
