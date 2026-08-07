@@ -1,4 +1,4 @@
-// KUN COM VH — Partie 1/8 : État global, stockage, notifications, sections, session
+// KUN COM VH — Partie 1/8 : État global, stockage, notifications, sections, session (v53)
 
   'use strict';
   console.log('🚀 Commit VH v3.0 — Démarrage...');
