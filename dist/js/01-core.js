@@ -387,53 +387,75 @@
     //  - tout compte CRÉÉ sur cet appareil et pas encore synchronisé (réseau coupé,
     //    serveur injoignable...). Sans cette garde, un membre inscrit hors-ligne qui
     //    se déconnecte verrait son compte effacé du cache et ne pourrait plus jamais
-    //    se reconnecter — le mot de passe n'existant que localement.
-    //    La protection est levée dès que le compte est réellement supprimé depuis
-    //    cet appareil (voir removeLocalAccountId dans confirmDeleteAccount).
+  function parseProfileItem(item) {
+    if (!item) return null;
+    var r = item;
+    if (item.content) {
+      if (typeof item.content === 'string') {
+        try { r = JSON.parse(item.content); } catch(e){ r = item; }
+      } else if (typeof item.content === 'object') {
+        r = item.content;
+      }
+    }
+    if (typeof r === 'string') {
+      try { r = JSON.parse(r); } catch(e){ return null; }
+    }
+    if (!r || typeof r !== 'object') return null;
+    if (!r.id && item.id) r.id = item.id;
+    if (!r.id && r.email) r.id = 'u_' + String(r.email).toLowerCase().replace(/[^a-z0-9]/gi, '_');
+    return r;
+  }
+
+  function parsePostItem(item) {
+    if (!item) return null;
+    var p = item;
+    if (item.content) {
+      if (typeof item.content === 'string') {
+        try { p = JSON.parse(item.content); } catch(e){ p = item; }
+      } else if (typeof item.content === 'object') {
+        p = item.content;
+      }
+    }
+    if (typeof p === 'string') {
+      try { p = JSON.parse(p); } catch(e){ return null; }
+    }
+    if (!p || typeof p !== 'object') return null;
+    if (!p.id && item.id) p.id = item.id;
+    return p;
+  }
+
+  function mergeProfilesWithLocal(remoteData) {
+    var localUsers = db(SK.USERS, []);
+    var map = {};
+
     var remoteIds = {};
     (remoteData || []).forEach(function(item) {
-      var r = item.content || item;
+      var r = parseProfileItem(item);
       if (r && r.id) remoteIds[r.id] = true;
     });
     var ownIds = localAccountIds();
 
-    // Garde-fou anti-faux-positif : si la réponse serveur revient anormalement
-    // plus courte que ce qu'on a déjà en cache (coupure réseau, timeout partiel,
-    // retard de réplication...), on ne purge AUCUN compte ce cycle-ci — on se
-    // contente de mettre à jour ceux effectivement reçus. Sans cette protection,
-    // le moindre accroc réseau ponctuel faisait disparaître des membres entiers
-    // des recherches, avant qu'ils ne "réapparaissent" tout seuls dès qu'une
-    // synchronisation complète repassait (sondage 20s ou temps réel Supabase).
-    // Une vraie suppression de compte ne fait baisser le total que d'une unité :
-    // la double condition (pourcentage ET absolu) laisse toujours passer une
-    // suppression légitime, même sur une petite équipe où un seul départ peut
-    // représenter une grosse part du total (ex. 2 sur 3 restants = -33 %).
     var remoteCount = (remoteData || []).length;
     var localCount = (localUsers || []).length;
     var suspiciouslyIncomplete = localCount > 0
       && remoteCount < localCount - 1
       && remoteCount < localCount * 0.7;
 
-    (localUsers || []).forEach(function(u) {
+    (localUsers || []).forEach(function(raw) {
+      var u = parseProfileItem(raw);
       if (!u || !u.id) return;
       var isMine = (S.user && S.user.id === u.id) || ownIds.indexOf(u.id) !== -1;
       if (!remoteIds[u.id] && !isMine && !suspiciouslyIncomplete) return;
       map[u.id] = u;
     });
     (remoteData || []).forEach(function(item) {
-      var rUser = item.content || item;
+      var rUser = parseProfileItem(item);
       if (rUser && rUser.id) {
         var existing = map[rUser.id] || {};
         var merged = Object.assign({}, existing, rUser);
-        // Preserve pwd and security credentials if present locally
         if (existing.pwd && !merged.pwd) merged.pwd = existing.pwd;
         if (existing.sec_a1 && !merged.sec_a1) merged.sec_a1 = existing.sec_a1;
         if (existing.sec_a2 && !merged.sec_a2) merged.sec_a2 = existing.sec_a2;
-        // Les NOTIFICATIONS ne peuvent pas être simplement écrasées par la
-        // version du serveur : celle-ci est écrite par n'importe quel appareil
-        // qui vous notifie, et ignore donc les lectures faites ailleurs. Sans
-        // fusion, une notification déjà ouverte redevenait non lue à chaque
-        // retour dans l'application.
         merged.notifications = mergeNotifications(existing.notifications, rUser.notifications);
         map[rUser.id] = merged;
       }
@@ -447,11 +469,12 @@
   function mergePostsWithLocal(remoteData, purgeWindow) {
     var localPosts = db(SK.POSTS, []);
     var map = {};
-    (localPosts || []).forEach(function(p) {
+    (localPosts || []).forEach(function(raw) {
+      var p = parsePostItem(raw);
       if (p && p.id && p.status !== 'deleted') map[p.id] = p;
     });
-    (remoteData || []).forEach(function(item) {
-      var p = item.content || item;
+    (remoteData || []).forEach(function(raw) {
+      var p = parsePostItem(raw);
       if (p && p.id) {
         if (p.status === 'deleted') {
           delete map[p.id];
