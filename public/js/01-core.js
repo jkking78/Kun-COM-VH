@@ -855,6 +855,9 @@
     // Enregistrement d'arrivée : événement pour lequel la publication en cours
     // vaut pointage (distinct de postAboutEventId, purement informatif).
     postCheckInEventId: null,
+    // Pile des publications épinglées : repliée par défaut dès qu'il y en a
+    // plusieurs, pour ne pas encombrer le haut du fil.
+    pinnedOpen: false,
     // Image affichée en grand par-dessus l'écran (commentaires, publications).
     viewerImage: null,
     // Aperçu du lien collé dans le composeur (titre, description, image).

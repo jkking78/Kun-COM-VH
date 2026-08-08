@@ -69,7 +69,7 @@
       content = renderProfile(targetUser, posts);
     }
     
-    return '<div style="position:fixed;inset:0;background:#FFF;z-index:9000;overflow-y:auto;padding-top:env(safe-area-inset-top);animation:slideIn 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
+    return '<div class="safe-top" style="position:fixed;inset:0;background:#FFF;z-index:9000;overflow-y:auto;animation:slideIn 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
       content +
     '</div>';
   }
@@ -351,11 +351,19 @@
       }
       // Les événements d'une même journée sont fusionnés en un carrousel unique ;
       // une journée à un seul événement garde exactement la carte habituelle.
-      feed = groupSameDayEvents(filtered).map(function(item) {
-        if (item.kind === 'post') return renderPostCard(item.post);
-        if (item.events.length === 1) return renderPostCard(item.events[0]);
-        return renderEventGroupCard(item.date, item.events);
-      }).join('') + footerHtml;
+      // À partir de DEUX épinglés, on les sort du flux pour les regrouper dans
+      // un bloc repliable en tête. En dessous, rien ne change : une seule carte
+      // épinglée ne gêne personne et mérite sa mise en avant pleine largeur.
+      var epingles = filtered.filter(function(p){ return isPinnedNow(p); });
+      var regroupe = epingles.length >= 2;
+      var reste = regroupe ? filtered.filter(function(p){ return !isPinnedNow(p); }) : filtered;
+
+      feed = (regroupe ? renderPinnedStack(epingles) : '') +
+        groupSameDayEvents(reste).map(function(item) {
+          if (item.kind === 'post') return renderPostCard(item.post);
+          if (item.events.length === 1) return renderPostCard(item.events[0]);
+          return renderEventGroupCard(item.date, item.events);
+        }).join('') + footerHtml;
     }
 
     return header + trendsHtml + stories + feed;
@@ -393,8 +401,10 @@
     else if (startTs && startTs <= nowTs)                  evStatus = badge('En cours', UI.evGold, UI.evBg);
     else                                                   evStatus = badge('À venir', UI.evGoldSoft, UI.evGold);
 
+    // L'affiche de l'événement s'ouvre en grand : c'est souvent là que se
+    // trouvent les détails (horaires, lieu) écrits dans le visuel lui-même.
     var evImage = post.eventImage
-      ? '<img src="' + post.eventImage + '" loading="lazy" style="display:block;width:100%;height:auto;max-height:240px;object-fit:cover;border-radius:' + UI.r1 + ';margin-bottom:14px;background:#000;" />'
+      ? '<img src="' + post.eventImage + '" loading="lazy" onclick="event.stopPropagation();App.openImageViewer(\'' + post.eventImage + '\')" style="display:block;width:100%;height:auto;max-height:240px;object-fit:cover;border-radius:' + UI.r1 + ';margin-bottom:14px;background:#000;cursor:pointer;" />'
       : '';
 
     // Vert profond + or : identité réservée aux événements, pour qu'ils se
@@ -659,12 +669,57 @@
     '</div>';
   }
 
+  // Pile des épinglés. Plusieurs cartes épinglées d'affilée saturent le haut du
+  // fil et repoussent l'actualité hors de l'écran. On les regroupe donc en UN
+  // bloc, replié par défaut : rien n'est retiré, tout reste accessible en une
+  // touche. En dessous de deux, on garde la carte complète telle quelle.
+  function renderPinnedStack(pinned) {
+    var ouvert = !!S.pinnedOpen;
+
+    var ligne = function(p) {
+      var estEv = p.type === 'EVENT' && p.eventTitle;
+      var titre = estEv ? p.eventTitle : (p.caption || 'Publication');
+      var d = estEv && p.eventDate ? new Date(p.eventDate + 'T00:00:00') : null;
+      var vignette = d
+        ? '<div style="width:38px;flex-shrink:0;background:' + UI.evBg + ';border-radius:10px;text-align:center;padding:4px 0;">' +
+            '<div style="font-size:8px;color:' + UI.evGold + ';letter-spacing:0.5px;">' + d.toLocaleDateString('fr-FR',{month:'short'}).toUpperCase() + '</div>' +
+            '<div style="font-size:15px;font-weight:600;color:' + UI.evInk + ';line-height:1.1;">' + d.getDate() + '</div>' +
+          '</div>'
+        : '<div style="width:38px;height:38px;flex-shrink:0;border-radius:10px;background:' + UI.tile + ';display:flex;align-items:center;justify-content:center;">' + ico('message', 17, UI.faint) + '</div>';
+      var meta = estEv
+        ? ((p.eventStart || '') + (p.eventEnd ? ' – ' + p.eventEnd : '') + (p.eventLocation ? ' · ' + p.eventLocation : ''))
+        : (p.author || '');
+      var action = estEv ? "App.goToEvent('" + p.id + "')" : "App.goToPost('" + p.id + "')";
+      return '<div onclick="' + action + '" style="display:flex;align-items:center;gap:11px;padding:9px 14px;border-top:0.5px solid ' + UI.line + ';cursor:pointer;">' +
+        vignette +
+        '<div style="flex:1;min-width:0;">' +
+          '<div style="font-size:13.5px;font-weight:500;color:' + UI.ink + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(titre) + '</div>' +
+          (meta ? '<div style="font-size:11.5px;color:' + UI.faint + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(meta) + '</div>' : '') +
+        '</div>' +
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="' + UI.line2 + '" stroke-width="2.4" style="flex-shrink:0;"><path d="M9 18l6-6-6-6"/></svg>' +
+      '</div>';
+    };
+
+    return '<div style="background:' + UI.card + ';border-radius:' + UI.r2 + ';box-shadow:' + UI.sh2 + ';margin:0 12px 12px;overflow:hidden;">' +
+      '<div onclick="App.togglePinnedStack()" style="display:flex;align-items:center;gap:9px;padding:13px 14px;cursor:pointer;">' +
+        ico('pinned', 16, UI.accent) +
+        '<span style="font-size:13.5px;font-weight:600;color:' + UI.ink + ';">Épinglés</span>' +
+        '<span style="font-size:11.5px;font-weight:600;color:' + UI.accentInk + ';background:' + UI.accentSoft + ';padding:1px 8px;border-radius:' + UI.pill + ';">' + pinned.length + '</span>' +
+        '<span style="margin-left:auto;font-size:11.5px;color:' + UI.faint + ';">' + (ouvert ? 'Réduire' : 'Afficher') + '</span>' +
+        '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="' + UI.faint + '" stroke-width="2.2" style="transform:rotate(' + (ouvert ? '90' : '0') + 'deg);transition:transform 0.2s;flex-shrink:0;"><path d="M9 18l6-6-6-6"/></svg>' +
+      '</div>' +
+      (ouvert ? '' : pinned.map(ligne).join('')) +
+    '</div>' +
+    // Déplié : les cartes complètes reprennent leur place habituelle, sous l'en-tête.
+    (ouvert ? pinned.map(function(p){ return renderPostCard(p); }).join('') : '');
+  }
+
   // Image en plein écran. Un simple toucher n'importe où referme : c'est le
   // geste attendu, et le bouton de fermeture reste là pour ceux qui le cherchent.
   function renderImageViewer() {
     if (!S.viewerImage) return '';
-    return '<div onclick="App.closeImageViewer()" style="position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,0.94);display:flex;align-items:center;justify-content:center;padding:16px;padding-top:calc(16px + env(safe-area-inset-top));padding-bottom:calc(16px + env(safe-area-inset-bottom));animation:fadeIn 0.18s ease-out;">' +
-      '<button onclick="event.stopPropagation();App.closeImageViewer()" aria-label="Fermer" style="position:absolute;top:calc(10px + env(safe-area-inset-top));right:10px;background:rgba(255,255,255,0.16);border:none;border-radius:50%;width:44px;height:44px;color:#FFF;font-size:20px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;touch-action:manipulation;">×</button>' +
+    return '<div onclick="App.closeImageViewer()" class="safe-top" style="position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,0.94);display:flex;align-items:center;justify-content:center;padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom));animation:fadeIn 0.18s ease-out;">' +
+      '<button onclick="event.stopPropagation();App.closeImageViewer()" aria-label="Fermer" style="position:absolute;top:10px;right:10px;background:rgba(255,255,255,0.16);border:none;border-radius:50%;width:44px;height:44px;color:#FFF;font-size:20px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;touch-action:manipulation;">×</button>' +
       '<img src="' + safeHtml(S.viewerImage) + '" onclick="event.stopPropagation()" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:' + UI.r1 + ';" />' +
     '</div>';
   }
@@ -1180,7 +1235,7 @@
             '</label>')) +
     '</div>';
 
-    return '<div style="position:fixed;inset:0;background:#FFF;z-index:10000;padding-top:env(safe-area-inset-top);display:flex;flex-direction:column;animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
+    return '<div class="safe-top" style="position:fixed;inset:0;background:#FFF;z-index:10000;display:flex;flex-direction:column;animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
       '<header style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #E4E7EC;background:#FFF;z-index:2;">' +
         '<button onclick="App.closeCreateEvent()" style="background:none;border:none;font-size:16px;color:#000;cursor:pointer;">Annuler</button>' +
         '<div style="font-weight:700;font-size:16px;">' + (isEdit ? 'Modifier l\'événement' : 'Nouvel Événement') + '</div>' +

@@ -92,6 +92,24 @@
       padding-top: env(safe-area-inset-top);
     }
 
+    /* PIÈGE : env(safe-area-inset-top) ne mesure QUE l'encoche ou la Dynamic
+       Island. Sur un iPhone sans encoche, il vaut 0 — alors que la barre d'état
+       recouvre malgré tout le contenu, puisque le style black-translucent la rend
+       transparente. La réserve était donc nulle sur ces appareils et l'en-tête
+       repassait sous l'heure. On impose ici un minimum, uniquement quand l'app
+       tourne installée : dans un navigateur, la barre d'état ne nous concerne pas
+       et cette marge serait de l'espace perdu. */
+    /* Classe réutilisable pour les fenêtres plein écran, soumises au même piège :
+       leur bouton de fermeture repasserait sous l'heure sur un iPhone sans encoche. */
+    .app-device-frame, .safe-top { padding-top: env(safe-area-inset-top); }
+
+    @media all and (display-mode: standalone) {
+      .app-device-frame, .safe-top { padding-top: max(env(safe-area-inset-top), 22px); }
+    }
+    @media all and (display-mode: fullscreen) {
+      .app-device-frame, .safe-top { padding-top: max(env(safe-area-inset-top), 22px); }
+    }
+
     @media (min-width: 501px) {
       .app-device-frame {
         border-radius: 40px;
@@ -218,14 +236,14 @@
   <!-- BUNDLE PRINCIPAL (PWA Vanilla JS) — anciennement un seul fichier app.js,
        désormais découpé en modules thématiques (même code, chargés dans l'ordre
        d'origine, aucun changement de comportement) pour faciliter la maintenance. -->
-  <script src="js/01-core.js?v=72"></script>
-  <script src="js/02-media.js?v=72"></script>
-  <script src="js/03-render-engine.js?v=72"></script>
-  <script src="js/04-render-auth-cropper.js?v=72"></script>
-  <script src="js/05-render-feed.js?v=72"></script>
-  <script src="js/06-render-panels.js?v=72"></script>
-  <script src="js/07-app-controller.js?v=72"></script>
-  <script src="js/08-bootstrap.js?v=72"></script>
+  <script src="js/01-core.js?v=74"></script>
+  <script src="js/02-media.js?v=74"></script>
+  <script src="js/03-render-engine.js?v=74"></script>
+  <script src="js/04-render-auth-cropper.js?v=74"></script>
+  <script src="js/05-render-feed.js?v=74"></script>
+  <script src="js/06-render-panels.js?v=74"></script>
+  <script src="js/07-app-controller.js?v=74"></script>
+  <script src="js/08-bootstrap.js?v=74"></script>
 
   <!-- DÉBLOCAGE ANTI-SPINNER (Garantie de déblocage 0ms / 400ms max) -->
   <script>
