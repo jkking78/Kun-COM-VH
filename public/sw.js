@@ -1,11 +1,11 @@
 // ============================================================
-// SERVICE WORKER — Kun COM VH PWA (v82)
+// SERVICE WORKER — Kun COM VH PWA (v83)
 // Stratégie : Network-First pour JS/HTML (Garantie de mise à jour instantanée)
 // app.js a été découpé en modules (voir dossier js/) pour la maintenabilité —
 // même stratégie de cache, juste plus de fichiers listés ci-dessous.
 // ============================================================
 
-const CACHE_NAME = 'kun-com-pwa-v82';
+const CACHE_NAME = 'kun-com-pwa-v83';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -57,7 +57,7 @@ self.addEventListener('fetch', (event) => {
   // Network-First pour les scripts et pages HTML : garantie d'affichage direct des mises à jour
   if (url.pathname.endsWith('.js') || url.pathname.endsWith('.html') || url.pathname === '/' || url.pathname.endsWith('/')) {
     event.respondWith(
-      fetch(event.request).then((networkResponse) => {
+      fetch(new Request(event.request, { cache: 'no-cache' })).then((networkResponse) => {
         if (networkResponse && networkResponse.status === 200) {
           const responseClone = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));

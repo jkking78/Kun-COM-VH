@@ -34,18 +34,26 @@
   // comporte de façon inexplicable. On vérifie donc que les briques essentielles
   // sont bien là avant de démarrer, et on recharge UNE fois en contournant le
   // cache si ce n'est pas le cas.
+  var APP_VERSION = 'v83';
   function verifierIntegrite() {
-    // On teste les identifiants DIRECTEMENT, et non via window[...] : ces
-    // fonctions vivent dans la portée globale du script sans être attachées à
-    // l'objet window. Les interroger par window aurait déclaré tout le monde
-    // manquant et provoqué un rechargement inutile chez chaque membre.
-    // « typeof » sur un identifiant inconnu ne lève pas d'erreur : c'est
-    // précisément ce qui rend ce contrôle sûr.
+    // Synchronisation automatique des conteneurs PWA / Safari : dès qu'une nouvelle
+    // version est déployée, les anciens caches de l'application installée sur l'écran
+    // d'accueil sont vidés pour forcer l'alignement avec le serveur.
+    try {
+      var savedVer = localStorage.getItem('kc_app_version');
+      if (savedVer !== APP_VERSION) {
+        localStorage.setItem('kc_app_version', APP_VERSION);
+        if (window.caches && caches.keys) {
+          caches.keys().then(function(cles){
+            return Promise.all(cles.map(function(c){ return caches.delete(c); }));
+          });
+        }
+      }
+    } catch(e) {}
+
     var presence = {
       UI: typeof UI, ico: typeof ico,
       render: typeof render, renderApp: typeof renderApp, renderLogin: typeof renderLogin,
-      // App est le SEUL à être explicitement posé sur window (window.App = {...}),
-      // c'est donc ainsi qu'il faut le chercher.
       App: (window && window.App) ? 'object' : 'undefined',
       mergeNotifications: typeof mergeNotifications,
       mergeProfilesWithLocal: typeof mergeProfilesWithLocal,
@@ -58,7 +66,6 @@
     if (!manquants.length) return true;
 
     console.error('Fichiers incohérents, éléments manquants :', manquants.join(', '));
-    // Une seule tentative : sans ce verrou, un vrai défaut ferait boucler la page.
     var DEJA = 'kc_reload_integrite';
     try {
       if (sessionStorage.getItem(DEJA)) {
