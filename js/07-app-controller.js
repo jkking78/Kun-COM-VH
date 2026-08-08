@@ -1652,6 +1652,20 @@ toggleParticipation: function(postId, status) {
           deleteUnusedMediaFromStorage((p.mediaUrls || []), p.id);
         });
 
+        // 1 bis) Retire ses traces DANS les publications des autres : ses J'aime
+        // (qui continuaient d'être comptés), ses commentaires et réponses, ses
+        // votes aux sondages, ses vues et ses assignations. Sans cela, un compte
+        // supprimé restait visible partout ailleurs que dans ses propres
+        // publications.
+        var restantsNettoyes = retirerTracesDUnCompte(remainingPosts, userId);
+        dbSet(SK.POSTS, restantsNettoyes.posts);
+        if (supabase && restantsNettoyes.modifies.length) {
+          restantsNettoyes.modifies.forEach(function(p) {
+            supabase.from('kun_com_posts').upsert({ id: p.id, content: p }, { onConflict: 'id' })
+              .then(function(){}, function(e){ console.warn('Nettoyage des traces sur ' + p.id + ' :', e); });
+          });
+        }
+
         // 2) Supprime le profil utilisateur (local + Supabase)
         var users = db(SK.USERS, []);
         var remainingUsers = users.filter(function(u){ return u.id !== userId; });

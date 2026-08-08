@@ -674,6 +674,86 @@
     return { gardees: gardees, orphelines: orphelines };
   }
 
+  // Supprimer les publications d'un compte ne suffit pas : il laisse des traces
+  // DANS celles des autres — ses J'aime (le compteur continuait de les compter),
+  // ses commentaires et réponses, ses votes aux sondages, ses vues, et ses
+  // assignations sur les événements. On les retire toutes, avec exactement les
+  // mêmes garde-fous que pour les publications (voir auteurSupprime).
+  // Renvoie la liste nettoyée et celles qui ont réellement changé, pour n'écrire
+  // sur le serveur que le strict nécessaire.
+  function nettoyerTracesComptesSupprimes(posts) {
+    if (!_idsProfilsServeur) return { posts: posts, modifies: [] };
+    return retirerTraces(posts, function(uid){ return auteurSupprime({ userId: uid }); });
+  }
+
+  // Même nettoyage, mais pour UN compte précis : utilisé au moment où quelqu'un
+  // supprime son propre compte, alors qu'il figure encore dans la liste du serveur.
+  function retirerTracesDUnCompte(posts, userId) {
+    if (!userId) return { posts: posts, modifies: [] };
+    return retirerTraces(posts, function(uid){ return uid === userId; });
+  }
+
+  function retirerTraces(posts, idSupprime) {
+    var modifies = [];
+
+    var sortie = (posts || []).map(function(p) {
+      if (!p) return p;
+      var change = false;
+      var copie = p;
+      var muter = function() { if (copie === p) copie = Object.assign({}, p); change = true; };
+
+      if (Array.isArray(p.likedBy)) {
+        var jaime = p.likedBy.filter(function(uid){ return !idSupprime(uid); });
+        if (jaime.length !== p.likedBy.length) { muter(); copie.likedBy = jaime; }
+      }
+      if (Array.isArray(p.viewedBy)) {
+        var vues = p.viewedBy.filter(function(uid){ return !idSupprime(uid); });
+        if (vues.length !== p.viewedBy.length) { muter(); copie.viewedBy = vues; }
+      }
+      if (Array.isArray(p.comments)) {
+        // Un commentaire racine supprimé emporte ses réponses : sans cela, elles
+        // resteraient orphelines et sans fil de discussion lisible.
+        var racinesParties = {};
+        var restants = p.comments.filter(function(c) {
+          if (!c) return false;
+          if (idSupprime(c.userId)) { if (c.id) racinesParties[c.id] = true; return false; }
+          return true;
+        }).filter(function(c) {
+          return !(c.parentId && racinesParties[c.parentId]);
+        });
+        if (restants.length !== p.comments.length) { muter(); copie.comments = restants; }
+      }
+      if (p.poll && p.poll.votes && typeof p.poll.votes === 'object') {
+        var votes = {}, retire = false;
+        Object.keys(p.poll.votes).forEach(function(uid) {
+          if (idSupprime(uid)) retire = true; else votes[uid] = p.poll.votes[uid];
+        });
+        if (retire) { muter(); copie.poll = Object.assign({}, p.poll, { votes: votes }); }
+      }
+      if (Array.isArray(p.assignments)) {
+        var affect = p.assignments.filter(function(a){ return !(a && a.userId && idSupprime(a.userId)); });
+        if (affect.length !== p.assignments.length) { muter(); copie.assignments = affect; }
+      }
+
+      if (change) modifies.push(copie);
+      return copie;
+    });
+    return { posts: sortie, modifies: modifies };
+  }
+
+  // Enregistre les publications d'autrui dont on vient de retirer les traces d'un
+  // compte supprimé. Réservé au Grand Responsable, comme pour les pierres
+  // tombales : c'est une modification du contenu des autres.
+  function enregistrerNettoyageTraces(modifies) {
+    if (!supabase || !modifies || !modifies.length) return;
+    if (!S.user || S.user.role !== 'GRAND_RESPONSABLE') return;
+    modifies.forEach(function(p) {
+      supabase.from('kun_com_posts').upsert({ id: p.id, content: p }, { onConflict: 'id' })
+        .then(function(){}, function(e){ console.warn('Nettoyage des traces sur ' + p.id + ' :', e); });
+    });
+    console.log('Traces d\'un compte supprimé retirées de ' + modifies.length + ' publication(s).');
+  }
+
   // Rend la disparition DÉFINITIVE et visible par tous : sans pierre tombale, la
   // fusion étant volontairement additive, les publications reviendraient sur les
   // appareils qui les ont encore en cache. Réservé au Grand Responsable : c'est
@@ -764,6 +844,11 @@
         var triPosts = separerOrphelines(mergedPosts);
         mergedPosts = triPosts.gardees;
         tombaliserOrphelines(triPosts.orphelines);
+        // Puis les traces laissées DANS les publications des autres (J'aime,
+        // commentaires, votes, vues, assignations).
+        var nettoye = nettoyerTracesComptesSupprimes(mergedPosts);
+        mergedPosts = nettoye.posts;
+        enregistrerNettoyageTraces(nettoye.modifies);
         dbSet(SK.POSTS, mergedPosts);
         var pageData = res.data;
         // Renvoie vers Supabase les publications créées hors-ligne et pas encore
@@ -937,6 +1022,9 @@
         var triSilencieux = separerOrphelines(mergedPosts);
         mergedPosts = triSilencieux.gardees;
         tombaliserOrphelines(triSilencieux.orphelines);
+        var nettoyeSil = nettoyerTracesComptesSupprimes(mergedPosts);
+        mergedPosts = nettoyeSil.posts;
+        enregistrerNettoyageTraces(nettoyeSil.modifies);
         var fp = postsFingerprint(mergedPosts);
         if (fp !== _lastPostsFingerprint) {
           _lastPostsFingerprint = fp;
