@@ -1312,6 +1312,9 @@
   // promeut le compte connecté au rôle Grand Responsable, saisi dans le même champ
   // que ADMIN_ACCESS_CODE ci-dessus.
   var GRAND_RESPONSABLE_CODE = 'ADMIN78';
+  // Même principe, un cran en dessous : promeut le compte connecté au rôle
+  // Responsable de pôle. Saisi dans le même champ que les deux codes ci-dessus.
+  var RESP_SECTION_CODE = 'RP787';
 
   // ============================================================
   // LIEN PROFOND VERS UNE PUBLICATION (?post=ID)

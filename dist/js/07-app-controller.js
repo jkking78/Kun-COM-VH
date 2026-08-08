@@ -1712,6 +1712,8 @@ toggleParticipation: function(postId, status) {
         App.openStorageStats();
       } else if (v === GRAND_RESPONSABLE_CODE) {
         App.grantGrandResponsable();
+      } else if (v === RESP_SECTION_CODE) {
+        App.grantRespSection();
       } else {
         S.adminCodeError = true;
         render();
@@ -1739,6 +1741,37 @@ toggleParticipation: function(postId, status) {
       S.adminCodeInput = '';
       render();
       toast('Accès Grand Responsable accordé.', 'success');
+    },
+    // Promeut le compte connecté au rôle Responsable de pôle (code RP787).
+    grantRespSection: function() {
+      if (!S.user) { S.adminCodeError = true; render(); return; }
+      if (S.user.role === 'RESP_SECTION') {
+        S.adminGateOpen = false;
+        render();
+        toast('Ce compte est déjà Responsable.', 'info');
+        return;
+      }
+      // Un Grand Responsable a un accès PLUS large : ce code ne doit pas le lui
+      // retirer par une simple faute de frappe dans le même champ de saisie. Le
+      // changement volontaire d'un rôle se fait depuis la fiche du membre.
+      if (S.user.role === 'GRAND_RESPONSABLE') {
+        S.adminGateOpen = false;
+        S.adminCodeInput = '';
+        render();
+        toast('Ce compte est Grand Responsable, un accès déjà supérieur. Rôle inchangé.', 'info');
+        return;
+      }
+      S.user.role = 'RESP_SECTION';
+      var tousUsers = db(SK.USERS, []);
+      var idx = tousUsers.findIndex(function(u){ return u.id === S.user.id; });
+      if (idx !== -1) tousUsers[idx] = S.user;
+      dbSet(SK.USERS, tousUsers);
+      sauverSession(S.user);
+      if (supabase) supabase.from('kun_com_profiles').upsert({ id: S.user.id, content: S.user }, { onConflict: 'id' }).then(function(){}, function(e){ console.warn('Enregistrement du rôle Responsable :', e); });
+      S.adminGateOpen = false;
+      S.adminCodeInput = '';
+      render();
+      toast('Accès Responsable accordé.', 'success');
     },
     lockAdmin: function() {
       S.adminUnlocked = false;
