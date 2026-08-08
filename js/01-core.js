@@ -148,7 +148,7 @@
     
     if (S.user && S.user.id === targetUserId) {
       S.user = targetUser;
-      try { localStorage.setItem(SK.SESS, JSON.stringify(targetUser)); } catch(e){}
+      sauverSession(targetUser);
     }
     
     pushNotificationToProfile(targetUserId, newNotif, targetUser).then(function(){}, function(e){ console.warn('sendNotificationToUser push error:', e); });
@@ -462,6 +462,35 @@
     return out.slice(0, 100);
   }
 
+  // Une seule fiche par adresse e-mail à l'AFFICHAGE. Constaté en production :
+  // deux inscriptions du même membre (faites pendant la période où le stockage
+  // saturé faisait échouer les connexions) coexistent sur le serveur avec le même
+  // e-mail. On ne supprime rien ici — trop risqué tant que des appareils restent
+  // connectés sur l'un ou l'autre des doublons — mais l'annuaire, lui, n'a aucune
+  // raison de montrer deux fois la même personne. Préférences, dans l'ordre : la
+  // fiche du compte connecté sur CET appareil, puis la plus récemment active.
+  function profilsUniquesParEmail(liste) {
+    if (!Array.isArray(liste)) return liste;
+    var parEmail = {};
+    var sansEmail = [];
+    var ordre = [];
+    liste.forEach(function(u) {
+      if (!u) return;
+      var cle = (u.email || '').toLowerCase().trim();
+      if (!cle) { sansEmail.push(u); return; }
+      if (!parEmail[cle]) { parEmail[cle] = u; ordre.push(cle); return; }
+      var deja = parEmail[cle];
+      var estMoi = S.user && S.user.id === u.id;
+      var dejaMoi = S.user && S.user.id === deja.id;
+      if (dejaMoi) return;
+      if (estMoi) { parEmail[cle] = u; return; }
+      var actU = Date.parse(u.last_seen_at || 0) || 0;
+      var actD = Date.parse(deja.last_seen_at || 0) || 0;
+      if (actU > actD) parEmail[cle] = u;
+    });
+    return ordre.map(function(cle){ return parEmail[cle]; }).concat(sansEmail);
+  }
+
   function parseProfileItem(item) {
     if (!item) return null;
     var r = item;
@@ -587,6 +616,69 @@
 
   var _syncRetryCount = 0;
   var MAX_SYNC_RETRIES = 4;
+
+  // ============================================================
+  // PUBLICATIONS ORPHELINES (auteur dont le compte a été supprimé)
+  // ============================================================
+  // Règle demandée : quand un compte est supprimé, TOUTES ses publications
+  // disparaissent. La suppression faite depuis l'application s'en charge déjà
+  // (App.confirmDeleteAccount pose des pierres tombales). Mais un compte effacé
+  // autrement — directement dans la base, par exemple — ne laissait aucune trace
+  // exploitable : ses publications restaient visibles indéfiniment, sans auteur.
+  // On les traite donc aussi à la source, à chaque synchronisation.
+  //
+  // Liste des identifiants réellement présents sur le SERVEUR au dernier
+  // téléchargement complet des profils. null = on ne sait pas encore : dans le
+  // doute on ne masque jamais rien.
+  var _idsProfilsServeur = null;
+
+  function memoriserProfilsServeur(remoteData) {
+    if (!Array.isArray(remoteData) || !remoteData.length) return;
+    var ids = {};
+    remoteData.forEach(function(item) {
+      var p = parseProfileItem(item);
+      if (p && p.id) ids[p.id] = true;
+    });
+    if (Object.keys(ids).length) _idsProfilsServeur = ids;
+  }
+
+  // Prudence maximale : on ne déclare une publication orpheline que si la liste
+  // des profils du serveur est connue ET non vide. Une liste absente ou vide
+  // signifierait une panne réseau ou une lecture partielle — et masquer alors
+  // tout le fil serait bien pire que le problème à corriger.
+  function auteurSupprime(p) {
+    if (!p || !p.userId) return false;
+    if (!_idsProfilsServeur) return false;
+    if (S.user && S.user.id === p.userId) return false;
+    // Compte créé sur cet appareil et peut-être pas encore remonté au serveur.
+    if (localAccountIds().indexOf(p.userId) !== -1) return false;
+    return !_idsProfilsServeur[p.userId];
+  }
+
+  function separerOrphelines(posts) {
+    var gardees = [], orphelines = [];
+    (posts || []).forEach(function(p) {
+      if (auteurSupprime(p)) orphelines.push(p); else gardees.push(p);
+    });
+    return { gardees: gardees, orphelines: orphelines };
+  }
+
+  // Rend la disparition DÉFINITIVE et visible par tous : sans pierre tombale, la
+  // fusion étant volontairement additive, les publications reviendraient sur les
+  // appareils qui les ont encore en cache. Réservé au Grand Responsable : c'est
+  // une écriture destructrice, elle ne doit pas partir de n'importe quel appareil.
+  function tombaliserOrphelines(orphelines) {
+    if (!supabase || !orphelines || !orphelines.length) return;
+    if (!S.user || S.user.role !== 'GRAND_RESPONSABLE') return;
+    orphelines.forEach(function(p) {
+      if (!p || !p.id || p.status === 'deleted') return;
+      var pierre = Object.assign({}, p, { status: 'deleted' });
+      supabase.from('kun_com_posts').upsert({ id: p.id, content: pierre }, { onConflict: 'id' })
+        .then(function(){}, function(e){ console.warn('Nettoyage publication orpheline ' + p.id + ' :', e); });
+      try { deleteUnusedMediaFromStorage((p.mediaUrls || []), p.id); } catch(e) {}
+    });
+    console.log(orphelines.length + ' publication(s) d\'un compte supprimé retirée(s) définitivement.');
+  }
   async function syncSupabaseToLocal() {
     // S.initialLoading ne sert qu'à débloquer l'écran de chargement PLEIN ÉCRAN au
     // bout de 2,5 s — un choix cosmétique pour ne jamais laisser l'utilisateur face
@@ -652,6 +744,15 @@
         if (resEvents && resEvents.data && resEvents.data.length) {
           mergedPosts = mergePostsWithLocal(resEvents.data, false);
         }
+        // Les profils arrivent dans le même lot (requêtes parallèles) : on connaît
+        // donc ici, au même instant, qui existe encore. Les publications dont le
+        // compte a disparu sont retirées avant même d'être enregistrées, ce qui
+        // les fait disparaître de TOUS les écrans d'un coup (fil, planning,
+        // profils, recherche) sans avoir à filtrer chacun d'eux séparément.
+        if (resProf && resProf.data) memoriserProfilsServeur(resProf.data);
+        var triPosts = separerOrphelines(mergedPosts);
+        mergedPosts = triPosts.gardees;
+        tombaliserOrphelines(triPosts.orphelines);
         dbSet(SK.POSTS, mergedPosts);
         var pageData = res.data;
         // Renvoie vers Supabase les publications créées hors-ligne et pas encore
@@ -772,6 +873,7 @@
     try {
     var resProf = await supabase.from('kun_com_profiles').select('*');
     if (resProf && resProf.data) {
+      memoriserProfilsServeur(resProf.data);
       var mergedProfiles = mergeProfilesWithLocal(resProf.data);
       DB_CACHE[SK.USERS] = mergedProfiles;
       try { localStorage.setItem(SK.USERS, JSON.stringify(mergedProfiles)); } catch(e){}
@@ -779,7 +881,7 @@
         var freshMe = mergedProfiles.find(function(x){ return x.id === S.user.id; });
         if (freshMe) {
           S.user = freshMe;
-          try { localStorage.setItem(SK.SESS, JSON.stringify(freshMe)); } catch(e){}
+          sauverSession(freshMe);
         }
       }
       // Ne pas re-rendre si l'utilisateur est en train de saisir (perte de focus/texte)
@@ -816,6 +918,9 @@
       if (res && res.data) {
         if (res.data.length < POSTS_PAGE_SIZE) S.postsAllLoaded = true;
         var mergedPosts = mergePostsWithLocal(res.data, true);
+        var triSilencieux = separerOrphelines(mergedPosts);
+        mergedPosts = triSilencieux.gardees;
+        tombaliserOrphelines(triSilencieux.orphelines);
         var fp = postsFingerprint(mergedPosts);
         if (fp !== _lastPostsFingerprint) {
           _lastPostsFingerprint = fp;

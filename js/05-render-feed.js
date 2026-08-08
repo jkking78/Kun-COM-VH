@@ -233,7 +233,7 @@
             ico('users', 18, UI.accent) +
             '<div style="flex:1;min-width:0;">' +
               '<div style="font-size:13px;font-weight:600;color:' + UI.accentInk + ';">Voir tous les membres</div>' +
-              '<div style="font-size:11.5px;color:' + UI.muted + ';">' + db(SK.USERS, []).length + ' membre(s) du département</div>' +
+              '<div style="font-size:11.5px;color:' + UI.muted + ';">' + profilsUniquesParEmail(db(SK.USERS, [])).length + ' membre(s) du département</div>' +
             '</div>' +
             '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="' + UI.accent + '" stroke-width="2.2"><path d="M9 18l6-6-6-6"/></svg>' +
           '</div>' +

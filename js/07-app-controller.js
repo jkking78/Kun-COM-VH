@@ -807,7 +807,7 @@ toggleParticipation: function(postId, status) {
       var uIdx = allUsers.findIndex(function(u){ return u.id === S.user.id; });
       if (uIdx !== -1) allUsers[uIdx] = S.user;
       dbSet(SK.USERS, allUsers);
-      try { localStorage.setItem(SK.SESS, JSON.stringify(S.user)); } catch(e){}
+      sauverSession(S.user);
       if (supabase) supabase.from('kun_com_profiles').upsert({ id: S.user.id, content: S.user }, { onConflict: 'id' }).then(function(){}, function(e){});
       if (nowFollowing) {
         sendNotificationToUser(targetUserId, {
@@ -1207,7 +1207,7 @@ toggleParticipation: function(postId, status) {
       var uIdx = allUsers.findIndex(function(u){ return u.id === moi.id; });
       if (uIdx !== -1) allUsers[uIdx] = moi;
       dbSet(SK.USERS, allUsers);
-      try { localStorage.setItem(SK.SESS, JSON.stringify(moi)); } catch(e){}
+      sauverSession(moi);
       if (!supabase) return;
       supabase.from('kun_com_profiles').select('content').eq('id', moi.id).single()
         .then(function(res) {
@@ -1308,8 +1308,21 @@ toggleParticipation: function(postId, status) {
       if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; btn.textContent = 'Connexion...'; }
 
       try {
+        // TOUS les comptes portant cet e-mail, pas seulement le premier trouvé.
+        // Constaté en production : un membre inscrit deux fois (pendant la période
+        // du stockage saturé) a deux fiches serveur avec le même e-mail mais des
+        // mots de passe potentiellement différents. Le serveur renvoyant les
+        // fiches dans un ordre variable, « prendre la première » faisait échouer
+        // la connexion une fois sur deux (« Mot de passe incorrect » aléatoire,
+        // qui finissait par passer après plusieurs tentatives). Désormais le mot
+        // de passe est essayé contre CHAQUE fiche candidate et on se connecte à
+        // celle qui correspond — comportement déterministe quel que soit l'ordre.
+        var chercheCandidats = function(liste) {
+          return (liste || []).filter(function(u){ return u && u.email && u.email.toLowerCase() === email.toLowerCase(); });
+        };
         var users = db(SK.USERS, []);
-        var user = users.find(function(u){ return u.email && u.email.toLowerCase() === email.toLowerCase(); });
+        var candidats = chercheCandidats(users);
+        var user = candidats.length === 1 ? candidats[0] : null;
 
         // Filet de secours si le compte n'est pas (encore) dans le cache local —
         // typique d'une connexion sur un appareil dont la synchronisation initiale
@@ -1321,7 +1334,7 @@ toggleParticipation: function(postId, status) {
         // (Object.assign sur une chaîne JSON ne fait qu'éclater ses caractères) —
         // l'annuaire local retombait donc à 1 seul membre après une connexion
         // rapide, jusqu'à ce qu'une synchronisation complète le répare.
-        if (!user && supabase) {
+        if (!candidats.length && supabase) {
           try {
             // Délai maximal de 12 s : sur un réseau mobile lent, cette requête
             // pouvait rester en attente plusieurs minutes sans aucun retour à
@@ -1340,7 +1353,7 @@ toggleParticipation: function(postId, status) {
             if (res && res.data) {
               users = mergeProfilesWithLocal(res.data);
               dbSet(SK.USERS, users);
-              user = users.find(function(u){ return u.email && u.email.toLowerCase() === email.toLowerCase(); });
+              candidats = chercheCandidats(users);
               // Répare au passage les profils distants encore lourds : le prochain
               // appareil qui se connecte (soi-même la prochaine fois, ou un
               // collègue) n'aura plus à retélécharger ces méga-octets hérités.
@@ -1349,20 +1362,37 @@ toggleParticipation: function(postId, status) {
           } catch(err){}
         }
 
-        if (!user) {
+        if (!candidats.length) {
           toast('Compte introuvable. Veuillez vérifier votre e-mail ou vous inscrire.', 'error');
           return;
         }
 
-        if (!user.id && user.email) {
-          user.id = 'u_' + String(user.email).toLowerCase().replace(/[^a-z0-9]/gi, '_');
-        }
-
         var hashedLoginPwd = await hashPassword(pwd);
-        // Support both old plaintext and new hashed passwords
-        if (user.pwd && user.pwd !== pwd && user.pwd !== hashedLoginPwd) {
+        // Le mot de passe est comparé à CHAQUE fiche candidate (anciens comptes en
+        // clair comme récents hachés). Aucune correspondance -> incorrect. Plusieurs
+        // correspondances (doublon inscrit deux fois avec le même mot de passe) ->
+        // la fiche la plus récemment active l'emporte, pour que tous les appareils
+        // convergent vers le MÊME compte au lieu de se répartir sur les doublons.
+        var correspondants = candidats.filter(function(u) {
+          return !u.pwd || u.pwd === pwd || u.pwd === hashedLoginPwd;
+        });
+        if (!correspondants.length) {
           toast('Mot de passe incorrect.', 'error');
           return;
+        }
+        correspondants.sort(function(a, b) {
+          // Une fiche dont le mot de passe correspond VRAIMENT passe avant une
+          // vieille fiche sans mot de passe enregistré ; à égalité, la plus
+          // récemment active l'emporte.
+          var pa = (a.pwd === pwd || a.pwd === hashedLoginPwd) ? 1 : 0;
+          var pb = (b.pwd === pwd || b.pwd === hashedLoginPwd) ? 1 : 0;
+          if (pa !== pb) return pb - pa;
+          return (Date.parse(b.last_seen_at || 0) || 0) - (Date.parse(a.last_seen_at || 0) || 0);
+        });
+        user = correspondants[0];
+
+        if (!user.id && user.email) {
+          user.id = 'u_' + String(user.email).toLowerCase().replace(/[^a-z0-9]/gi, '_');
         }
 
         user.is_online = true;
@@ -1412,8 +1442,38 @@ toggleParticipation: function(postId, status) {
       if (S.signupSections.length === 0) { toast('Veuillez choisir au moins 1 section.', 'error'); return; }
 
       var users = db(SK.USERS, []);
-      if (users.find(function(u){ return u.email.toLowerCase()===email.toLowerCase(); })) {
+      if (users.find(function(u){ return u && u.email && u.email.toLowerCase()===email.toLowerCase(); })) {
         toast('Un compte existe déjà avec cet e-mail.', 'error'); return;
+      }
+      // ORIGINE DES COMPTES EN DOUBLE : ce contrôle ne consultait QUE le cache
+      // local. Sur un appareil dont la synchronisation n'avait pas abouti (réseau
+      // lent, ou stockage saturé à l'époque du bug de quota), le cache paraissait
+      // vide — l'inscription était donc acceptée alors que le compte existait déjà
+      // côté serveur. Deux fiches pour la même personne, avec des mots de passe
+      // pouvant différer : de là venaient les « Mot de passe incorrect » aléatoires
+      // (le serveur renvoyant les fiches dans un ordre variable). On vérifie donc
+      // désormais le SERVEUR avant de créer quoi que ce soit.
+      if (supabase) {
+        try {
+          var delaiVerif = new Promise(function(resolve){ setTimeout(function(){ resolve('TIMEOUT'); }, 12000); });
+          var resExist = await Promise.race([
+            supabase.from('kun_com_profiles').select('*'),
+            delaiVerif
+          ]);
+          if (resExist === 'TIMEOUT') {
+            toast('Connexion lente : impossible de vérifier votre e-mail. Réessayez.', 'error');
+            return;
+          }
+          if (resExist && resExist.data) {
+            var profilsDistants = mergeProfilesWithLocal(resExist.data);
+            dbSet(SK.USERS, profilsDistants);
+            users = profilsDistants;
+            if (profilsDistants.find(function(u){ return u && u.email && u.email.toLowerCase() === email.toLowerCase(); })) {
+              toast('Un compte existe déjà avec cet e-mail. Connectez-vous.', 'error');
+              return;
+            }
+          }
+        } catch(errVerif) { console.warn('Vérification e-mail avant inscription :', errVerif); }
       }
       var userSecs = S.signupSections.length > 0 ? S.signupSections.slice() : ['cadrage'];
       // L'accès Grand Responsable ne se donne plus à l'inscription (champ "Autre"
@@ -1549,6 +1609,24 @@ toggleParticipation: function(postId, status) {
         var remainingPosts = posts.filter(function(p){ return p.userId !== userId; });
         dbSet(SK.POSTS, remainingPosts);
 
+        // Le cache local ne contient qu'une page récente (60 publications) : s'en
+        // tenir à lui laissait DÉFINITIVEMENT en ligne les publications plus
+        // anciennes, sans auteur et impossibles à supprimer ensuite. On demande
+        // donc au serveur la liste complète des publications de ce compte.
+        if (supabase) {
+          try {
+            var resMiennes = await supabase.from('kun_com_posts').select('*').eq('content->>userId', userId);
+            if (resMiennes && resMiennes.data) {
+              var connues = {};
+              myPosts.forEach(function(p){ if (p && p.id) connues[p.id] = true; });
+              resMiennes.data.forEach(function(item) {
+                var p = parsePostItem(item);
+                if (p && p.id && !connues[p.id]) { connues[p.id] = true; myPosts.push(p); }
+              });
+            }
+          } catch(e) { console.warn('Lecture des publications à supprimer :', e); }
+        }
+
         if (supabase) {
           // Suppression douce (voir App.deletePost) : sans marqueur explicite
           // status:'deleted', mergePostsWithLocal (additif par conception) ne
@@ -1645,7 +1723,7 @@ toggleParticipation: function(postId, status) {
       var uIdx = allUsers.findIndex(function(u){ return u.id === S.user.id; });
       if (uIdx !== -1) allUsers[uIdx] = S.user;
       dbSet(SK.USERS, allUsers);
-      try { localStorage.setItem(SK.SESS, JSON.stringify(S.user)); } catch(e) {}
+      sauverSession(S.user);
       if (supabase) supabase.from('kun_com_profiles').upsert({ id: S.user.id, content: S.user }, { onConflict: 'id' }).then(function(){}, function(e){});
       S.adminGateOpen = false;
       S.adminCodeInput = '';
@@ -1669,7 +1747,7 @@ toggleParticipation: function(postId, status) {
       var uIdx = allUsers.findIndex(function(u){ return u.id === S.user.id; });
       if (uIdx !== -1) allUsers[uIdx] = S.user;
       dbSet(SK.USERS, allUsers);
-      try { localStorage.setItem(SK.SESS, JSON.stringify(S.user)); } catch(e) {}
+      sauverSession(S.user);
       if (supabase) supabase.from('kun_com_profiles').upsert({ id: S.user.id, content: S.user }, { onConflict: 'id' }).then(function(){}, function(e){});
       render();
       toast('Rôle Grand Responsable retiré — vous êtes de nouveau Membre.', 'success');

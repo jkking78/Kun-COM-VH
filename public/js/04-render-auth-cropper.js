@@ -91,7 +91,10 @@
   // ============================================================
   function renderMembersModal() {
     if (!S.membersListOpen) return '';
-    var allUsers = db(SK.USERS, []).slice().sort(function(a,b){
+    // Une seule fiche par personne : deux inscriptions du même e-mail (héritées de
+    // la période où le stockage saturé faisait échouer les connexions) affichaient
+    // le même membre deux fois dans l'annuaire.
+    var allUsers = profilsUniquesParEmail(db(SK.USERS, [])).slice().sort(function(a,b){
       return (a.prenom||'').localeCompare(b.prenom||'', 'fr', {sensitivity:'base'});
     });
     var q = (S.membersSearch || '').toLowerCase().trim();
