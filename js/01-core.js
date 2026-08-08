@@ -594,7 +594,6 @@
         // Les événements sont ensuite ajoutés SANS purge (fusion purement additive),
         // pour qu'un nouveau compte voie tout le planning même ancien.
         if (resEvents && resEvents.data && resEvents.data.length) {
-          DB_CACHE[SK.POSTS] = mergedPosts;
           mergedPosts = mergePostsWithLocal(resEvents.data, false);
         }
         dbSet(SK.POSTS, mergedPosts);

@@ -279,9 +279,12 @@
 
     // Feed
     var feed = '';
-    if (filtered.length === 0 && S.initialLoading && !S.q) {
-      // Chargement initial en cours (sync Supabase pas encore terminée) : on évite
-      // d'afficher un faux "Aucune publication" qui pourrait faire croire à une perte de données.
+    var allLocalPosts = db(SK.POSTS, []);
+    var isActuallySyncing = S.initialLoading || (allLocalPosts.length > 0 && filtered.length === 0 && !S.q && S.story === 'all');
+
+    if (isActuallySyncing && !S.q && S.story === 'all') {
+      // Chargement initial ou synchronisation en cours : on évite d'afficher un faux
+      // "Aucune publication" passager qui clignoterait avant l'arrivée des posts.
       feed = '<div style="display:flex;justify-content:center;padding:48px 24px;">' +
         '<div style="width:26px;height:26px;border:2.5px solid #E4E7EC;border-top-color:#0B63F6;border-radius:50%;animation:spin 0.7s linear infinite;"></div>' +
       '</div>';
