@@ -210,7 +210,7 @@
     return null;
   }
 
-  function notifyMentionedUsers(text, targetId) {
+  function notifyMentionedUsers(text, targetId, commentId) {
     if (!text) return;
     var matches = text.match(/@[\wéèêàâôûîçÉÈÊÀÂÔÛÎÇùÙ_.-]+/gi);
     if (!matches) return;
@@ -249,6 +249,7 @@
       var why = reason[uid];
       sendNotificationToUser(uid, {
         type: 'MENTION',
+        commentId: commentId || null,
         title: '📣 Vous avez été mentionné(e)',
         text: why
           ? author + ' a mentionné ' + why + ' : ' + extract
@@ -437,6 +438,21 @@
       // Page incomplète = le serveur a renvoyé TOUT l'historique : plus de zone
       // d'incertitude, on peut purger sans limite d'ancienneté.
       var serverReturnedEverything = remoteData.length < POSTS_PAGE_SIZE;
+
+      // GARDE-FOU (même piège que pour les profils) : une réponse anormalement
+      // courte — coupure réseau, requête interrompue à la reprise de l'app —
+      // était interprétée comme « tout a été supprimé » et vidait le cache. Le
+      // fil affichait alors une roue de chargement jusqu'à la synchronisation
+      // suivante. On ne purge donc rien tant que la réponse paraît incomplète.
+      var localCount = Object.keys(map).length;
+      var reponseSuspecte = localCount > 3
+        && remoteData.length < localCount - 1
+        && remoteData.length < localCount * 0.5;
+      if (reponseSuspecte) {
+        var sansPurge = Object.keys(map).map(function(k){ return map[k]; });
+        sansPurge.sort(function(a, b) { return (b.timestamp || 0) - (a.timestamp || 0); });
+        return sansPurge;
+      }
       // Publications créées à l'instant : peut-être pas encore remontées au serveur.
       var tooRecentToJudge = Date.now() - 15 * 60 * 1000;
       // Les événements PASSÉS ne sont plus rapatriés (la synchronisation ne demande

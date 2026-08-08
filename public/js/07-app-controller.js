@@ -1273,21 +1273,51 @@ toggleParticipation: function(postId, status) {
         return;
       }
 
-      if (targetId) {
-        var posts = db(SK.POSTS, []);
-        var targetPost = posts.find(function(p){ return p.id === targetId; });
-        if (targetPost) {
-          if (targetPost.type === 'EVENT') {
-            S.tab = 'calendar';
-            render();
-          } else {
-            S.tab = 'home';
-            render();
-            var el = document.getElementById('post-' + targetId);
-            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          }
-        }
+      if (!targetId) return;
+      var posts = db(SK.POSTS, []);
+      var targetPost = posts.find(function(p){ return p.id === targetId; });
+      if (!targetPost) { toast('Cette publication n\'existe plus.', 'info'); return; }
+
+      // Notification portant sur un COMMENTAIRE (réponse, mention, nouveau
+      // commentaire) : on ouvre directement la discussion et on met en évidence
+      // le commentaire concerné. Auparavant on atterrissait sur la publication
+      // et il fallait retrouver soi-même le message dans toute la conversation.
+      if (notif && notif.commentId) {
+        this.openCommentsAt(targetId, notif.commentId);
+        return;
       }
+
+      if (isEventLike(targetPost)) { this.goToEvent(targetId); return; }
+      this.goToPost(targetId);
+    },
+
+    // Ouvre la discussion d'une publication et amène le commentaire visé à
+    // l'écran, avec une mise en évidence temporaire pour le repérer.
+    openCommentsAt: function(postId, commentId) {
+      var posts = db(SK.POSTS, []);
+      var post = posts.find(function(p){ return p.id === postId; });
+      if (!post) { toast('Cette publication n\'existe plus.', 'info'); return; }
+
+      S.tab = 'home';
+      S.commentPostId = postId;
+      S.commentOpen = true;
+      S.notificationsOpen = false;
+      S.replyingToCommentId = null; S.replyingToAuthor = null;
+      render();
+
+      var existe = (post.comments || []).some(function(c){ return c.id === commentId; });
+      if (!existe) { toast('Ce commentaire a été supprimé.', 'info'); return; }
+
+      // Laisse le temps à la fenêtre de s'ouvrir avant de faire défiler.
+      setTimeout(function() {
+        var el = document.getElementById('cwrap-' + commentId);
+        if (!el) return;
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.style.transition = 'background 0.4s ease';
+        el.style.background = UI.accentSoft;
+        el.style.borderRadius = UI.r1;
+        window.setTimeout(function(){ el.style.background = 'transparent'; }, 2000);
+      }, 220);
     },
 
     nav: function(v) { S.auth = v; render(); },
@@ -2741,18 +2771,22 @@ toggleParticipation: function(postId, status) {
         sendNotificationToUser(parentComment.userId, {
           type: 'REPLY',
           title: 'Nouvelle réponse',
-          text: S.user.prenom + ' a répondu à votre commentaire : "' + (txt ? txt.slice(0, 40) : '📷 Photo') + '"',
-          targetId: post.id
+          text: S.user.prenom + ' a répondu à votre commentaire : "' + (txt ? txt.slice(0, 40) : 'Photo') + '"',
+          targetId: post.id,
+          // Sans cet identifiant, on retombait sur la publication et il fallait
+          // retrouver soi-même le commentaire concerné dans toute la discussion.
+          commentId: newC.id
         });
       } else if (!parentComment && post.userId && post.userId !== S.user.id) {
         sendNotificationToUser(post.userId, {
           type: 'COMMENT',
-          title: 'Nouveau Commentaire',
-          text: S.user.prenom + ' : "' + (txt ? txt.slice(0, 40) : '📷 Photo') + '"',
-          targetId: post.id
+          title: 'Nouveau commentaire',
+          text: S.user.prenom + ' : "' + (txt ? txt.slice(0, 40) : 'Photo') + '"',
+          targetId: post.id,
+          commentId: newC.id
         });
       }
-      notifyMentionedUsers(txt, post.id);
+      notifyMentionedUsers(txt, post.id, newC.id);
       updateUserActivity('Commentaire');
       // DOM update: insère dans le fil racine ou dans le conteneur de réponses du parent
       if (parentId) {
