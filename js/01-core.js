@@ -588,6 +588,18 @@
   var _syncRetryCount = 0;
   var MAX_SYNC_RETRIES = 4;
   async function syncSupabaseToLocal() {
+    // S.initialLoading ne sert qu'à débloquer l'écran de chargement PLEIN ÉCRAN au
+    // bout de 2,5 s — un choix cosmétique pour ne jamais laisser l'utilisateur face
+    // à une roue qui tourne indéfiniment. Il ne veut PAS dire que la synchronisation
+    // est terminée : sur un réseau mobile lent, la vraie requête peut encore être en
+    // vol bien après ce délai. S.syncEnCours, lui, reste vrai jusqu'à ce que cette
+    // fonction se termine réellement (bloc finally) — c'est LUI qu'il faut lire pour
+    // savoir si un fil vide est un fil vide POUR DE BON ou juste pas encore arrivé.
+    // Avant cette distinction : passé les 2,5 s, un appareil sans aucune publication
+    // encore en cache affichait « Vous êtes à jour, aucune publication » alors que le
+    // téléchargement continuait en arrière-plan — la vraie publication n'apparaissait
+    // qu'au rendu suivant, donnant l'impression d'un fil cassé sur réseau lent.
+    S.syncEnCours = true;
     // Verrou de sécurité : l'écran de chargement initial ne doit JAMAIS bloquer
     // au-delà de 2,5 s (réseau lent, timeout Supabase, etc.).
     setTimeout(function() {
@@ -602,7 +614,7 @@
       // cache local et donne l'illusion de fonctionner (aucune publication ni membre
       // des autres utilisateurs). C'est exactement le symptôme à diagnostiquer vite.
       console.error('Aucun client Supabase : l\'application fonctionne en mode local uniquement.');
-      S.initialLoading = false; render(); return;
+      S.initialLoading = false; S.syncEnCours = false; render(); return;
     }
     try {
       // Publications et profils récupérés EN PARALLÈLE (pas l'un après l'autre) —
@@ -747,6 +759,7 @@
       // (l'écriture des profils, ligne ~599) sautait par-dessus cette libération,
       // et l'application restait bloquée sur la roue indéfiniment.
       S.initialLoading = false;
+      S.syncEnCours = false;
       try { render(); } catch(eRender) { console.warn('Rendu après synchronisation :', eRender); }
     }
   }

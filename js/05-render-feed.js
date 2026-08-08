@@ -293,7 +293,15 @@
     // du fil "Tous" les exclut toutes (ex. juste après une fusion) — il exige
     // explicitement allLocalPosts.length > 0 et reste donc sans effet quand le
     // cache est simplement vide pour de bon (voir « Aucune publication » ci-dessous).
-    var isActuallySyncing = (S.initialLoading && allLocalPosts.length === 0) ||
+    // S.initialLoading passe à false après 2,5 s même si le réseau est encore lent
+    // (c'est voulu : ça ne débloque QUE l'écran plein écran). Sur un appareil sans
+    // rien en cache, ça faisait passer un « toujours en train de charger » pour un
+    // « fil vide pour de bon » avant même que la vraie réponse réseau soit arrivée —
+    // vécu sur le terrain (réseau mobile) : la publication finissait par apparaître
+    // seule, quelques secondes plus tard, comme si le fil s'était « réparé tout
+    // seul ». S.syncEnCours reste vrai tant que la synchronisation n'est pas
+    // RÉELLEMENT terminée (voir syncSupabaseToLocal) — c'est lui qui tranche ici.
+    var isActuallySyncing = ((S.initialLoading || S.syncEnCours) && allLocalPosts.length === 0) ||
       (allLocalPosts.length > 0 && filtered.length === 0 && !S.q && S.story === 'all');
 
     if (isActuallySyncing && !S.q && S.story === 'all') {
