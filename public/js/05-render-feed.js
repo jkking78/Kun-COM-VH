@@ -1054,6 +1054,7 @@
     var notifs = (u && Array.isArray(u.notifications)) ? u.notifications : [];
     var unreadCount = notifs.filter(function(n){ return !n.read; }).length;
 
+    var tousMembres = db(SK.USERS, []);
     var itemsHtml = '';
     if (notifs.length === 0) {
       itemsHtml = '<div style="padding:50px 20px;text-align:center;color:#8A93A0;">' +
@@ -1074,9 +1075,17 @@
         var timeAgoStr = timeAgo(n.timestamp || Date.now());
         var isUnread = !n.read;
 
-        var avatarHtml = n.senderAvatar
-          ? '<img src="' + n.senderAvatar + '" style="width:44px;height:44px;border-radius:22px;object-fit:cover;flex-shrink:0;" />'
-          : '<div style="width:44px;height:44px;border-radius:22px;background:' + (n.senderColor||'#0B63F6') + ';color:#FFF;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + (n.senderName||'S').charAt(0).toUpperCase() + '</div>';
+        // La photo n'est plus recopiée dans la notification (elle saturait le
+        // stockage) : on la retrouve dans le profil de l'expéditeur via senderId.
+        // Bénéfice au passage : un membre qui change de photo la voit changer
+        // dans toutes ses notifications passées, au lieu de rester figée.
+        var expediteur = n.senderId ? tousMembres.find(function(m){ return m.id === n.senderId; }) : null;
+        var photo = (expediteur && expediteur.avatar_url) || n.senderAvatar || null;
+        var teinte = (expediteur && expediteur.avatar_color) || n.senderColor || '#0B63F6';
+
+        var avatarHtml = photo
+          ? '<img src="' + photo + '" style="width:44px;height:44px;border-radius:22px;object-fit:cover;flex-shrink:0;" />'
+          : '<div style="width:44px;height:44px;border-radius:22px;background:' + teinte + ';color:#FFF;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + (n.senderName||'S').charAt(0).toUpperCase() + '</div>';
 
         return '<div onclick="App.clickNotification(\'' + n.id + '\', \'' + (n.targetId||'') + '\')" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:0.5px solid #F6F7F9;background:' + (isUnread ? '#E8EEFB' : '#FFF') + ';cursor:pointer;transition:background 0.2s;position:relative;">' +
           '<div style="position:relative;flex-shrink:0;">' +

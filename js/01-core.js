@@ -24,6 +24,30 @@
   // ============================================================
   // INSTAGRAM-STYLE TARGETED NOTIFICATION SYSTEM
   // ============================================================
+  // Ne conserve une photo que si c'est une URL hébergée (quelques dizaines
+  // d'octets). Une image en base64 est refusée : recopiée dans chaque
+  // notification, elle a saturé à elle seule tout le stockage local.
+  function avatarLeger(url) {
+    if (typeof url !== 'string' || !url) return null;
+    if (url.indexOf('data:') === 0) return null;
+    return url.length > 500 ? null : url;
+  }
+
+  // Allège une liste de notifications déjà stockée. Sert au nettoyage des
+  // données existantes : les notifications écrites par les anciennes versions
+  // portent toutes une image en base64 qu'il faut évacuer une bonne fois.
+  function allegerNotifications(liste) {
+    if (!Array.isArray(liste)) return liste;
+    return liste.map(function(n) {
+      if (!n || !n.senderAvatar) return n;
+      var leger = avatarLeger(n.senderAvatar);
+      if (leger === n.senderAvatar) return n;
+      var copie = Object.assign({}, n);
+      copie.senderAvatar = leger;
+      return copie;
+    });
+  }
+
   // Écrit une notification dans le profil DISTANT d'un utilisateur en relisant
   // D'ABORD sa version serveur la plus fraîche, puis en n'écrivant QUE le
   // résultat fusionné. C'est le correctif central contre les notifications déjà
@@ -69,7 +93,12 @@
       id: 'n_' + Date.now() + '_' + Math.floor(Math.random()*1000),
       senderId: S.user ? S.user.id : 'system',
       senderName: S.user ? (S.user.prenom + ' ' + (S.user.nom?S.user.nom.charAt(0)+'.':'')) : 'Système',
-      senderAvatar: S.user ? S.user.avatar_url : null,
+      // JAMAIS l'image elle-même : une photo en base64 recopiée dans chacune des
+      // 50 notifications d'un membre représentait jusqu'à 4 Mo par compte, soit
+      // 8 Mo pour deux membres — le stockage local entier saturé, plus rien ne
+      // pouvait s'enregistrer. L'affichage retrouve la photo à jour via senderId
+      // dans la liste des profils (voir renderNotificationsModal).
+      senderAvatar: avatarLeger(S.user ? S.user.avatar_url : null),
       senderColor: S.user ? (S.user.avatar_color || '#007AFF') : '#007AFF',
       type: notifData.type,
       title: notifData.title,
@@ -177,7 +206,7 @@
       id: 'n_new_' + newUser.id,
       senderId: newUser.id,
       senderName: (newUser.prenom || '') + ' ' + (newUser.nom ? newUser.nom.charAt(0) + '.' : ''),
-      senderAvatar: newUser.avatar_url || null,
+      senderAvatar: avatarLeger(newUser.avatar_url),
       senderColor: newUser.avatar_color || '#007AFF',
       type: 'NEW_MEMBER',
       title: '🎉 Nouveau membre',
@@ -366,6 +395,11 @@
       if (!obj.id) {
         obj.id = 'n_' + (obj.timestamp || 0) + '_' + (obj.type || '') + '_' + (obj.targetId || '') + '_' + String(obj.title || '').slice(0, 10);
       }
+      // Point de passage obligé de TOUTE notification, locale comme distante :
+      // on y évacue les photos en base64 héritées des anciennes versions. Sans
+      // ça, les 8 Mo déjà présents sur le serveur reviendraient à chaque
+      // synchronisation et resatureraient le stockage aussitôt nettoyé.
+      if (obj.senderAvatar) obj.senderAvatar = avatarLeger(obj.senderAvatar);
       return obj;
     };
 
@@ -788,10 +822,17 @@
     var lourd = function(u){ return typeof u === 'string' && u.indexOf('data:') === 0 && u.length > 20000; };
     return profiles.map(function(p) {
       if (!p) return p;
-      if (!lourd(p.avatar_url) && !lourd(p.cover_url)) return p;
+      // Les NOTIFICATIONS étaient de loin le premier poste de consommation :
+      // chacune embarquait la photo de son expéditeur en base64. Relevé réel sur
+      // l'appareil de l'utilisateur : 8,05 Mo de notifications sur 8,35 Mo au
+      // total, dont deux comptes à eux seuls à 3,85 et 4,20 Mo.
+      var notifsLegeres = allegerNotifications(p.notifications);
+      var notifsChangees = notifsLegeres !== p.notifications;
+      if (!lourd(p.avatar_url) && !lourd(p.cover_url) && !notifsChangees) return p;
       var copy = Object.assign({}, p);
       if (lourd(copy.avatar_url)) copy.avatar_url = null;
       if (lourd(copy.cover_url)) copy.cover_url = null;
+      if (notifsChangees) copy.notifications = notifsLegeres;
       return copy;
     });
   }
@@ -873,6 +914,50 @@
     console.warn('Session non sauvegardée localement (stockage saturé) — la session en cours reste active.');
     return false;
   }
+
+  // NETTOYAGE UNIQUE DU STOCKAGE HÉRITÉ
+  // Les versions antérieures recopiaient la photo de l'expéditeur, en base64,
+  // dans chacune de ses notifications. Relevé réel sur l'appareil de
+  // l'utilisateur : 8,35 Mo de profils, dont 8,05 Mo de notifications — le quota
+  // du navigateur entièrement consommé, plus aucune écriture possible.
+  // Corriger la source ne suffit pas : ces octets restent sur le disque tant
+  // qu'on ne les réécrit pas. On le fait une seule fois, au premier démarrage
+  // d'une version qui sait le faire.
+  function nettoyerStockageHerite() {
+    try {
+      if (localStorage.getItem('kc_purge_avatars_notifs') === '1') return;
+      var brut = localStorage.getItem(SK.USERS);
+      if (brut) {
+        var avant = brut.length;
+        var profils = JSON.parse(brut);
+        if (Array.isArray(profils)) {
+          var allegés = profils.map(function(p) {
+            if (!p) return p;
+            var copie = Object.assign({}, p);
+            copie.notifications = allegerNotifications(p.notifications);
+            return copie;
+          });
+          var apres = JSON.stringify(allegés);
+          localStorage.setItem(SK.USERS, apres);
+          DB_CACHE[SK.USERS] = allegés;
+          var gagne = ((avant - apres.length) * 2 / 1048576);
+          if (gagne > 0.05) console.log('Nettoyage du stockage : ' + gagne.toFixed(2) + ' Mo libérés.');
+        }
+      }
+      localStorage.setItem('kc_purge_avatars_notifs', '1');
+    } catch(e) {
+      // Le stockage peut être trop plein pour réécrire : on repart alors de zéro
+      // sur les profils (ils se re-téléchargent intégralement à la connexion
+      // suivante) plutôt que de rester bloqué avec un disque saturé.
+      try {
+        localStorage.removeItem(SK.USERS);
+        DB_CACHE[SK.USERS] = undefined;
+        localStorage.setItem('kc_purge_avatars_notifs', '1');
+        console.warn('Stockage trop saturé pour être réécrit : cache des profils réinitialisé, il sera retéléchargé.');
+      } catch(e2) {}
+    }
+  }
+  nettoyerStockageHerite();
 
   // ============================================================
   // DONNÉES PAR DÉFAUT
