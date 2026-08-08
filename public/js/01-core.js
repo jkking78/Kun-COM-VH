@@ -1,4 +1,4 @@
-// KUN COM VH — Partie 1/8 : État global, stockage, notifications, sections, session (v53)
+// KUN COM VH — Partie 1/8 : État global, stockage, notifications, sections, session (v80)
 
   'use strict';
   console.log('🚀 Commit VH v3.0 — Démarrage...');
@@ -333,6 +333,19 @@
   function mergeNotifications(locales, distantes) {
     var A = Array.isArray(locales) ? locales : [];
     var B = Array.isArray(distantes) ? distantes : [];
+
+    var ensureId = function(n) {
+      if (!n || typeof n !== 'object') return null;
+      var obj = Object.assign({}, n);
+      if (!obj.id) {
+        obj.id = 'n_' + (obj.timestamp || 0) + '_' + (obj.type || '') + '_' + (obj.targetId || '') + '_' + String(obj.title || '').slice(0, 10);
+      }
+      return obj;
+    };
+
+    A = A.map(ensureId).filter(Boolean);
+    B = B.map(ensureId).filter(Boolean);
+
     // Le plafond s'applique aussi aux raccourcis : sans cela une liste déjà
     // trop longue passait à travers sans être tronquée.
     var plafonne = function(list) {
@@ -485,9 +498,8 @@
       // fil affichait alors une roue de chargement jusqu'à la synchronisation
       // suivante. On ne purge donc rien tant que la réponse paraît incomplète.
       var localCount = Object.keys(map).length;
-      var reponseSuspecte = localCount > 3
-        && remoteData.length < localCount - 1
-        && remoteData.length < localCount * 0.5;
+      var reponseSuspecte = (remoteData.length === 0 && localCount > 0)
+        || (localCount > 1 && remoteData.length < localCount - 1 && remoteData.length < localCount * 0.5);
       if (reponseSuspecte) {
         var sansPurge = Object.keys(map).map(function(k){ return map[k]; });
         sansPurge.sort(function(a, b) { return (b.timestamp || 0) - (a.timestamp || 0); });
@@ -532,6 +544,15 @@
   var _syncRetryCount = 0;
   var MAX_SYNC_RETRIES = 4;
   async function syncSupabaseToLocal() {
+    // Verrou de sécurité : l'écran de chargement initial ne doit JAMAIS bloquer
+    // au-delà de 2,5 s (réseau lent, timeout Supabase, etc.).
+    setTimeout(function() {
+      if (S.initialLoading) {
+        S.initialLoading = false;
+        if (window.App && typeof render === 'function') render();
+      }
+    }, 2500);
+
     if (!supabase) {
       // Ne jamais échouer en silence : sans client Supabase, l'app n'affiche que le
       // cache local et donne l'illusion de fonctionner (aucune publication ni membre
