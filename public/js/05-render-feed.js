@@ -896,6 +896,9 @@
         })() +
             '<div style="font-size:11.5px;color:' + UI.faint + ';display:flex;align-items:center;gap:4px;flex-wrap:wrap;">' +
               '<span>' + authorSecEmoji + ' ' + authorSecNom + '</span>' +
+              // Le grade doit rester visible à côté du pôle : c'est lui qui dit
+              // qui est responsable de quoi dans l'équipe.
+              (postAuthorRoleLabel ? '<span>·</span><span>' + postAuthorRoleLabel + '</span>' : '') +
               '<span>·</span><span>' + ago + '</span>' + (post.is_edited ? '<span style="font-style:italic;margin-left:2px;">modifié</span>' : '') +
             '</div>' +
           '</div>' +
