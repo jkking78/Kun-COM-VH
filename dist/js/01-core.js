@@ -946,6 +946,84 @@
   // ============================================================
   // SECTIONS
   // ============================================================
+  // ============================================================
+  // SYSTÈME DE DESIGN — source unique de vérité
+  // ============================================================
+  // Avant : 29 rayons d'arrondi, 95 dégradés et 145 couleurs différentes
+  // éparpillés en dur dans les écrans. C'est cette accumulation qui donnait
+  // à l'interface son aspect « généré automatiquement ». Tout passe désormais
+  // par cet objet : une seule couleur d'accent, quatre rayons, aucun dégradé
+  // hors des cartes d'événement.
+  var UI = {
+    accent:     '#0B63F6',   // l'unique couleur d'action de l'app
+    accentSoft: '#E8EEFB',
+    accentInk:  '#0B4FC4',   // texte lisible sur accentSoft
+
+    ink:   '#0B0D12',        // titres
+    ink2:  '#25303F',        // corps de texte
+    muted: '#5A6472',        // libellés secondaires
+    faint: '#8A93A0',        // métadonnées, horodatages
+
+    page:  '#F4F5F7',        // fond d'écran
+    card:  '#FFFFFF',        // surface d'une carte
+    tile:  '#F6F7F9',        // encadré interne (tuile de statistique)
+    line:  '#EAECF0',        // filet de séparation
+    line2: '#E4E7EC',        // bordure de contrôle
+
+    // Identité réservée aux ÉVÉNEMENTS : vert profond et or. Ce contraste les
+    // rend reconnaissables au premier coup d'œil dans le fil, et n'apparaît
+    // nulle part ailleurs pour ne pas diluer l'effet.
+    evBg:    '#0C2A23',
+    evGold:  '#CBA35C',
+    evInk:   '#F7F4EE',
+    evMuted: '#8FA79E',
+    evTag:   'rgba(255,255,255,0.07)',
+    evGoldSoft: 'rgba(203,163,92,0.14)',
+    evGoldLine: 'rgba(203,163,92,0.40)',
+
+    ok: '#0E9F6E', warn: '#D98A0B', bad: '#E2445C',
+
+    r1: '12px', r2: '16px', r3: '20px', pill: '999px',
+    sh: '0 1px 2px rgba(16,24,40,0.04)'
+  };
+
+  // Icônes au trait remplaçant les emoji d'interface. Les emoji des PÔLES
+  // (voir SECTIONS ci-dessous) sont volontairement conservés : ils portent
+  // l'identité de chaque équipe, ce n'est pas de la décoration.
+  var ICO_PATHS = {
+    pin:      '<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>',
+    calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
+    clock:    '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    alert:    '<path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/>',
+    lock:     '<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+    chart:    '<path d="M3 3v18h18"/><path d="M7 15v3M12 10v8M17 6v12"/>',
+    message:  '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+    star:     '<path d="M12 2l3.1 6.3 6.9 1-5 4.9 1.2 6.9L12 17.8 5.8 21l1.2-6.9-5-4.9 6.9-1L12 2z"/>',
+    check:    '<circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 4.5-5"/>',
+    users:    '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.9"/><path d="M16 3.1a4 4 0 0 1 0 7.8"/>',
+    pinned:   '<path d="M12 17v5"/><path d="M9 2h6l-1 6 3 3v2H7v-2l3-3-1-6z"/>',
+    flame:    '<path d="M12 2c1 4 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3 1-3 0 2 1 3 2 3 1.5 0 1-4 2-10z"/>',
+    eye:      '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>',
+    moon:     '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
+    ban:      '<circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/>',
+    pencil:   '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
+    inbox:    '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.4 5.1 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.4-6.9A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.8 1.1z"/>',
+    history:  '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/>',
+    thumb:    '<path d="M7 22V11l5-9a3 3 0 0 1 3 3v4h4.5a2 2 0 0 1 2 2.4l-1.6 8A2 2 0 0 1 18 22z"/><path d="M7 11H4a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h3"/>',
+    sparkle:  '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/>',
+    search:   '<circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>'
+  };
+
+  // ico('pin', 14, UI.faint) → une icône au trait, taille et couleur libres.
+  function ico(name, size, color, strokeWidth) {
+    var d = ICO_PATHS[name];
+    if (!d) return '';
+    var s = size || 16;
+    return '<svg width="' + s + '" height="' + s + '" viewBox="0 0 24 24" fill="none" stroke="' +
+      (color || 'currentColor') + '" stroke-width="' + (strokeWidth || 1.9) +
+      '" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;vertical-align:-2px;">' + d + '</svg>';
+  }
+
   var SECTIONS = [
     { id: 'cadrage', nom: 'Cadrage', emoji: '🎥', color: '#007AFF' },
     { id: 'regie',   nom: 'Régie',   emoji: '🎛️', color: '#FF9500' },

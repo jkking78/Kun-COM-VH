@@ -166,7 +166,7 @@
     if (S.dmOpen) modals += renderDirectMessageModal();
     if (S.assignManagerId) modals += renderAssignManagerModal();
 
-    return '<div style="position:relative;width:100%;height:100%;display:flex;flex-direction:column;background:#F2F2F7;font-family:-apple-system,BlinkMacSystemFont,\'SF Pro Text\',sans-serif;">' +
+    return '<div style="position:relative;width:100%;height:100%;display:flex;flex-direction:column;background:' + UI.page + ';font-family:-apple-system,BlinkMacSystemFont,\'SF Pro Text\',sans-serif;">' +
       // La réserve de bas de page suit la hauteur réelle de la barre de navigation,
       // indicateur d'accueil iPhone compris : sinon le dernier élément du fil reste
       // caché derrière elle et ne peut plus être atteint.
@@ -183,10 +183,9 @@
     // App.tab bascule automatiquement les autres profils sur cette vue lecture seule.
     function nb(id, iconFn, lbl) {
       var a = S.tab === id;
-      return '<button onclick="App.tab(\'' + id + '\')" style="flex:1;background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 2px 4px;position:relative;-webkit-tap-highlight-color:transparent;">' +
+      return '<button onclick="App.tab(\'' + id + '\')" style="flex:1;background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 2px 4px;-webkit-tap-highlight-color:transparent;color:' + (a ? UI.accent : '#98A1AC') + ';">' +
         iconFn(a) +
-        '<span style="font-size:9.5px;font-weight:' + (a?'800':'400') + ';color:' + (a?'#000':'#8E8E93') + ';margin-top:3px;">' + lbl + '</span>' +
-        (a ? '<div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:16px;height:2px;border-radius:2px;background:#000;"></div>' : '') +
+        '<span style="font-size:9.5px;font-weight:' + (a?'600':'400') + ';margin-top:3px;">' + lbl + '</span>' +
       '</button>';
     }
     // « safe-area-inset-bottom » n'est pas une propriété CSS : la ligne d'origine
@@ -228,79 +227,76 @@
   function renderHome(filtered, initial, u) {
     var trends = trendingTags();
 
-    var header = '<header style="position:sticky;top:0;z-index:200;background:rgba(255,255,255,0.96);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:0.5px solid rgba(0,0,0,0.1);">' +
-      '<div style="display:flex;justify-content:space-between;align-items:center;padding:13px 16px 8px;">' +
-        '<div>' +
-          '<h1 style="font-size:22px;font-weight:900;color:#007AFF;margin:0 0 2px;letter-spacing:-0.5px;">Commit</h1>' +
-          '<div style="font-size:10px;font-weight:800;color:#000;text-transform:uppercase;letter-spacing:1.5px;">Église Vase d\'Honneur</div>' +
-        '</div>' +
-        '<div style="display:flex;gap:8px;align-items:center;">' +
-          (function(){
-            var unreadCount = (u && Array.isArray(u.notifications)) ? u.notifications.filter(function(n){ return !n.read; }).length : 0;
-            return '<button onclick="App.openNotifications()" style="position:relative;width:34px;height:34px;border-radius:17px;background:#F2F2F7;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
-              '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>' +
-              (unreadCount > 0 ? '<span style="position:absolute;top:-3px;right:-3px;background:#FF3B30;color:#FFF;font-size:9.5px;font-weight:900;padding:2px 5px;border-radius:10px;border:2px solid #FFF;line-height:1;">' + (unreadCount > 99 ? '99+' : unreadCount) + '</span>' : '') +
-            '</button>';
-          })() +
-          '<button onclick="App.openCreate()" style="width:34px;height:34px;border-radius:17px;background:#F0F6FF;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
-            '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#007AFF" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg>' +
-          '</button>' +
-          (u.avatar_url ? '<button onclick="App.tab(\'profile\')" style="width:34px;height:34px;border-radius:17px;border:none;cursor:pointer;padding:0;overflow:hidden;flex-shrink:0;"><img src="' + u.avatar_url + '" style="width:100%;height:100%;object-fit:cover;" /></button>' : '<button onclick="App.tab(\'profile\')" style="width:34px;height:34px;border-radius:17px;background:linear-gradient(135deg,' + (u.avatar_color||'#007AFF') + ',#0040CC);border:none;cursor:pointer;color:#FFF;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;">' + initial + '</button>') +
+    var unreadCount = (u && Array.isArray(u.notifications)) ? u.notifications.filter(function(n){ return !n.read; }).length : 0;
+    var iconBtn = function(action, svg, badgeCount) {
+      return '<button onclick="' + action + '" style="position:relative;width:34px;height:34px;border-radius:' + UI.pill + ';background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;">' +
+        svg +
+        (badgeCount > 0 ? '<span style="position:absolute;top:1px;right:2px;width:8px;height:8px;border-radius:50%;background:' + UI.accent + ';border:1.5px solid #FFF;"></span>' : '') +
+      '</button>';
+    };
+
+    var header = '<header style="position:sticky;top:0;z-index:200;background:' + UI.card + ';border-bottom:0.5px solid ' + UI.line + ';">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px 10px;">' +
+        '<h1 style="font-size:19px;font-weight:600;color:' + UI.ink + ';margin:0;letter-spacing:-0.3px;">Commit</h1>' +
+        '<div style="display:flex;gap:6px;align-items:center;">' +
+          iconBtn('App.openNotifications()', '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="' + UI.muted + '" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>', unreadCount) +
+          iconBtn('App.openCreate()', '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="' + UI.muted + '" stroke-width="1.9" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>', 0) +
+          (u.avatar_url
+            ? '<button onclick="App.tab(\'profile\')" style="width:30px;height:30px;border-radius:' + UI.pill + ';border:none;cursor:pointer;padding:0;overflow:hidden;flex-shrink:0;margin-left:2px;"><img src="' + u.avatar_url + '" style="width:100%;height:100%;object-fit:cover;" /></button>'
+            : '<button onclick="App.tab(\'profile\')" style="width:30px;height:30px;border-radius:' + UI.pill + ';background:' + UI.accent + ';border:none;cursor:pointer;color:#FFF;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;margin-left:2px;">' + initial + '</button>') +
         '</div>' +
       '</div>' +
-      // Search
-      '<div style="padding:0 14px 10px;">' +
-        '<div style="display:flex;align-items:center;gap:8px;background:#F2F2F7;border-radius:12px;height:38px;padding:0 12px;">' +
-          SVG.search +
-          '<input id="searchInput" type="search" value="' + safeHtml(S.q) + '" oninput="App.search(this.value)" onfocus="App.setSearchFocused(true)" onblur="App.setSearchFocused(false)" placeholder="Rechercher..." style="flex:1;border:none;background:transparent;font-size:13.5px;color:#000;outline:none;">' +
-          (S.q ? '<button onclick="App.search(\'\')" style="background:none;border:none;cursor:pointer;color:#8E8E93;font-size:18px;line-height:1;padding:0;">×</button>' : '') +
+      '<div style="padding:0 16px 12px;">' +
+        '<div style="display:flex;align-items:center;gap:8px;background:' + UI.tile + ';border-radius:' + UI.r1 + ';height:38px;padding:0 12px;">' +
+          ico('search', 16, UI.faint) +
+          '<input id="searchInput" type="search" value="' + safeHtml(S.q) + '" oninput="App.search(this.value)" onfocus="App.setSearchFocused(true)" onblur="App.setSearchFocused(false)" placeholder="Rechercher" style="flex:1;border:none;background:transparent;font-size:13.5px;color:' + UI.ink + ';outline:none;">' +
+          (S.q ? '<button onclick="App.search(\'\')" style="background:none;border:none;cursor:pointer;color:' + UI.faint + ';font-size:17px;line-height:1;padding:0;">×</button>' : '') +
         '</div>' +
         (S.searchFocused ? '<div style="padding-top:8px;">' +
-          '<div onmousedown="event.preventDefault();App.openMembersList();" style="display:flex;align-items:center;gap:10px;background:#F0F6FF;border-radius:12px;padding:10px 12px;cursor:pointer;">' +
-            '<span style="font-size:18px;">👥</span>' +
+          '<div onmousedown="event.preventDefault();App.openMembersList();" style="display:flex;align-items:center;gap:10px;background:' + UI.accentSoft + ';border-radius:' + UI.r1 + ';padding:11px 12px;cursor:pointer;">' +
+            ico('users', 18, UI.accent) +
             '<div style="flex:1;min-width:0;">' +
-              '<div style="font-size:13px;font-weight:800;color:#007AFF;">Voir tous les membres</div>' +
-              '<div style="font-size:11px;color:#8E8E93;">' + db(SK.USERS, []).length + ' membre(s) du département</div>' +
+              '<div style="font-size:13px;font-weight:600;color:' + UI.accentInk + ';">Voir tous les membres</div>' +
+              '<div style="font-size:11.5px;color:' + UI.muted + ';">' + db(SK.USERS, []).length + ' membre(s) du département</div>' +
             '</div>' +
-            '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#007AFF" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>' +
+            '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="' + UI.accent + '" stroke-width="2.2"><path d="M9 18l6-6-6-6"/></svg>' +
           '</div>' +
         '</div>' : '') +
       '</div>' +
     '</header>';
 
-    // Trends
+    // Tendances
     var trendsHtml = '';
     if (trends.length > 0) {
-      trendsHtml = '<div style="background:#FFF;border-bottom:0.5px solid #F2F2F7;padding:8px 16px;">' +
+      trendsHtml = '<div style="background:' + UI.card + ';border-bottom:0.5px solid ' + UI.line + ';padding:9px 16px;">' +
         '<div style="display:flex;gap:7px;overflow-x:auto;align-items:center;-webkit-overflow-scrolling:touch;">' +
-        '<span style="font-size:10.5px;font-weight:800;color:#007AFF;white-space:nowrap;flex-shrink:0;">🔥 TENDANCES</span>' +
+        '<span style="display:inline-flex;align-items:center;gap:4px;font-size:10.5px;color:' + UI.faint + ';white-space:nowrap;flex-shrink:0;">' + ico('flame', 13, UI.faint) + 'Tendances</span>' +
         trends.map(function(t) {
           var active = S.q.toLowerCase() === t.toLowerCase();
-          return '<button onclick="App.filterTag(\'' + encodeURIComponent(t) + '\')" style="flex-shrink:0;background:' + (active?'#007AFF':'#EFF6FF') + ';color:' + (active?'#FFF':'#007AFF') + ';border:none;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;">' + t + '</button>';
+          return '<button onclick="App.filterTag(\'' + encodeURIComponent(t) + '\')" style="flex-shrink:0;background:' + (active ? UI.accent : UI.tile) + ';color:' + (active ? '#FFF' : UI.muted) + ';border:none;padding:5px 12px;border-radius:' + UI.pill + ';font-size:12px;font-weight:500;cursor:pointer;">' + t + '</button>';
         }).join('') +
         '</div></div>';
     }
 
-    // Stories
+    // Pôles — les emoji sont conservés ici : ils portent l'identité de chaque
+    // équipe. L'anneau coloré remplace l'ancien fond dégradé.
     var sectionSeen = db(SK.SECTION_SEEN, {});
     var allPostsForCount = db(SK.POSTS, []);
-    var stories = '<div style="background:#FFF;border-bottom:0.5px solid #F2F2F7;padding:4px 0 10px;">' +
-      '<div style="display:flex;gap:2px;padding:8px 10px 0;overflow-x:auto;-webkit-overflow-scrolling:touch;">' +
+    var stories = '<div style="background:' + UI.card + ';border-bottom:0.5px solid ' + UI.line + ';padding:2px 0 12px;">' +
+      '<div style="display:flex;gap:2px;padding:10px 12px 0;overflow-x:auto;-webkit-overflow-scrolling:touch;">' +
       [{ id:'all', nom:'Tous', emoji:'✨' }].concat(SECTIONS).map(function(s) {
         var sel = S.story === s.id;
-        var sc = secColor(s.id) || '#007AFF';
+        var sc = secColor(s.id) || UI.accent;
         var lastSeen = s.id === 'all' ? null : (sectionSeen[s.id] || 0);
         var cnt = lastSeen === null ? 0 : allPostsForCount.filter(function(p){ return p.sectionId === s.id && (p.timestamp||0) > lastSeen; }).length;
-        return '<div onclick="App.story(\'' + s.id + '\')" style="display:flex;flex-direction:column;align-items:center;cursor:pointer;min-width:66px;gap:4px;flex-shrink:0;">' +
-          '<div style="position:relative;width:58px;height:58px;">' +
-            '<div style="width:58px;height:58px;border-radius:29px;' +
-              (sel ? 'background:linear-gradient(135deg,' + sc + ',#0040CC);box-shadow:0 4px 14px rgba(0,0,0,0.2);' : 'background:#F2F2F7;') +
-              'display:flex;align-items:center;justify-content:center;font-size:24px;transition:all 0.2s;">' +
+        return '<div onclick="App.story(\'' + s.id + '\')" style="display:flex;flex-direction:column;align-items:center;cursor:pointer;min-width:64px;gap:6px;flex-shrink:0;">' +
+          '<div style="position:relative;width:54px;height:54px;">' +
+            '<div style="width:54px;height:54px;border-radius:50%;background:' + (sel ? sc + '1A' : UI.tile) + ';border:1.5px solid ' + (sel ? sc : 'transparent') + ';display:flex;align-items:center;justify-content:center;font-size:22px;transition:all 0.2s;">' +
               s.emoji +
             '</div>' +
-            (cnt > 0 ? '<div style="position:absolute;top:-4px;right:-4px;z-index:2;background:#FF3B30;color:#FFF;font-size:11px;font-weight:800;min-width:19px;height:19px;line-height:19px;border-radius:10px;display:flex;align-items:center;justify-content:center;padding:0 4px;box-shadow:0 0 0 2.5px #FFF;">' + (cnt > 99 ? '99+' : cnt) + '</div>' : '') +
+            (cnt > 0 ? '<div style="position:absolute;top:-2px;right:-2px;z-index:2;background:' + UI.accent + ';color:#FFF;font-size:10px;font-weight:600;min-width:18px;height:18px;border-radius:' + UI.pill + ';display:flex;align-items:center;justify-content:center;padding:0 5px;box-shadow:0 0 0 2px #FFF;">' + (cnt > 99 ? '99+' : cnt) + '</div>' : '') +
           '</div>' +
-          '<span style="font-size:10.5px;font-weight:' + (sel?'800':'400') + ';color:' + (sel?sc:'#8E8E93') + ';text-align:center;white-space:nowrap;">' + s.nom + '</span>' +
+          '<span style="font-size:11px;font-weight:' + (sel?'600':'400') + ';color:' + (sel ? UI.ink : UI.muted) + ';text-align:center;white-space:nowrap;">' + s.nom + '</span>' +
         '</div>';
       }).join('') +
       '</div></div>';
@@ -366,52 +362,59 @@
     var evDate = post.eventDate ? new Date(post.eventDate + 'T00:00:00') : null;
     var evMonth = evDate ? evDate.toLocaleDateString('fr-FR', {month:'short'}).toUpperCase() : '';
     var evDay = evDate ? evDate.getDate() : '';
-    var evSections = (post.eventSections || []).map(function(s){ return '<span style="font-size:12px;font-weight:700;color:#5856D6;">' + s.charAt(0).toUpperCase() + s.slice(1) + '</span>'; }).join(' ');
-    var nowDateStr = new Date().toISOString().split('T')[0];
-    var nowTimeStr = new Date().toTimeString().slice(0,5);
-    var evStatus;
-    if (post.eventDate < nowDateStr || (post.eventDate === nowDateStr && post.eventEnd && nowTimeStr > post.eventEnd)) {
-      evStatus = '<span style="background:#F2F2F7;color:#8E8E93;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:800;white-space:nowrap;">✅ Terminé</span>';
-    } else if (post.eventDate === nowDateStr && post.eventStart && nowTimeStr >= post.eventStart) {
-      evStatus = '<span style="background:#E5F4E9;color:#28A347;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:800;white-space:nowrap;">🟢 En cours</span>';
-    } else {
-      evStatus = '<span style="background:#F0EFFF;color:#5856D6;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:800;white-space:nowrap;">🗓 À venir</span>';
-    }
-
-    // Image de l'événement (une seule) — affichée en tête, proportions d'origine.
-    var evImage = post.eventImage
-      ? '<img src="' + post.eventImage + '" loading="lazy" style="display:block;width:100%;height:auto;max-height:260px;object-fit:cover;border-radius:14px;margin-bottom:14px;background:#000;" />'
+    // Pôles concernés, en pastilles discrètes plutôt qu'en texte violet brut.
+    var evSections = (post.eventSections || []).slice(0, 3).map(function(s) {
+      return '<span style="font-size:10.5px;color:#CBD9D3;background:' + UI.evTag + ';padding:3px 9px;border-radius:' + UI.pill + ';white-space:nowrap;">' + safeHtml(secNom(s)) + '</span>';
+    }).join('');
+    var evMore = (post.eventSections || []).length > 3
+      ? '<span style="font-size:10.5px;color:' + UI.evMuted + ';padding:3px 4px;">+' + ((post.eventSections || []).length - 3) + '</span>'
       : '';
 
-    return '<div style="padding:16px;background:linear-gradient(145deg,#F9F9FF,#F0F0FA);border-radius:18px;border-left:4px solid #5856D6;">' +
+    // Statut calculé sur de vrais horodatages (et non sur une comparaison de
+    // chaînes « HH:MM », qui classait à tort une veillée passant minuit).
+    var nowTs = Date.now();
+    var startTs = eventStartTimestamp(post);
+    var endTs = eventEndTimestamp(post);
+    var badge = function(txt, bg, col) {
+      return '<span style="background:' + bg + ';color:' + col + ';padding:2px 9px;border-radius:' + UI.pill + ';font-size:10px;white-space:nowrap;font-weight:600;">' + txt + '</span>';
+    };
+    var evStatus;
+    if (endTs && endTs < nowTs)                            evStatus = badge('Terminé', UI.evTag, UI.evMuted);
+    else if (startTs && startTs <= nowTs)                  evStatus = badge('En cours', UI.evGold, UI.evBg);
+    else                                                   evStatus = badge('À venir', UI.evGoldSoft, UI.evGold);
+
+    var evImage = post.eventImage
+      ? '<img src="' + post.eventImage + '" loading="lazy" style="display:block;width:100%;height:auto;max-height:240px;object-fit:cover;border-radius:' + UI.r1 + ';margin-bottom:14px;background:#000;" />'
+      : '';
+
+    // Vert profond + or : identité réservée aux événements, pour qu'ils se
+    // repèrent instantanément au milieu des publications ordinaires.
+    return '<div style="padding:16px;background:' + UI.evBg + ';border-radius:' + UI.r2 + ';">' +
       evImage +
-      '<div style="display:flex;gap:14px;align-items:flex-start;">' +
-        (evDate ? '<div style="background:#FFF;border-radius:12px;overflow:hidden;box-shadow:0 4px 10px rgba(0,0,0,0.08);width:54px;text-align:center;flex-shrink:0;border:1px solid #EFEFFF;">' +
-          '<div style="background:#5856D6;color:#FFF;font-size:9px;font-weight:900;text-transform:uppercase;padding:4px 0;letter-spacing:1px;">' + evMonth + '</div>' +
-          '<div style="font-size:24px;font-weight:900;color:#000;padding:4px 0;">' + evDay + '</div>' +
+      '<div style="display:flex;gap:13px;align-items:flex-start;">' +
+        (evDate ? '<div style="width:48px;flex-shrink:0;background:' + UI.evGoldSoft + ';border:0.5px solid ' + UI.evGoldLine + ';border-radius:' + UI.r1 + ';text-align:center;padding:6px 0;">' +
+          '<div style="font-size:9.5px;color:' + UI.evGold + ';letter-spacing:0.8px;">' + evMonth + '</div>' +
+          '<div style="font-size:20px;font-weight:600;color:' + UI.evInk + ';line-height:1.15;">' + evDay + '</div>' +
         '</div>' : '') +
         '<div style="flex:1;min-width:0;">' +
-          '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;">' +
-            '<h3 style="font-size:16px;font-weight:900;color:#1C1C1E;margin:0;flex:1;min-width:0;">' + safeHtml(post.eventTitle) + '</h3>' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:5px;">' +
+            '<h3 style="font-size:15px;font-weight:600;color:' + UI.evInk + ';margin:0;flex:1;min-width:0;">' + safeHtml(post.eventTitle) + '</h3>' +
             evStatus +
           '</div>' +
-          (evSections ? '<div style="margin-bottom:6px;">' + evSections + '</div>' : '') +
-          '<div style="font-size:13px;color:#8E8E93;display:flex;flex-wrap:wrap;gap:8px;">' +
-            (post.eventStart ? '<span>🕒 ' + post.eventStart + (post.eventEnd ? ' — ' + post.eventEnd : '') + '</span>' : '') +
-            (post.eventLocation ? '<span>📍 ' + safeHtml(post.eventLocation) + '</span>' : '') +
+          '<div style="font-size:12px;color:' + UI.evMuted + ';display:flex;flex-wrap:wrap;gap:12px;margin-bottom:' + (evSections ? '11px' : '0') + ';">' +
+            (post.eventStart ? '<span>' + ico('clock', 13, UI.evMuted) + ' ' + post.eventStart + (post.eventEnd ? ' – ' + post.eventEnd : '') + (crossesMidnight(post) ? ' +1 j' : '') + '</span>' : '') +
+            (post.eventLocation ? '<span style="min-width:0;">' + ico('pin', 13, UI.evMuted) + ' ' + safeHtml(post.eventLocation) + '</span>' : '') +
           '</div>' +
+          (evSections ? '<div style="display:flex;flex-wrap:wrap;gap:5px;">' + evSections + evMore + '</div>' : '') +
           (post.assignments && post.assignments.length > 0 ?
-            '<div style="margin-top:12px;border-top:1px solid rgba(88,86,214,0.15);padding-top:12px;">' +
-              '<div style="font-size:11px;font-weight:800;color:#5856D6;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Équipe Assignée</div>' +
+            '<div style="margin-top:13px;border-top:0.5px solid rgba(255,255,255,0.10);padding-top:11px;">' +
+              '<div style="font-size:10px;color:' + UI.evGold + ';letter-spacing:0.8px;margin-bottom:8px;">ÉQUIPE ASSIGNÉE</div>' +
               '<div style="display:flex;flex-direction:column;gap:6px;">' +
               post.assignments.map(function(a) {
                 var isMeAssigned = S.user && S.user.id === a.userId;
-                var bg = isMeAssigned ? '#E5F4E9' : '#FFF';
-                var border = isMeAssigned ? '1px solid #34C759' : '1px solid #EFEFFF';
-                var nameColor = isMeAssigned ? '#28A347' : '#000';
-                return '<div style="background:' + bg + ';border:' + border + ';border-radius:10px;padding:8px 12px;display:flex;flex-direction:column;">' +
-                  '<span style="font-size:13px;font-weight:800;color:' + nameColor + ';">@' + safeHtml(a.userName) + (isMeAssigned ? ' (Vous)' : '') + '</span>' +
-                  '<span style="font-size:13px;color:#3A3A3C;margin-top:2px;font-weight:500;">' + safeHtml(a.task) + '</span>' +
+                return '<div style="background:' + (isMeAssigned ? UI.evGoldSoft : 'rgba(255,255,255,0.05)') + ';border:0.5px solid ' + (isMeAssigned ? UI.evGoldLine : 'transparent') + ';border-radius:' + UI.r1 + ';padding:8px 11px;">' +
+                  '<div style="font-size:12.5px;font-weight:600;color:' + (isMeAssigned ? UI.evGold : UI.evInk) + ';">' + safeHtml(a.userName) + (isMeAssigned ? ' · vous' : '') + '</div>' +
+                  '<div style="font-size:12px;color:' + UI.evMuted + ';margin-top:1px;">' + safeHtml(a.task) + '</div>' +
                 '</div>';
               }).join('') +
               '</div>' +
@@ -456,7 +459,7 @@
     var curIdx = S.eventGroupIdx && S.eventGroupIdx[dateIso] ? S.eventGroupIdx[dateIso] : 0;
     var anyPinned = events.some(function(e){ return e.is_pinned; });
 
-    return '<article style="background:#FFF;margin-bottom:10px;">' +
+    return '<article style="background:' + UI.card + ';border:0.5px solid ' + UI.line + ';border-radius:' + UI.r2 + ';margin:0 12px 12px;overflow:hidden;">' +
       (anyPinned ? '<div style="background:#5856D6;color:#FFF;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:1px;padding:4px 12px;display:flex;align-items:center;gap:6px;"><span style="font-size:12px;">📌</span> ÉPINGLÉ</div>' : '') +
       '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px 8px;">' +
         '<div style="min-width:0;">' +
@@ -469,7 +472,7 @@
         events.map(function(ev) {
           // La carte entière ouvre l'événement dans le Planning, à la bonne date :
           // sans cela il fallait quitter le fil et le retrouver à la main.
-          return '<div style="flex:0 0 100%;scroll-snap-align:start;padding:0 14px 4px;box-sizing:border-box;">' +
+          return '<div style="flex:0 0 100%;scroll-snap-align:start;padding:0 16px 4px;box-sizing:border-box;">' +
             '<div style="position:relative;">' +
               '<div onclick="App.goToEvent(\'' + ev.id + '\')" style="cursor:pointer;">' + renderEventCardInner(ev) + '</div>' +
               '<button onclick="event.stopPropagation();App.openOptions(\'' + ev.id + '\')" style="position:absolute;top:10px;right:10px;background:rgba(255,255,255,0.92);border:none;width:30px;height:30px;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.08);">' + SVG.dots + '</button>' +
@@ -771,7 +774,7 @@
       // Handle new-format EVENT posts (created by saveEvent)
       if (post.type === 'EVENT' && post.eventTitle) {
          // Cliquer sur l'événement dans le fil l'ouvre dans le Planning, à sa date.
-         contentZone = '<div onclick="App.goToEvent(\'' + post.id + '\')" style="margin:0 14px 10px;cursor:pointer;">' + renderEventCardInner(post) + '</div>';
+         contentZone = '<div onclick="App.goToEvent(\'' + post.id + '\')" style="margin:0 16px 14px;cursor:pointer;">' + renderEventCardInner(post) + '</div>';
       } else if (post.type === 'EVENT' && post.metadata) {
          var participants = Object.keys(post.metadata.participations || {}).filter(function(k) { return post.metadata.participations[k] === 'yes'; });
          var partAvatars = '';
@@ -849,9 +852,9 @@
     }
     // Caption text (author + label), shown ABOVE the media — Facebook style
     var captionTextBlock = (!post.postBg && (captionHtml || (post.type === 'REPOST' && post.originalCaption && !post.originalPostBg)))
-      ? '<div style="padding:0 14px 10px;">' +
-          (post.type === 'REPOST' && post.originalCaption && !post.originalPostBg ? '<p style="font-size:14px;color:#000;margin:0 0 4px;line-height:1.45;"><strong>' + safeHtml(post.originalAuthor || '') + '</strong> ' + safeHtml(post.originalCaption) + '</p>' : '') +
-          (captionHtml ? '<p style="font-size:14px;color:#000;margin:0;line-height:1.45;">' + captionHtml + '</p>' : '') +
+      ? '<div style="padding:0 16px 12px;">' +
+          (post.type === 'REPOST' && post.originalCaption && !post.originalPostBg ? '<p style="font-size:14px;color:' + UI.ink2 + ';margin:0 0 4px;line-height:1.5;"><strong style="font-weight:600;">' + safeHtml(post.originalAuthor || '') + '</strong> ' + safeHtml(post.originalCaption) + '</p>' : '') +
+          (captionHtml ? '<p style="font-size:14px;color:' + UI.ink2 + ';margin:0;line-height:1.5;">' + captionHtml + '</p>' : '') +
         '</div>'
       : '';
 
@@ -861,16 +864,18 @@
       ? 'Voir les ' + (post.comments || []).length + ' commentaire' + ((post.comments || []).length > 1 ? 's' : '')
       : 'Ajouter un commentaire…';
     var metaFooterBlock =
-      '<div style="padding:' + (post.postBg ? '2px' : '0') + ' 14px 10px;">' +
-        '<button onclick="App.openComments(\'' + post.id + '\')" style="background:none;border:none;padding:0;font-size:13.5px;color:#8E8E93;cursor:pointer;">' + commentsLinkLabel + '</button>' +
+      '<div style="padding:' + (post.postBg ? '2px' : '0') + ' 16px 12px;">' +
+        '<button onclick="App.openComments(\'' + post.id + '\')" style="background:none;border:none;padding:0;font-size:13px;color:' + UI.faint + ';cursor:pointer;">' + commentsLinkLabel + '</button>' +
       '</div>';
 
-    var finalHtml = '<article id="post-'+post.id+'" data-postid="'+post.id+'" style="background:#FFF;margin-bottom:10px;">' +
+    // Carte blanche détachée sur le fond gris de l'écran : c'est ce qui donne
+    // au fil sa respiration, au lieu de bandes blanches collées bord à bord.
+    var finalHtml = '<article id="post-'+post.id+'" data-postid="'+post.id+'" style="background:' + UI.card + ';border:0.5px solid ' + UI.line + ';border-radius:' + UI.r2 + ';margin:0 12px 12px;overflow:hidden;">' +
       repostBanner +
       pinnedBadge +
-      (post.is_ephemeral ? '<div style="padding:6px 14px 0;"><span style="background:#FFF3E0;color:#FF9500;font-size:10.5px;font-weight:800;padding:3px 8px;border-radius:8px;">🕐 Éphémère · disparaît dans ' + (function(){ var h = Math.max(0, Math.round((post.ephemeral_expiry - Date.now()) / 3600000)); return h > 0 ? h + 'h' : 'bientôt'; })() + '</span></div>' : '') +
-      // Header
-      '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;">' +
+      (post.is_ephemeral ? '<div style="padding:10px 16px 0;"><span style="display:inline-flex;align-items:center;gap:5px;background:' + UI.tile + ';color:' + UI.muted + ';font-size:11px;padding:3px 9px;border-radius:' + UI.pill + ';">' + ico('clock', 12, UI.muted) + 'Éphémère · disparaît dans ' + (function(){ var h = Math.max(0, Math.round((post.ephemeral_expiry - Date.now()) / 3600000)); return h > 0 ? h + ' h' : 'bientôt'; })() + '</span></div>' : '') +
+      // En-tête de la carte
+      '<div style="display:flex;align-items:center;justify-content:space-between;padding:13px 16px 11px;">' +
         (function(){
           var allU = db(SK.USERS, []);
           var pAuthor = allU.find(function(u){ return u.id === post.userId; });
@@ -880,18 +885,17 @@
           var pName = (pAuthor && pAuthor.prenom && pAuthor.nom) ? (pAuthor.prenom + ' ' + pAuthor.nom) : (post.author || 'Membre');
 
           var avatarNode = pAvatarUrl
-            ? '<img src="' + pAvatarUrl + '" style="width:40px;height:40px;border-radius:20px;object-fit:cover;flex-shrink:0;" />'
-            : '<div style="width:40px;height:40px;border-radius:20px;background:linear-gradient(135deg,' + pColor + ',#0040CC);color:#FFF;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + pInitial + '</div>';
+            ? '<img src="' + pAvatarUrl + '" style="width:36px;height:36px;border-radius:' + UI.pill + ';object-fit:cover;flex-shrink:0;" />'
+            : '<div style="width:36px;height:36px;border-radius:' + UI.pill + ';background:' + pColor + ';color:#FFF;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + pInitial + '</div>';
 
-          return '<div onclick="App.openUserProfile(\'' + post.userId + '\')" style="display:flex;align-items:center;gap:10px;cursor:pointer;">' +
+          return '<div onclick="App.openUserProfile(\'' + post.userId + '\')" style="display:flex;align-items:center;gap:10px;cursor:pointer;min-width:0;">' +
             avatarNode +
-            '<div>' +
-              '<div style="font-size:13.5px;font-weight:700;color:#000;">' + safeHtml(pName) + '</div>';
+            '<div style="min-width:0;">' +
+              '<div style="font-size:13.5px;font-weight:600;color:' + UI.ink + ';">' + safeHtml(pName) + '</div>';
         })() +
-            '<div style="font-size:11.5px;color:#8E8E93;display:flex;align-items:center;gap:4px;flex-wrap:wrap;">' +
-              '<span style="color:' + authorSecColor + ';font-weight:600;">' + authorSecEmoji + ' ' + authorSecNom + '</span>' +
-              '<span>·</span><span>' + postAuthorRoleLabel + '</span>' +
-              '<span>·</span><span>' + ago + '</span>' + (post.is_edited ? '<span style="font-style:italic;color:#8E8E93;margin-left:4px;">(modifié)</span>' : '') +
+            '<div style="font-size:11.5px;color:' + UI.faint + ';display:flex;align-items:center;gap:4px;flex-wrap:wrap;">' +
+              '<span>' + authorSecEmoji + ' ' + authorSecNom + '</span>' +
+              '<span>·</span><span>' + ago + '</span>' + (post.is_edited ? '<span style="font-style:italic;margin-left:2px;">modifié</span>' : '') +
             '</div>' +
           '</div>' +
         '</div>' +
@@ -917,26 +921,25 @@
       contentZone +
       renderPollBlock(post) +
       // Actions row
-      '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px 6px;">' +
-        '<div style="display:flex;gap:14px;align-items:center;">' +
-          '<button id="likeBtn-'+post.id+'" onclick="App.like(\''+post.id+'\')" style="background:none;border:none;padding:2px;cursor:pointer;display:flex;align-items:center;transition:transform 0.1s;" onmousedown="this.style.transform=\'scale(0.85)\'" onmouseup="this.style.transform=\'scale(1)\'">' + SVG.heart(iLiked, 26) + '</button>' +
-          '<button onclick="App.openComments(\''+post.id+'\')" style="background:none;border:none;padding:2px;cursor:pointer;display:flex;align-items:center;">' + SVG.comment + '</button>' +
-          '<button onclick="App.openRepostModal(\''+post.id+'\')" style="background:none;border:none;padding:2px;cursor:pointer;display:flex;align-items:center;">' + SVG.share + '</button>' +
-          '<span style="font-size:11px;font-weight:700;color:' + sec.color + ';background:' + sec.color + '18;padding:4px 10px;border-radius:10px;margin-left:2px;">' + sec.emoji + ' ' + (post.sectionNom||'Général') + '</span>' +
-        '</div>' +
-        '<div style="display:flex;align-items:center;gap:12px;">' +
-          '<button onclick="App.openViewers(\''+post.id+'\')" title="Vues" style="background:none;border:none;padding:2px;cursor:pointer;display:flex;align-items:center;gap:5px;">' +
-            SVG.eye + '<span id="viewCount-'+post.id+'" style="font-size:13px;font-weight:700;color:#8E8E93;">' + viewCount + '</span>' +
-          '</button>' +
-          '<button id="saveBtn-'+post.id+'" onclick="App.save(\''+post.id+'\')" style="background:none;border:none;padding:2px;cursor:pointer;display:flex;align-items:center;">' + SVG.bookmark(iSaved) + '</button>' +
-        '</div>' +
-      '</div>' +
-
-      // Like count
-      '<div style="padding:0 14px 5px;">' +
-        '<div id="likeCount-'+post.id+'" style="font-size:13.5px;font-weight:700;color:#000;">' +
-          (likeCount > 0 ? likeCount + ' j\'aime' : 'Soyez le premier à aimer') +
-        '</div>' +
+      // Barre d'engagement : icône + compteur sur une seule ligne, séparée du
+      // contenu par un filet. Le compteur de j'aime n'a plus sa propre ligne.
+      '<div style="display:flex;align-items:center;gap:18px;padding:11px 16px;border-top:0.5px solid ' + UI.line + ';color:' + UI.muted + ';font-size:12.5px;">' +
+        '<button id="likeBtn-'+post.id+'" onclick="App.like(\''+post.id+'\')" style="background:none;border:none;padding:0;cursor:pointer;display:flex;align-items:center;gap:6px;color:inherit;font-size:inherit;transition:transform 0.1s;" onmousedown="this.style.transform=\'scale(0.9)\'" onmouseup="this.style.transform=\'scale(1)\'">' +
+          '<svg width="18" height="18" viewBox="0 0 24 24" fill="' + (iLiked ? UI.bad : 'none') + '" stroke="' + (iLiked ? UI.bad : UI.muted) + '" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>' +
+          '<span id="likeCount-'+post.id+'" style="color:' + (iLiked ? UI.bad : UI.muted) + ';">' + likeCount + '</span>' +
+        '</button>' +
+        '<button onclick="App.openComments(\''+post.id+'\')" style="background:none;border:none;padding:0;cursor:pointer;display:flex;align-items:center;gap:6px;color:inherit;font-size:inherit;">' +
+          ico('message', 18, UI.muted) + '<span>' + (post.comments || []).length + '</span>' +
+        '</button>' +
+        '<button onclick="App.openRepostModal(\''+post.id+'\')" style="background:none;border:none;padding:0;cursor:pointer;display:flex;align-items:center;color:inherit;">' +
+          '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="' + UI.muted + '" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>' +
+        '</button>' +
+        '<button onclick="App.openViewers(\''+post.id+'\')" title="Vues" style="background:none;border:none;padding:0;cursor:pointer;display:flex;align-items:center;gap:6px;color:inherit;font-size:inherit;">' +
+          ico('eye', 18, UI.muted) + '<span id="viewCount-'+post.id+'">' + viewCount + '</span>' +
+        '</button>' +
+        '<button id="saveBtn-'+post.id+'" onclick="App.save(\''+post.id+'\')" style="background:none;border:none;padding:0;cursor:pointer;display:flex;align-items:center;margin-left:auto;">' +
+          '<svg width="18" height="18" viewBox="0 0 24 24" fill="' + (iSaved ? UI.ink : 'none') + '" stroke="' + (iSaved ? UI.ink : UI.muted) + '" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>' +
+        '</button>' +
       '</div>' +
 
       metaFooterBlock +

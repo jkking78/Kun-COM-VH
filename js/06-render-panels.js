@@ -772,83 +772,77 @@
     var avg = h.average;                    // de -4 à 5
     // Conversion en pourcentage pour l'anneau : -4 → 0 %, 5 → 100 %.
     var pct = h.count ? Math.max(0, Math.min(100, Math.round(((avg + 4) / 9) * 100))) : 0;
-    var col = !h.count ? '#64748B' : avg >= 4 ? '#10B981' : avg >= 2 ? '#F59E0B' : '#EF4444';
-    var label = !h.count ? 'Aucun service' : avg >= 4 ? 'Excellent 🌟' : avg >= 2 ? 'À améliorer' : avg >= 0 ? 'Critique' : 'Rattrapage requis';
+    var col = !h.count ? UI.faint : avg >= 4 ? UI.ok : avg >= 2 ? UI.warn : UI.bad;
+    var label = !h.count ? 'Aucun service' : avg >= 4 ? 'Excellent' : avg >= 2 ? 'À améliorer' : avg >= 0 ? 'Critique' : 'Rattrapage requis';
 
-    var starsRow = (function(){
-      var n = Math.max(0, Math.round(avg));
-      var out = '';
-      for (var i=1;i<=5;i++) { out += '<span style="font-size:15px;color:' + (i<=n ? '#FBBF24' : '#334155') + ';">★</span>'; }
-      return out;
-    })();
+    // Jauge en arc SVG (et non plus un conic-gradient) : le trait arrondi se
+    // lit mieux en petit et rend la même chose sur tous les navigateurs.
+    var R = 32, C = Math.round(2 * Math.PI * R);
+    var gauge = '<div style="position:relative;width:76px;height:76px;flex-shrink:0;">' +
+      '<svg width="76" height="76" viewBox="0 0 76 76">' +
+        '<circle cx="38" cy="38" r="' + R + '" fill="none" stroke="#EFF1F4" stroke-width="7"/>' +
+        (h.count ? '<circle cx="38" cy="38" r="' + R + '" fill="none" stroke="' + col + '" stroke-width="7" stroke-linecap="round" stroke-dasharray="' + C + '" stroke-dashoffset="' + Math.round(C * (1 - pct / 100)) + '" transform="rotate(-90 38 38)"/>' : '') +
+      '</svg>' +
+      '<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">' +
+        '<div style="font-size:19px;font-weight:600;color:' + UI.ink + ';line-height:1;">' + (h.count ? String(avg).replace('.', ',') : '—') + '</div>' +
+        '<div style="font-size:10px;color:' + UI.faint + ';">sur 5</div>' +
+      '</div>' +
+    '</div>';
+
+    var tile = function(value, lbl) {
+      return '<div style="background:' + UI.tile + ';border-radius:' + UI.r1 + ';padding:9px 10px;">' +
+        '<div style="font-size:10.5px;color:' + UI.faint + ';margin-bottom:2px;">' + lbl + '</div>' +
+        '<div style="font-size:16px;font-weight:600;color:' + UI.ink + ';">' + value + '</div>' +
+      '</div>';
+    };
 
     var recent = h.entries.slice(0, 4).map(function(e) {
-      var ec = e.stars >= 4 ? '#10B981' : e.stars >= 2 ? '#F59E0B' : '#EF4444';
+      var ec = e.stars >= 4 ? UI.ok : e.stars >= 2 ? UI.warn : UI.bad;
       var when = e.absent ? 'absent' : (e.delayMinutes <= 0 ? "à l'heure" : '+' + e.delayMinutes + ' min');
-      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-top:1px solid rgba(255,255,255,0.06);">' +
+      return '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 0;border-top:0.5px solid ' + UI.line + ';">' +
         '<div style="min-width:0;flex:1;">' +
-          '<div style="font-size:12px;font-weight:700;color:#E2E8F0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + safeHtml(e.eventTitle) + '</div>' +
-          '<div style="font-size:10.5px;color:#64748B;">' + safeHtml(e.eventDate) + ' · ' + when + '</div>' +
+          '<div style="font-size:12.5px;font-weight:500;color:' + UI.ink + ';overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + safeHtml(e.eventTitle) + '</div>' +
+          '<div style="font-size:11px;color:' + UI.faint + ';">' + safeHtml(e.eventDate) + ' · ' + when + '</div>' +
         '</div>' +
-        '<div style="font-size:13px;font-weight:900;color:' + ec + ';white-space:nowrap;margin-left:10px;">' + (e.stars > 0 ? '+' : '') + e.stars + '★</div>' +
+        '<div style="font-size:13px;font-weight:600;color:' + ec + ';white-space:nowrap;">' + (e.stars > 0 ? '+' : '') + e.stars + '</div>' +
       '</div>';
     }).join('');
 
-    return '<div style="margin:16px 0;">' +
-      '<div style="background:linear-gradient(135deg,#0F172A 0%,#1E293B 55%,#0F172A 100%);border-radius:24px;padding:20px;position:relative;overflow:hidden;box-shadow:0 10px 28px rgba(15,23,42,0.28);animation:fadeIn 0.4s ease-out;">' +
-        '<div style="position:absolute;top:-50px;right:-50px;width:160px;height:160px;border-radius:80px;background:' + col + '30;filter:blur(36px);pointer-events:none;"></div>' +
-        '<div style="position:relative;z-index:1;margin-bottom:18px;">' +
-          '<div style="font-size:10.5px;font-weight:800;color:#94A3B8;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:3px;">Cycle ' + cycleStr + '</div>' +
-          '<div style="font-size:17px;font-weight:800;color:#FFF;letter-spacing:-0.3px;">Indice de Confiance</div>' +
+    return '<div style="margin:14px 0;">' +
+      '<div style="background:' + UI.card + ';border:0.5px solid ' + UI.line + ';border-radius:' + UI.r2 + ';padding:16px;">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">' +
+          '<div style="font-size:14px;font-weight:600;color:' + UI.ink + ';">Ma ponctualité</div>' +
+          '<div style="font-size:11px;color:' + UI.faint + ';">Cycle ' + cycleStr + '</div>' +
         '</div>' +
 
-        '<div style="display:flex;align-items:center;gap:18px;position:relative;z-index:1;margin-bottom:16px;">' +
-          '<div style="width:78px;height:78px;border-radius:39px;background:conic-gradient(' + col + ' ' + pct + '%, rgba(255,255,255,0.08) 0);display:flex;align-items:center;justify-content:center;flex-shrink:0;">' +
-            '<div style="width:64px;height:64px;background:#0F172A;border-radius:32px;display:flex;flex-direction:column;align-items:center;justify-content:center;">' +
-              '<span style="font-size:19px;font-weight:900;color:#FFF;line-height:1;">' + (h.count ? (avg > 0 ? avg : avg) : '—') + '</span>' +
-              '<span style="font-size:9.5px;color:#94A3B8;">/ 5 ★</span>' +
-            '</div>' +
-          '</div>' +
+        '<div style="display:flex;align-items:center;gap:16px;margin-bottom:' + (h.debt < 0 || recent ? '14px' : '0') + ';">' +
+          gauge +
           '<div style="flex:1;min-width:0;">' +
-            '<div style="font-size:14.5px;font-weight:800;color:#FFF;margin-bottom:2px;">Ponctualité</div>' +
-            '<div style="font-size:11.5px;color:#94A3B8;margin-bottom:6px;">Calculée automatiquement à l\'arrivée</div>' +
-            '<div style="margin-bottom:6px;">' + starsRow + '</div>' +
-            '<div style="display:inline-block;font-size:10.5px;font-weight:800;color:' + col + ';background:' + col + '22;padding:3px 10px;border-radius:10px;">' + label + '</div>' +
+            '<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:8px;">' +
+              tile(h.onTimeCount, "À l'heure") +
+              tile(h.count, 'Services') +
+            '</div>' +
+            '<div style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:' + col + ';">' + ico('star', 13, col) + label + '</div>' +
           '</div>' +
         '</div>' +
+
+        (h.avgDelay > 0
+          ? '<div style="font-size:11.5px;color:' + UI.faint + ';margin-bottom:12px;">Retard moyen de ' + h.avgDelay + ' min sur les services concernés.</div>'
+          : '') +
 
         (h.debt < 0
-          ? '<div style="position:relative;z-index:1;background:rgba(239,68,68,0.14);border:1px solid rgba(239,68,68,0.3);border-radius:14px;padding:10px 12px;margin-bottom:14px;">' +
-              '<div style="font-size:12px;font-weight:800;color:#FCA5A5;margin-bottom:2px;">⚠️ Rattrapage requis : ' + h.debt + '★</div>' +
-              '<div style="font-size:10.5px;color:#94A3B8;line-height:1.4;">Soyez à l\'heure aux prochains services pour revenir au positif.</div>' +
+          ? '<div style="display:flex;gap:9px;background:#FEF2F2;border:0.5px solid #FBD5D5;border-radius:' + UI.r1 + ';padding:11px 12px;margin-bottom:12px;">' +
+              ico('alert', 16, UI.bad) +
+              '<div style="min-width:0;">' +
+                '<div style="font-size:12.5px;font-weight:600;color:#B42318;margin-bottom:2px;">Rattrapage requis : ' + h.debt + ' étoiles</div>' +
+                '<div style="font-size:11.5px;color:' + UI.muted + ';line-height:1.45;">Soyez à l\'heure aux prochains services pour revenir au positif.</div>' +
+              '</div>' +
             '</div>'
           : '') +
 
-        '<div style="height:1px;background:rgba(255,255,255,0.08);margin-bottom:14px;position:relative;z-index:1;"></div>' +
-
-        '<div style="display:flex;position:relative;z-index:1;text-align:center;">' +
-          '<div style="flex:1;">' +
-            '<div style="font-size:20px;font-weight:900;color:#FFF;">' + h.onTimeCount + '</div>' +
-            '<div style="font-size:10.5px;font-weight:700;color:#CBD5E1;">À l\'heure</div>' +
-          '</div>' +
-          '<div style="width:1px;background:rgba(255,255,255,0.08);margin:2px 8px;"></div>' +
-          '<div style="flex:1;">' +
-            '<div style="font-size:20px;font-weight:900;color:#FFF;">' + (h.avgDelay > 0 ? h.avgDelay + '<span style="font-size:11px;color:#64748B;">min</span>' : '—') + '</div>' +
-            '<div style="font-size:10.5px;font-weight:700;color:#CBD5E1;">Retard moyen</div>' +
-          '</div>' +
-          '<div style="width:1px;background:rgba(255,255,255,0.08);margin:2px 8px;"></div>' +
-          '<div style="flex:1;">' +
-            '<div style="font-size:20px;font-weight:900;color:#FFF;">' + h.count + '</div>' +
-            '<div style="font-size:10.5px;font-weight:700;color:#CBD5E1;">Services</div>' +
-          '</div>' +
-        '</div>' +
-
         (recent
-          ? '<div style="position:relative;z-index:1;margin-top:14px;">' +
-              '<div style="font-size:10.5px;font-weight:800;color:#94A3B8;text-transform:uppercase;letter-spacing:1px;margin-bottom:2px;">Derniers services</div>' +
-              recent +
-            '</div>'
-          : '<div style="position:relative;z-index:1;margin-top:14px;font-size:11.5px;color:#64748B;text-align:center;">Aucun service assigné pour le moment.</div>') +
+          ? '<div><div style="font-size:11px;color:' + UI.faint + ';margin-bottom:2px;">Derniers services</div>' + recent + '</div>'
+          : '<div style="font-size:11.5px;color:' + UI.faint + ';text-align:center;padding:8px 0;">Aucun service assigné pour le moment.</div>') +
       '</div>' +
     '</div>';
   }
