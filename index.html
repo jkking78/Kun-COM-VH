@@ -9,7 +9,11 @@
   <meta name="apple-mobile-web-app-title" content="Commit">
   <meta name="description" content="Commit VH — Réseau social interne du Département Communication, Église Vase d'Honneur">
   <link rel="manifest" href="manifest.json">
-  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <!-- iOS ignore le manifest pour l'icône d'accueil : il lui faut son propre
+       apple-touch-icon, en 180×180, opaque et à bords carrés (iOS applique
+       lui-même le masque arrondi). Sans ce fichier, l'écran d'accueil affiche
+       une capture floue de la page à la place du logo. -->
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon-180.png">
 
   <!-- Open Graph / partage externe (aperçu générique — les liens de publication
        individuels utilisent /api/p/:id qui génère une miniature dédiée) -->
@@ -205,14 +209,14 @@
   <!-- BUNDLE PRINCIPAL (PWA Vanilla JS) — anciennement un seul fichier app.js,
        désormais découpé en modules thématiques (même code, chargés dans l'ordre
        d'origine, aucun changement de comportement) pour faciliter la maintenance. -->
-  <script src="js/01-core.js?v=58"></script>
-  <script src="js/02-media.js?v=58"></script>
-  <script src="js/03-render-engine.js?v=58"></script>
-  <script src="js/04-render-auth-cropper.js?v=58"></script>
-  <script src="js/05-render-feed.js?v=58"></script>
-  <script src="js/06-render-panels.js?v=58"></script>
-  <script src="js/07-app-controller.js?v=58"></script>
-  <script src="js/08-bootstrap.js?v=58"></script>
+  <script src="js/01-core.js?v=59"></script>
+  <script src="js/02-media.js?v=59"></script>
+  <script src="js/03-render-engine.js?v=59"></script>
+  <script src="js/04-render-auth-cropper.js?v=59"></script>
+  <script src="js/05-render-feed.js?v=59"></script>
+  <script src="js/06-render-panels.js?v=59"></script>
+  <script src="js/07-app-controller.js?v=59"></script>
+  <script src="js/08-bootstrap.js?v=59"></script>
 
   <!-- DÉBLOCAGE ANTI-SPINNER (Garantie de déblocage 0ms / 400ms max) -->
   <script>
