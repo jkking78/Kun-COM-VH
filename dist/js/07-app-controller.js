@@ -1473,8 +1473,12 @@ toggleParticipation: function(postId, status) {
         dbSet(SK.POSTS, remaining);
 
         if (supabase) {
+          // Suppression douce (voir App.deletePost) : sans marqueur explicite
+          // status:'deleted', mergePostsWithLocal (additif par conception) ne
+          // propage jamais la disparition aux autres appareils.
           toDelete.forEach(function(p) {
-            supabase.from('kun_com_posts').delete().eq('id', p.id).then(function(){}, function(e){ console.warn('Bulk delete post error:', e); });
+            var tombstone = Object.assign({}, p, { status: 'deleted' });
+            supabase.from('kun_com_posts').upsert({ id: p.id, content: tombstone }, { onConflict: 'id' }).then(function(){}, function(e){ console.warn('Bulk delete post error:', e); });
           });
         }
         toDelete.forEach(function(p) {
@@ -1516,8 +1520,12 @@ toggleParticipation: function(postId, status) {
         dbSet(SK.POSTS, remainingPosts);
 
         if (supabase) {
+          // Suppression douce (voir App.deletePost) : sans marqueur explicite
+          // status:'deleted', mergePostsWithLocal (additif par conception) ne
+          // propage jamais la disparition aux autres appareils.
           myPosts.forEach(function(p) {
-            supabase.from('kun_com_posts').delete().eq('id', p.id).then(function(){}, function(e){ console.warn('Delete post error:', e); });
+            var tombstone = Object.assign({}, p, { status: 'deleted' });
+            supabase.from('kun_com_posts').upsert({ id: p.id, content: tombstone }, { onConflict: 'id' }).then(function(){}, function(e){ console.warn('Delete post error:', e); });
           });
         }
         // Nettoie les fichiers médias associés dans Storage (sauf s'ils sont encore
@@ -2654,7 +2662,15 @@ toggleParticipation: function(postId, status) {
       } else {
         posts.splice(idx, 1); dbSet(SK.POSTS, posts);
         if (supabase) {
-          supabase.from('kun_com_posts').delete().eq('id', postId).then(function(){}, function(e){ console.warn('Delete post error:', e); });
+          // Suppression DOUCE : on marque le contenu distant status:'deleted' au lieu
+          // de supprimer la ligne. mergePostsWithLocal (voir 01-core.js) est désormais
+          // strictement additif — il ne purge JAMAIS une publication simplement absente
+          // d'une réponse serveur, pour ne pas en effacer par erreur lors d'une réponse
+          // tronquée. Une suppression réelle doit donc laisser une trace explicite,
+          // sans quoi elle disparaît seulement de CET appareil : les autres membres la
+          // revoient indéfiniment, ressuscitée à chaque synchronisation.
+          var tombstone = Object.assign({}, p, { status: 'deleted' });
+          supabase.from('kun_com_posts').upsert({ id: p.id, content: tombstone }, { onConflict: 'id' }).then(function(){}, function(e){ console.warn('Delete post error:', e); });
         }
         deleteUnusedMediaFromStorage((p.mediaUrls || []), postId);
       }

@@ -24,6 +24,33 @@
   // ============================================================
   // INSTAGRAM-STYLE TARGETED NOTIFICATION SYSTEM
   // ============================================================
+  // Écrit une notification dans le profil DISTANT d'un utilisateur en relisant
+  // D'ABORD sa version serveur la plus fraîche, puis en n'écrivant QUE le
+  // résultat fusionné. C'est le correctif central contre les notifications déjà
+  // lues qui redevenaient non lues : avant cette fonction, sendNotificationToUser
+  // et announceNewMember écrivaient directement leur copie LOCALE (potentiellement
+  // vieille de plusieurs minutes sur l'appareil de l'expéditeur) du profil complet
+  // du destinataire — écrasant au passage toute lecture qu'il avait faite ailleurs,
+  // ou toute autre notification reçue entre-temps. mergeNotifications (utilisé
+  // pendant la synchronisation normale) ne pouvait rien y faire : le mal était déjà
+  // fait côté serveur avant même que le destinataire ne synchronise quoi que ce soit.
+  function pushNotificationToProfile(userId, notif, fallbackProfile) {
+    if (!supabase || !userId) return Promise.resolve();
+    return supabase.from('kun_com_profiles').select('content').eq('id', userId).single().then(function(res) {
+      var fresh = res && res.data && res.data.content;
+      if (typeof fresh === 'string') { try { fresh = JSON.parse(fresh); } catch(e){ fresh = null; } }
+      var base = (fresh && typeof fresh === 'object') ? fresh : fallbackProfile;
+      if (!base) return null;
+      var baseNotifs = Array.isArray(base.notifications) ? base.notifications.slice() : [];
+      if (!baseNotifs.some(function(n){ return n.id === notif.id; })) {
+        baseNotifs.unshift(notif);
+        if (baseNotifs.length > 50) baseNotifs = baseNotifs.slice(0, 50);
+      }
+      var toWrite = Object.assign({}, base, { id: userId, notifications: baseNotifs });
+      return supabase.from('kun_com_profiles').upsert({ id: userId, content: toWrite }, { onConflict: 'id' });
+    }, function(e){ console.warn('pushNotificationToProfile error:', e); });
+  }
+
   function sendNotificationToUser(targetUserId, notifData) {
     if (!targetUserId) return;
     var allUsers = db(SK.USERS, []);
@@ -66,10 +93,8 @@
       try { localStorage.setItem(SK.SESS, JSON.stringify(targetUser)); } catch(e){}
     }
     
-    if (supabase) {
-      supabase.from('kun_com_profiles').upsert({ id: targetUser.id, content: targetUser }, { onConflict: 'id' }).then(function(){}, function(e){});
-    }
-    
+    pushNotificationToProfile(targetUserId, newNotif, targetUser).then(function(){}, function(e){ console.warn('sendNotificationToUser push error:', e); });
+
     if (S.user && S.user.id === targetUserId) {
       toast('🔔 ' + notifData.title + ': ' + notifData.text, 'info');
       if ('Notification' in window && Notification.permission === 'granted') {
@@ -174,11 +199,12 @@
     if (touched.length === 0) return;
 
     dbSet(SK.USERS, allUsers);
-    if (supabase) {
-      supabase.from('kun_com_profiles')
-        .upsert(touched.map(function(u){ return { id: u.id, content: u }; }), { onConflict: 'id' })
-        .then(function(){}, function(e){ console.warn('Annonce nouveau membre :', e); });
-    }
+    // Un envoi par profil touché (voir pushNotificationToProfile) : chacun relit sa
+    // propre version serveur fraîche avant d'y ajouter la notification, au lieu
+    // d'écraser tout le monde avec cette copie locale potentiellement périmée.
+    touched.forEach(function(u) {
+      pushNotificationToProfile(u.id, Object.assign({}, notif), u).then(function(){}, function(e){ console.warn('Annonce nouveau membre :', e); });
+    });
   }
 
   // Jetons de mention collective : @tous notifie tout le monde.

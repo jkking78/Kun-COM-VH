@@ -280,7 +280,21 @@
     // Feed
     var feed = '';
     var allLocalPosts = db(SK.POSTS, []);
-    var isActuallySyncing = S.initialLoading || (allLocalPosts.length > 0 && filtered.length === 0 && !S.q && S.story === 'all');
+    // La roue de chargement ne doit apparaître que si on n'a RIEN à montrer.
+    // Avant : elle se déclenchait sur S.initialLoading seul, donc à CHAQUE
+    // réouverture de l'app — même avec un cache local plein de publications
+    // déjà prêtes à s'afficher — l'utilisateur attendait la synchronisation
+    // réseau (jusqu'à 2,5 s, plus si le réseau est lent) devant un écran vide
+    // avant de voir son propre fil. C'est le bug « ça charge trop longtemps ».
+    // Désormais : s'il existe déjà des publications en cache, on les affiche
+    // tout de suite et la synchronisation se termine silencieusement derrière.
+    // Le second cas (déjà présent avant) couvre une incohérence transitoire
+    // distincte : des publications existent dans le cache global mais le filtre
+    // du fil "Tous" les exclut toutes (ex. juste après une fusion) — il exige
+    // explicitement allLocalPosts.length > 0 et reste donc sans effet quand le
+    // cache est simplement vide pour de bon (voir « Aucune publication » ci-dessous).
+    var isActuallySyncing = (S.initialLoading && allLocalPosts.length === 0) ||
+      (allLocalPosts.length > 0 && filtered.length === 0 && !S.q && S.story === 'all');
 
     if (isActuallySyncing && !S.q && S.story === 'all') {
       // Chargement initial ou synchronisation en cours : on évite d'afficher un faux
