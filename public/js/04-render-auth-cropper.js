@@ -158,7 +158,7 @@
         renderField('loginEmail', 'email', 'Adresse e-mail', 'votre.email@eglise.org', 'email') +
         renderField('loginPwd', 'password', 'Mot de passe', '••••••••', 'current-password') +
         '<div style="text-align:right;margin-top:-6px;"><span onclick="App.nav(\'forgot\')" style="color:#0B63F6;font-size:12.5px;font-weight:700;cursor:pointer;">Mot de passe oublié ?</span></div>' +
-        '<button type="submit" style="' + btnStyle('#0B63F6') + '">Se connecter →</button>' +
+        '<button type="submit" id="loginSubmitBtn" style="' + btnStyle('#0B63F6') + '">Se connecter →</button>' +
       '</form>' +
 
       '<p style="text-align:center;font-size:13.5px;color:#8A93A0;margin-top:22px;">' +

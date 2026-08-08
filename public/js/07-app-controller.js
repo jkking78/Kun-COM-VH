@@ -1292,71 +1292,111 @@ toggleParticipation: function(postId, status) {
     nav: function(v) { S.auth = v; render(); },
     login: async function(e) {
       e && e.preventDefault();
+      // Empêche les connexions concurrentes : sans ceci, un appui répété pendant
+      // une connexion lente (réseau mobile) déclenchait autant de téléchargements
+      // complets des profils EN PARALLÈLE, ce qui saturait encore plus la
+      // connexion et allongeait l'attente au lieu de la raccourcir.
+      if (App._loginEnCours) return;
       var email = ((document.getElementById('loginEmail')||{}).value || '').trim();
       var pwd = ((document.getElementById('loginPwd')||{}).value || '').trim();
       if (!email) { toast('Veuillez saisir votre e-mail.', 'error'); return; }
       if (!pwd) { toast('Veuillez saisir votre mot de passe.', 'error'); return; }
 
-      var users = db(SK.USERS, []);
-      var user = users.find(function(u){ return u.email && u.email.toLowerCase() === email.toLowerCase(); });
+      App._loginEnCours = true;
+      var btn = document.getElementById('loginSubmitBtn');
+      var btnTexteOriginal = btn ? btn.textContent : null;
+      if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; btn.textContent = 'Connexion...'; }
 
-      // Filet de secours si le compte n'est pas (encore) dans le cache local —
-      // typique d'une connexion sur un appareil dont la synchronisation initiale
-      // n'a pas eu le temps de se terminer. On relit tous les profils distants
-      // ET ON LES GARDE TOUS, via mergeProfilesWithLocal (qui sait déchiffrer le
-      // "content" sérialisé en JSON par Supabase — voir parseProfileItem).
-      // Avant : ce filet ne conservait QUE le compte trouvé et jetait tous les
-      // autres profils pourtant déjà téléchargés, ET les lisait sans les décoder
-      // (Object.assign sur une chaîne JSON ne fait qu'éclater ses caractères) —
-      // l'annuaire local retombait donc à 1 seul membre après une connexion
-      // rapide, jusqu'à ce qu'une synchronisation complète le répare.
-      if (!user && supabase) {
-        try {
-          var res = await supabase.from('kun_com_profiles').select('*');
-          if (res && res.data) {
-            users = mergeProfilesWithLocal(res.data);
-            dbSet(SK.USERS, users);
-            user = users.find(function(u){ return u.email && u.email.toLowerCase() === email.toLowerCase(); });
-          }
-        } catch(err){}
+      try {
+        var users = db(SK.USERS, []);
+        var user = users.find(function(u){ return u.email && u.email.toLowerCase() === email.toLowerCase(); });
+
+        // Filet de secours si le compte n'est pas (encore) dans le cache local —
+        // typique d'une connexion sur un appareil dont la synchronisation initiale
+        // n'a pas eu le temps de se terminer. On relit tous les profils distants
+        // ET ON LES GARDE TOUS, via mergeProfilesWithLocal (qui sait déchiffrer le
+        // "content" sérialisé en JSON par Supabase — voir parseProfileItem).
+        // Avant : ce filet ne conservait QUE le compte trouvé et jetait tous les
+        // autres profils pourtant déjà téléchargés, ET les lisait sans les décoder
+        // (Object.assign sur une chaîne JSON ne fait qu'éclater ses caractères) —
+        // l'annuaire local retombait donc à 1 seul membre après une connexion
+        // rapide, jusqu'à ce qu'une synchronisation complète le répare.
+        if (!user && supabase) {
+          try {
+            // Délai maximal de 12 s : sur un réseau mobile lent, cette requête
+            // pouvait rester en attente plusieurs minutes sans aucun retour à
+            // l'utilisateur — qui retapait alors "Se connecter" plusieurs fois,
+            // ce qui ne faisait qu'ajouter d'autres téléchargements complets à la
+            // file au lieu d'accélérer quoi que ce soit.
+            var delaiDepasse = new Promise(function(resolve){ setTimeout(function(){ resolve('TIMEOUT'); }, 12000); });
+            var res = await Promise.race([
+              supabase.from('kun_com_profiles').select('*'),
+              delaiDepasse
+            ]);
+            if (res === 'TIMEOUT') {
+              toast('Connexion lente. Vérifiez votre réseau et réessayez.', 'error');
+              return;
+            }
+            if (res && res.data) {
+              users = mergeProfilesWithLocal(res.data);
+              dbSet(SK.USERS, users);
+              user = users.find(function(u){ return u.email && u.email.toLowerCase() === email.toLowerCase(); });
+              // Répare au passage les profils distants encore lourds : le prochain
+              // appareil qui se connecte (soi-même la prochaine fois, ou un
+              // collègue) n'aura plus à retélécharger ces méga-octets hérités.
+              try { purgerNotificationsBloateesServeur(res.data); } catch(e2) {}
+            }
+          } catch(err){}
+        }
+
+        if (!user) {
+          toast('Compte introuvable. Veuillez vérifier votre e-mail ou vous inscrire.', 'error');
+          return;
+        }
+
+        if (!user.id && user.email) {
+          user.id = 'u_' + String(user.email).toLowerCase().replace(/[^a-z0-9]/gi, '_');
+        }
+
+        var hashedLoginPwd = await hashPassword(pwd);
+        // Support both old plaintext and new hashed passwords
+        if (user.pwd && user.pwd !== pwd && user.pwd !== hashedLoginPwd) {
+          toast('Mot de passe incorrect.', 'error');
+          return;
+        }
+
+        user.is_online = true;
+        user.last_seen_at = new Date().toISOString();
+        user.last_action = 'Connexion';
+
+        var uIdx = users.findIndex(function(x){ return x.id === user.id; });
+        if (uIdx !== -1) users[uIdx] = user;
+        else users.push(user);
+        dbSet(SK.USERS, users);
+
+        // Sauvegarde tolérante au quota : une session qui ne tient pas sur le disque
+        // ne doit JAMAIS empêcher la connexion d'aboutir (l'exception non rattrapée
+        // ici interrompait le reste de la fonction, connexion comprise).
+        sauverSession(user);
+
+        S.user = user;
+        S.auth = 'app';
+        S.tab = 'home';
+        render();
+        toast('Connexion réussie ! Bienvenue ' + (user.prenom||'Membre') + '. ', 'success');
+        try { tryOpenDeepLinkedPost(); } catch(e){}
+      } finally {
+        App._loginEnCours = false;
+        // Si l'écran de connexion est toujours affiché (erreur, mot de passe
+        // incorrect, délai dépassé...), rétablir le bouton. En cas de connexion
+        // réussie, render() a déjà remplacé tout l'écran : ce bouton n'existe
+        // plus dans le document, la vérification ci-dessous l'ignore alors sans
+        // risque.
+        if (btn && document.body.contains(btn)) {
+          btn.disabled = false; btn.style.opacity = '';
+          if (btnTexteOriginal !== null) btn.textContent = btnTexteOriginal;
+        }
       }
-
-      if (!user) {
-        toast('Compte introuvable. Veuillez vérifier votre e-mail ou vous inscrire.', 'error');
-        return;
-      }
-
-      if (!user.id && user.email) {
-        user.id = 'u_' + String(user.email).toLowerCase().replace(/[^a-z0-9]/gi, '_');
-      }
-
-      var hashedLoginPwd = await hashPassword(pwd);
-      // Support both old plaintext and new hashed passwords
-      if (user.pwd && user.pwd !== pwd && user.pwd !== hashedLoginPwd) {
-        toast('Mot de passe incorrect.', 'error');
-        return;
-      }
-
-      user.is_online = true;
-      user.last_seen_at = new Date().toISOString();
-      user.last_action = 'Connexion';
-      
-      var uIdx = users.findIndex(function(x){ return x.id === user.id; });
-      if (uIdx !== -1) users[uIdx] = user;
-      else users.push(user);
-      dbSet(SK.USERS, users);
-
-      // Sauvegarde tolérante au quota : une session qui ne tient pas sur le disque
-      // ne doit JAMAIS empêcher la connexion d'aboutir (l'exception non rattrapée
-      // ici interrompait le reste de la fonction, connexion comprise).
-      sauverSession(user);
-
-      S.user = user;
-      S.auth = 'app';
-      S.tab = 'home';
-      render();
-      toast('Connexion réussie ! Bienvenue ' + (user.prenom||'Membre') + '. ', 'success');
-      try { tryOpenDeepLinkedPost(); } catch(e){}
     },
     signup: async function(e) {
       e && e.preventDefault();

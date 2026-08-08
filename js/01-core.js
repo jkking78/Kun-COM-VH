@@ -48,6 +48,35 @@
     });
   }
 
+  // Guérison passive des profils DISTANTS encore bloqués sur l'ancien format : le
+  // nettoyage au démarrage (nettoyerStockageHerite) n'allège que le disque de CET
+  // appareil ; il ne réécrit rien côté serveur. Tant qu'un membre n'a pas lui-même
+  // rouvert une version qui sait alléger ses notifications, son profil reste lourd
+  // sur Supabase — et TOUT appareil qui télécharge la liste complète des profils
+  // (démarrage, ou filet de secours à la connexion) doit retélécharger ces
+  // mégaoctets hérités à chaque fois. Sur un réseau mobile lent, c'est précisément
+  // ce qui rend une connexion interminable. On répare donc discrètement le profil
+  // distant dès qu'il paraît anormalement lourd, pour que les téléchargements
+  // suivants — les siens comme ceux des autres appareils — soient enfin légers.
+  function purgerNotificationsBloateesServeur(remoteData) {
+    if (!supabase || !Array.isArray(remoteData)) return;
+    remoteData.forEach(function(item) {
+      try {
+        var brut = typeof item.content === 'string' ? item.content : JSON.stringify(item.content || {});
+        // Un profil sain (photo hébergée, jamais en base64) tient largement sous
+        // 50 Ko. Au-delà, il porte presque toujours des notifications héritées
+        // avec photo recopiée en base64 (jusqu'à 4 Mo relevés pour un seul compte).
+        if (!brut || brut.length < 50000) return;
+        var propre = parseProfileItem(item);
+        if (!propre || !propre.id) return;
+        var allegees = allegerNotifications(propre.notifications);
+        var copie = Object.assign({}, propre, { notifications: allegees });
+        supabase.from('kun_com_profiles').upsert({ id: propre.id, content: copie }, { onConflict: 'id' })
+          .then(function(){}, function(e){ console.warn('Nettoyage serveur (notifications) échoué pour ' + propre.id + ':', e); });
+      } catch(e) {}
+    });
+  }
+
   // Écrit une notification dans le profil DISTANT d'un utilisateur en relisant
   // D'ABORD sa version serveur la plus fraîche, puis en n'écrivant QUE le
   // résultat fusionné. C'est le correctif central contre les notifications déjà
@@ -636,6 +665,10 @@
         // qui ne s'arrêtait jamais, l'absence d'abonnement temps réel, et la perte
         // silencieuse de la liste des membres et des notifications lues.
         dbSet(SK.USERS, mergedProfiles);
+        // Répare les profils distants encore lourds (voir purgerNotificationsBloateesServeur)
+        // pendant que la synchronisation est déjà en cours — aucun coût réseau
+        // additionnel, cela ne fait qu'écrire les profils déjà téléchargés.
+        try { purgerNotificationsBloateesServeur(resProf.data); } catch(e) {}
         if (S.user) {
           var freshMe = mergedProfiles.find(function(x){ return x.id === S.user.id; });
           if (freshMe) {
