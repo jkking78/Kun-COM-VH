@@ -617,6 +617,17 @@
   var _syncRetryCount = 0;
   var MAX_SYNC_RETRIES = 4;
 
+  // L'utilisateur est-il en train d'écrire ? Un redessin pendant la saisie efface
+  // le contenu des champs (le moteur de diff réaligne la valeur de l'input sur le
+  // HTML régénéré, qui est vide), fait sauter le curseur et referme le clavier.
+  function saisieEnCours() {
+    try {
+      var el = document.activeElement;
+      if (!el) return false;
+      return el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable === true;
+    } catch(e) { return false; }
+  }
+
   // ============================================================
   // PUBLICATIONS ORPHELINES (auteur dont le compte a été supprimé)
   // ============================================================
@@ -697,7 +708,7 @@
     setTimeout(function() {
       if (S.initialLoading) {
         S.initialLoading = false;
-        if (window.App && typeof render === 'function') render();
+        if (window.App && typeof render === 'function' && !saisieEnCours()) render();
       }
     }, 2500);
 
@@ -861,7 +872,12 @@
       // et l'application restait bloquée sur la roue indéfiniment.
       S.initialLoading = false;
       S.syncEnCours = false;
-      try { render(); } catch(eRender) { console.warn('Rendu après synchronisation :', eRender); }
+      // Ne pas redessiner par-dessus une saisie en cours : sur un réseau mobile
+      // lent, la synchronisation se termine souvent pendant que l'utilisateur
+      // remplit le formulaire d'inscription, et le redessin lui effaçait ce qu'il
+      // venait de taper. (Les champs sont désormais aussi mémorisés dans l'état,
+      // ceci évite en plus la perte du curseur et la fermeture du clavier.)
+      try { if (!saisieEnCours()) render(); } catch(eRender) { console.warn('Rendu après synchronisation :', eRender); }
     }
   }
   
@@ -1196,6 +1212,10 @@
     loadingUserProfile: false,
     createEventOpen: false,
     forgotUser: null,
+    // Contenu saisi dans les formulaires de connexion / inscription. Conservé ici
+    // et non uniquement dans la page, afin qu'un redessin (fin de synchronisation
+    // réseau, notamment) ne vide plus les champs en pleine saisie.
+    champsAuth: {},
     signupSections: [],
     signupRole: 'MEMBRE',
     editSections: [],

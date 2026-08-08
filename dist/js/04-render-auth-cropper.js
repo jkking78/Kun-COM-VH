@@ -248,7 +248,7 @@
             '<option>Quel est le nom de votre premier animal ?</option>' +
             '<option>Quelle est votre couleur préférée ?</option>' +
           '</select>' +
-          '<input id="signupA1" type="text" placeholder="Réponse secrète" required style="width:100%;height:44px;border-radius:12px;border:1.5px solid #E4E7EC;background:#F6F7F9;padding:0 14px;font-size:13px;box-sizing:border-box;margin-bottom:12px;outline:none;" />' +
+          '<input id="signupA1" type="text" value="' + safeHtml((S.champsAuth && S.champsAuth['signupA1']) || '') + '" oninput="App.saisieAuth(&#39;signupA1&#39;, this.value)" placeholder="Réponse secrète" required style="width:100%;height:44px;border-radius:12px;border:1.5px solid #E4E7EC;background:#F6F7F9;padding:0 14px;font-size:13px;box-sizing:border-box;margin-bottom:12px;outline:none;" />' +
         '</div>' +
         '<div><label style="font-size:12px;font-weight:700;color:#25303F;display:block;margin-bottom:5px;">Question 2</label>' +
           '<select id="signupQ2" style="width:100%;height:44px;border-radius:12px;border:1.5px solid #E4E7EC;background:#F6F7F9;padding:0 14px;font-size:13px;color:#000;box-sizing:border-box;margin-bottom:8px;outline:none;">' +
@@ -256,7 +256,7 @@
             '<option>Quel est le prénom de votre mère ?</option>' +
             '<option>Quel est votre plat préféré ?</option>' +
           '</select>' +
-          '<input id="signupA2" type="text" placeholder="Réponse secrète" required style="width:100%;height:44px;border-radius:12px;border:1.5px solid #E4E7EC;background:#F6F7F9;padding:0 14px;font-size:13px;box-sizing:border-box;margin-bottom:12px;outline:none;" />' +
+          '<input id="signupA2" type="text" value="' + safeHtml((S.champsAuth && S.champsAuth['signupA2']) || '') + '" oninput="App.saisieAuth(&#39;signupA2&#39;, this.value)" placeholder="Réponse secrète" required style="width:100%;height:44px;border-radius:12px;border:1.5px solid #E4E7EC;background:#F6F7F9;padding:0 14px;font-size:13px;box-sizing:border-box;margin-bottom:12px;outline:none;" />' +
         '</div></div>' +
         '<button type="submit" style="' + btnStyle('#0B63F6') + 'margin-top:6px;">Créer mon compte</button>' +
       '</form>' +
@@ -267,10 +267,17 @@
     '</div></div>';
   }
 
+  // Les champs des formulaires de connexion / inscription mémorisent ce qui y est
+  // saisi (S.champsAuth). Sans cela, leur contenu n'existait QUE dans la page : le
+  // moindre redessin le remettait à zéro — et il en part un dès que la
+  // synchronisation réseau se termine, c'est-à-dire, sur un réseau mobile lent,
+  // en plein milieu de la saisie. D'où le prénom qui « disparaissait tout seul »
+  // pendant la création d'un compte.
   function renderField(id, type, label, placeholder, autocomplete) {
+    var valeur = (S.champsAuth && S.champsAuth[id]) ? S.champsAuth[id] : '';
     return '<div style="flex:1;">' +
       '<label style="font-size:12px;font-weight:700;color:#25303F;display:block;margin-bottom:5px;">' + label + '</label>' +
-      '<input id="' + id + '" type="' + type + '"' + '' + ' placeholder="' + placeholder + '" autocomplete="' + (autocomplete||'off') + '" required ' +
+      '<input id="' + id + '" type="' + type + '" value="' + safeHtml(valeur) + '" oninput="App.saisieAuth(\'' + id + '\', this.value)"' + ' placeholder="' + placeholder + '" autocomplete="' + (autocomplete||'off') + '" required ' +
       'style="width:100%;height:50px;border-radius:14px;border:1.5px solid #E4E7EC;background:#F6F7F9;padding:0 16px;font-size:14.5px;color:#000;box-sizing:border-box;outline:none;transition:border-color 0.2s;" ' +
       'onfocus="this.style.borderColor=\'#0B63F6\'" onblur="this.style.borderColor=\'#E4E7EC\'">' +
     '</div>';

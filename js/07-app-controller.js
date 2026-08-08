@@ -1289,7 +1289,16 @@ toggleParticipation: function(postId, status) {
       }, 220);
     },
 
-    nav: function(v) { S.auth = v; render(); },
+    // Changer d'écran (connexion / inscription / mot de passe oublié) repart d'un
+    // formulaire vierge : on ne veut pas retrouver le mot de passe tapé pour la
+    // connexion pré-rempli dans le formulaire d'inscription.
+    nav: function(v) { S.auth = v; S.champsAuth = {}; render(); },
+    // Mémorise la frappe SANS redessiner (un render() à chaque touche ferait
+    // sauter le curseur et le clavier sur mobile).
+    saisieAuth: function(id, val) {
+      if (!S.champsAuth) S.champsAuth = {};
+      S.champsAuth[id] = val;
+    },
     login: async function(e) {
       e && e.preventDefault();
       // Empêche les connexions concurrentes : sans ceci, un appui répété pendant
@@ -1412,6 +1421,7 @@ toggleParticipation: function(postId, status) {
         S.user = user;
         S.auth = 'app';
         S.tab = 'home';
+        S.champsAuth = {};
         render();
         toast('Connexion réussie ! Bienvenue ' + (user.prenom||'Membre') + '. ', 'success');
         try { tryOpenDeepLinkedPost(); } catch(e){}
@@ -1502,7 +1512,7 @@ toggleParticipation: function(postId, status) {
       // Annonce l'arrivée du nouveau membre à toute l'équipe.
       announceNewMember(newUser);
 
-      S.signupSections = []; S.signupRole = 'MEMBRE';
+      S.signupSections = []; S.signupRole = 'MEMBRE'; S.champsAuth = {};
       render();
       toast('Bienvenue ' + prenom + ' ! Votre compte a été créé. ', 'success');
     },
