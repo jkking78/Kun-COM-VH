@@ -2796,19 +2796,34 @@ toggleParticipation: function(postId, status) {
       render();
     },
     // Ouvre un bilan précis dans le fil, plutôt que de le chercher à la main.
-    openBilan: function(postId) {
+    // Navigation générique vers une publication du fil : remet le fil à zéro
+    // (recherche et filtre par pôle effacés, sinon la cible resterait masquée),
+    // fait défiler jusqu'à elle et la met brièvement en évidence pour qu'on la
+    // repère au milieu des autres. Utilisée par les bilans du tableau de bord et
+    // par les partages, qui doivent ramener à la publication d'origine.
+    goToPost: function(postId, labelIntrouvable) {
       var post = db(SK.POSTS, []).find(function(p){ return p.id === postId; });
-      if (!post) { toast('Ce bilan n\'existe plus.', 'error'); return; }
+      if (!post) { toast(labelIntrouvable || 'Cette publication n\'existe plus.', 'error'); return; }
       S.tab = 'home';
       S.q = '';
       S.story = 'all';
+      S.createOpen = false; S.commentOpen = false; S.optionsOpen = false;
+      S.viewUserProfileId = null;
       render();
       setTimeout(function() {
         var el = document.getElementById('post-' + postId);
-        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        else toast('Ce bilan n\'est plus dans le fil chargé.', 'info');
+        if (!el) { toast('Cette publication n\'est plus dans le fil chargé.', 'info'); return; }
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Halo temporaire : sans repère visuel, on ne sait pas laquelle des
+        // cartes à l'écran est celle qu'on cherchait.
+        el.style.transition = 'box-shadow 0.35s ease';
+        el.style.boxShadow = '0 0 0 2px ' + UI.accent;
+        window.setTimeout(function(){ el.style.boxShadow = 'none'; }, 1600);
       }, 120);
     },
+    openBilan: function(postId) { this.goToPost(postId, 'Ce bilan n\'existe plus.'); },
+    // Depuis un partage, on revient à la publication d'origine.
+    goToOriginalPost: function(postId) { this.goToPost(postId, 'La publication d\'origine a été supprimée.'); },
 
     // Déplie/replie une section dans l'écran Notation (une seule à la fois).
     // Les Grands Responsables peuvent noter toutes les sections, y compris la leur.

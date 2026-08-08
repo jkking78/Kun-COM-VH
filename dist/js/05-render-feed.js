@@ -832,23 +832,33 @@
          // For REPOST: override with original content
          if (post.type === 'REPOST') {
            var origMedia = post.originalMediaUrls || [];
+           // Toucher le contenu repris ramène à la publication d'origine.
+           var goOrig = post.originalPostId
+             ? ' onclick="event.stopPropagation();App.goToOriginalPost(\'' + post.originalPostId + '\')" style="cursor:pointer;"'
+             : '';
            if (origMedia.length > 0) {
-             contentZone = '<div style="padding:0;">' + origMedia.map(function(url){
+             contentZone = '<div' + goOrig + '>' + origMedia.map(function(url){
                return isVideoUrl(url)
                  ? '<video src="' + url + '"' + (post.originalVideoPoster ? ' poster="'+post.originalVideoPoster+'"' : '') + ' controls playsinline preload="metadata" style="width:100%;display:block;background:#000;"></video>'
                  : '<img src="' + url + '" style="width:100%;display:block;" />';
              }).join('') + '</div>';
            } else if (post.originalPostBg) {
-             contentZone = '<div style="background:' + post.originalPostBg + ';min-height:200px;display:flex;align-items:center;justify-content:center;padding:30px;"><p style="color:#FFF;font-size:20px;font-weight:800;text-align:center;text-shadow:0 2px 8px rgba(0,0,0,0.3);margin:0;line-height:1.4;">' + safeHtml(post.originalCaption || '') + '</p></div>';
+             contentZone = '<div' + (goOrig ? goOrig.replace('style="cursor:pointer;"', '') : '') + ' style="background:' + post.originalPostBg + ';min-height:200px;display:flex;align-items:center;justify-content:center;padding:30px;' + (goOrig ? 'cursor:pointer;' : '') + '"><p style="color:#FFF;font-size:20px;font-weight:800;text-align:center;text-shadow:0 2px 8px rgba(0,0,0,0.3);margin:0;line-height:1.4;">' + safeHtml(post.originalCaption || '') + '</p></div>';
            }
          }
       }
     // Repost banner
     var repostBanner = '';
     if (post.type === 'REPOST') {
-      repostBanner = '<div style="padding:10px 14px 0;display:flex;align-items:center;gap:6px;color:#8A93A0;font-size:12.5px;font-weight:700;">' +
-        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8A93A0" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>' +
-        safeHtml(post.author || '') + ' a partagé la publication de ' + safeHtml(post.originalAuthor || '') +
+      // Le bandeau lui-même ramène à la publication d'origine : c'est l'endroit
+      // que l'on touche naturellement quand on veut « voir l'original ».
+      var bannerClick = post.originalPostId
+        ? ' onclick="App.goToOriginalPost(\'' + post.originalPostId + '\')" style="padding:12px 16px 0;display:flex;align-items:center;gap:7px;color:' + UI.faint + ';font-size:12.5px;cursor:pointer;"'
+        : ' style="padding:12px 16px 0;display:flex;align-items:center;gap:7px;color:' + UI.faint + ';font-size:12.5px;"';
+      repostBanner = '<div' + bannerClick + '>' +
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="' + UI.faint + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>' +
+        '<span style="min-width:0;">' + safeHtml(post.author || '') + ' a partagé la publication de ' + safeHtml(post.originalAuthor || '') + '</span>' +
+        (post.originalPostId ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="' + UI.faint + '" stroke-width="2.2" style="margin-left:auto;flex-shrink:0;"><path d="M9 18l6-6-6-6"/></svg>' : '') +
       '</div>';
     }
     // Caption text (author + label), shown ABOVE the media — Facebook style
