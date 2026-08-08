@@ -855,6 +855,11 @@
     // Enregistrement d'arrivée : événement pour lequel la publication en cours
     // vaut pointage (distinct de postAboutEventId, purement informatif).
     postCheckInEventId: null,
+    // Aperçu du lien collé dans le composeur (titre, description, image).
+    linkPreview: null,        // objet renvoyé par /api/og
+    linkPreviewUrl: null,     // URL pour laquelle l'aperçu a été demandé
+    linkPreviewLoading: false,
+    linkPreviewDismissed: false,   // l'auteur a retiré l'aperçu à la main
     // Sondage optionnel attaché à la publication en cours de création.
     pollOpen: false,
     pollQuestion: '',
@@ -1659,6 +1664,23 @@
       cur = previousCycleBounds(cur);
     }
     return cycles;
+  }
+
+  // ============================================================
+  // APERÇU DES LIENS
+  // ============================================================
+  // Un navigateur ne peut pas lire le HTML d'un site tiers (CORS) : c'est la
+  // fonction serveur /api/og qui va chercher les métadonnées et nous renvoie
+  // titre, description et image.
+  function fetchLinkPreview(url) {
+    return fetch('/api/og?url=' + encodeURIComponent(url))
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .catch(function(){ return null; });
+  }
+
+  // Nom de domaine lisible, utilisé quand le site ne fournit aucune métadonnée.
+  function linkDomain(url) {
+    try { return new URL(url).hostname.replace(/^www\./, ''); } catch (e) { return url; }
   }
 
   // ============================================================

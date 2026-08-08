@@ -656,6 +656,31 @@
     '</div>';
   }
 
+  // Vignette d'un lien : image si le site en fournit une, sinon domaine seul.
+  // « compact » sert dans le composeur, où la place est comptée.
+  function renderLinkPreviewCard(pv, opts) {
+    if (!pv || !pv.url) return '';
+    opts = opts || {};
+    var domain = pv.siteName || linkDomain(pv.url);
+    var titre = pv.title || domain;
+    var img = pv.image
+      ? '<img src="' + safeHtml(pv.image) + '" loading="lazy" onerror="this.style.display=\'none\'" style="display:block;width:100%;height:' + (opts.compact ? '120px' : '170px') + ';object-fit:cover;background:' + UI.tile + ';" />'
+      : '';
+    var inner =
+      img +
+      '<div style="padding:10px 12px;">' +
+        '<div style="font-size:10.5px;color:' + UI.faint + ';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px;">' + safeHtml(domain) + '</div>' +
+        '<div style="font-size:13.5px;font-weight:600;color:' + UI.ink + ';line-height:1.35;">' + safeHtml(titre) + '</div>' +
+        (pv.description && !opts.compact
+          ? '<div style="font-size:12px;color:' + UI.muted + ';line-height:1.4;margin-top:3px;">' + safeHtml(pv.description) + '</div>'
+          : '') +
+      '</div>';
+
+    var box = '<div style="border:0.5px solid ' + UI.line2 + ';border-radius:' + UI.r1 + ';overflow:hidden;background:' + UI.card + ';">' + inner + '</div>';
+    if (opts.noLink) return box;
+    return '<a href="' + safeHtml(pv.url) + '" target="_blank" rel="noopener noreferrer" style="text-decoration:none;display:block;">' + box + '</a>';
+  }
+
   // Sondage optionnel attaché à une publication : question + options cliquables.
   // Une seule réponse par membre ; les résultats (barres + %) n'apparaissent
   // qu'une fois qu'on a soi-même voté, pour ne pas influencer le vote.
@@ -938,6 +963,7 @@
       })() +
       renderCheckInBadge(post) +
       captionTextBlock +
+      (post.linkPreview ? '<div style="margin:0 16px 12px;">' + renderLinkPreviewCard(post.linkPreview) + '</div>' : '') +
       contentZone +
       renderPollBlock(post) +
       // Actions row
@@ -1733,6 +1759,19 @@
               '</form>'
           ) +
           (S.postBg ? '<form id="createPostForm" onsubmit="App.submitPost(event)" style="display:none;"></form>' : '') +
+
+          // Aperçu du lien collé
+          (S.linkPreviewLoading
+            ? '<div style="display:flex;align-items:center;gap:9px;border:0.5px solid ' + UI.line2 + ';border-radius:' + UI.r1 + ';padding:12px;margin-bottom:12px;color:' + UI.faint + ';font-size:12.5px;">' +
+                '<div style="width:15px;height:15px;border:2px solid ' + UI.line2 + ';border-top-color:' + UI.accent + ';border-radius:50%;animation:spin 0.7s linear infinite;flex-shrink:0;"></div>' +
+                'Chargement de l\'aperçu du lien…' +
+              '</div>'
+            : (S.linkPreview
+                ? '<div style="position:relative;margin-bottom:12px;">' +
+                    renderLinkPreviewCard(S.linkPreview, { compact: true, noLink: true }) +
+                    '<button type="button" onclick="App.dismissLinkPreview()" title="Retirer l\'aperçu" style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,0.6);border:none;border-radius:50%;width:32px;height:32px;color:#FFF;font-size:15px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;touch-action:manipulation;">×</button>' +
+                  '</div>'
+                : '')) +
 
           // Qui peut voir
           '<div style="background:#F6F7F9;border-radius:20px;padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +

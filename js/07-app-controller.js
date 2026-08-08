@@ -2139,8 +2139,53 @@ toggleParticipation: function(postId, status) {
       render();
       toast('Publication modifiée ! ', 'success');
     },
-    openCreate: function() { S.createOpen=true; S.pendingMedia=[]; S.pendingVideoPoster=null; S.postAboutEventId=null; S.postCheckInEventId=null; S.videoProcessing=false; S.pollOpen=false; S.pollQuestion=''; S.pollOptions=['','']; render(); setTimeout(function(){ var t=document.getElementById('newPostText'); if(t) t.focus(); },120); },
-    closeCreate: function() { S.createOpen=false; S.pendingMedia=[]; clearPendingLocalCopies(); S.hashSuggestions=false; S.postBg=null; S.postText=''; S.pendingVideoPoster=null; S.postAboutEventId=null; S.postCheckInEventId=null; S.videoProcessing=false; S.pollOpen=false; S.pollQuestion=''; S.pollOptions=['','']; render(); },
+    openCreate: function() { S.createOpen=true; S.pendingMedia=[]; S.pendingVideoPoster=null; S.postAboutEventId=null; S.postCheckInEventId=null; S.videoProcessing=false; S.pollOpen=false; S.pollQuestion=''; S.pollOptions=['','']; S.linkPreview=null; S.linkPreviewUrl=null; S.linkPreviewLoading=false; S.linkPreviewDismissed=false; render(); setTimeout(function(){ var t=document.getElementById('newPostText'); if(t) t.focus(); },120); },
+    closeCreate: function() { S.createOpen=false; S.pendingMedia=[]; clearPendingLocalCopies(); S.hashSuggestions=false; S.postBg=null; S.postText=''; S.pendingVideoPoster=null; S.postAboutEventId=null; S.postCheckInEventId=null; S.videoProcessing=false; S.pollOpen=false; S.pollQuestion=''; S.pollOptions=['','']; S.linkPreview=null; S.linkPreviewUrl=null; S.linkPreviewLoading=false; S.linkPreviewDismissed=false; render(); },
+    // ---- Aperçu de lien (composeur) ----
+    // Détecte le premier lien du texte et va chercher ses métadonnées. Attend
+    // 700 ms après la dernière frappe pour ne pas interroger le serveur à chaque
+    // caractère pendant qu'on tape ou colle une longue URL.
+    refreshLinkPreview: function(text) {
+      var links = extractLinks(text || '');
+      var url = links.length ? links[0] : null;
+
+      if (!url) {
+        if (S.linkPreview || S.linkPreviewUrl || S.linkPreviewLoading) {
+          S.linkPreview = null; S.linkPreviewUrl = null; S.linkPreviewLoading = false;
+          S.linkPreviewDismissed = false;
+          render();
+        }
+        return;
+      }
+      // Lien inchangé : rien à refaire. Retiré à la main : on n'insiste pas.
+      if (url === S.linkPreviewUrl || (S.linkPreviewDismissed && url === S.linkPreviewDismissed)) return;
+
+      S.linkPreviewUrl = url;
+      S.linkPreview = null;
+      S.linkPreviewLoading = true;
+      clearTimeout(window._linkPreviewTimer);
+      window._linkPreviewTimer = setTimeout(function() {
+        var asked = url;
+        fetchLinkPreview(url).then(function(data) {
+          // L'auteur a pu continuer à écrire : on ignore une réponse devenue
+          // obsolète, sinon un ancien aperçu écraserait le nouveau.
+          if (S.linkPreviewUrl !== asked) return;
+          S.linkPreview = data || null;
+          S.linkPreviewLoading = false;
+          render();
+        });
+      }, 700);
+      render();
+    },
+    // Retirer l'aperçu sans retirer le lien du texte.
+    dismissLinkPreview: function() {
+      S.linkPreviewDismissed = S.linkPreviewUrl;
+      S.linkPreview = null;
+      S.linkPreviewUrl = null;
+      S.linkPreviewLoading = false;
+      render();
+    },
+
     // ---- Sondage (composeur) ----
     togglePoll: function() {
       S.pollOpen = !S.pollOpen;
@@ -2212,6 +2257,10 @@ toggleParticipation: function(postId, status) {
     onPostInput: function(val) {
       // Préserve le texte tapé à travers les re-render (ex: changement de fond)
       S.postText = val;
+
+      // Aperçu du premier lien collé. On ne relance rien tant que l'URL n'a pas
+      // changé : sans ce garde-fou, chaque frappe déclencherait une requête.
+      this.refreshLinkPreview(val);
 
       // Suggestions de hashtags
       var words = val.split(/\s/); var last = words[words.length-1];
@@ -2483,7 +2532,10 @@ toggleParticipation: function(postId, status) {
         // l'heure puis de pointer plus tard pour effacer son retard.
         checkInAt: S.postCheckInEventId ? Date.now() : null,
         // Sondage optionnel : question + options figées à la publication, votes vides.
-        poll: pollData
+        poll: pollData,
+        // Aperçu du lien figé ici : la publication reste lisible même si le site
+        // change ou disparaît, et le fil n'interroge aucun serveur au défilement.
+        linkPreview: (S.linkPreview && S.linkPreviewUrl && txt.indexOf(S.linkPreviewUrl) !== -1) ? S.linkPreview : null
       };
 
       // Ephemeral post handling
@@ -2529,7 +2581,7 @@ toggleParticipation: function(postId, status) {
       saveLinksToProfile(newPost.userId, extractLinks(txt), newPost.id);
 
       updateUserActivity('Publication');
-      S.createOpen=false; S.pendingMedia=[]; clearPendingLocalCopies(); S.hashSuggestions=false; S.postBg=null; S.postText=''; S.pendingVideoPoster=null; S.postVisibility='all'; S.postTargetSections=[]; S.postAboutEventId=null; S.postCheckInEventId=null; S.pollOpen=false; S.pollQuestion=''; S.pollOptions=['',''];
+      S.createOpen=false; S.pendingMedia=[]; clearPendingLocalCopies(); S.hashSuggestions=false; S.postBg=null; S.postText=''; S.pendingVideoPoster=null; S.postVisibility='all'; S.postTargetSections=[]; S.postAboutEventId=null; S.postCheckInEventId=null; S.pollOpen=false; S.pollQuestion=''; S.pollOptions=['','']; S.linkPreview=null; S.linkPreviewUrl=null; S.linkPreviewLoading=false; S.linkPreviewDismissed=false;
       S.tab = 'home';
       S.q = ''; // Optional: clear search if they were searching
       render();
