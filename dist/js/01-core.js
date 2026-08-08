@@ -373,20 +373,6 @@
     return out.slice(0, 100);
   }
 
-      function mergeProfilesWithLocal(remoteData) {
-    var localUsers = db(SK.USERS, []);
-    var map = {};
-    // Le serveur fait autorité sur la liste des comptes (aucune pagination ici :
-    // on récupère tous les profils à chaque fois). Un profil encore en cache local
-    // mais absent du serveur a donc été supprimé — on ne le garde pas, sinon il
-    // réapparaît indéfiniment et se fait même réinjecter dans la base par le renvoi
-    // rétroactif.
-    //
-    // DEUX exceptions, sans lesquelles on pourrait détruire un compte :
-    //  - le compte connecté sur cet appareil ;
-    //  - tout compte CRÉÉ sur cet appareil et pas encore synchronisé (réseau coupé,
-    //    serveur injoignable...). Sans cette garde, un membre inscrit hors-ligne qui
-    //    se déconnecte verrait son compte effacé du cache et ne pourrait plus jamais
   function parseProfileItem(item) {
     if (!item) return null;
     var r = item;
