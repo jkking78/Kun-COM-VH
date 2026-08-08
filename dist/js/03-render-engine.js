@@ -139,5 +139,20 @@
 
     // Observe les publications visibles pour comptabiliser les vues
     try { setupViewTracking(); } catch(e){}
+
+    // Secousse de la cloche à l'arrivée d'une notification.
+    try { pulseNotifOnNew(); } catch(e){}
+  }
+
+  // Vibration courte à l'arrivée d'une notification. L'ANIMATION, elle, n'est
+  // plus posée ici : morphdom réécrit l'attribut style à chaque rendu et coupait
+  // la secousse en cours. Elle est désormais portée par le rendu lui-même
+  // (voir renderNotifFab), donc elle survit aux rafraîchissements.
+  var _notifBuzzAt = 0;
+  function pulseNotifOnNew() {
+    if (typeof S === 'undefined' || !S.notifShakeAt) return;
+    if (S.notifShakeAt === _notifBuzzAt) return;   // déjà vibré pour celle-ci
+    _notifBuzzAt = S.notifShakeAt;
+    try { if (navigator.vibrate) navigator.vibrate(35); } catch(e){}
   }
 

@@ -855,6 +855,9 @@
     // Enregistrement d'arrivée : événement pour lequel la publication en cours
     // vaut pointage (distinct de postAboutEventId, purement informatif).
     postCheckInEventId: null,
+    // Instant de la dernière notification reçue : la cloche flottante secoue
+    // pendant 1,5 s à partir de là.
+    notifShakeAt: 0,
     // Pile des publications épinglées : repliée par défaut dès qu'il y en a
     // plusieurs, pour ne pas encombrer le haut du fil.
     pinnedOpen: false,

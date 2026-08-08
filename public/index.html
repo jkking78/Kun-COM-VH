@@ -188,6 +188,19 @@
       to   { transform: translateY(0);    }
     }
 
+    /* Secousse de la cloche à l'arrivée d'une notification. On fait pivoter
+       l'ICÔNE et non le bouton : le halo et la pastille de compteur restent
+       stables, seul le battant bouge — c'est ce qui rend le geste lisible. */
+    @keyframes notifShake {
+      0%, 100% { transform: rotate(0deg); }
+      12%  { transform: rotate(-15deg); }
+      26%  { transform: rotate(12deg); }
+      40%  { transform: rotate(-9deg); }
+      54%  { transform: rotate(7deg); }
+      68%  { transform: rotate(-4deg); }
+      82%  { transform: rotate(2deg); }
+    }
+
     @keyframes toastIn {
       from { opacity: 0; transform: translateX(-50%) translateY(-16px); }
       to   { opacity: 1; transform: translateX(-50%) translateY(0);      }
@@ -236,14 +249,14 @@
   <!-- BUNDLE PRINCIPAL (PWA Vanilla JS) — anciennement un seul fichier app.js,
        désormais découpé en modules thématiques (même code, chargés dans l'ordre
        d'origine, aucun changement de comportement) pour faciliter la maintenance. -->
-  <script src="js/01-core.js?v=74"></script>
-  <script src="js/02-media.js?v=74"></script>
-  <script src="js/03-render-engine.js?v=74"></script>
-  <script src="js/04-render-auth-cropper.js?v=74"></script>
-  <script src="js/05-render-feed.js?v=74"></script>
-  <script src="js/06-render-panels.js?v=74"></script>
-  <script src="js/07-app-controller.js?v=74"></script>
-  <script src="js/08-bootstrap.js?v=74"></script>
+  <script src="js/01-core.js?v=75"></script>
+  <script src="js/02-media.js?v=75"></script>
+  <script src="js/03-render-engine.js?v=75"></script>
+  <script src="js/04-render-auth-cropper.js?v=75"></script>
+  <script src="js/05-render-feed.js?v=75"></script>
+  <script src="js/06-render-panels.js?v=75"></script>
+  <script src="js/07-app-controller.js?v=75"></script>
+  <script src="js/08-bootstrap.js?v=75"></script>
 
   <!-- DÉBLOCAGE ANTI-SPINNER (Garantie de déblocage 0ms / 400ms max) -->
   <script>

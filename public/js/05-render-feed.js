@@ -175,6 +175,7 @@
       // caché derrière elle et ne peut plus être atteint.
       '<div id="mainContent" style="flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;padding-bottom:calc(70px + env(safe-area-inset-bottom));">' + content + '</div>' +
       modals +
+      renderNotifFab() +
       renderNav(initial) +
     '</div>';
   }
@@ -206,6 +207,44 @@
     '</nav>';
   }
 
+  // Bouton flottant des notifications, posé au-dessus de la barre du bas et à
+  // droite. Il suit l'utilisateur sur TOUS les onglets, alors que la cloche
+  // n'existait que sur l'Accueil : une notification reçue pendant qu'on
+  // consultait le Planning n'était signalée nulle part.
+  // Compte des non-lus au rendu précédent. Reste à null tant qu'aucune session
+  // n'est ouverte : sinon la bascule « pas connecté (0) » -> « connecté (N) »
+  // passerait pour une arrivée de notifications et la cloche s'agiterait à
+  // chaque ouverture de l'application.
+  var _notifSeen = null;
+
+  function renderNotifFab() {
+    if (!S.user || S.auth !== 'app') { _notifSeen = null; return ''; }
+    var notifs = Array.isArray(S.user.notifications) ? S.user.notifications : [];
+    var nonLus = notifs.filter(function(n){ return !n.read; }).length;
+
+    // La secousse est déclenchée ICI, et sa durée est portée par l'état plutôt
+    // que posée sur le nœud après coup : morphdom réécrit l'attribut style à
+    // chaque rendu et effaçait l'animation en cours au premier rafraîchissement.
+    if (_notifSeen !== null && nonLus > _notifSeen) S.notifShakeAt = Date.now();
+    _notifSeen = nonLus;
+    var secoue = S.notifShakeAt && (Date.now() - S.notifShakeAt) < 1500;
+
+    return '<button id="notifFab" onclick="App.openNotifications()" aria-label="Notifications' + (nonLus ? ' (' + nonLus + ' non lues)' : '') + '" ' +
+      'style="position:fixed;right:16px;bottom:calc(76px + env(safe-area-inset-bottom));z-index:8999;' +
+      'width:52px;height:52px;border-radius:' + UI.pill + ';border:none;cursor:pointer;padding:0;' +
+      'background:' + UI.card + ';box-shadow:0 4px 16px rgba(23,43,77,0.18);' +
+      'display:flex;align-items:center;justify-content:center;touch-action:manipulation;">' +
+      '<span id="notifFabIcon" style="display:flex;transform-origin:50% 15%;' + (secoue ? 'animation:notifShake 0.7s cubic-bezier(0.36,0.07,0.19,0.97) 2;' : '') + '">' +
+        '<svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="' + (nonLus ? UI.accent : UI.muted) + '" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' +
+          '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>' +
+        '</svg>' +
+      '</span>' +
+      (nonLus > 0
+        ? '<span style="position:absolute;top:-2px;right:-2px;min-width:20px;height:20px;padding:0 5px;border-radius:' + UI.pill + ';background:' + UI.bad + ';color:#FFF;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;border:2px solid ' + UI.card + ';">' + (nonLus > 99 ? '99+' : nonLus) + '</span>'
+        : '') +
+    '</button>';
+  }
+
   // ============================================================
   // HOME TAB
   // ============================================================
@@ -231,7 +270,6 @@
   function renderHome(filtered, initial, u) {
     var trends = trendingTags();
 
-    var unreadCount = (u && Array.isArray(u.notifications)) ? u.notifications.filter(function(n){ return !n.read; }).length : 0;
     // 44 px : c'est la taille de cible tactile minimale recommandée par Apple.
     // À 34 px et 6 px d'écart, comme auparavant, on visait la cloche et on
     // touchait le « + » — d'autant que ces boutons n'ont plus de fond visible,
@@ -247,7 +285,6 @@
       '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px 10px;">' +
         '<h1 style="font-size:19px;font-weight:600;color:' + UI.ink + ';margin:0;letter-spacing:-0.3px;min-width:0;">Commit</h1>' +
         '<div style="display:flex;gap:2px;align-items:center;flex-shrink:0;margin-right:-8px;">' +
-          iconBtn('App.openNotifications()', '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="' + UI.muted + '" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>', unreadCount) +
           iconBtn('App.openCreate()', '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="' + UI.muted + '" stroke-width="1.9" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>', 0) +
           '<button onclick="App.tab(\'profile\')" style="width:44px;height:44px;border-radius:' + UI.pill + ';background:none;border:none;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;flex-shrink:0;touch-action:manipulation;">' +
             (u.avatar_url
