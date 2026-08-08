@@ -284,18 +284,6 @@
       S.eventPlaceQuery = '';
       render();
     },
-    syncEditProfileData: function() {
-      var prenomEl = document.getElementById('editPrenom');
-      var nomEl = document.getElementById('editNom');
-      var bioEl = document.getElementById('editBio');
-      if (prenomEl || nomEl || bioEl) {
-        S.editProfileData = {
-          prenom: prenomEl ? prenomEl.value : '',
-          nom: nomEl ? nomEl.value : '',
-          bio: bioEl ? bioEl.value : ''
-        };
-      }
-    },
     openCreateEvent: function() {
       S.createEventOpen = true; S.editEventId = null;
       S.eventSections = []; S.eventAssignments = []; S.createEventData = null;
@@ -568,49 +556,6 @@
       S.eventSaveMode = null;
       render();
     },
-    submitEvent: function() {
-      var title = (document.getElementById('evTitle')||{}).value;
-      var dStr = (document.getElementById('evDate')||{}).value;
-      var tStr = (document.getElementById('evTime')||{}).value;
-      var loc = (document.getElementById('evLocation')||{}).value;
-      var sec = (document.getElementById('evSection')||{}).value;
-      var desc = (document.getElementById('evDesc')||{}).value;
-      var pin = (document.getElementById('evPinned')||{}).checked;
-      
-      if (!title || !dStr) { toast('Titre et date obligatoires', 'error'); return; }
-      
-      var d = new Date(dStr);
-      var monthStr = d.toLocaleDateString('fr-FR', { month:'short' });
-      var dayStr = d.toLocaleDateString('fr-FR', { day:'2-digit' });
-      
-      var secObj = SECTIONS.find(function(s){ return s.id === sec; });
-      var secNomStr = secObj ? secObj.nom : 'Département';
-      
-      var posts = db(SK.POSTS, []);
-      var newPost = {
-        id: 'event-'+Date.now(), userId: S.user.id, timestamp: Date.now(),
-        author: S.user.prenom + ' ' + S.user.nom, authorAvatar: S.user.prenom.charAt(0).toUpperCase(),
-        avatarColor: S.user.avatar_color || '#0B63F6',
-        sectionId: sec, sectionNom: secNomStr,
-        type: 'EVENT', is_pinned: pin,
-        metadata: {
-           title: title, date: dStr, time: tStr, location: loc,
-           month: monthStr, day: dayStr, participations: {}
-        },
-        caption: desc, mediaUrls: [], likes: 0, likedBy: [], comments: []
-      };
-      
-      posts.unshift(newPost);
-      dbSet(SK.POSTS, posts);
-      
-      if (supabase) supabase.from('kun_com_posts').upsert({ id: newPost.id, content: newPost, created_at: new Date().toISOString() }, { onConflict: 'id' }).then(function(){});
-      
-      S.createEventOpen = false;
-      S.tab = 'home'; S.q = '';
-      render();
-      setTimeout(function() { window.scrollTo({ top: 0, behavior: 'smooth' }); }, 50);
-      toast('Événement créé ! ', 'success');
-    },
     togglePin: function(postId) {
       var u = S.user || {};
       var posts = db(SK.POSTS, []);
@@ -630,12 +575,6 @@
     },
     
     
-    getUserSections: function(u) {
-      if (!u) return [];
-      if (Array.isArray(u.sections) && u.sections.length > 0) return u.sections;
-      if (u.section_id) return [u.section_id];
-      return [];
-    },
     toggleSignupSection: function(sec) {
       var idx = S.signupSections.indexOf(sec);
       if (idx !== -1) { S.signupSections.splice(idx, 1); }
@@ -694,7 +633,7 @@
       html += '</div>';
       return html;
     },
-checkForgotEmail: function(e) {
+    checkForgotEmail: function(e) {
       e && e.preventDefault();
       var email = ((document.getElementById('forgotEmail')||{}).value||'').trim();
       var users = db(SK.USERS, []);
@@ -741,11 +680,43 @@ toggleParticipation: function(postId, status) {
 
     // Détail d'une métrique RH (fenêtre encore présente dans le code, sa fermeture
     // n'était reliée à rien : le panneau serait resté bloqué à l'écran).
-    openRhDetailsModal: function(metric, userId) { S.rhMetricModal = metric; S.rhMetricUserId = userId || null; render(); },
-    closeRhDetailsModal: function() { S.rhMetricModal = null; S.rhMetricUserId = null; render(); },
 
     // Participation à un événement depuis le Planning. La liste des participants
     // est stockée dans ev.likedBy (c'est elle qu'affiche le compteur de la fiche).
+    // Participation sur une fiche d'événement à l'ANCIEN format, qui stocke les
+    // réponses dans metadata.participations ('yes' / 'no') au lieu de likedBy.
+    // Ces boutons appelaient une méthode inexistante : ils ne faisaient rien.
+    toggleParticipation: function(eventId, reponse) {
+      if (!S.user) { toast('Vous devez être connecté.', 'error'); return; }
+      var posts = db(SK.POSTS, []);
+      var ev = posts.find(function(p){ return p.id === eventId && p.type === 'EVENT'; });
+      if (!ev) { toast('Événement introuvable.', 'error'); return; }
+      if (!ev.metadata) ev.metadata = {};
+      if (!ev.metadata.participations) ev.metadata.participations = {};
+
+      var actuel = ev.metadata.participations[S.user.id];
+      // Retoucher le même bouton annule la réponse : on peut se raviser.
+      if (actuel === reponse) delete ev.metadata.participations[S.user.id];
+      else ev.metadata.participations[S.user.id] = reponse;
+      var nouveau = ev.metadata.participations[S.user.id] || null;
+
+      dbSet(SK.POSTS, posts);
+      if (supabase) {
+        supabase.from('kun_com_posts').upsert({ id: ev.id, content: ev }, { onConflict: 'id' })
+          .then(function(){}, function(e){ console.warn('Participation :', e); });
+      }
+      if (nouveau === 'yes' && ev.userId && ev.userId !== S.user.id) {
+        sendNotificationToUser(ev.userId, {
+          type: 'EVENT_PARTICIPATION',
+          title: 'Nouvelle participation',
+          text: (S.user.prenom || 'Quelqu\'un') + ' participera à « ' + ((ev.metadata && ev.metadata.title) || ev.eventTitle || 'votre événement') + ' ».',
+          targetId: ev.id
+        });
+      }
+      render();
+      toast(nouveau === 'yes' ? 'Participation confirmée.' : nouveau === 'no' ? 'Indisponibilité enregistrée.' : 'Réponse retirée.', 'success');
+    },
+
     toggleEventParticipation: function(eventId) {
       if (!S.user) { toast('Vous devez être connecté.', 'error'); return; }
       var posts = db(SK.POSTS, []);
@@ -1210,8 +1181,13 @@ toggleParticipation: function(postId, status) {
       S.editProfileOpen = false;
       render();
       toast('Profil mis à jour !', 'success');    },
-    openPostOptions: function(id) { S.selectedPostId = id; S.postOptionsOpen = true; render(); },
-    closePostOptions: function() { S.postOptionsOpen = false; S.selectedPostId = null; render(); },
+    openNotifications: function() {
+      S.notificationsOpen = true;
+      if ('Notification' in window && Notification.permission === 'default') {
+        try { Notification.requestPermission(); } catch(e){}
+      }
+      render();
+    },
     viewPost: function(id) {
        S.postOptionsOpen = false; S.selectedPostId = null;
        S.q = ''; // clear search
@@ -1222,19 +1198,7 @@ toggleParticipation: function(postId, status) {
          if (el) el.scrollIntoView({behavior: 'smooth'});
        }, 100);
     },
-    shareProfile: function() { toast('Fonction de partage bientôt disponible !'); },
-
-
-    // Auth
-
-    // Notifications System
-    openNotifications: function() {
-      S.notificationsOpen = true;
-      if ('Notification' in window && Notification.permission === 'default') {
-        try { Notification.requestPermission(); } catch(e){}
-      }
-      render();
-    },
+    closePostOptions: function() { S.postOptionsOpen = false; S.selectedPostId = null; render(); },
     closeNotifications: function() {
       S.notificationsOpen = false;
       render();
@@ -2499,10 +2463,6 @@ toggleParticipation: function(postId, status) {
       if (S.pendingMedia.length === 0) { S.pendingVideoPoster = null; clearPendingLocalCopies(); }
       render();
     },
-    setProfileTab: function(tab) {
-      S.profileTab = tab;
-      render();
-    },
     setPostBgIdx: function(idx) {
       var BG_PALETTES = [
         'linear-gradient(135deg,#1A1A2E,#16213E)',
@@ -2983,12 +2943,6 @@ toggleParticipation: function(postId, status) {
     rateComment: function(secId, val) {
       if (!S.ratings[secId]) S.ratings[secId] = { criteria:{}, comment:'' };
       S.ratings[secId].comment = val;
-    },
-    checkIn: function() {
-      S.checkedIn = true;
-      var btn = document.getElementById('checkInBtn');
-      if (btn) { btn.textContent='✓ Présent'; btn.style.background='#0E9F6E'; }
-      toast('Présence validée ! ✓', 'success');
     },
     // Publie UNE seule publication regroupant toutes les sections évaluées
     // (auparavant : une publication séparée par section, ce qui noyait le fil).
