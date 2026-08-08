@@ -61,9 +61,9 @@
     
     var content = '';
     if (S.loadingUserProfile) {
-      content = '<div style="padding:100px 20px;text-align:center;"><div style="font-size:32px;animation:spin 1s linear infinite;">⏳</div><div style="margin-top:16px;font-size:14px;color:#8E8E93;">Chargement du profil...</div></div>';
+      content = '<div style="padding:100px 20px;text-align:center;"><div style="font-size:32px;animation:spin 1s linear infinite;">⏳</div><div style="margin-top:16px;font-size:14px;color:#8A93A0;">Chargement du profil...</div></div>';
     } else if (!targetUser) {
-      content = '<div style="padding:100px 20px;text-align:center;"><div style="font-size:40px;">😕</div><div style="margin-top:16px;font-size:16px;font-weight:600;">Utilisateur introuvable</div><button onclick="App.closeUserProfile()" style="margin-top:20px;padding:10px 20px;background:#007AFF;color:#FFF;border:none;border-radius:20px;font-weight:600;cursor:pointer;">Retour</button></div>';
+      content = '<div style="padding:100px 20px;text-align:center;"><div style="font-size:40px;">😕</div><div style="margin-top:16px;font-size:16px;font-weight:600;">Utilisateur introuvable</div><button onclick="App.closeUserProfile()" style="margin-top:20px;padding:10px 20px;background:#0B63F6;color:#FFF;border:none;border-radius:20px;font-weight:600;cursor:pointer;">Retour</button></div>';
     } else {
       content = renderProfile(targetUser, posts);
     }
@@ -97,49 +97,49 @@
       });
       
       if (myEvents.length === 0) {
-        contentHtml = '<div style="text-align:center;padding:30px 10px;color:#8E8E93;"><div style="font-size:36px;margin-bottom:8px;">📌</div><p>Aucun service enregistré pour le moment.</p></div>';
+        contentHtml = '<div style="text-align:center;padding:30px 10px;color:#8A93A0;"><div style="font-size:36px;margin-bottom:8px;">📌</div><p>Aucun service enregistré pour le moment.</p></div>';
       } else {
         contentHtml = myEvents.map(function(ev) {
-          return '<div style="background:#F8F9FF;border:1px solid #E5E5EA;border-radius:14px;padding:12px;margin-bottom:10px;">' +
+          return '<div style="background:#F8F9FF;border:1px solid #E4E7EC;border-radius:14px;padding:12px;margin-bottom:10px;">' +
             '<div style="font-size:14px;font-weight:800;color:#000;">' + safeHtml(ev.title||'Service / Culte') + '</div>' +
-            '<div style="font-size:12px;color:#8E8E93;margin-top:2px;">' + fmtDateTime(ev.event_date || ev.timestamp) + '</div>' +
-            '<div style="margin-top:6px;display:flex;gap:6px;"><span style="background:#E0F0FF;color:#007AFF;font-size:11px;font-weight:700;padding:3px 8px;border-radius:8px;">✓ Présence Validée</span></div>' +
+            '<div style="font-size:12px;color:#8A93A0;margin-top:2px;">' + fmtDateTime(ev.event_date || ev.timestamp) + '</div>' +
+            '<div style="margin-top:6px;display:flex;gap:6px;"><span style="background:#E0F0FF;color:#0B63F6;font-size:11px;font-weight:700;padding:3px 8px;border-radius:8px;">✓ Présence Validée</span></div>' +
           '</div>';
         }).join('');
       }
     } else if (metric === 'ratings') {
-      title = '⭐ Évaluations et Notes';
+      title = 'Évaluations et Notes';
       var evalPosts = posts.filter(function(p){ return p.type === 'EVALUATION' || (p.metadata && p.metadata.type === 'EVALUATION'); });
       if (evalPosts.length === 0) {
-        contentHtml = '<div style="text-align:center;padding:30px 10px;color:#8E8E93;"><div style="font-size:36px;margin-bottom:8px;">⭐</div><p>Note globale basée sur l\'assiduité et les retours d\'équipe (4.8 / 5).</p></div>';
+        contentHtml = '<div style="text-align:center;padding:30px 10px;color:#8A93A0;"><div style="font-size:36px;margin-bottom:8px;">⭐</div><p>Note globale basée sur l\'assiduité et les retours d\'équipe (4.8 / 5).</p></div>';
       } else {
         contentHtml = evalPosts.map(function(ep) {
           var meta = ep.metadata || {};
           var r = meta.overallRating || ep.rating || '5';
           return '<div style="background:#FFF9E6;border:1px solid #FFE082;border-radius:14px;padding:12px;margin-bottom:10px;">' +
             '<div style="font-size:14px;font-weight:800;color:#B78103;">Score : ' + r + ' / 5 ⭐</div>' +
-            '<div style="font-size:13px;color:#3A3A3C;margin-top:4px;">' + safeHtml(ep.caption||meta.comment||'Évaluation de service') + '</div>' +
+            '<div style="font-size:13px;color:#25303F;margin-top:4px;">' + safeHtml(ep.caption||meta.comment||'Évaluation de service') + '</div>' +
           '</div>';
         }).join('');
       }
     } else if (metric === 'trust') {
-      title = '🟢 Explication de l\'Indice de Confiance';
-      contentHtml = '<div style="line-height:1.5;font-size:13.5px;color:#3A3A3C;">' +
+      title = 'Explication de l\'Indice de Confiance';
+      contentHtml = '<div style="line-height:1.5;font-size:13.5px;color:#25303F;">' +
         '<p style="margin-bottom:10px;">L\'<strong>Indice de Confiance</strong> reflète l\'assiduité globale aux cultes, répétitions et événements du département Communication.</p>' +
-        '<div style="background:#F2F2F7;border-radius:12px;padding:12px;margin-bottom:10px;">' +
-          '<div style="color:#34C759;font-weight:800;">🟢 > 80% : Fiabilité Élevée</div>' +
-          '<div style="color:#FF9500;font-weight:800;margin-top:4px;">🟠 50% - 80% : Satisfaisant</div>' +
-          '<div style="color:#FF3B30;font-weight:800;margin-top:4px;">🔴 < 50% : Suivi Requis</div>' +
+        '<div style="background:#F6F7F9;border-radius:12px;padding:12px;margin-bottom:10px;">' +
+          '<div style="color:#0E9F6E;font-weight:800;">> 80% : Fiabilité Élevée</div>' +
+          '<div style="color:#D98A0B;font-weight:800;margin-top:4px;">🟠 50% - 80% : Satisfaisant</div>' +
+          '<div style="color:#E2445C;font-weight:800;margin-top:4px;">🔴 < 50% : Suivi Requis</div>' +
         '</div>' +
-        '<p style="font-size:12px;color:#8E8E93;">Chaque service effectué et validé augmente automatiquement cet indice.</p>' +
+        '<p style="font-size:12px;color:#8A93A0;">Chaque service effectué et validé augmente automatiquement cet indice.</p>' +
       '</div>';
     }
 
     return '<div onclick="App.closeRhDetailsModal()" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:10000;display:flex;justify-content:center;align-items:flex-end;">' +
       '<div onclick="event.stopPropagation()" style="width:100%;max-width:460px;background:#FFF;border-top-left-radius:24px;border-top-right-radius:24px;padding:20px;max-height:80vh;overflow-y:auto;animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
-        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;border-bottom:1px solid #E5E5EA;padding-bottom:12px;">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;border-bottom:1px solid #E4E7EC;padding-bottom:12px;">' +
           '<h3 style="font-size:16.5px;font-weight:800;margin:0;color:#000;">' + title + '</h3>' +
-          '<button onclick="App.closeRhDetailsModal()" style="background:#F2F2F7;border:none;border-radius:50%;width:30px;height:30px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;">×</button>' +
+          '<button onclick="App.closeRhDetailsModal()" style="background:#F6F7F9;border:none;border-radius:50%;width:30px;height:30px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;">×</button>' +
         '</div>' +
         contentHtml +
       '</div>' +
@@ -196,7 +196,7 @@
       nb('home', SVG.home, 'Accueil') +
       nb('planning', SVG.cal, 'Planning') +
       '<button onclick="App.openCreate()" style="flex:1;background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent;">' +
-        '<div style="width:46px;height:46px;border-radius:23px;background:linear-gradient(135deg,#007AFF,#0040CC);display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,122,255,0.4);margin-bottom:8px;">' + SVG.plus + '</div>' +
+        '<div style="width:46px;height:46px;border-radius:23px;background:#0B63F6;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,122,255,0.4);margin-bottom:8px;">' + SVG.plus + '</div>' +
       '</button>' +
       nb('debrief', SVG.star, 'Notation') +
       nb('profile', SVG.person, 'Profil') +
@@ -210,15 +210,16 @@
   function renderScreenHeader(title, subtitle, rightActionHtml) {
     var u = S.user || {};
     var initial = (u.prenom || 'M').charAt(0).toUpperCase();
-    return '<header style="position:sticky;top:0;z-index:200;background:rgba(255,255,255,0.96);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border-bottom:0.5px solid rgba(0,0,0,0.1);padding:13px 16px 12px;">' +
-      '<div style="display:flex;justify-content:space-between;align-items:center;">' +
-        '<div>' +
-          '<div style="font-size:10px;font-weight:800;color:#007AFF;text-transform:uppercase;letter-spacing:1.5px;">' + (subtitle||"Église Vase d'Honneur") + '</div>' +
-          '<h1 style="font-size:22px;font-weight:900;color:#000;margin:0;letter-spacing:-0.5px;">' + title + '</h1>' +
-        '</div>' +
-        '<div style="display:flex;gap:8px;align-items:center;">' +
+    // Un seul niveau de titre, sans sur-titre en capitales : la hiérarchie vient
+    // de la taille et du poids, pas de l'empilement de libellés colorés.
+    return '<header style="position:sticky;top:0;z-index:200;background:' + UI.card + ';border-bottom:0.5px solid ' + UI.line + ';padding:14px 16px 12px;">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">' +
+        '<h1 style="font-size:19px;font-weight:600;color:' + UI.ink + ';margin:0;letter-spacing:-0.3px;min-width:0;">' + title + '</h1>' +
+        '<div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">' +
           (rightActionHtml || '') +
-          (u.avatar_url ? '<button onclick="App.tab(\'profile\')" style="width:34px;height:34px;border-radius:17px;border:none;cursor:pointer;padding:0;overflow:hidden;flex-shrink:0;"><img src="' + u.avatar_url + '" style="width:100%;height:100%;object-fit:cover;" /></button>' : '<button onclick="App.tab(\'profile\')" style="width:34px;height:34px;border-radius:17px;background:linear-gradient(135deg,' + (u.avatar_color||'#007AFF') + ',#0040CC);border:none;cursor:pointer;color:#FFF;font-size:14px;font-weight:800;display:flex;align-items:center;justify-content:center;">' + initial + '</button>') +
+          (u.avatar_url
+            ? '<button onclick="App.tab(\'profile\')" style="width:30px;height:30px;border-radius:' + UI.pill + ';border:none;cursor:pointer;padding:0;overflow:hidden;flex-shrink:0;"><img src="' + u.avatar_url + '" style="width:100%;height:100%;object-fit:cover;" /></button>'
+            : '<button onclick="App.tab(\'profile\')" style="width:30px;height:30px;border-radius:' + UI.pill + ';background:' + (u.avatar_color||UI.accent) + ';border:none;cursor:pointer;color:#FFF;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;">' + initial + '</button>') +
         '</div>' +
       '</div>' +
     '</header>';
@@ -307,18 +308,18 @@
       // Chargement initial en cours (sync Supabase pas encore terminée) : on évite
       // d'afficher un faux "Aucune publication" qui pourrait faire croire à une perte de données.
       feed = '<div style="display:flex;justify-content:center;padding:48px 24px;">' +
-        '<div style="width:26px;height:26px;border:2.5px solid #E5E5EA;border-top-color:#007AFF;border-radius:50%;animation:spin 0.7s linear infinite;"></div>' +
+        '<div style="width:26px;height:26px;border:2.5px solid #E4E7EC;border-top-color:#0B63F6;border-radius:50%;animation:spin 0.7s linear infinite;"></div>' +
       '</div>';
     } else if (filtered.length === 0) {
       feed = '<div style="display:flex;flex-direction:column;align-items:center;padding:70px 24px;text-align:center;">' +
         '<div style="font-size:52px;margin-bottom:16px;">📭</div>' +
         '<h3 style="font-size:18px;font-weight:800;color:#000;margin:0 0 8px;">' + (S.q ? 'Aucun résultat' : 'Aucune publication') + '</h3>' +
-        '<p style="font-size:13.5px;color:#8E8E93;margin:0 0 22px;max-width:240px;line-height:1.5;">' +
-          (S.q ? 'Aucun résultat trouvé pour "' + safeHtml(S.q) + '"' : 'Aucune publication pour le moment. Soyez le premier à publier ! 🎉') +
+        '<p style="font-size:13.5px;color:#8A93A0;margin:0 0 22px;max-width:240px;line-height:1.5;">' +
+          (S.q ? 'Aucun résultat trouvé pour "' + safeHtml(S.q) + '"' : 'Aucune publication pour le moment. Soyez le premier à publier ! ') +
         '</p>' +
         (S.q
-          ? '<button onclick="App.search(\'\')" style="' + btnStyle('#007AFF') + 'height:44px;width:auto;padding:0 22px;font-size:14px;">Réinitialiser la recherche</button>'
-          : '<button onclick="App.openCreate()" style="' + btnStyle('#007AFF') + 'height:44px;width:auto;padding:0 22px;font-size:14px;">Créer un post</button>') +
+          ? '<button onclick="App.search(\'\')" style="' + btnStyle('#0B63F6') + 'height:44px;width:auto;padding:0 22px;font-size:14px;">Réinitialiser la recherche</button>'
+          : '<button onclick="App.openCreate()" style="' + btnStyle('#0B63F6') + 'height:44px;width:auto;padding:0 22px;font-size:14px;">Créer un post</button>') +
       '</div>';
     } else {
       // "Charger plus" ne s'applique qu'au fil principal non filtré (pagination
@@ -329,14 +330,14 @@
       if (canLoadMore) {
         footerHtml = '<div style="padding:20px;text-align:center;background:#FFF;margin-top:8px;">' +
           (S.loadingMorePosts
-            ? '<div style="display:flex;justify-content:center;padding:10px;"><div style="width:22px;height:22px;border:2.5px solid #E5E5EA;border-top-color:#007AFF;border-radius:50%;animation:spin 0.7s linear infinite;"></div></div>'
-            : '<button onclick="App.loadMorePosts()" style="background:#F2F2F7;color:#000;border:none;border-radius:14px;padding:12px 22px;font-size:13.5px;font-weight:800;cursor:pointer;">Charger plus d\'anciennes publications</button>') +
+            ? '<div style="display:flex;justify-content:center;padding:10px;"><div style="width:22px;height:22px;border:2.5px solid #E4E7EC;border-top-color:#0B63F6;border-radius:50%;animation:spin 0.7s linear infinite;"></div></div>'
+            : '<button onclick="App.loadMorePosts()" style="background:#F6F7F9;color:#000;border:none;border-radius:14px;padding:12px 22px;font-size:13.5px;font-weight:800;cursor:pointer;">Charger plus d\'anciennes publications</button>') +
         '</div>';
       } else {
         footerHtml = '<div style="padding:36px 20px;text-align:center;background:#FFF;margin-top:8px;">' +
-          '<div style="width:40px;height:40px;border-radius:20px;background:#F0F6FF;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;">' + SVG.check + '</div>' +
+          '<div style="width:40px;height:40px;border-radius:20px;background:#E8EEFB;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;">' + SVG.check + '</div>' +
           '<h4 style="font-size:15px;font-weight:800;color:#000;margin:0;">Vous êtes à jour ✓</h4>' +
-          '<p style="font-size:12.5px;color:#8E8E93;margin:4px 0 0;">Toutes les publications ont été affichées.</p>' +
+          '<p style="font-size:12.5px;color:#8A93A0;margin:4px 0 0;">Toutes les publications ont été affichées.</p>' +
         '</div>';
       }
       // Les événements d'une même journée sont fusionnés en un carrousel unique ;
@@ -460,13 +461,13 @@
     var anyPinned = events.some(function(e){ return e.is_pinned; });
 
     return '<article style="background:' + UI.card + ';border:0.5px solid ' + UI.line + ';border-radius:' + UI.r2 + ';margin:0 12px 12px;overflow:hidden;">' +
-      (anyPinned ? '<div style="background:#5856D6;color:#FFF;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:1px;padding:4px 12px;display:flex;align-items:center;gap:6px;"><span style="font-size:12px;">📌</span> ÉPINGLÉ</div>' : '') +
+      (anyPinned ? '<div style="background:#0B63F6;color:#FFF;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:1px;padding:4px 12px;display:flex;align-items:center;gap:6px;"><span style="font-size:12px;">📌</span> ÉPINGLÉ</div>' : '') +
       '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px 8px;">' +
         '<div style="min-width:0;">' +
-          '<div style="font-size:15px;font-weight:900;color:#0B0B0C;text-transform:capitalize;">🗓 ' + safeHtml(dateLabel) + '</div>' +
-          '<div style="font-size:12px;color:#8E8E93;font-weight:600;margin-top:2px;">' + events.length + ' événements · faites défiler</div>' +
+          '<div style="font-size:15px;font-weight:900;color:#0B0D12;text-transform:capitalize;">' + safeHtml(dateLabel) + '</div>' +
+          '<div style="font-size:12px;color:#8A93A0;font-weight:600;margin-top:2px;">' + events.length + ' événements · faites défiler</div>' +
         '</div>' +
-        '<div id="evgrpBadge-' + carId + '" style="background:#F0EFFF;color:#5856D6;font-size:12px;font-weight:800;padding:4px 10px;border-radius:20px;flex-shrink:0;">' + (curIdx + 1) + '/' + events.length + '</div>' +
+        '<div id="evgrpBadge-' + carId + '" style="background:#E8EEFB;color:#0B63F6;font-size:12px;font-weight:800;padding:4px 10px;border-radius:20px;flex-shrink:0;">' + (curIdx + 1) + '/' + events.length + '</div>' +
       '</div>' +
       '<div id="' + carId + '" onscroll="App.eventGroupScroll(\'' + dateIso + '\',\'' + carId + '\',this)" style="display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;gap:0;">' +
         events.map(function(ev) {
@@ -483,7 +484,7 @@
       '<div id="evgrpDots-' + carId + '" style="display:flex;justify-content:center;gap:5px;padding:8px 0 12px;">' +
         events.map(function(_, di) {
           var a = di === curIdx;
-          return '<div style="width:' + (a?'18':'6') + 'px;height:6px;border-radius:3px;background:' + (a?'#5856D6':'#C7C7CC') + ';transition:all 0.25s;"></div>';
+          return '<div style="width:' + (a?'18':'6') + 'px;height:6px;border-radius:3px;background:' + (a?'#0B63F6':'#E4E7EC') + ';transition:all 0.25s;"></div>';
         }).join('') +
       '</div>' +
     '</article>';
@@ -492,13 +493,13 @@
   // Bloc visuel d'UNE section évaluée (utilisé seul ou dans le carrousel).
   function renderEvaluationSlide(ev) {
     var score = ev.globalScore;
-    var badgeBg = score>=4 ? 'linear-gradient(135deg,#DCFCE7,#22C55E)' : score>=2 ? 'linear-gradient(135deg,#FEF3C7,#F59E0B)' : 'linear-gradient(135deg,#FEE2E2,#EF4444)';
+    var badgeBg = score>=4 ? '#0E9F6E' : score>=2 ? '#D98A0B' : '#E2445C';
     var badgeShadow = score>=4 ? 'rgba(34,197,94,0.3)' : score>=2 ? 'rgba(245,158,11,0.3)' : 'rgba(239,68,68,0.3)';
     var crit = ev.criteria || {};
     return '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">' +
         '<div>' +
-          '<div style="display:inline-flex;align-items:center;gap:4px;background:#FFF;padding:4px 8px;border-radius:8px;font-size:10px;font-weight:800;color:#64748B;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05);"><span>📊</span> Évaluation</div>' +
-          '<div style="font-size:20px;font-weight:900;color:#0F172A;letter-spacing:-0.5px;">' + (ev.emoji ? ev.emoji + ' ' : '') + safeHtml(ev.teamName || '') + '</div>' +
+          '<div style="display:inline-flex;align-items:center;gap:4px;background:#FFF;padding:4px 8px;border-radius:8px;font-size:10px;font-weight:800;color:#8A93A0;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05);"><span>📊</span> Évaluation</div>' +
+          '<div style="font-size:20px;font-weight:900;color:#0B0D12;letter-spacing:-0.5px;">' + (ev.emoji ? ev.emoji + ' ' : '') + safeHtml(ev.teamName || '') + '</div>' +
         '</div>' +
         '<div style="background:' + badgeBg + ';color:#FFF;padding:12px 16px;border-radius:16px;font-size:24px;font-weight:900;box-shadow:0 6px 16px ' + badgeShadow + ';text-shadow:0 2px 4px rgba(0,0,0,0.1);white-space:nowrap;">' + score + '/5</div>' +
       '</div>' +
@@ -506,10 +507,10 @@
         Object.keys(crit).map(function(k) {
           var v = crit[k];
           var pct = (v/5)*100;
-          var cCol = v>=4?'linear-gradient(90deg,#34D399,#10B981)':v>=2?'linear-gradient(90deg,#FBBF24,#F59E0B)':'linear-gradient(90deg,#F87171,#EF4444)';
+          var cCol = v>=4?'#0E9F6E':v>=2?'#D98A0B':'#E2445C';
           return '<div style="display:flex;flex-direction:column;gap:6px;">' +
-                   '<div style="display:flex;justify-content:space-between;font-size:12.5px;font-weight:800;color:#475569;"><span>' + safeHtml(k) + '</span><span style="color:#0F172A;">' + v + '/5</span></div>' +
-                   '<div style="height:10px;background:#E2E8F0;border-radius:5px;overflow:hidden;box-shadow:inset 0 1px 3px rgba(0,0,0,0.06);">' +
+                   '<div style="display:flex;justify-content:space-between;font-size:12.5px;font-weight:800;color:#5A6472;"><span>' + safeHtml(k) + '</span><span style="color:#0B0D12;">' + v + '/5</span></div>' +
+                   '<div style="height:10px;background:#E4E7EC;border-radius:5px;overflow:hidden;box-shadow:inset 0 1px 3px rgba(0,0,0,0.06);">' +
                      '<div style="height:100%;width:' + pct + '%;background:' + cCol + ';border-radius:5px;box-shadow:0 1px 2px rgba(0,0,0,0.1);"></div>' +
                    '</div>' +
                  '</div>';
@@ -519,29 +520,29 @@
       // chacun a apporté au total du pôle.
       (ev.punctuality && ev.punctuality.details && ev.punctuality.details.length
         ? '<div style="margin-top:16px;padding-top:14px;border-top:1px dashed #CBD5E1;">' +
-            '<div style="font-size:10.5px;font-weight:800;color:#64748B;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">⏱️ Ponctualité — calcul automatique</div>' +
+            '<div style="font-size:10.5px;font-weight:800;color:#8A93A0;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Ponctualité — calcul automatique</div>' +
             ev.punctuality.details.map(function(d) {
-              var dc = d.stars >= 4 ? '#10B981' : d.stars >= 2 ? '#F59E0B' : '#EF4444';
+              var dc = d.stars >= 4 ? '#0E9F6E' : d.stars >= 2 ? '#D98A0B' : '#E2445C';
               var when = d.absent ? 'aucune publication' : (d.delayMinutes <= 0 ? "à l'heure" : '+' + d.delayMinutes + ' min');
               var geoNote = '';
               if (!d.absent) {
-                if (!d.geo || !d.geo.available) geoNote = '<span style="display:block;font-size:10.5px;color:#B91C1C;font-weight:700;">⚠️ ' + geoStatusLabel(d.geo) + '</span>';
+                if (!d.geo || !d.geo.available) geoNote = '<span style="display:block;font-size:10.5px;color:#B42318;font-weight:700;">' + geoStatusLabel(d.geo) + '</span>';
                 else if (d.distance === null || d.distance === undefined) geoNote = '';
-                else if (d.onSite) geoNote = '<span style="display:block;font-size:10.5px;color:#047857;">📍 sur place (' + formatDistance(d.distance) + ')</span>';
-                else geoNote = '<span style="display:block;font-size:10.5px;color:#B91C1C;font-weight:700;">⚠️ à ' + formatDistance(d.distance) + ' du lieu</span>';
+                else if (d.onSite) geoNote = '<span style="display:block;font-size:10.5px;color:#047857;">sur place (' + formatDistance(d.distance) + ')</span>';
+                else geoNote = '<span style="display:block;font-size:10.5px;color:#B42318;font-weight:700;">à ' + formatDistance(d.distance) + ' du lieu</span>';
               }
               return '<div style="display:flex;justify-content:space-between;align-items:flex-start;font-size:12px;padding:3px 0;gap:10px;">' +
-                '<span style="color:#475569;min-width:0;">' + safeHtml(d.name) + (d.task ? ' <span style="color:#94A3B8;">· ' + safeHtml(d.task) + '</span>' : '') + geoNote + '</span>' +
+                '<span style="color:#5A6472;min-width:0;">' + safeHtml(d.name) + (d.task ? ' <span style="color:#8A93A0;">· ' + safeHtml(d.task) + '</span>' : '') + geoNote + '</span>' +
                 '<span style="font-weight:800;color:' + dc + ';white-space:nowrap;">' + (d.stars>0?'+':'') + d.stars + '★ · ' + when + '</span>' +
               '</div>';
             }).join('') +
-            '<div style="display:flex;justify-content:space-between;align-items:center;font-size:12.5px;font-weight:800;color:#0F172A;padding-top:8px;margin-top:6px;border-top:1px solid #E2E8F0;">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;font-size:12.5px;font-weight:800;color:#0B0D12;padding-top:8px;margin-top:6px;border-top:1px solid #E4E7EC;">' +
               '<span>Total du pôle (' + ev.punctuality.count + ' membre' + (ev.punctuality.count>1?'s':'') + ')</span>' +
               '<span>' + ev.punctuality.average + '/5</span>' +
             '</div>' +
           '</div>'
         : '') +
-      (ev.comment ? '<p style="font-size:13px;color:#334155;margin:14px 0 0;line-height:1.4;">' + safeHtml(ev.comment) + '</p>' : '');
+      (ev.comment ? '<p style="font-size:13px;color:#25303F;margin:14px 0 0;line-height:1.4;">' + safeHtml(ev.comment) + '</p>' : '');
   }
 
   // Publication d'évaluation. Plusieurs sections évaluées = un carrousel horizontal
@@ -549,7 +550,7 @@
   function renderEvaluationContent(post) {
     var meta = post.metadata || {};
     var evBadge = meta.eventTitle
-      ? '<div style="font-size:12.5px;font-weight:800;color:#5856D6;background:rgba(88,86,214,0.08);padding:6px 12px;border-radius:10px;margin-bottom:12px;display:flex;align-items:center;gap:6px;"><span>🗓️ Événement :</span> <span>' + safeHtml(meta.eventTitle) + '</span></div>'
+      ? '<div style="font-size:12.5px;font-weight:800;color:#0B63F6;background:rgba(88,86,214,0.08);padding:6px 12px;border-radius:10px;margin-bottom:12px;display:flex;align-items:center;gap:6px;"><span>Événement :</span> <span>' + safeHtml(meta.eventTitle) + '</span></div>'
       : '';
 
     // Ancien format (une seule section, publications déjà en base) ramené au
@@ -559,7 +560,7 @@
       evals = [{ teamName: meta.teamName, globalScore: meta.globalScore, criteria: meta.criteria, comment: post.caption || '' }];
     }
 
-    var boxStyle = 'padding:18px;background:linear-gradient(135deg, #F8FAFC 0%, #F1F5F9 100%);border-radius:20px;border:1px solid #E2E8F0;box-shadow:inset 0 2px 4px rgba(255,255,255,0.8), 0 4px 12px rgba(0,0,0,0.03);';
+    var boxStyle = 'padding:18px;background:linear-gradient(135deg, #F8FAFC 0%, #F6F7F9 100%);border-radius:20px;border:1px solid #E4E7EC;box-shadow:inset 0 2px 4px rgba(255,255,255,0.8), 0 4px 12px rgba(0,0,0,0.03);';
 
     if (evals.length === 1) {
       return '<div style="margin:10px 14px;' + boxStyle + '">' + evBadge + renderEvaluationSlide(evals[0]) + '</div>';
@@ -579,7 +580,7 @@
       '<div id="evalDots-' + post.id + '" style="display:flex;justify-content:center;gap:5px;margin-top:10px;">' +
         evals.map(function(_, di) {
           var a = di === curIdx;
-          return '<div style="width:' + (a?'18':'6') + 'px;height:6px;border-radius:3px;background:' + (a?'#5856D6':'#C7C7CC') + ';transition:all 0.25s;"></div>';
+          return '<div style="width:' + (a?'18':'6') + 'px;height:6px;border-radius:3px;background:' + (a?'#0B63F6':'#E4E7EC') + ';transition:all 0.25s;"></div>';
         }).join('') +
       '</div>' +
     '</div>';
@@ -613,39 +614,39 @@
     var stars = isThisCheckIn ? official.stars : (delay === null ? null : starsForDelay(delay));
     var offsite = isThisCheckIn && official.offsite;
 
-    var starCol = stars === null ? '#8E8E93' : stars >= 4 ? '#10B981' : stars >= 2 ? '#F59E0B' : '#EF4444';
+    var starCol = stars === null ? '#8A93A0' : stars >= 4 ? '#0E9F6E' : stars >= 2 ? '#D98A0B' : '#E2445C';
 
     // Bloc position : c'est lui qui rend la triche visible.
     var geoBlock;
     if (geo && geo.available) {
       if (dist === null) {
-        geoBlock = '<span style="color:#6B7280;">📍 Position enregistrée' + (geo.accuracy ? ' (±' + geo.accuracy + ' m)' : '') + ' · lieu de l\'événement non défini</span>';
+        geoBlock = '<span style="color:#5A6472;">Position enregistrée' + (geo.accuracy ? ' (±' + geo.accuracy + ' m)' : '') + ' · lieu de l\'événement non défini</span>';
       } else {
         var near = dist <= ON_SITE_RADIUS_M;
-        geoBlock = '<span style="color:' + (near ? '#047857' : '#B91C1C') + ';font-weight:800;">' +
-          (near ? '📍 Sur place' : '⚠️ À ' + formatDistance(dist) + ' du lieu') +
+        geoBlock = '<span style="color:' + (near ? '#047857' : '#B42318') + ';font-weight:800;">' +
+          (near ? ico('pin',12,'#047857') + ' Sur place' : ico('alert',12,'#B42318') + ' À ' + formatDistance(dist) + ' du lieu') +
           '</span>' +
-          (near ? '<span style="color:#6B7280;"> · à ' + formatDistance(dist) + ' du point de référence</span>' : '');
+          (near ? '<span style="color:#5A6472;"> · à ' + formatDistance(dist) + ' du point de référence</span>' : '');
       }
     } else {
-      geoBlock = '<span style="color:#B91C1C;font-weight:800;">⚠️ ' + geoStatusLabel(geo) + '</span>';
+      geoBlock = '<span style="color:#B42318;font-weight:800;">' + geoStatusLabel(geo) + '</span>';
     }
 
     var bg = (geo && geo.available && (dist === null || dist <= ON_SITE_RADIUS_M)) ? '#F8FAFC' : '#FEF2F2';
-    var border = (geo && geo.available && (dist === null || dist <= ON_SITE_RADIUS_M)) ? '#E2E8F0' : '#FECACA';
+    var border = (geo && geo.available && (dist === null || dist <= ON_SITE_RADIUS_M)) ? '#E4E7EC' : '#FECACA';
 
     return '<div style="margin:0 14px 10px;padding:10px 12px;background:' + bg + ';border:1px solid ' + border + ';border-radius:14px;">' +
       '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px;">' +
-        '<span style="font-size:10px;font-weight:800;color:' + (offsite ? '#B91C1C' : '#64748B') + ';text-transform:uppercase;letter-spacing:0.5px;">' + (offsite ? '⛔ Pointage non validé' : '⏱️ Arrivée enregistrée') + '</span>' +
+        '<span style="font-size:10px;font-weight:800;color:' + (offsite ? '#B42318' : '#8A93A0') + ';text-transform:uppercase;letter-spacing:0.5px;">' + (offsite ? ico('ban',12,'#B42318') + ' Pointage non validé' : ico('clock',12,'#64748B') + ' Arrivée enregistrée') + '</span>' +
         (stars === null ? '' : '<span style="font-size:12.5px;font-weight:900;color:' + starCol + ';white-space:nowrap;">' + (stars>0?'+':'') + stars + '★</span>') +
       '</div>' +
-      '<div style="font-size:11.5px;color:#475569;line-height:1.5;">' +
+      '<div style="font-size:11.5px;color:#5A6472;line-height:1.5;">' +
         (delay === null ? '' : (delay <= 0 ? "À l'heure" : 'Retard de ' + delay + ' min') + ' · ') +
         new Date(arrival).toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'}) +
       '</div>' +
       '<div style="font-size:11.5px;line-height:1.5;margin-top:2px;">' + geoBlock + '</div>' +
-      (offsite ? '<div style="font-size:10.5px;color:#B91C1C;margin-top:3px;font-weight:700;line-height:1.4;">Arrivée non comptabilisée : il fallait être à moins de ' + formatDistance(ON_SITE_RADIUS_M) + ' du lieu.</div>' : '') +
-      (post.checkInByEdit ? '<div style="font-size:10.5px;color:#B91C1C;margin-top:3px;font-weight:700;">⚠️ Rattaché à l\'événement après publication</div>' : '') +
+      (offsite ? '<div style="font-size:10.5px;color:#B42318;margin-top:3px;font-weight:700;line-height:1.4;">Arrivée non comptabilisée : il fallait être à moins de ' + formatDistance(ON_SITE_RADIUS_M) + ' du lieu.</div>' : '') +
+      (post.checkInByEdit ? '<div style="font-size:10.5px;color:#B42318;margin-top:3px;font-weight:700;">Rattaché à l\'événement après publication</div>' : '') +
     '</div>';
   }
 
@@ -661,19 +662,19 @@
 
     return '<div style="margin:0 14px 10px;padding:14px;background:#F6FBF8;border:1px solid #DCF3E6;border-radius:16px;">' +
       '<div style="font-size:10px;font-weight:800;color:#0EA65C;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;display:flex;align-items:center;gap:6px;"><span>📊</span> Sondage</div>' +
-      '<div style="font-size:14.5px;font-weight:800;color:#1C1C1E;margin-bottom:10px;line-height:1.4;">' + safeHtml(poll.question||'') + '</div>' +
+      '<div style="font-size:14.5px;font-weight:800;color:#0B0D12;margin-bottom:10px;line-height:1.4;">' + safeHtml(poll.question||'') + '</div>' +
       poll.options.map(function(opt, idx) {
         var pct = pollOptionPct(poll, idx);
         var mine = myVote === idx;
-        return '<div onclick="App.votePoll(\'' + post.id + '\', ' + idx + ')" style="position:relative;margin-bottom:7px;border-radius:12px;overflow:hidden;background:#FFF;border:1.5px solid ' + (mine?'#0EA65C':'#E5E5EA') + ';cursor:pointer;">' +
+        return '<div onclick="App.votePoll(\'' + post.id + '\', ' + idx + ')" style="position:relative;margin-bottom:7px;border-radius:12px;overflow:hidden;background:#FFF;border:1.5px solid ' + (mine?'#0EA65C':'#E4E7EC') + ';cursor:pointer;">' +
           (hasVoted ? '<div style="position:absolute;top:0;left:0;bottom:0;width:' + pct + '%;background:' + (mine?'rgba(14,166,92,0.16)':'rgba(142,142,147,0.12)') + ';transition:width 0.3s;"></div>' : '') +
           '<div style="position:relative;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;">' +
-            '<span style="font-size:13px;font-weight:' + (mine?'800':'600') + ';color:' + (mine?'#0B7A42':'#1C1C1E') + ';">' + (mine ? '✓ ' : '') + safeHtml(opt) + '</span>' +
-            (hasVoted ? '<span style="font-size:12px;font-weight:800;color:#8E8E93;white-space:nowrap;">' + pct + '%</span>' : '') +
+            '<span style="font-size:13px;font-weight:' + (mine?'800':'600') + ';color:' + (mine?'#0B7A42':'#0B0D12') + ';">' + (mine ? '✓ ' : '') + safeHtml(opt) + '</span>' +
+            (hasVoted ? '<span style="font-size:12px;font-weight:800;color:#8A93A0;white-space:nowrap;">' + pct + '%</span>' : '') +
           '</div>' +
         '</div>';
       }).join('') +
-      '<div style="font-size:11px;color:#8E8E93;font-weight:600;margin-top:2px;">' + total + ' vote' + (total!==1?'s':'') + (hasVoted ? ' · touchez pour changer votre choix' : ' · touchez une option pour voter') + '</div>' +
+      '<div style="font-size:11px;color:#8A93A0;font-weight:600;margin-top:2px;">' + total + ' vote' + (total!==1?'s':'') + (hasVoted ? ' · touchez pour changer votre choix' : ' · touchez une option pour voter') + '</div>' +
     '</div>';
   }
 
@@ -687,7 +688,7 @@
     var curIdx = S.carouselIdx[post.id] || 0;
     var expanded = !!S.expandedCaptions[post.id];
     var ago = timeAgo(post.timestamp);
-    var sec = SECTIONS.find(function(s){ return s.id === post.sectionId; }) || { emoji:'📢', color:'#8E8E93' };
+    var sec = SECTIONS.find(function(s){ return s.id === post.sectionId; }) || { emoji:'📢', color:'#8A93A0' };
     var likeCount = Array.isArray(post.likedBy) ? post.likedBy.length : (post.likes || 0);
     var viewCount = Array.isArray(post.viewedBy) ? post.viewedBy.length : 0;
     var postAuthorUser = db(SK.USERS, []).find(function(u){ return u.id === post.userId; });
@@ -697,7 +698,7 @@
     var authorSecId = getUserSections(postAuthorUser)[0];
     var authorSecObj = SECTIONS.find(function(s){ return s.id === authorSecId; });
     var authorSecEmoji = authorSecObj ? authorSecObj.emoji : '🎥';
-    var authorSecColor = authorSecObj ? authorSecObj.color : '#007AFF';
+    var authorSecColor = authorSecObj ? authorSecObj.color : '#0B63F6';
     var authorSecNom = authorSecObj ? authorSecObj.nom : 'Membre';
 
     // Caption truncation (Instagram style: max 3 lines)
@@ -707,11 +708,11 @@
     var needsTruncate = fullCaption.length > 120 || lines.length > 3;
     if (!expanded && needsTruncate) {
       var short = fullCaption.slice(0, 120);
-      captionHtml = hashtagify(short) + '... <span onclick="App.expandCaption(\'' + post.id + '\')" style="color:#8E8E93;cursor:pointer;font-weight:600;">plus</span>';
+      captionHtml = hashtagify(short) + '... <span onclick="App.expandCaption(\'' + post.id + '\')" style="color:#8A93A0;cursor:pointer;font-weight:600;">plus</span>';
     } else {
       captionHtml = hashtagify(fullCaption);
       if (needsTruncate && expanded) {
-        captionHtml += ' <span onclick="App.expandCaption(\'' + post.id + '\')" style="color:#8E8E93;cursor:pointer;font-weight:600;">moins</span>';
+        captionHtml += ' <span onclick="App.expandCaption(\'' + post.id + '\')" style="color:#8A93A0;cursor:pointer;font-weight:600;">moins</span>';
       }
     }
 
@@ -737,7 +738,7 @@
         (isMulti ? '<div id="dots-'+post.id+'" style="display:flex;justify-content:center;gap:5px;padding:8px 0;background:#FFF;">' +
           post.mediaUrls.map(function(_,di){
             var a = di === curIdx;
-            return '<div style="width:'+(a?'18':'6')+'px;height:6px;border-radius:3px;background:'+(a?'#007AFF':'#C7C7CC')+';transition:all 0.25s;"></div>';
+            return '<div style="width:'+(a?'18':'6')+'px;height:6px;border-radius:3px;background:'+(a?'#0B63F6':'#E4E7EC')+';transition:all 0.25s;"></div>';
           }).join('') +
         '</div>' : '') +
       '</div>';
@@ -759,8 +760,8 @@
       } else if (post.isVedette || post.scoreText) {
         mediaZone = '<div ondblclick="App.doubleTapLike(\''+post.id+'\')" style="background:linear-gradient(135deg,#1A1A2E,#2D2D44);min-height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;text-align:center;position:relative;">' +
           '<div style="width:44px;height:44px;border-radius:22px;background:rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center;margin-bottom:8px;font-size:22px;">' + sec.emoji + '</div>' +
-          (post.isVedette ? '<div style="background:linear-gradient(135deg,#FFD700,#FF9500);color:#5D3A00;font-size:10px;font-weight:900;padding:4px 12px;border-radius:20px;letter-spacing:0.8px;margin-bottom:6px;">⭐ SECTION VEDETTE</div>' : '') +
-          (post.scoreText ? '<div style="background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);padding:5px 12px;border-radius:12px;position:absolute;bottom:12px;right:12px;"><strong style="font-size:13px;color:#1C1C1E;">★ ' + post.scoreText + '</strong></div>' : '') +
+          (post.isVedette ? '<div style="background:linear-gradient(135deg,#FFD700,#D98A0B);color:#5D3A00;font-size:10px;font-weight:900;padding:4px 12px;border-radius:20px;letter-spacing:0.8px;margin-bottom:6px;">SECTION VEDETTE</div>' : '') +
+          (post.scoreText ? '<div style="background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);padding:5px 12px;border-radius:12px;position:absolute;bottom:12px;right:12px;"><strong style="font-size:13px;color:#0B0D12;">★ ' + post.scoreText + '</strong></div>' : '') +
         '</div>';
       } else {
         // Plain text post — no background, caption shown below
@@ -768,7 +769,7 @@
       }
     }
 
-    var pinnedBadge = post.is_pinned ? '<div style="background:#5856D6;color:#FFF;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:1px;padding:4px 12px;display:flex;align-items:center;gap:6px;"><span style="font-size:12px;">📌</span> ÉPINGLÉ</div>' : '';
+    var pinnedBadge = post.is_pinned ? '<div style="background:#0B63F6;color:#FFF;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:1px;padding:4px 12px;display:flex;align-items:center;gap:6px;"><span style="font-size:12px;">📌</span> ÉPINGLÉ</div>' : '';
 
       var contentZone = '';
       // Handle new-format EVENT posts (created by saveEvent)
@@ -781,45 +782,45 @@
          if (participants.length > 0) {
              partAvatars = '<div style="display:flex;margin-left:8px;">';
              for (var i=0; i<Math.min(participants.length, 3); i++) {
-                 partAvatars += '<div style="width:24px;height:24px;border-radius:12px;background:#5856D6;color:#FFF;border:2px solid #FFF;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;margin-left:-8px;">👤</div>';
+                 partAvatars += '<div style="width:24px;height:24px;border-radius:12px;background:#0B63F6;color:#FFF;border:2px solid #FFF;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;margin-left:-8px;">👤</div>';
              }
              if (participants.length > 3) {
-                 partAvatars += '<div style="width:24px;height:24px;border-radius:12px;background:#E5E5EA;color:#000;border:2px solid #FFF;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;margin-left:-8px;">+'+(participants.length-3)+'</div>';
+                 partAvatars += '<div style="width:24px;height:24px;border-radius:12px;background:#E4E7EC;color:#000;border:2px solid #FFF;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;margin-left:-8px;">+'+(participants.length-3)+'</div>';
              }
              partAvatars += '</div>';
          }
 
-         contentZone = '<div style="margin:10px 14px;padding:20px;background:linear-gradient(145deg, #F9F9FF 0%, #F0F0FA 100%);border-radius:20px;border-left:5px solid #5856D6;box-shadow:0 4px 12px rgba(0,0,0,0.03);position:relative;overflow:hidden;">' +
+         contentZone = '<div style="margin:10px 14px;padding:20px;background:#F6F7F9;border-radius:20px;border-left:5px solid #0B63F6;box-shadow:0 4px 12px rgba(0,0,0,0.03);position:relative;overflow:hidden;">' +
           '<div style="position:absolute;top:0;right:0;width:100px;height:100px;background:radial-gradient(circle, rgba(88,86,214,0.05) 0%, rgba(255,255,255,0) 70%);border-radius:50%;transform:translate(30%,-30%);"></div>' +
           
-          '<div style="display:inline-block;background:rgba(88,86,214,0.1);color:#5856D6;padding:4px 10px;border-radius:6px;font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin-bottom:16px;">🗓️ Événement Planning</div>' +
+          '<div style="display:inline-block;background:rgba(88,86,214,0.1);color:#0B63F6;padding:4px 10px;border-radius:6px;font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin-bottom:16px;">Événement Planning</div>' +
           
           '<div style="display:flex;gap:16px;align-items:center;margin-bottom:16px;">' +
-            '<div style="background:#FFF;border-radius:16px;overflow:hidden;box-shadow:0 6px 16px rgba(0,0,0,0.08);width:70px;text-align:center;flex-shrink:0;border:1px solid #EFEFFF;">' +
-              '<div style="background:linear-gradient(135deg, #FF3B30, #D70015);color:#FFF;font-size:11px;font-weight:900;text-transform:uppercase;padding:6px 0;letter-spacing:1px;">' + (post.metadata.month||'MOIS') + '</div>' +
+            '<div style="background:#FFF;border-radius:16px;overflow:hidden;box-shadow:0 6px 16px rgba(0,0,0,0.08);width:70px;text-align:center;flex-shrink:0;border:1px solid #EAECF0;">' +
+              '<div style="background:linear-gradient(135deg, #E2445C, #E2445C);color:#FFF;font-size:11px;font-weight:900;text-transform:uppercase;padding:6px 0;letter-spacing:1px;">' + (post.metadata.month||'MOIS') + '</div>' +
               '<div style="font-size:28px;font-weight:900;color:#000;padding:8px 0;">' + (post.metadata.day||'00') + '</div>' +
             '</div>' +
             '<div style="flex:1;">' +
-              '<h3 style="margin:0 0 8px;font-size:19px;font-weight:900;color:#1C1C1E;line-height:1.2;letter-spacing:-0.3px;">' + safeHtml(post.metadata.title||'') + '</h3>' +
+              '<h3 style="margin:0 0 8px;font-size:19px;font-weight:900;color:#0B0D12;line-height:1.2;letter-spacing:-0.3px;">' + safeHtml(post.metadata.title||'') + '</h3>' +
               '<div style="display:flex;flex-wrap:wrap;gap:10px;">' +
-                '<div style="font-size:13px;color:#5856D6;display:flex;align-items:center;gap:4px;font-weight:600;background:rgba(88,86,214,0.08);padding:4px 8px;border-radius:6px;"><span style="font-size:14px;">🕒</span> ' + safeHtml(post.metadata.time||'') + '</div>' +
-                '<div style="font-size:13px;color:#8E8E93;display:flex;align-items:center;gap:4px;font-weight:600;background:#F2F2F7;padding:4px 8px;border-radius:6px;"><span style="font-size:14px;">📍</span> ' + safeHtml(post.metadata.location||'') + '</div>' +
+                '<div style="font-size:13px;color:#0B63F6;display:flex;align-items:center;gap:4px;font-weight:600;background:rgba(88,86,214,0.08);padding:4px 8px;border-radius:6px;"><span style="font-size:14px;">🕒</span> ' + safeHtml(post.metadata.time||'') + '</div>' +
+                '<div style="font-size:13px;color:#8A93A0;display:flex;align-items:center;gap:4px;font-weight:600;background:#F6F7F9;padding:4px 8px;border-radius:6px;"><span style="font-size:14px;">📍</span> ' + safeHtml(post.metadata.location||'') + '</div>' +
               '</div>' +
             '</div>' +
           '</div>' +
           
-          (post.caption ? '<p style="font-size:14px;color:#3A3A3C;margin:0 0 16px;line-height:1.5;">' + safeHtml(post.caption) + '</p>' : '') +
+          (post.caption ? '<p style="font-size:14px;color:#25303F;margin:0 0 16px;line-height:1.5;">' + safeHtml(post.caption) + '</p>' : '') +
           
-          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-top:12px;border-top:1px dashed #D1D1D6;">' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-top:12px;border-top:1px dashed #E4E7EC;">' +
             '<div style="display:flex;align-items:center;">' +
-              '<span style="font-size:12px;color:#8E8E93;font-weight:600;">' + participants.length + ' Confirmé(s)</span>' +
+              '<span style="font-size:12px;color:#8A93A0;font-weight:600;">' + participants.length + ' Confirmé(s)</span>' +
               partAvatars +
             '</div>' +
           '</div>' +
 
           '<div style="display:flex;gap:10px;">' +
-            '<button onclick="App.toggleParticipation(\''+post.id+'\',\'yes\')" style="flex:1;padding:12px;border-radius:12px;font-size:14px;font-weight:800;border:none;cursor:pointer;background:'+((post.metadata.participations||{})[(S.user||{}).id]==='yes'?'linear-gradient(135deg,#34C759,#28A347)':'#FFF')+';color:'+((post.metadata.participations||{})[(S.user||{}).id]==='yes'?'#FFF':'#000')+';box-shadow:'+((post.metadata.participations||{})[(S.user||{}).id]==='yes'?'0 4px 12px rgba(52,199,89,0.3)':'0 2px 6px rgba(0,0,0,0.05)')+';transition:all 0.2s;">' + ((post.metadata.participations||{})[(S.user||{}).id]==='yes' ? '👍 Confirmé' : '👍 Je participe') + '</button>' +
-            '<button onclick="App.toggleParticipation(\''+post.id+'\',\'no\')" style="flex:1;padding:12px;border-radius:12px;font-size:14px;font-weight:800;border:none;cursor:pointer;background:'+((post.metadata.participations||{})[(S.user||{}).id]==='no'?'linear-gradient(135deg,#FF3B30,#D70015)':'#FFF')+';color:'+((post.metadata.participations||{})[(S.user||{}).id]==='no'?'#FFF':'#000')+';box-shadow:'+((post.metadata.participations||{})[(S.user||{}).id]==='no'?'0 4px 12px rgba(255,59,48,0.3)':'0 2px 6px rgba(0,0,0,0.05)')+';transition:all 0.2s;">' + ((post.metadata.participations||{})[(S.user||{}).id]==='no' ? '❌ Indisponible' : '❌ Non dispo') + '</button>' +
+            '<button onclick="App.toggleParticipation(\''+post.id+'\',\'yes\')" style="flex:1;padding:12px;border-radius:12px;font-size:14px;font-weight:800;border:none;cursor:pointer;background:'+((post.metadata.participations||{})[(S.user||{}).id]==='yes'?'#0E9F6E':'#FFF')+';color:'+((post.metadata.participations||{})[(S.user||{}).id]==='yes'?'#FFF':'#000')+';box-shadow:'+((post.metadata.participations||{})[(S.user||{}).id]==='yes'?'0 4px 12px rgba(52,199,89,0.3)':'0 2px 6px rgba(0,0,0,0.05)')+';transition:all 0.2s;">' + ((post.metadata.participations||{})[(S.user||{}).id]==='yes' ? ico('thumb',14,'#FFF') + ' Confirmé' : ico('thumb',14,'currentColor') + ' Je participe') + '</button>' +
+            '<button onclick="App.toggleParticipation(\''+post.id+'\',\'no\')" style="flex:1;padding:12px;border-radius:12px;font-size:14px;font-weight:800;border:none;cursor:pointer;background:'+((post.metadata.participations||{})[(S.user||{}).id]==='no'?'linear-gradient(135deg,#E2445C,#E2445C)':'#FFF')+';color:'+((post.metadata.participations||{})[(S.user||{}).id]==='no'?'#FFF':'#000')+';box-shadow:'+((post.metadata.participations||{})[(S.user||{}).id]==='no'?'0 4px 12px rgba(255,59,48,0.3)':'0 2px 6px rgba(0,0,0,0.05)')+';transition:all 0.2s;">' + ((post.metadata.participations||{})[(S.user||{}).id]==='no' ? '❌ Indisponible' : '❌ Non dispo') + '</button>' +
           '</div>' +
         '</div>';
       } else if (post.type === 'EVALUATION' && post.metadata && (post.metadata.evaluations || post.metadata.teamName)) {
@@ -845,8 +846,8 @@
     // Repost banner
     var repostBanner = '';
     if (post.type === 'REPOST') {
-      repostBanner = '<div style="padding:10px 14px 0;display:flex;align-items:center;gap:6px;color:#8E8E93;font-size:12.5px;font-weight:700;">' +
-        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8E8E93" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>' +
+      repostBanner = '<div style="padding:10px 14px 0;display:flex;align-items:center;gap:6px;color:#8A93A0;font-size:12.5px;font-weight:700;">' +
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8A93A0" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>' +
         safeHtml(post.author || '') + ' a partagé la publication de ' + safeHtml(post.originalAuthor || '') +
       '</div>';
     }
@@ -880,7 +881,7 @@
           var allU = db(SK.USERS, []);
           var pAuthor = allU.find(function(u){ return u.id === post.userId; });
           var pAvatarUrl = (pAuthor && pAuthor.avatar_url) ? pAuthor.avatar_url : post.avatar_url;
-          var pColor = (pAuthor && pAuthor.avatar_color) ? pAuthor.avatar_color : (post.avatarColor || '#007AFF');
+          var pColor = (pAuthor && pAuthor.avatar_color) ? pAuthor.avatar_color : (post.avatarColor || '#0B63F6');
           var pInitial = (pAuthor && pAuthor.prenom) ? pAuthor.prenom.charAt(0).toUpperCase() : (post.authorAvatar || 'M');
           var pName = (pAuthor && pAuthor.prenom && pAuthor.nom) ? (pAuthor.prenom + ' ' + pAuthor.nom) : (post.author || 'Membre');
 
@@ -899,7 +900,7 @@
             '</div>' +
           '</div>' +
         '</div>' +
-        '<button onclick="App.openOptions(\'' + post.id + '\')" style="background:#F2F2F7;border:none;width:32px;height:32px;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' + SVG.dots + '</button>' +
+        '<button onclick="App.openOptions(\'' + post.id + '\')" style="background:#F6F7F9;border:none;width:32px;height:32px;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' + SVG.dots + '</button>' +
       '</div>' +
       (function(){
         if (!post.aboutEventId) return '';
@@ -907,13 +908,13 @@
         if (!aboutEv) return '';
         var aEvDate = aboutEv.eventDate ? new Date(aboutEv.eventDate + 'T00:00:00') : null;
         var aEvDateStr = aEvDate ? aEvDate.toLocaleDateString('fr-FR', {weekday:'short', day:'numeric', month:'short'}) : '';
-        return '<div onclick="App.goToEvent(\''+aboutEv.id+'\')" style="margin:0 14px 10px;padding:10px 12px;background:#F0EFFF;border-radius:14px;border:1px solid #E2E0FF;display:flex;align-items:center;gap:10px;cursor:pointer;">' +
+        return '<div onclick="App.goToEvent(\''+aboutEv.id+'\')" style="margin:0 14px 10px;padding:10px 12px;background:#E8EEFB;border-radius:14px;border:1px solid #E2E0FF;display:flex;align-items:center;gap:10px;cursor:pointer;">' +
           '<span style="font-size:18px;">🗓️</span>' +
           '<div style="flex:1;min-width:0;">' +
-            '<div style="font-size:10px;font-weight:800;color:#5856D6;text-transform:uppercase;letter-spacing:0.5px;">À propos de cet événement</div>' +
-            '<div style="font-size:13px;font-weight:800;color:#1C1C1E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(aboutEv.eventTitle||'') + (aEvDateStr ? ' · ' + aEvDateStr : '') + (aboutEv.eventStart ? ' à ' + aboutEv.eventStart : '') + '</div>' +
+            '<div style="font-size:10px;font-weight:800;color:#0B63F6;text-transform:uppercase;letter-spacing:0.5px;">À propos de cet événement</div>' +
+            '<div style="font-size:13px;font-weight:800;color:#0B0D12;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(aboutEv.eventTitle||'') + (aEvDateStr ? ' · ' + aEvDateStr : '') + (aboutEv.eventStart ? ' à ' + aboutEv.eventStart : '') + '</div>' +
           '</div>' +
-          '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5856D6" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>' +
+          '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0B63F6" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>' +
         '</div>';
       })() +
       renderCheckInBadge(post) +
@@ -959,34 +960,34 @@
 
     var itemsHtml = '';
     if (notifs.length === 0) {
-      itemsHtml = '<div style="padding:50px 20px;text-align:center;color:#8E8E93;">' +
+      itemsHtml = '<div style="padding:50px 20px;text-align:center;color:#8A93A0;">' +
         '<div style="font-size:48px;margin-bottom:12px;">🔔</div>' +
-        '<div style="font-size:16px;font-weight:800;color:#1C1C1E;margin-bottom:6px;">Aucune notification</div>' +
-        '<div style="font-size:13px;color:#8E8E93;">Vous êtes à jour ! Aucune nouvelle activité.</div>' +
+        '<div style="font-size:16px;font-weight:800;color:#0B0D12;margin-bottom:6px;">Aucune notification</div>' +
+        '<div style="font-size:13px;color:#8A93A0;">Vous êtes à jour ! Aucune nouvelle activité.</div>' +
       '</div>';
     } else {
       itemsHtml = notifs.map(function(n) {
-        var icon = n.type === 'LIKE' ? '❤️' : (n.type === 'COMMENT' || n.type === 'REPLY') ? '💬' : n.type === 'EVALUATION' ? '📊' : n.type === 'MENTION' ? '📣' : n.type === 'MESSAGE' ? '✉️' : n.type === 'FOLLOW' ? '👤' : n.type === 'NEW_MEMBER' ? '🎉' : '🗓️';
-        var bgIcon = n.type === 'LIKE' ? '#FF2D55' : (n.type === 'COMMENT' || n.type === 'REPLY') ? '#007AFF' : n.type === 'EVALUATION' ? '#FF9500' : n.type === 'MENTION' ? '#FF9500' : n.type === 'MESSAGE' ? '#34C759' : n.type === 'FOLLOW' ? '#AF52DE' : n.type === 'NEW_MEMBER' ? '#34C759' : '#5856D6';
+        var icon = n.type === 'LIKE' ? '❤️' : (n.type === 'COMMENT' || n.type === 'REPLY') ? '💬' : n.type === 'EVALUATION' ? '📊' : n.type === 'MENTION' ? '📣' : n.type === 'MESSAGE' ? '✉️' : n.type === 'FOLLOW' ? '👤' : n.type === 'NEW_MEMBER' ? '' : '🗓️';
+        var bgIcon = n.type === 'LIKE' ? '#FF2D55' : (n.type === 'COMMENT' || n.type === 'REPLY') ? '#0B63F6' : n.type === 'EVALUATION' ? '#D98A0B' : n.type === 'MENTION' ? '#D98A0B' : n.type === 'MESSAGE' ? '#0E9F6E' : n.type === 'FOLLOW' ? '#AF52DE' : n.type === 'NEW_MEMBER' ? '#0E9F6E' : '#0B63F6';
         var timeAgoStr = timeAgo(n.timestamp || Date.now());
         var isUnread = !n.read;
 
         var avatarHtml = n.senderAvatar
           ? '<img src="' + n.senderAvatar + '" style="width:44px;height:44px;border-radius:22px;object-fit:cover;flex-shrink:0;" />'
-          : '<div style="width:44px;height:44px;border-radius:22px;background:linear-gradient(135deg,' + (n.senderColor||'#007AFF') + ',#0040CC);color:#FFF;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + (n.senderName||'S').charAt(0).toUpperCase() + '</div>';
+          : '<div style="width:44px;height:44px;border-radius:22px;background:linear-gradient(135deg,' + (n.senderColor||'#0B63F6') + ',#0B63F6);color:#FFF;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + (n.senderName||'S').charAt(0).toUpperCase() + '</div>';
 
-        return '<div onclick="App.clickNotification(\'' + n.id + '\', \'' + (n.targetId||'') + '\')" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:0.5px solid #F2F2F7;background:' + (isUnread ? '#F0F6FF' : '#FFF') + ';cursor:pointer;transition:background 0.2s;position:relative;">' +
+        return '<div onclick="App.clickNotification(\'' + n.id + '\', \'' + (n.targetId||'') + '\')" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:0.5px solid #F6F7F9;background:' + (isUnread ? '#E8EEFB' : '#FFF') + ';cursor:pointer;transition:background 0.2s;position:relative;">' +
           '<div style="position:relative;flex-shrink:0;">' +
             avatarHtml +
             '<div style="position:absolute;bottom:-2px;right:-2px;width:18px;height:18px;border-radius:9px;background:' + bgIcon + ';color:#FFF;font-size:10px;display:flex;align-items:center;justify-content:center;border:1.5px solid #FFF;">' + icon + '</div>' +
           '</div>' +
           '<div style="flex:1;min-width:0;">' +
-            '<div style="font-size:13.5px;color:#1C1C1E;line-height:1.35;word-break:break-word;">' +
+            '<div style="font-size:13.5px;color:#0B0D12;line-height:1.35;word-break:break-word;">' +
               '<strong>' + safeHtml(n.senderName || 'Membre') + '</strong> ' + safeHtml(n.text || '') +
             '</div>' +
-            '<div style="font-size:11px;color:#8E8E93;margin-top:3px;">' + timeAgoStr + '</div>' +
+            '<div style="font-size:11px;color:#8A93A0;margin-top:3px;">' + timeAgoStr + '</div>' +
           '</div>' +
-          (isUnread ? '<div style="width:8px;height:8px;border-radius:4px;background:#007AFF;flex-shrink:0;"></div>' : '') +
+          (isUnread ? '<div style="width:8px;height:8px;border-radius:4px;background:#0B63F6;flex-shrink:0;"></div>' : '') +
         '</div>';
       }).join('');
     }
@@ -994,14 +995,14 @@
     return '<div onclick="App.closeNotifications()" style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:10000;display:flex;justify-content:center;align-items:flex-end;">' +
       '<div onclick="event.stopPropagation()" style="width:100%;max-width:460px;background:#FFF;border-top-left-radius:28px;border-top-right-radius:28px;max-height:85vh;display:flex;flex-direction:column;animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
         '<div style="display:flex;justify-content:center;padding:10px 0 0;cursor:pointer;" onclick="App.closeNotifications()">' +
-          '<div style="width:40px;height:4px;background:#D1D1D6;border-radius:2px;"></div>' +
+          '<div style="width:40px;height:4px;background:#E4E7EC;border-radius:2px;"></div>' +
         '</div>' +
-        '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px 12px;border-bottom:0.5px solid #E5E5EA;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px 12px;border-bottom:0.5px solid #E4E7EC;">' +
           '<div style="display:flex;align-items:center;gap:8px;">' +
             '<h2 style="font-size:19px;font-weight:900;color:#000;margin:0;">Notifications</h2>' +
-            (unreadCount > 0 ? '<span style="background:#FF3B30;color:#FFF;font-size:11px;font-weight:900;padding:2px 8px;border-radius:10px;">' + unreadCount + '</span>' : '') +
+            (unreadCount > 0 ? '<span style="background:#E2445C;color:#FFF;font-size:11px;font-weight:900;padding:2px 8px;border-radius:10px;">' + unreadCount + '</span>' : '') +
           '</div>' +
-          (unreadCount > 0 ? '<button onclick="App.markAllNotificationsRead()" style="background:none;border:none;color:#007AFF;font-size:13px;font-weight:700;cursor:pointer;">Tout lire</button>' : '') +
+          (unreadCount > 0 ? '<button onclick="App.markAllNotificationsRead()" style="background:none;border:none;color:#0B63F6;font-size:13px;font-weight:700;cursor:pointer;">Tout lire</button>' : '') +
         '</div>' +
         '<div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;">' +
           itemsHtml +
@@ -1066,19 +1067,19 @@
     return '<div onclick="App.cancelEventSaveChoice()" style="position:fixed;inset:0;background:rgba(15,15,20,0.6);z-index:10002;display:flex;justify-content:center;align-items:center;padding:24px;">' +
       '<div onclick="event.stopPropagation()" style="width:100%;max-width:360px;background:#FFF;border-radius:24px;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
         '<h3 style="font-size:17px;font-weight:900;color:#000;margin:0 0 6px;text-align:center;">Enregistrer les modifications</h3>' +
-        '<p style="font-size:12.5px;color:#6B7280;line-height:1.5;margin:0 0 18px;text-align:center;">Voulez-vous remplacer cet événement, ou en créer un nouveau en gardant l\'ancien ?</p>' +
+        '<p style="font-size:12.5px;color:#5A6472;line-height:1.5;margin:0 0 18px;text-align:center;">Voulez-vous remplacer cet événement, ou en créer un nouveau en gardant l\'ancien ?</p>' +
 
-        '<button type="button" onclick="App.chooseEventSaveMode(\'overwrite\')" style="width:100%;background:#F2F2F7;border:none;border-radius:16px;padding:14px;margin-bottom:10px;cursor:pointer;text-align:left;">' +
-          '<div style="font-size:14.5px;font-weight:800;color:#000;margin-bottom:2px;">✏️ Mettre à jour cet événement</div>' +
-          '<div style="font-size:11.5px;color:#8E8E93;line-height:1.4;">L\'événement d\'origine est remplacé. Ses assignations et son historique sont conservés.</div>' +
+        '<button type="button" onclick="App.chooseEventSaveMode(\'overwrite\')" style="width:100%;background:#F6F7F9;border:none;border-radius:16px;padding:14px;margin-bottom:10px;cursor:pointer;text-align:left;">' +
+          '<div style="font-size:14.5px;font-weight:800;color:#000;margin-bottom:2px;">Mettre à jour cet événement</div>' +
+          '<div style="font-size:11.5px;color:#8A93A0;line-height:1.4;">L\'événement d\'origine est remplacé. Ses assignations et son historique sont conservés.</div>' +
         '</button>' +
 
         '<button type="button" onclick="App.chooseEventSaveMode(\'duplicate\')" style="width:100%;background:#EEF5FF;border:1px solid #CCDEFF;border-radius:16px;padding:14px;margin-bottom:14px;cursor:pointer;text-align:left;">' +
-          '<div style="font-size:14.5px;font-weight:800;color:#0055CC;margin-bottom:2px;">➕ Créer un nouvel événement</div>' +
+          '<div style="font-size:14.5px;font-weight:800;color:#0B63F6;margin-bottom:2px;">➕ Créer un nouvel événement</div>' +
           '<div style="font-size:11.5px;color:#5A7BAA;line-height:1.4;">L\'ancien reste intact. Idéal pour répéter un événement : changez la date et dupliquez.</div>' +
         '</button>' +
 
-        '<button type="button" onclick="App.cancelEventSaveChoice()" style="width:100%;background:none;border:none;padding:8px;font-size:13.5px;font-weight:700;color:#8E8E93;cursor:pointer;">Annuler</button>' +
+        '<button type="button" onclick="App.cancelEventSaveChoice()" style="width:100%;background:none;border:none;padding:8px;font-size:13.5px;font-weight:700;color:#8A93A0;cursor:pointer;">Annuler</button>' +
       '</div>' +
     '</div>';
   }
@@ -1097,91 +1098,91 @@
 
     // Bloc image (une seule image par événement)
     var imageBlock = '<div style="background:#FFF;border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px;">' +
-      '<label style="font-size:14px;font-weight:700;color:#000;display:block;margin-bottom:12px;">Image de l\'événement <span style="font-weight:500;color:#8E8E93;">(optionnelle)</span></label>' +
+      '<label style="font-size:14px;font-weight:700;color:#000;display:block;margin-bottom:12px;">Image de l\'événement <span style="font-weight:500;color:#8A93A0;">(optionnelle)</span></label>' +
       (S.eventImageProcessing
         ? '<div style="display:flex;align-items:center;gap:10px;background:#F6F7F9;border-radius:12px;padding:14px;">' +
-            '<div style="width:18px;height:18px;border:3px solid #E2E4E9;border-top-color:#007AFF;border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0;"></div>' +
-            '<span style="font-size:12.5px;font-weight:700;color:#3A3A3C;">Traitement de l\'image…</span>' +
+            '<div style="width:18px;height:18px;border:3px solid #E2E4E9;border-top-color:#0B63F6;border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0;"></div>' +
+            '<span style="font-size:12.5px;font-weight:700;color:#25303F;">Traitement de l\'image…</span>' +
           '</div>'
         : (S.eventImage
           ? '<div style="position:relative;border-radius:14px;overflow:hidden;background:#000;">' +
               '<img src="' + S.eventImage + '" style="display:block;width:100%;height:auto;max-height:260px;object-fit:contain;background:#000;" />' +
-              '<button type="button" onclick="App.editEventImage()" style="position:absolute;top:8px;left:8px;background:rgba(0,0,0,0.72);border:none;border-radius:10px;padding:6px 12px;color:#FFF;font-size:12.5px;font-weight:800;cursor:pointer;">✏️ Modifier</button>' +
+              '<button type="button" onclick="App.editEventImage()" style="position:absolute;top:8px;left:8px;background:rgba(0,0,0,0.72);border:none;border-radius:10px;padding:6px 12px;color:#FFF;font-size:12.5px;font-weight:800;cursor:pointer;">Modifier</button>' +
               '<button type="button" onclick="App.removeEventImage()" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.72);border:none;border-radius:14px;width:28px;height:28px;color:#FFF;font-size:15px;font-weight:900;cursor:pointer;">×</button>' +
             '</div>'
-          : '<label style="display:flex;align-items:center;justify-content:center;gap:8px;border:1.5px dashed #C7C7CC;border-radius:14px;padding:22px;cursor:pointer;color:#007AFF;font-size:14px;font-weight:700;">' +
-              '🖼️ Ajouter une image' +
+          : '<label style="display:flex;align-items:center;justify-content:center;gap:8px;border:1.5px dashed #E4E7EC;border-radius:14px;padding:22px;cursor:pointer;color:#0B63F6;font-size:14px;font-weight:700;">' +
+              'Ajouter une image' +
               '<input type="file" accept="image/*" onchange="App.addEventImage(event)" style="display:none;" />' +
             '</label>')) +
     '</div>';
 
     return '<div style="position:fixed;inset:0;background:#FFF;z-index:10000;padding-top:env(safe-area-inset-top);display:flex;flex-direction:column;animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
-      '<header style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #E5E5EA;background:#FFF;z-index:2;">' +
+      '<header style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #E4E7EC;background:#FFF;z-index:2;">' +
         '<button onclick="App.closeCreateEvent()" style="background:none;border:none;font-size:16px;color:#000;cursor:pointer;">Annuler</button>' +
         '<div style="font-weight:700;font-size:16px;">' + (isEdit ? 'Modifier l\'événement' : 'Nouvel Événement') + '</div>' +
-        '<button onclick="App.saveEvent(this)" style="background:none;border:none;font-size:16px;font-weight:700;color:#007AFF;cursor:pointer;">' + (isEdit ? 'Enregistrer' : 'Créer') + '</button>' +
+        '<button onclick="App.saveEvent(this)" style="background:none;border:none;font-size:16px;font-weight:700;color:#0B63F6;cursor:pointer;">' + (isEdit ? 'Enregistrer' : 'Créer') + '</button>' +
       '</header>' +
-      '<div style="flex:1;overflow-y:auto;background:#FAFAFA;padding:16px;">' +
+      '<div style="flex:1;overflow-y:auto;background:#F6F7F9;padding:16px;">' +
         imageBlock +
 
         '<div style="background:#FFF;border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px;">' +
           '<div style="display:flex;flex-direction:column;gap:16px;">' +
             '<div style="display:flex;flex-direction:column;gap:4px;">' +
-              '<label style="font-size:13px;color:#8E8E93;font-weight:600;">Titre de l\'événement</label>' +
-              '<input type="text" id="eventTitle" value="' + safeHtml(titleVal) + '" placeholder="Ex: Culte de Dimanche" style="border:none;border-bottom:1px solid #E5E5EA;font-size:16px;outline:none;padding-bottom:8px;border-radius:0;font-weight:600;" />' +
+              '<label style="font-size:13px;color:#8A93A0;font-weight:600;">Titre de l\'événement</label>' +
+              '<input type="text" id="eventTitle" value="' + safeHtml(titleVal) + '" placeholder="Ex: Culte de Dimanche" style="border:none;border-bottom:1px solid #E4E7EC;font-size:16px;outline:none;padding-bottom:8px;border-radius:0;font-weight:600;" />' +
             '</div>' +
             '<div style="display:flex;flex-direction:column;gap:4px;">' +
-              '<label style="font-size:13px;color:#8E8E93;font-weight:600;">Lieu / Salle</label>' +
-              '<input type="text" id="eventLocation" value="' + safeHtml(locVal) + '" placeholder="Ex: Salle Principale" style="border:none;border-bottom:1px solid #E5E5EA;font-size:16px;outline:none;padding-bottom:8px;border-radius:0;" />' +
+              '<label style="font-size:13px;color:#8A93A0;font-weight:600;">Lieu / Salle</label>' +
+              '<input type="text" id="eventLocation" value="' + safeHtml(locVal) + '" placeholder="Ex: Salle Principale" style="border:none;border-bottom:1px solid #E4E7EC;font-size:16px;outline:none;padding-bottom:8px;border-radius:0;" />' +
             '</div>' +
             // Position du lieu : recherchée par son nom/adresse. On ne relève jamais
             // la position du créateur — il prépare l'événement à l'avance, souvent
             // de chez lui, sa position n'a donc rien à voir avec le lieu.
             '<div style="display:flex;flex-direction:column;gap:8px;">' +
-              '<label style="font-size:13px;color:#8E8E93;font-weight:600;">Situer le lieu sur la carte <span style="font-weight:500;">(optionnel)</span></label>' +
+              '<label style="font-size:13px;color:#8A93A0;font-weight:600;">Situer le lieu sur la carte <span style="font-weight:500;">(optionnel)</span></label>' +
               (typeof cData.lat === 'number'
                 ? '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;background:#ECFDF5;border:1px solid #A7F3D0;border-radius:12px;padding:10px 12px;">' +
                     '<div style="min-width:0;">' +
-                      '<div style="font-size:12.5px;font-weight:800;color:#047857;">📍 ' + safeHtml(cData.placeName || 'Lieu situé') + '</div>' +
-                      '<div style="font-size:11px;color:#6B7280;line-height:1.35;">' + safeHtml(cData.placeLabel || (cData.lat.toFixed(5) + ', ' + cData.lng.toFixed(5))) + '</div>' +
+                      '<div style="font-size:12.5px;font-weight:800;color:#047857;">' + safeHtml(cData.placeName || 'Lieu situé') + '</div>' +
+                      '<div style="font-size:11px;color:#5A6472;line-height:1.35;">' + safeHtml(cData.placeLabel || (cData.lat.toFixed(5) + ', ' + cData.lng.toFixed(5))) + '</div>' +
                     '</div>' +
-                    '<button type="button" onclick="App.clearEventPosition()" style="background:none;border:none;color:#FF3B30;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">Changer</button>' +
+                    '<button type="button" onclick="App.clearEventPosition()" style="background:none;border:none;color:#E2445C;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">Changer</button>' +
                   '</div>'
                 : '<div>' +
                     '<div style="display:flex;align-items:center;gap:8px;background:#F6F7F9;border-radius:12px;padding:0 12px;height:44px;">' +
                       '<span style="font-size:15px;">🔎</span>' +
                       '<input type="text" id="eventPlaceInput" value="' + safeHtml(S.eventPlaceQuery || '') + '" oninput="App.onEventPlaceInput(this.value)" placeholder="Ex : Église Vase d\'Honneur, Cocody" style="flex:1;border:none;background:transparent;font-size:14px;color:#000;outline:none;min-width:0;" />' +
-                      '<span style="font-size:10px;font-weight:800;color:#8E8E93;background:#EDEEF1;padding:2px 7px;border-radius:6px;flex-shrink:0;">🇨🇮 CI</span>' +
+                      '<span style="font-size:10px;font-weight:800;color:#8A93A0;background:#EAECF0;padding:2px 7px;border-radius:6px;flex-shrink:0;">🇨🇮 CI</span>' +
                       (S.eventPlaceSearching
-                        ? '<div style="width:15px;height:15px;border:2.5px solid #E2E4E9;border-top-color:#007AFF;border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0;"></div>'
+                        ? '<div style="width:15px;height:15px;border:2.5px solid #E2E4E9;border-top-color:#0B63F6;border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0;"></div>'
                         : '') +
                     '</div>' +
                     (S.eventPlaceError
-                      ? '<div style="font-size:11.5px;color:#B91C1C;font-weight:600;margin-top:6px;">' + safeHtml(S.eventPlaceError) + '</div>'
+                      ? '<div style="font-size:11.5px;color:#B42318;font-weight:600;margin-top:6px;">' + safeHtml(S.eventPlaceError) + '</div>'
                       : '') +
                     '<div id="eventPlaceResults" style="margin-top:' + ((S.eventPlaceResults||[]).length ? '6px' : '0') + ';">' +
                       (S.eventPlaceResults||[]).map(function(r, i) {
                         return '<button type="button" onclick="App.selectEventPlace(' + i + ')" style="width:100%;text-align:left;background:#FFF;border:1px solid #EFEFEF;border-radius:12px;padding:9px 11px;margin-bottom:5px;cursor:pointer;display:block;">' +
-                          '<div style="font-size:13px;font-weight:800;color:#1C1C1E;">' + safeHtml(r.shortLabel) + '</div>' +
-                          '<div style="font-size:11px;color:#8E8E93;line-height:1.35;">' + safeHtml(r.label) + '</div>' +
+                          '<div style="font-size:13px;font-weight:800;color:#0B0D12;">' + safeHtml(r.shortLabel) + '</div>' +
+                          '<div style="font-size:11px;color:#8A93A0;line-height:1.35;">' + safeHtml(r.label) + '</div>' +
                         '</button>';
                       }).join('') +
                     '</div>' +
                   '</div>') +
-              '<div style="font-size:11px;color:#9AA0A8;line-height:1.4;">Un membre est considéré « sur place » s\'il enregistre son arrivée à moins de ' + formatDistance(ON_SITE_RADIUS_M) + ' de ce point. La distance de chacun sera visible de tous.</div>' +
+              '<div style="font-size:11px;color:#8A93A0;line-height:1.4;">Un membre est considéré « sur place » s\'il enregistre son arrivée à moins de ' + formatDistance(ON_SITE_RADIUS_M) + ' de ce point. La distance de chacun sera visible de tous.</div>' +
             '</div>' +
           '</div>' +
         '</div>' +
         
         '<div style="background:#FFF;border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px;">' +
           '<div style="display:flex;flex-direction:column;gap:16px;">' +
-            '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid #E5E5EA;padding-bottom:12px;">' +
+            '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid #E4E7EC;padding-bottom:12px;">' +
               '<label style="font-size:15px;color:#000;font-weight:600;white-space:nowrap;">Date</label>' +
-              '<input type="date" id="eventDate" value="' + dateVal + '" style="border:none;font-size:16px;outline:none;background:transparent;color:#007AFF;font-weight:600;text-align:right;" />' +
+              '<input type="date" id="eventDate" value="' + dateVal + '" style="border:none;font-size:16px;outline:none;background:transparent;color:#0B63F6;font-weight:600;text-align:right;" />' +
             '</div>' +
-            '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid #E5E5EA;padding-bottom:12px;">' +
+            '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid #E4E7EC;padding-bottom:12px;">' +
               '<label style="font-size:15px;color:#000;font-weight:600;white-space:nowrap;">Heure de début</label>' +
-              '<input type="time" id="eventStart" value="' + startVal + '" oninput="App.onEventTimeChange()" style="border:none;font-size:16px;outline:none;background:transparent;color:#007AFF;font-weight:600;text-align:right;" />' +
+              '<input type="time" id="eventStart" value="' + startVal + '" oninput="App.onEventTimeChange()" style="border:none;font-size:16px;outline:none;background:transparent;color:#0B63F6;font-weight:600;text-align:right;" />' +
             '</div>' +
             // Le message occupe sa PROPRE ligne sous le champ : placé dans la même
             // rangée que l'heure, il se superposait à la valeur et forçait le
@@ -1189,16 +1190,16 @@
             '<div>' +
               '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">' +
                 '<label style="font-size:15px;color:#000;font-weight:600;white-space:nowrap;">Heure de fin</label>' +
-                '<input type="time" id="eventEnd" value="' + endVal + '" oninput="App.onEventTimeChange()" style="border:none;font-size:16px;outline:none;background:transparent;color:#007AFF;font-weight:600;text-align:right;" />' +
+                '<input type="time" id="eventEnd" value="' + endVal + '" oninput="App.onEventTimeChange()" style="border:none;font-size:16px;outline:none;background:transparent;color:#0B63F6;font-weight:600;text-align:right;" />' +
               '</div>' +
               // État initial calculé au rendu : à la réouverture d'une veillée
               // déjà enregistrée, la mention doit être visible sans toucher au champ.
               (function(){
-                var msg = '', col = '#5856D6', bg = '#F0EFFF';
+                var msg = '', col = '#0B63F6', bg = '#E8EEFB';
                 if (startVal && endVal && endVal === startVal) {
-                  msg = '⚠️ La fin ne peut pas être identique au début.'; col = '#B91C1C'; bg = '#FEF2F2';
+                  msg = 'La fin ne peut pas être identique au début.'; col = '#B42318'; bg = '#FEF2F2';
                 } else if (startVal && endVal && endVal < startVal) {
-                  msg = '🌙 Se termine le lendemain à ' + endVal + '.';
+                  msg = 'Se termine le lendemain à ' + endVal + '.';
                 }
                 return '<div id="eventTimeError" style="display:' + (msg ? 'block' : 'none') + ';font-size:11.5px;font-weight:700;line-height:1.4;margin-top:8px;padding:7px 10px;border-radius:10px;background:' + bg + ';color:' + col + ';">' + msg + '</div>';
               })() +
@@ -1212,27 +1213,27 @@
         '</div>' +
         
         '<div style="background:#FFF;border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px;">' +
-          '<label style="font-size:13px;color:#8E8E93;font-weight:600;display:block;margin-bottom:8px;">Description / Notes</label>' +
-          '<textarea id="eventDesc" placeholder="Ajoutez un briefing ou des notes pour les équipes..." style="width:100%;border:none;font-size:15px;outline:none;resize:none;font-family:inherit;min-height:80px;background:#F8F8F8;padding:12px;border-radius:12px;box-sizing:border-box;">' + safeHtml(descVal) + '</textarea>' +
+          '<label style="font-size:13px;color:#8A93A0;font-weight:600;display:block;margin-bottom:8px;">Description / Notes</label>' +
+          '<textarea id="eventDesc" placeholder="Ajoutez un briefing ou des notes pour les équipes..." style="width:100%;border:none;font-size:15px;outline:none;resize:none;font-family:inherit;min-height:80px;background:#F6F7F9;padding:12px;border-radius:12px;box-sizing:border-box;">' + safeHtml(descVal) + '</textarea>' +
         '</div>' +
         
         (canAssign(S.user) ?
         '<div style="background:#FFF;border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px;">' +
           '<label style="font-size:14px;font-weight:700;color:#000;display:block;margin-bottom:4px;">Assignations (Équipe)</label>' +
-          '<div style="font-size:11.5px;color:#8E8E93;margin-bottom:12px;line-height:1.4;">' +
+          '<div style="font-size:11.5px;color:#8A93A0;margin-bottom:12px;line-height:1.4;">' +
             (isGrandResponsable(S.user)
               ? 'Vous pouvez confier une tâche à un membre précis ou à un pôle entier — son responsable la répartira ensuite.'
               : 'Vous assignez les membres de votre pôle. Les autres responsables complètent pour le leur.') +
           '</div>' +
           '<div id="eventAssignmentsList">' + App.renderAssignmentsList() + '</div>' +
-          '<div style="display:flex;flex-direction:column;gap:8px;border-top:1px solid #E5E5EA;padding-top:12px;">' +
-            '<select id="assignUserSelect" style="width:100%;padding:10px;border-radius:8px;border:1px solid #E5E5EA;font-size:14px;outline:none;background:#F8F8F8;">' +
+          '<div style="display:flex;flex-direction:column;gap:8px;border-top:1px solid #E4E7EC;padding-top:12px;">' +
+            '<select id="assignUserSelect" style="width:100%;padding:10px;border-radius:8px;border:1px solid #E4E7EC;font-size:14px;outline:none;background:#F6F7F9;">' +
               '<option value="">Sélectionner un membre…</option>' +
               renderAssignSelectOptions(S.user) +
             '</select>' +
             '<div style="display:flex;gap:8px;">' +
-              '<input type="text" id="assignTaskInput" placeholder="Tâche..." style="flex:1;padding:10px;border-radius:8px;border:1px solid #E5E5EA;font-size:14px;outline:none;background:#F8F8F8;" />' +
-              '<button onclick="App.addAssignment()" style="background:#007AFF;color:#FFF;border:none;border-radius:8px;padding:0 16px;font-weight:700;cursor:pointer;">Ajouter</button>' +
+              '<input type="text" id="assignTaskInput" placeholder="Tâche..." style="flex:1;padding:10px;border-radius:8px;border:1px solid #E4E7EC;font-size:14px;outline:none;background:#F6F7F9;" />' +
+              '<button onclick="App.addAssignment()" style="background:#0B63F6;color:#FFF;border:none;border-radius:8px;padding:0 16px;font-weight:700;cursor:pointer;">Ajouter</button>' +
             '</div>' +
           '</div>' +
         '</div>' : '') +
@@ -1240,11 +1241,11 @@
         '<div style="background:#FFF;border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);display:flex;align-items:center;justify-content:space-between;">' +
           '<div>' +
             '<div style="font-size:15px;font-weight:600;color:#000;">Épingler en haut du Feed</div>' +
-            '<div style="font-size:12px;color:#8E8E93;margin-top:2px;">Rend l\'événement très visible</div>' +
+            '<div style="font-size:12px;color:#8A93A0;margin-top:2px;">Rend l\'événement très visible</div>' +
           '</div>' +
           '<label style="position:relative;display:inline-block;width:50px;height:30px;">' +
-            '<input type="checkbox" id="eventPinned"' + (pinnedVal ? ' checked' : '') + ' style="opacity:0;width:0;height:0;" onchange="this.nextElementSibling.style.background=this.checked?\'#34C759\':\'#E5E5EA\'; this.nextElementSibling.children[0].style.transform=this.checked?\'translateX(20px)\':\'translateX(0)\';">' +
-            '<span style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:' + (pinnedVal ? '#34C759' : '#E5E5EA') + ';transition:.3s;border-radius:30px;">' +
+            '<input type="checkbox" id="eventPinned"' + (pinnedVal ? ' checked' : '') + ' style="opacity:0;width:0;height:0;" onchange="this.nextElementSibling.style.background=this.checked?\'#0E9F6E\':\'#E4E7EC\'; this.nextElementSibling.children[0].style.transform=this.checked?\'translateX(20px)\':\'translateX(0)\';">' +
+            '<span style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:' + (pinnedVal ? '#0E9F6E' : '#E4E7EC') + ';transition:.3s;border-radius:30px;">' +
               '<span style="position:absolute;content:\'\';height:26px;width:26px;left:2px;bottom:2px;background-color:white;transition:.3s;border-radius:50%;box-shadow:0 2px 4px rgba(0,0,0,0.2);transform:' + (pinnedVal ? 'translateX(20px)' : 'translateX(0)') + ';"></span>' +
             '</span>' +
           '</label>' +
@@ -1270,10 +1271,10 @@
 
     var previewHtml = renderComposerMediaPreview();
 
-    var hashHtml = '<div id="hashSugg" style="display:none;flex-wrap:wrap;gap:6px;background:#F0F6FF;border:1px solid #CCDEFF;border-radius:14px;padding:10px;margin-bottom:12px;">' +
-      '<div style="font-size:11px;font-weight:800;color:#007AFF;width:100%;margin-bottom:4px;">Hashtags suggérés :</div>' +
+    var hashHtml = '<div id="hashSugg" style="display:none;flex-wrap:wrap;gap:6px;background:#E8EEFB;border:1px solid #CCDEFF;border-radius:14px;padding:10px;margin-bottom:12px;">' +
+      '<div style="font-size:11px;font-weight:800;color:#0B63F6;width:100%;margin-bottom:4px;">Hashtags suggérés :</div>' +
       HASHTAGS.map(function(h) {
-        return '<button type="button" onclick="App.insertTag(\''+h+'\')" style="background:#007AFF;color:#FFF;border:none;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;">'+h+'</button>';
+        return '<button type="button" onclick="App.insertTag(\''+h+'\')" style="background:#0B63F6;color:#FFF;border:none;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;">'+h+'</button>';
       }).join('') +
     '</div>';
 
@@ -1285,14 +1286,14 @@
         '</div>' +
 
         '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px 12px;">' +
-          '<span onclick="App.closeEditPost()" style="font-size:14.5px;color:#65686F;cursor:pointer;font-weight:700;padding:8px 4px;">Annuler</span>' +
-          '<h3 style="font-size:16px;font-weight:800;margin:0;color:#0B0B0C;letter-spacing:-0.2px;">Modifier la publication</h3>' +
-          '<button type="button" onclick="App.saveEditPost(\'' + post.id + '\')" style="font-size:14px;color:#FFF;font-weight:800;background:linear-gradient(135deg,#007AFF,#0062CC);border:none;border-radius:20px;padding:8px 18px;cursor:pointer;box-shadow:0 4px 12px rgba(0,122,255,0.28);">Enregistrer</button>' +
+          '<span onclick="App.closeEditPost()" style="font-size:14.5px;color:#5A6472;cursor:pointer;font-weight:700;padding:8px 4px;">Annuler</span>' +
+          '<h3 style="font-size:16px;font-weight:800;margin:0;color:#0B0D12;letter-spacing:-0.2px;">Modifier la publication</h3>' +
+          '<button type="button" onclick="App.saveEditPost(\'' + post.id + '\')" style="font-size:14px;color:#FFF;font-weight:800;background:#0B63F6;border:none;border-radius:20px;padding:8px 18px;cursor:pointer;box-shadow:0 4px 12px rgba(0,122,255,0.28);">Enregistrer</button>' +
         '</div>' +
 
         '<div style="overflow-y:auto;flex:1;padding:4px 16px 16px;">' +
           hashHtml +
-          '<div id="mentionSugg" style="display:none;flex-wrap:wrap;gap:6px;background:#F0F6FF;border:1px solid #CCDEFF;border-radius:14px;padding:10px;margin-bottom:12px;"></div>' +
+          '<div id="mentionSugg" style="display:none;flex-wrap:wrap;gap:6px;background:#E8EEFB;border:1px solid #CCDEFF;border-radius:14px;padding:10px;margin-bottom:12px;"></div>' +
           previewHtml +
 
           (S.pendingMedia.length === 0 && S.postBg
@@ -1300,19 +1301,19 @@
                 (S.postBg && !S.postBg.includes('linear-gradient') && !S.postBg.includes('url') ? '<div style="position:absolute;inset:0;background:rgba(0,0,0,0.18);border-radius:22px;"></div>' : '') +
                 '<textarea id="editPostText" oninput="App.onPostInput(this.value)" placeholder="Modifiez votre texte..." style="width:100%;min-height:180px;border:none;background:transparent;font-size:24px;font-weight:900;line-height:1.4;color:#FFF;resize:none;outline:none;box-sizing:border-box;font-family:inherit;text-align:center;padding:24px 20px;text-shadow:0 2px 12px rgba(0,0,0,0.3);position:relative;z-index:1;">' + safeHtml(S.postText||'') + '</textarea>' +
               '</div>'
-            : '<textarea id="editPostText" oninput="App.onPostInput(this.value)" placeholder="Modifiez votre texte... Tapez @ pour mentionner un membre..." style="width:100%;min-height:120px;border:none;background:#F6F7F9;border-radius:18px;padding:14px;font-size:15.5px;line-height:1.55;color:#0B0B0C;resize:none;outline:none;box-sizing:border-box;font-family:inherit;margin-bottom:14px;">' + safeHtml(S.postText||'') + '</textarea>'
+            : '<textarea id="editPostText" oninput="App.onPostInput(this.value)" placeholder="Modifiez votre texte... Tapez @ pour mentionner un membre..." style="width:100%;min-height:120px;border:none;background:#F6F7F9;border-radius:18px;padding:14px;font-size:15.5px;line-height:1.55;color:#0B0D12;resize:none;outline:none;box-sizing:border-box;font-family:inherit;margin-bottom:14px;">' + safeHtml(S.postText||'') + '</textarea>'
           ) +
 
           '<!-- Confidentialité -->' +
           '<div style="background:#F6F7F9;border-radius:20px;padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
-            '<span style="font-size:13px;font-weight:800;color:#0B0B0C;display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="width:26px;height:26px;border-radius:13px;background:#EAF2FF;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">🔒</span>Qui peut voir cette publication ?</span>' +
+            '<span style="font-size:13px;font-weight:800;color:#0B0D12;display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="width:26px;height:26px;border-radius:13px;background:#E8EEFB;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">🔒</span>Qui peut voir cette publication ?</span>' +
             '<div style="display:flex;gap:4px;background:#EAEBEF;border-radius:16px;padding:3px;">' +
-              '<button type="button" onclick="App.setPostVisibility(\'all\')" style="flex:1;padding:8px 6px;border-radius:13px;font-size:11.5px;font-weight:800;border:none;cursor:pointer;transition:all 0.2s;background:' + (vis==='all'?'#FFFFFF':'transparent') + ';color:' + (vis==='all'?'#007AFF':'#6B7280') + ';box-shadow:' + (vis==='all'?'0 2px 6px rgba(0,0,0,0.08)':'none') + ';">🌍 Tout le monde</button>' +
-              '<button type="button" onclick="App.setPostVisibility(\'sections\')" style="flex:1;padding:8px 6px;border-radius:13px;font-size:11.5px;font-weight:800;border:none;cursor:pointer;transition:all 0.2s;background:' + (vis==='sections'?'#FFFFFF':'transparent') + ';color:' + (vis==='sections'?'#007AFF':'#6B7280') + ';box-shadow:' + (vis==='sections'?'0 2px 6px rgba(0,0,0,0.08)':'none') + ';">🔒 Sections ciblées</button>' +
+              '<button type="button" onclick="App.setPostVisibility(\'all\')" style="flex:1;padding:8px 6px;border-radius:13px;font-size:11.5px;font-weight:800;border:none;cursor:pointer;transition:all 0.2s;background:' + (vis==='all'?'#FFFFFF':'transparent') + ';color:' + (vis==='all'?'#0B63F6':'#5A6472') + ';box-shadow:' + (vis==='all'?'0 2px 6px rgba(0,0,0,0.08)':'none') + ';">🌍 Tout le monde</button>' +
+              '<button type="button" onclick="App.setPostVisibility(\'sections\')" style="flex:1;padding:8px 6px;border-radius:13px;font-size:11.5px;font-weight:800;border:none;cursor:pointer;transition:all 0.2s;background:' + (vis==='sections'?'#FFFFFF':'transparent') + ';color:' + (vis==='sections'?'#0B63F6':'#5A6472') + ';box-shadow:' + (vis==='sections'?'0 2px 6px rgba(0,0,0,0.08)':'none') + ';">Sections ciblées</button>' +
             '</div>' +
             (vis === 'sections'
               ? '<div style="margin-top:10px;">' +
-                  '<label style="font-size:12px;color:#8E8E93;font-weight:600;display:block;margin-bottom:6px;">Cliquer sur les sections autorisées :</label>' +
+                  '<label style="font-size:12px;color:#8A93A0;font-weight:600;display:block;margin-bottom:6px;">Cliquer sur les sections autorisées :</label>' +
                   '<div id="targetSectionBadgesContainer">' + App.renderSectionBadges(S.postTargetSections||[], 'toggleTargetSection') + '</div>' +
                 '</div>'
               : '') +
@@ -1320,7 +1321,7 @@
 
           '<!-- Programmation -->' +
           '<div style="background:#F6F7F9;border-radius:20px;padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
-            '<span style="font-size:13px;font-weight:800;color:#0B0B0C;display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="width:26px;height:26px;border-radius:13px;background:#FFF3E5;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">⏰</span>Programmer la publication</span>' +
+            '<span style="font-size:13px;font-weight:800;color:#0B0D12;display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="width:26px;height:26px;border-radius:13px;background:#FFF3E5;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">⏰</span>Programmer la publication</span>' +
             '<div style="display:flex;gap:8px;">' +
               '<input type="date" id="editPostScheduleDate" value="' + schedDateVal + '" style="flex:1;height:40px;border-radius:12px;border:none;background:#FFF;padding:0 10px;font-size:12.5px;outline:none;box-shadow:0 1px 2px rgba(16,24,40,0.06);" />' +
               '<input type="time" id="editPostScheduleTime" value="' + schedTimeVal + '" style="flex:1;height:40px;border-radius:12px;border:none;background:#FFF;padding:0 10px;font-size:12.5px;outline:none;box-shadow:0 1px 2px rgba(16,24,40,0.06);" />' +
@@ -1330,19 +1331,19 @@
           '<!-- À propos -->' +
           '<div style="background:#F6F7F9;border-radius:20px;padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
             '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:' + (S.postAboutEventId?'10px':'0') + ';">' +
-              '<span style="font-size:13px;font-weight:800;color:#0B0B0C;display:flex;align-items:center;gap:8px;"><span style="width:26px;height:26px;border-radius:13px;background:#F0EFFF;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">🗓️</span>À propos <span style="font-weight:600;color:#9AA0A8;font-size:11px;">(optionnel)</span></span>' +
-              (S.postAboutEventId ? '<span onclick="App.clearAboutEvent()" style="color:#FF3B30;font-size:12px;font-weight:700;cursor:pointer;">Retirer</span>' : '') +
+              '<span style="font-size:13px;font-weight:800;color:#0B0D12;display:flex;align-items:center;gap:8px;"><span style="width:26px;height:26px;border-radius:13px;background:#E8EEFB;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">🗓️</span>À propos <span style="font-weight:600;color:#8A93A0;font-size:11px;">(optionnel)</span></span>' +
+              (S.postAboutEventId ? '<span onclick="App.clearAboutEvent()" style="color:#E2445C;font-size:12px;font-weight:700;cursor:pointer;">Retirer</span>' : '') +
             '</div>' +
             (function(){
               if (!S.postAboutEventId) {
-                return '<button type="button" onclick="App.openAboutEventPicker()" style="width:100%;background:#FFF;border:1px dashed #C7C7CC;border-radius:12px;padding:10px;font-size:12.5px;font-weight:700;color:#5856D6;cursor:pointer;">+ Lier à un événement (ex : culte de dimanche)</button>';
+                return '<button type="button" onclick="App.openAboutEventPicker()" style="width:100%;background:#FFF;border:1px dashed #E4E7EC;border-radius:12px;padding:10px;font-size:12.5px;font-weight:700;color:#0B63F6;cursor:pointer;">+ Lier à un événement (ex : culte de dimanche)</button>';
               }
               var evAbout2 = db(SK.POSTS, []).find(function(p){ return p.id === S.postAboutEventId; });
               if (!evAbout2) return '';
               var evAbout2D = evAbout2.eventDate ? new Date(evAbout2.eventDate+'T00:00:00').toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'}) : '';
               return '<button type="button" onclick="App.openAboutEventPicker()" style="width:100%;display:flex;align-items:center;gap:8px;background:#FFF;border-radius:12px;padding:10px;text-align:left;border:none;cursor:pointer;">' +
                 '<span style="font-size:16px;">🗓️</span>' +
-                '<span style="flex:1;min-width:0;font-size:12.5px;font-weight:700;color:#1C1C1E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(evAbout2.eventTitle||'') + (evAbout2D?' · '+evAbout2D:'') + (evAbout2.eventStart?' à '+evAbout2.eventStart:'') + '</span>' +
+                '<span style="flex:1;min-width:0;font-size:12.5px;font-weight:700;color:#0B0D12;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(evAbout2.eventTitle||'') + (evAbout2D?' · '+evAbout2D:'') + (evAbout2.eventStart?' à '+evAbout2.eventStart:'') + '</span>' +
               '</button>';
             })() +
           '</div>' +
@@ -1353,13 +1354,13 @@
               '<div style="display:flex;align-items:center;gap:10px;">' +
                 '<span style="width:26px;height:26px;border-radius:13px;background:#FFEDE0;display:inline-flex;align-items:center;justify-content:center;font-size:14px;">🕐</span>' +
                 '<div>' +
-                  '<div style="font-size:13px;font-weight:800;color:#0B0B0C;">Publication éphémère</div>' +
-                  '<div style="font-size:11px;color:#8E8E93;">Disparaît automatiquement après 24h</div>' +
+                  '<div style="font-size:13px;font-weight:800;color:#0B0D12;">Publication éphémère</div>' +
+                  '<div style="font-size:11px;color:#8A93A0;">Disparaît automatiquement après 24h</div>' +
                 '</div>' +
               '</div>' +
               '<label style="position:relative;display:inline-block;width:48px;height:28px;flex-shrink:0;">' +
-                '<input type="checkbox" id="editPostEphemeral" ' + (post.is_ephemeral ? 'checked' : '') + ' style="opacity:0;width:0;height:0;" onchange="this.nextElementSibling.style.background=this.checked?\'#FF9500\':\'#DADCE1\'; this.nextElementSibling.children[0].style.transform=this.checked?\'translateX(20px)\':\'translateX(0)\';"/>' +
-                '<span style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:' + (post.is_ephemeral?'#FF9500':'#DADCE1') + ';transition:.25s;border-radius:28px;">' +
+                '<input type="checkbox" id="editPostEphemeral" ' + (post.is_ephemeral ? 'checked' : '') + ' style="opacity:0;width:0;height:0;" onchange="this.nextElementSibling.style.background=this.checked?\'#D98A0B\':\'#DADCE1\'; this.nextElementSibling.children[0].style.transform=this.checked?\'translateX(20px)\':\'translateX(0)\';"/>' +
+                '<span style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:' + (post.is_ephemeral?'#D98A0B':'#DADCE1') + ';transition:.25s;border-radius:28px;">' +
                   '<span style="position:absolute;content:\'\';height:22px;width:22px;left:3px;bottom:3px;background-color:white;transition:.25s;border-radius:50%;box-shadow:0 2px 4px rgba(0,0,0,0.2);transform:' + (post.is_ephemeral?'translateX(20px)':'translateX(0)') + ';"></span>' +
                 '</span>' +
               '</label>' +
@@ -1371,8 +1372,8 @@
         '<div style="padding:4px 16px 14px;">' +
           (S.pendingMedia.length === 0
             ? '<div style="display:flex;gap:8px;align-items:center;overflow-x:auto;padding:2px 0 10px;scrollbar-width:none;">' +
-                '<span style="font-size:11px;font-weight:700;color:#9AA0A8;flex-shrink:0;">Fond</span>' +
-                '<div onclick="App.setPostBg(null)" style="width:30px;height:30px;border-radius:15px;background:#FFF;border:2px solid ' + (S.postBg===null?'#007AFF':'#E5E5EA') + ';cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;font-weight:700;color:#3A3A3C;">Aa</div>' +
+                '<span style="font-size:11px;font-weight:700;color:#8A93A0;flex-shrink:0;">Fond</span>' +
+                '<div onclick="App.setPostBg(null)" style="width:30px;height:30px;border-radius:15px;background:#FFF;border:2px solid ' + (S.postBg===null?'#0B63F6':'#E4E7EC') + ';cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;font-weight:700;color:#25303F;">Aa</div>' +
                 [
                   'linear-gradient(135deg,#1A1A2E,#16213E)',
                   'linear-gradient(135deg,#FF6B6B,#FF8E53)',
@@ -1388,20 +1389,20 @@
                   'linear-gradient(135deg,#F7971E,#FFD200)',
                 ].map(function(bg, idx) {
                   var isSel = S.postBg === bg;
-                  return '<div onclick="App.setPostBgIdx(' + idx + ')" style="width:30px;height:30px;border-radius:15px;background:' + bg + ';cursor:pointer;flex-shrink:0;border:2.5px solid ' + (isSel?'#FFF':'transparent') + ';box-shadow:' + (isSel?'0 0 0 2px #007AFF':'0 1px 3px rgba(0,0,0,0.15)') + ';transition:0.15s;"></div>';
+                  return '<div onclick="App.setPostBgIdx(' + idx + ')" style="width:30px;height:30px;border-radius:15px;background:' + bg + ';cursor:pointer;flex-shrink:0;border:2.5px solid ' + (isSel?'#FFF':'transparent') + ';box-shadow:' + (isSel?'0 0 0 2px #0B63F6':'0 1px 3px rgba(0,0,0,0.15)') + ';transition:0.15s;"></div>';
                 }).join('') +
               '</div>'
             : ''
           ) +
           '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
-            '<label style="cursor:pointer;display:flex;align-items:center;gap:6px;color:#007AFF;font-size:12.5px;font-weight:800;background:#EAF2FF;padding:9px 14px;border-radius:16px;">' +
-              '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#007AFF" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>' +
+            '<label style="cursor:pointer;display:flex;align-items:center;gap:6px;color:#0B63F6;font-size:12.5px;font-weight:800;background:#E8EEFB;padding:9px 14px;border-radius:16px;">' +
+              '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0B63F6" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>' +
               'Photo / Vidéo' +
               '<input type="file" accept="image/*,video/*" multiple onchange="App.addMedia(event)" style="display:none;">' +
             '</label>' +
-            '<span style="font-size:11.5px;color:#9AA0A8;font-weight:600;">' + (S.pendingMedia.some(function(m){return isVideoUrl(m);}) ? '1 vidéo' : S.pendingMedia.length + '/10 photos') + '</span>' +
+            '<span style="font-size:11.5px;color:#8A93A0;font-weight:600;">' + (S.pendingMedia.some(function(m){return isVideoUrl(m);}) ? '1 vidéo' : S.pendingMedia.length + '/10 photos') + '</span>' +
           '</div>' +
-          '<label style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer;font-size:12px;color:#6B7280;font-weight:600;line-height:1.4;background:#F6F7F9;padding:10px 12px;border-radius:14px;"><input type="checkbox" ' + (S.reduceVideoQuality?'checked':'') + ' onchange="App.toggleReduceVideoQuality()" style="width:17px;height:17px;flex-shrink:0;accent-color:#007AFF;"> 🎥 Nous réduisons la qualité vidéo en HD pour une expérience plus fluide</label>' +
+          '<label style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer;font-size:12px;color:#5A6472;font-weight:600;line-height:1.4;background:#F6F7F9;padding:10px 12px;border-radius:14px;"><input type="checkbox" ' + (S.reduceVideoQuality?'checked':'') + ' onchange="App.toggleReduceVideoQuality()" style="width:17px;height:17px;flex-shrink:0;accent-color:#0B63F6;"> 🎥 Nous réduisons la qualité vidéo en HD pour une expérience plus fluide</label>' +
         '</div>' +
 
       '</div>' +
@@ -1417,10 +1418,10 @@
     var previewCaption = post.caption || '';
     var previewMedia = (post.mediaUrls && post.mediaUrls[0]) || null;
 
-    var hashHtml = '<div id="hashSugg" style="display:none;flex-wrap:wrap;gap:6px;background:#F0F6FF;border:1px solid #CCDEFF;border-radius:14px;padding:10px;margin-bottom:12px;">' +
-      '<div style="font-size:11px;font-weight:800;color:#007AFF;width:100%;margin-bottom:4px;">Hashtags suggérés :</div>' +
+    var hashHtml = '<div id="hashSugg" style="display:none;flex-wrap:wrap;gap:6px;background:#E8EEFB;border:1px solid #CCDEFF;border-radius:14px;padding:10px;margin-bottom:12px;">' +
+      '<div style="font-size:11px;font-weight:800;color:#0B63F6;width:100%;margin-bottom:4px;">Hashtags suggérés :</div>' +
       HASHTAGS.map(function(h) {
-        return '<button type="button" onclick="App.insertTag(\''+h+'\')" style="background:#007AFF;color:#FFF;border:none;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;">'+h+'</button>';
+        return '<button type="button" onclick="App.insertTag(\''+h+'\')" style="background:#0B63F6;color:#FFF;border:none;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;">'+h+'</button>';
       }).join('') +
     '</div>';
 
@@ -1432,19 +1433,19 @@
         '</div>' +
 
         '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px 12px;">' +
-          '<span onclick="App.closeRepostModal()" style="font-size:14.5px;color:#65686F;cursor:pointer;font-weight:700;padding:8px 4px;">Annuler</span>' +
-          '<h3 style="font-size:16px;font-weight:800;margin:0;color:#0B0B0C;letter-spacing:-0.2px;">Partager</h3>' +
-          '<button type="button" onclick="App.confirmRepost()" style="font-size:14px;color:#FFF;font-weight:800;background:linear-gradient(135deg,#007AFF,#0062CC);border:none;border-radius:20px;padding:8px 18px;cursor:pointer;box-shadow:0 4px 12px rgba(0,122,255,0.28);">Partager</button>' +
+          '<span onclick="App.closeRepostModal()" style="font-size:14.5px;color:#5A6472;cursor:pointer;font-weight:700;padding:8px 4px;">Annuler</span>' +
+          '<h3 style="font-size:16px;font-weight:800;margin:0;color:#0B0D12;letter-spacing:-0.2px;">Partager</h3>' +
+          '<button type="button" onclick="App.confirmRepost()" style="font-size:14px;color:#FFF;font-weight:800;background:#0B63F6;border:none;border-radius:20px;padding:8px 18px;cursor:pointer;box-shadow:0 4px 12px rgba(0,122,255,0.28);">Partager</button>' +
         '</div>' +
 
         '<div style="overflow-y:auto;flex:1;padding:4px 16px 16px;">' +
           hashHtml +
-          '<div id="mentionSugg" style="display:none;flex-wrap:wrap;gap:6px;background:#F0F6FF;border:1px solid #CCDEFF;border-radius:14px;padding:10px;margin-bottom:12px;"></div>' +
-          '<textarea id="repostText" oninput="App.onPostInput(this.value)" placeholder="Ajoutez un commentaire... Tapez # pour un hashtag ou @ pour mentionner un membre..." style="width:100%;min-height:90px;border:none;background:#F6F7F9;border-radius:18px;padding:14px;font-size:15.5px;line-height:1.55;color:#0B0B0C;resize:none;outline:none;box-sizing:border-box;font-family:inherit;margin-bottom:14px;">' + safeHtml(S.postText||'') + '</textarea>' +
+          '<div id="mentionSugg" style="display:none;flex-wrap:wrap;gap:6px;background:#E8EEFB;border:1px solid #CCDEFF;border-radius:14px;padding:10px;margin-bottom:12px;"></div>' +
+          '<textarea id="repostText" oninput="App.onPostInput(this.value)" placeholder="Ajoutez un commentaire... Tapez # pour un hashtag ou @ pour mentionner un membre..." style="width:100%;min-height:90px;border:none;background:#F6F7F9;border-radius:18px;padding:14px;font-size:15.5px;line-height:1.55;color:#0B0D12;resize:none;outline:none;box-sizing:border-box;font-family:inherit;margin-bottom:14px;">' + safeHtml(S.postText||'') + '</textarea>' +
 
           '<div style="background:#F6F7F9;border-radius:18px;overflow:hidden;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
             '<div style="padding:10px 12px;">' +
-              '<strong style="font-size:13px;color:#0B0B0C;">' + safeHtml(post.author||'Membre') + '</strong>' +
+              '<strong style="font-size:13px;color:#0B0D12;">' + safeHtml(post.author||'Membre') + '</strong>' +
             '</div>' +
             (previewMedia
               ? (isVideoUrl(previewMedia)
@@ -1452,7 +1453,7 @@
                   : '<img src="'+previewMedia+'" style="width:100%;max-height:220px;object-fit:cover;display:block;">')
               : (post.postBg
                   ? '<div style="min-height:100px;display:flex;align-items:center;justify-content:center;padding:20px;background:' + post.postBg + ';"><p style="color:#FFF;font-size:15px;font-weight:800;text-align:center;margin:0;">' + safeHtml(previewCaption.slice(0,140)) + '</p></div>'
-                  : '<p style="font-size:13.5px;color:#3A3A3C;margin:0;padding:12px;line-height:1.4;">' + safeHtml(previewCaption.slice(0,200)) + '</p>')
+                  : '<p style="font-size:13.5px;color:#25303F;margin:0;padding:12px;line-height:1.4;">' + safeHtml(previewCaption.slice(0,200)) + '</p>')
             ) +
           '</div>' +
         '</div>' +
@@ -1469,16 +1470,16 @@
     var evMonth = evDate ? evDate.toLocaleDateString('fr-FR', {month:'short'}).toUpperCase() : '';
     var evDay = evDate ? evDate.getDate() : '';
     var isSel = S.postAboutEventId === ev.id;
-    return '<button type="button" onclick="App.selectAboutEvent(\''+ev.id+'\')" style="width:100%;display:flex;align-items:center;gap:12px;background:' + (isSel?'#F0EFFF':'#F8F8FA') + ';border:1.5px solid ' + (isSel?'#5856D6':'transparent') + ';border-radius:16px;padding:12px;margin-bottom:10px;cursor:pointer;text-align:left;">' +
+    return '<button type="button" onclick="App.selectAboutEvent(\''+ev.id+'\')" style="width:100%;display:flex;align-items:center;gap:12px;background:' + (isSel?'#E8EEFB':'#F8F8FA') + ';border:1.5px solid ' + (isSel?'#0B63F6':'transparent') + ';border-radius:16px;padding:12px;margin-bottom:10px;cursor:pointer;text-align:left;">' +
       '<div style="background:#FFF;border-radius:10px;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,0.06);width:44px;text-align:center;flex-shrink:0;">' +
-        '<div style="background:#5856D6;color:#FFF;font-size:8.5px;font-weight:900;text-transform:uppercase;padding:3px 0;letter-spacing:0.5px;">' + evMonth + '</div>' +
+        '<div style="background:#0B63F6;color:#FFF;font-size:8.5px;font-weight:900;text-transform:uppercase;padding:3px 0;letter-spacing:0.5px;">' + evMonth + '</div>' +
         '<div style="font-size:18px;font-weight:900;color:#000;padding:3px 0;">' + evDay + '</div>' +
       '</div>' +
       '<div style="flex:1;min-width:0;">' +
-        '<div style="font-size:14px;font-weight:800;color:#1C1C1E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(ev.eventTitle) + '</div>' +
-        '<div style="font-size:12px;color:#8E8E93;margin-top:2px;">' + (ev.eventStart ? '🕒 ' + ev.eventStart + (ev.eventEnd ? ' — ' + ev.eventEnd : '') : '') + '</div>' +
+        '<div style="font-size:14px;font-weight:800;color:#0B0D12;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(ev.eventTitle) + '</div>' +
+        '<div style="font-size:12px;color:#8A93A0;margin-top:2px;">' + (ev.eventStart ? '' + ev.eventStart + (ev.eventEnd ? ' — ' + ev.eventEnd : '') : '') + '</div>' +
       '</div>' +
-      (isSel ? '<span style="color:#5856D6;font-size:18px;">✓</span>' : '') +
+      (isSel ? '<span style="color:#0B63F6;font-size:18px;">✓</span>' : '') +
     '</button>';
   }
 
@@ -1503,7 +1504,7 @@
     });
 
     if (upcoming.length === 0 && past.length === 0) {
-      return '<div style="text-align:center;padding:36px 20px;color:#8E8E93;">' +
+      return '<div style="text-align:center;padding:36px 20px;color:#8A93A0;">' +
         '<div style="font-size:38px;margin-bottom:10px;">🗓️</div>' +
         '<div style="font-size:15px;font-weight:800;color:#000;">' + (q ? 'Aucun résultat' : 'Aucun événement') + '</div>' +
         '<div style="font-size:13px;margin-top:4px;">' + (q ? 'Essayez un autre mot-clé.' : 'Créez un événement dans Planning & Cultes pour pouvoir le lier ici.') + '</div>' +
@@ -1512,11 +1513,11 @@
 
     var html = '';
     if (upcoming.length > 0) {
-      html += '<div style="font-size:11px;font-weight:800;color:#8E8E93;text-transform:uppercase;letter-spacing:0.5px;margin:4px 0 8px;">🔜 À venir</div>' +
+      html += '<div style="font-size:11px;font-weight:800;color:#8A93A0;text-transform:uppercase;letter-spacing:0.5px;margin:4px 0 8px;">🔜 À venir</div>' +
         upcoming.map(renderAboutEventItemBtn).join('');
     }
     if (past.length > 0) {
-      html += '<div style="font-size:11px;font-weight:800;color:#8E8E93;text-transform:uppercase;letter-spacing:0.5px;margin:' + (upcoming.length>0?'14px':'4px') + ' 0 8px;">🕰️ Passés · pour un récap</div>' +
+      html += '<div style="font-size:11px;font-weight:800;color:#8A93A0;text-transform:uppercase;letter-spacing:0.5px;margin:' + (upcoming.length>0?'14px':'4px') + ' 0 8px;">Passés · pour un récap</div>' +
         past.map(renderAboutEventItemBtn).join('');
     }
     return html;
@@ -1529,12 +1530,12 @@
           '<div style="width:38px;height:5px;background:#E2E4E9;border-radius:3px;"></div>' +
         '</div>' +
         '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px 12px;">' +
-          '<span onclick="App.closeAboutEventPicker()" style="font-size:14.5px;color:#65686F;cursor:pointer;font-weight:700;padding:8px 4px;">Annuler</span>' +
-          '<h3 style="font-size:16px;font-weight:800;margin:0;color:#0B0B0C;">À propos de quel événement ?</h3>' +
+          '<span onclick="App.closeAboutEventPicker()" style="font-size:14.5px;color:#5A6472;cursor:pointer;font-weight:700;padding:8px 4px;">Annuler</span>' +
+          '<h3 style="font-size:16px;font-weight:800;margin:0;color:#0B0D12;">À propos de quel événement ?</h3>' +
           '<span style="width:52px;"></span>' +
         '</div>' +
         '<div style="padding:0 16px 10px;">' +
-          '<div style="display:flex;align-items:center;gap:8px;background:#F2F2F7;border-radius:12px;height:38px;padding:0 12px;">' +
+          '<div style="display:flex;align-items:center;gap:8px;background:#F6F7F9;border-radius:12px;height:38px;padding:0 12px;">' +
             SVG.search +
             '<input id="aboutEventSearchInput" type="search" value="' + safeHtml(S.aboutEventSearch||'') + '" oninput="App.searchAboutEvents(this.value)" placeholder="Rechercher un événement (à venir ou passé)..." style="flex:1;border:none;background:transparent;font-size:13.5px;color:#000;outline:none;">' +
           '</div>' +
@@ -1568,8 +1569,8 @@
         '</div>';
       }
       return '<div style="display:flex;align-items:center;gap:10px;background:#F6F7F9;border-radius:16px;padding:14px;margin-bottom:12px;">' +
-        '<div style="width:20px;height:20px;border:3px solid #E2E4E9;border-top-color:#007AFF;border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0;"></div>' +
-        '<span style="font-size:12.5px;font-weight:700;color:#3A3A3C;">' + (S.reduceVideoQuality ? 'Traitement de la vidéo (HD)…' : 'Traitement de la vidéo…') + '</span>' +
+        '<div style="width:20px;height:20px;border:3px solid #E2E4E9;border-top-color:#0B63F6;border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0;"></div>' +
+        '<span style="font-size:12.5px;font-weight:700;color:#25303F;">' + (S.reduceVideoQuality ? 'Traitement de la vidéo (HD)…' : 'Traitement de la vidéo…') + '</span>' +
       '</div>';
     }
     if (S.pendingMedia.length === 0) return '';
@@ -1619,47 +1620,47 @@
       var startTsSel = eventStartTimestamp(selectedEv);
       var delay = startTsSel ? Math.round((now - startTsSel) / 60000) : 0;
       var stars = starsForDelay(delay);
-      var col = stars >= 4 ? '#10B981' : stars >= 2 ? '#F59E0B' : '#EF4444';
+      var col = stars >= 4 ? '#0E9F6E' : stars >= 2 ? '#D98A0B' : '#E2445C';
       return '<div style="background:#ECFDF5;border:1px solid #A7F3D0;border-radius:16px;padding:12px 14px;margin-bottom:10px;">' +
         '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px;">' +
-          '<span style="font-size:12.5px;font-weight:800;color:#047857;min-width:0;overflow-wrap:anywhere;">⏱️ Arrivée : ' + safeHtml(selectedEv.eventTitle || 'Événement') + '</span>' +
-          '<button type="button" onclick="App.clearCheckInEvent()" style="background:none;border:none;color:#FF3B30;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">Retirer</button>' +
+          '<span style="font-size:12.5px;font-weight:800;color:#047857;min-width:0;overflow-wrap:anywhere;">Arrivée : ' + safeHtml(selectedEv.eventTitle || 'Événement') + '</span>' +
+          '<button type="button" onclick="App.clearCheckInEvent()" style="background:none;border:none;color:#E2445C;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">Retirer</button>' +
         '</div>' +
-        '<div style="font-size:11.5px;color:#6B7280;line-height:1.45;">' +
+        '<div style="font-size:11.5px;color:#5A6472;line-height:1.45;">' +
           'En publiant maintenant : <b style="color:' + col + ';">' + (stars>0?'+':'') + stars + '★</b> de ponctualité' +
           (delay > 0 ? ' (retard de ' + delay + ' min)' : ' (à l\'heure)') + '.' +
         '</div>' +
-        '<div style="font-size:10.5px;color:#9AA0A8;line-height:1.4;margin-top:6px;">📍 Votre position sera relevée et visible de tous. Elle ne pourra plus être retirée.</div>' +
+        '<div style="font-size:10.5px;color:#8A93A0;line-height:1.4;margin-top:6px;">Votre position sera relevée et visible de tous. Elle ne pourra plus être retirée.</div>' +
       '</div>';
     }
 
     return '<div style="background:#FFF7E6;border:1px solid #FFE0A3;border-radius:16px;padding:12px 14px;margin-bottom:10px;">' +
-      '<div style="font-size:12.5px;font-weight:800;color:#8A5A00;margin-bottom:6px;">⏱️ Enregistrer mon arrivée</div>' +
-      '<div style="font-size:11.5px;color:#6B7280;line-height:1.45;margin-bottom:8px;">Vous êtes de service ' + (candidates.length > 1 ? 'sur ces événements' : 'sur cet événement') + '. Pointez pour valider votre ponctualité.</div>' +
+      '<div style="font-size:12.5px;font-weight:800;color:#8A5A00;margin-bottom:6px;">Enregistrer mon arrivée</div>' +
+      '<div style="font-size:11.5px;color:#5A6472;line-height:1.45;margin-bottom:8px;">Vous êtes de service ' + (candidates.length > 1 ? 'sur ces événements' : 'sur cet événement') + '. Pointez pour valider votre ponctualité.</div>' +
       candidates.map(function(ev) {
         var st = eventStartTimestamp(ev);
         var dl = st ? Math.round((now - st) / 60000) : 0;
         var sc = starsForDelay(dl);
-        var c = sc >= 4 ? '#10B981' : sc >= 2 ? '#F59E0B' : '#EF4444';
+        var c = sc >= 4 ? '#0E9F6E' : sc >= 2 ? '#D98A0B' : '#E2445C';
         return '<button type="button" onclick="App.setCheckInEvent(\'' + ev.id + '\')" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;background:#FFF;border:1px solid #F0E0BC;border-radius:12px;padding:10px 12px;margin-bottom:6px;cursor:pointer;text-align:left;">' +
           '<span style="min-width:0;">' +
-            '<span style="display:block;font-size:13px;font-weight:800;color:#1C1C1E;overflow-wrap:anywhere;">' + safeHtml(ev.eventTitle || 'Événement') + '</span>' +
-            '<span style="display:block;font-size:11px;color:#8E8E93;">' + safeHtml(ev.eventStart || '') + (dl > 0 ? ' · retard de ' + dl + ' min' : ' · à l\'heure') + '</span>' +
+            '<span style="display:block;font-size:13px;font-weight:800;color:#0B0D12;overflow-wrap:anywhere;">' + safeHtml(ev.eventTitle || 'Événement') + '</span>' +
+            '<span style="display:block;font-size:11px;color:#8A93A0;">' + safeHtml(ev.eventStart || '') + (dl > 0 ? ' · retard de ' + dl + ' min' : ' · à l\'heure') + '</span>' +
           '</span>' +
           '<span style="font-size:13px;font-weight:900;color:' + c + ';white-space:nowrap;">' + (sc>0?'+':'') + sc + '★</span>' +
         '</button>';
       }).join('') +
-      '<div style="font-size:10.5px;color:#9AA0A8;line-height:1.4;">📍 Le pointage relève votre position, visible de tous et non retirable.</div>' +
+      '<div style="font-size:10.5px;color:#8A93A0;line-height:1.4;">Le pointage relève votre position, visible de tous et non retirable.</div>' +
     '</div>';
   }
 
   function renderCreateModal(u) {
     var previewHtml = renderComposerMediaPreview();
 
-    var hashHtml = '<div id="hashSugg" style="display:none;flex-wrap:wrap;gap:6px;background:#F0F6FF;border:1px solid #CCDEFF;border-radius:14px;padding:10px;margin-bottom:12px;">' +
-      '<div style="font-size:11px;font-weight:800;color:#007AFF;width:100%;margin-bottom:4px;">Hashtags suggérés :</div>' +
+    var hashHtml = '<div id="hashSugg" style="display:none;flex-wrap:wrap;gap:6px;background:#E8EEFB;border:1px solid #CCDEFF;border-radius:14px;padding:10px;margin-bottom:12px;">' +
+      '<div style="font-size:11px;font-weight:800;color:#0B63F6;width:100%;margin-bottom:4px;">Hashtags suggérés :</div>' +
       HASHTAGS.map(function(h) {
-        return '<button type="button" onclick="App.insertTag(\''+h+'\')" style="background:#007AFF;color:#FFF;border:none;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;">'+h+'</button>';
+        return '<button type="button" onclick="App.insertTag(\''+h+'\')" style="background:#0B63F6;color:#FFF;border:none;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;">'+h+'</button>';
       }).join('') +
     '</div>';
 
@@ -1671,19 +1672,19 @@
         '</div>' +
 
         '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px 12px;">' +
-          '<span onclick="App.closeCreate()" style="font-size:14.5px;color:#65686F;cursor:pointer;font-weight:700;padding:8px 4px;">Annuler</span>' +
-          '<h3 style="font-size:16px;font-weight:800;margin:0;color:#0B0B0C;letter-spacing:-0.2px;">Nouvelle publication</h3>' +
-          '<button type="submit" form="createPostForm" style="font-size:14px;color:#FFF;font-weight:800;background:linear-gradient(135deg,#007AFF,#0062CC);border:none;border-radius:20px;padding:8px 18px;cursor:pointer;box-shadow:0 4px 12px rgba(0,122,255,0.28);">Publier</button>' +
+          '<span onclick="App.closeCreate()" style="font-size:14.5px;color:#5A6472;cursor:pointer;font-weight:700;padding:8px 4px;">Annuler</span>' +
+          '<h3 style="font-size:16px;font-weight:800;margin:0;color:#0B0D12;letter-spacing:-0.2px;">Nouvelle publication</h3>' +
+          '<button type="submit" form="createPostForm" style="font-size:14px;color:#FFF;font-weight:800;background:#0B63F6;border:none;border-radius:20px;padding:8px 18px;cursor:pointer;box-shadow:0 4px 12px rgba(0,122,255,0.28);">Publier</button>' +
         '</div>' +
 
         '<div style="overflow-y:auto;flex:1;padding:4px 16px 16px;">' +
           '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">' +
             ((u && u.avatar_url)
               ? '<img src="' + u.avatar_url + '" style="width:42px;height:42px;border-radius:21px;object-fit:cover;flex-shrink:0;box-shadow:0 3px 8px rgba(0,0,0,0.12);" />'
-              : '<div style="width:42px;height:42px;border-radius:21px;background:linear-gradient(135deg,' + ((u||{}).avatar_color||'#007AFF') + ',#0040CC);color:#FFF;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 3px 8px rgba(0,0,0,0.12);">' + ((u&&u.prenom||'M').charAt(0)) + '</div>') +
+              : '<div style="width:42px;height:42px;border-radius:21px;background:linear-gradient(135deg,' + ((u||{}).avatar_color||'#0B63F6') + ',#0B63F6);color:#FFF;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 3px 8px rgba(0,0,0,0.12);">' + ((u&&u.prenom||'M').charAt(0)) + '</div>') +
             '<div>' +
-              '<div style="font-size:14.5px;font-weight:800;color:#0B0B0C;">' + safeHtml((u&&u.prenom||'') + ' ' + (u&&u.nom||'')) + '</div>' +
-              '<div style="font-size:11.5px;color:#007AFF;font-weight:700;background:#EEF5FF;display:inline-block;padding:2px 8px;border-radius:8px;margin-top:2px;">' + secNom((u&&u.section_id)||'cadrage') + ' · Tapez # pour les hashtags</div>' +
+              '<div style="font-size:14.5px;font-weight:800;color:#0B0D12;">' + safeHtml((u&&u.prenom||'') + ' ' + (u&&u.nom||'')) + '</div>' +
+              '<div style="font-size:11.5px;color:#0B63F6;font-weight:700;background:#EEF5FF;display:inline-block;padding:2px 8px;border-radius:8px;margin-top:2px;">' + secNom((u&&u.section_id)||'cadrage') + ' · Tapez # pour les hashtags</div>' +
             '</div>' +
           '</div>' +
 
@@ -1692,7 +1693,7 @@
           renderCheckInBlock() +
 
           hashHtml +
-          '<div id="mentionSugg" style="display:none;flex-wrap:wrap;gap:6px;background:#F0F6FF;border:1px solid #CCDEFF;border-radius:14px;padding:10px;margin-bottom:12px;"></div>' +
+          '<div id="mentionSugg" style="display:none;flex-wrap:wrap;gap:6px;background:#E8EEFB;border:1px solid #CCDEFF;border-radius:14px;padding:10px;margin-bottom:12px;"></div>' +
           previewHtml +
 
           // Color preview or plain textarea — hauteur généreuse et garantie, tout le
@@ -1703,7 +1704,7 @@
                 '<textarea id="newPostText" oninput="App.onPostInput(this.value)" placeholder="Quoi de neuf ?" style="width:100%;min-height:180px;border:none;background:transparent;font-size:24px;font-weight:900;line-height:1.4;color:#FFF;resize:none;outline:none;box-sizing:border-box;font-family:inherit;text-align:center;padding:24px 20px;text-shadow:0 2px 12px rgba(0,0,0,0.3);position:relative;z-index:1;">' + safeHtml(S.postText||'') + '</textarea>' +
               '</div>'
             : '<form id="createPostForm" onsubmit="App.submitPost(event)">' +
-                '<textarea id="newPostText" oninput="App.onPostInput(this.value)" placeholder="Quoi de neuf ? Tapez # pour ajouter un hashtag de section..." style="width:100%;min-height:140px;border:none;background:transparent;font-size:15.5px;line-height:1.55;color:#0B0B0C;resize:none;outline:none;box-sizing:border-box;font-family:inherit;">' + safeHtml(S.postText||'') + '</textarea>' +
+                '<textarea id="newPostText" oninput="App.onPostInput(this.value)" placeholder="Quoi de neuf ? Tapez # pour ajouter un hashtag de section..." style="width:100%;min-height:140px;border:none;background:transparent;font-size:15.5px;line-height:1.55;color:#0B0D12;resize:none;outline:none;box-sizing:border-box;font-family:inherit;">' + safeHtml(S.postText||'') + '</textarea>' +
               '</form>'
           ) +
           (S.postBg ? '<form id="createPostForm" onsubmit="App.submitPost(event)" style="display:none;"></form>' : '') +
@@ -1711,11 +1712,11 @@
           // Qui peut voir
           '<div style="background:#F6F7F9;border-radius:20px;padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
             '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">' +
-              '<span style="font-size:13px;font-weight:800;color:#0B0B0C;display:flex;align-items:center;gap:8px;"><span style="width:26px;height:26px;border-radius:13px;background:#EAF2FF;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">🔒</span>Qui peut voir ?</span>' +
+              '<span style="font-size:13px;font-weight:800;color:#0B0D12;display:flex;align-items:center;gap:8px;"><span style="width:26px;height:26px;border-radius:13px;background:#E8EEFB;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">🔒</span>Qui peut voir ?</span>' +
             '</div>' +
             '<div style="display:flex;gap:4px;background:#EAEBEF;border-radius:16px;padding:3px;">' +
-              '<button type="button" onclick="App.setPostVisibility(\'all\')" style="flex:1;padding:8px 6px;border-radius:13px;font-size:11.5px;font-weight:800;border:none;cursor:pointer;transition:all 0.2s;background:' + ((S.postVisibility||'all')==='all'?'#FFFFFF':'transparent') + ';color:' + ((S.postVisibility||'all')==='all'?'#007AFF':'#6B7280') + ';box-shadow:' + ((S.postVisibility||'all')==='all'?'0 2px 6px rgba(0,0,0,0.08)':'none') + ';">🌍 Tout le monde</button>' +
-              '<button type="button" onclick="App.setPostVisibility(\'sections\')" style="flex:1;padding:8px 6px;border-radius:13px;font-size:11.5px;font-weight:800;border:none;cursor:pointer;transition:all 0.2s;background:' + ((S.postVisibility||'all')==='sections'?'#FFFFFF':'transparent') + ';color:' + ((S.postVisibility||'all')==='sections'?'#007AFF':'#6B7280') + ';box-shadow:' + ((S.postVisibility||'all')==='sections'?'0 2px 6px rgba(0,0,0,0.08)':'none') + ';">🔒 Sections ciblées</button>' +
+              '<button type="button" onclick="App.setPostVisibility(\'all\')" style="flex:1;padding:8px 6px;border-radius:13px;font-size:11.5px;font-weight:800;border:none;cursor:pointer;transition:all 0.2s;background:' + ((S.postVisibility||'all')==='all'?'#FFFFFF':'transparent') + ';color:' + ((S.postVisibility||'all')==='all'?'#0B63F6':'#5A6472') + ';box-shadow:' + ((S.postVisibility||'all')==='all'?'0 2px 6px rgba(0,0,0,0.08)':'none') + ';">🌍 Tout le monde</button>' +
+              '<button type="button" onclick="App.setPostVisibility(\'sections\')" style="flex:1;padding:8px 6px;border-radius:13px;font-size:11.5px;font-weight:800;border:none;cursor:pointer;transition:all 0.2s;background:' + ((S.postVisibility||'all')==='sections'?'#FFFFFF':'transparent') + ';color:' + ((S.postVisibility||'all')==='sections'?'#0B63F6':'#5A6472') + ';box-shadow:' + ((S.postVisibility||'all')==='sections'?'0 2px 6px rgba(0,0,0,0.08)':'none') + ';">Sections ciblées</button>' +
             '</div>' +
             (S.postVisibility === 'sections'
               ? '<div style="margin-top:10px;"><div id="targetSectionBadgesContainer">' + App.renderSectionBadges(S.postTargetSections||[], 'toggleTargetSection') + '</div></div>'
@@ -1724,7 +1725,7 @@
 
           // Programmer
           '<div style="background:#F6F7F9;border-radius:20px;padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
-            '<span style="font-size:13px;font-weight:800;color:#0B0B0C;display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="width:26px;height:26px;border-radius:13px;background:#FFF3E5;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">⏰</span>Programmer <span style="font-weight:600;color:#9AA0A8;font-size:11px;">(optionnel)</span></span>' +
+            '<span style="font-size:13px;font-weight:800;color:#0B0D12;display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="width:26px;height:26px;border-radius:13px;background:#FFF3E5;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">⏰</span>Programmer <span style="font-weight:600;color:#8A93A0;font-size:11px;">(optionnel)</span></span>' +
             '<div style="display:flex;gap:8px;">' +
               '<input type="date" id="postScheduleDate" style="flex:1;height:40px;border-radius:12px;border:none;background:#FFF;padding:0 10px;font-size:12.5px;outline:none;box-shadow:0 1px 2px rgba(16,24,40,0.06);" />' +
               '<input type="time" id="postScheduleTime" style="flex:1;height:40px;border-radius:12px;border:none;background:#FFF;padding:0 10px;font-size:12.5px;outline:none;box-shadow:0 1px 2px rgba(16,24,40,0.06);" />' +
@@ -1734,19 +1735,19 @@
           // À propos
           '<div style="background:#F6F7F9;border-radius:20px;padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
             '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:' + (S.postAboutEventId?'10px':'0') + ';">' +
-              '<span style="font-size:13px;font-weight:800;color:#0B0B0C;display:flex;align-items:center;gap:8px;"><span style="width:26px;height:26px;border-radius:13px;background:#F0EFFF;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">🗓️</span>À propos <span style="font-weight:600;color:#9AA0A8;font-size:11px;">(optionnel)</span></span>' +
-              (S.postAboutEventId ? '<span onclick="App.clearAboutEvent()" style="color:#FF3B30;font-size:12px;font-weight:700;cursor:pointer;">Retirer</span>' : '') +
+              '<span style="font-size:13px;font-weight:800;color:#0B0D12;display:flex;align-items:center;gap:8px;"><span style="width:26px;height:26px;border-radius:13px;background:#E8EEFB;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">🗓️</span>À propos <span style="font-weight:600;color:#8A93A0;font-size:11px;">(optionnel)</span></span>' +
+              (S.postAboutEventId ? '<span onclick="App.clearAboutEvent()" style="color:#E2445C;font-size:12px;font-weight:700;cursor:pointer;">Retirer</span>' : '') +
             '</div>' +
             (function(){
               if (!S.postAboutEventId) {
-                return '<button type="button" onclick="App.openAboutEventPicker()" style="width:100%;background:#FFF;border:1px dashed #C7C7CC;border-radius:12px;padding:10px;font-size:12.5px;font-weight:700;color:#5856D6;cursor:pointer;">+ Lier à un événement (ex : culte de dimanche)</button>';
+                return '<button type="button" onclick="App.openAboutEventPicker()" style="width:100%;background:#FFF;border:1px dashed #E4E7EC;border-radius:12px;padding:10px;font-size:12.5px;font-weight:700;color:#0B63F6;cursor:pointer;">+ Lier à un événement (ex : culte de dimanche)</button>';
               }
               var evAbout = db(SK.POSTS, []).find(function(p){ return p.id === S.postAboutEventId; });
               if (!evAbout) return '';
               var evAboutD = evAbout.eventDate ? new Date(evAbout.eventDate+'T00:00:00').toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'}) : '';
               return '<button type="button" onclick="App.openAboutEventPicker()" style="width:100%;display:flex;align-items:center;gap:8px;background:#FFF;border-radius:12px;padding:10px;text-align:left;border:none;cursor:pointer;">' +
                 '<span style="font-size:16px;">🗓️</span>' +
-                '<span style="flex:1;min-width:0;font-size:12.5px;font-weight:700;color:#1C1C1E;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(evAbout.eventTitle||'') + (evAboutD?' · '+evAboutD:'') + (evAbout.eventStart?' à '+evAbout.eventStart:'') + '</span>' +
+                '<span style="flex:1;min-width:0;font-size:12.5px;font-weight:700;color:#0B0D12;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(evAbout.eventTitle||'') + (evAboutD?' · '+evAboutD:'') + (evAbout.eventStart?' à '+evAbout.eventStart:'') + '</span>' +
               '</button>';
             })() +
           '</div>' +
@@ -1754,8 +1755,8 @@
           // Sondage
           '<div style="background:#F6F7F9;border-radius:20px;padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
             '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:' + (S.pollOpen?'10px':'0') + ';">' +
-              '<span style="font-size:13px;font-weight:800;color:#0B0B0C;display:flex;align-items:center;gap:8px;"><span style="width:26px;height:26px;border-radius:13px;background:#E6F9F0;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">📊</span>Sondage <span style="font-weight:600;color:#9AA0A8;font-size:11px;">(optionnel)</span></span>' +
-              (S.pollOpen ? '<span onclick="App.togglePoll()" style="color:#FF3B30;font-size:12px;font-weight:700;cursor:pointer;">Retirer</span>' : '') +
+              '<span style="font-size:13px;font-weight:800;color:#0B0D12;display:flex;align-items:center;gap:8px;"><span style="width:26px;height:26px;border-radius:13px;background:#E6F9F0;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">📊</span>Sondage <span style="font-weight:600;color:#8A93A0;font-size:11px;">(optionnel)</span></span>' +
+              (S.pollOpen ? '<span onclick="App.togglePoll()" style="color:#E2445C;font-size:12px;font-weight:700;cursor:pointer;">Retirer</span>' : '') +
             '</div>' +
             (S.pollOpen
               ? (
@@ -1763,15 +1764,15 @@
                   (S.pollOptions||[]).map(function(opt, idx) {
                     return '<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">' +
                       '<input type="text" value="' + safeHtml(opt||'') + '" oninput="App.setPollOption(' + idx + ', this.value)" placeholder="Option ' + (idx+1) + '" maxlength="60" style="flex:1;height:38px;border-radius:11px;border:none;background:#FFF;padding:0 12px;font-size:12.5px;outline:none;box-shadow:0 1px 2px rgba(16,24,40,0.06);box-sizing:border-box;" />' +
-                      (S.pollOptions.length > 2 ? '<button type="button" onclick="App.removePollOption(' + idx + ')" style="width:32px;height:32px;flex-shrink:0;border-radius:10px;border:none;background:#FFF0EF;color:#FF3B30;font-size:16px;font-weight:800;cursor:pointer;">×</button>' : '') +
+                      (S.pollOptions.length > 2 ? '<button type="button" onclick="App.removePollOption(' + idx + ')" style="width:32px;height:32px;flex-shrink:0;border-radius:10px;border:none;background:#FFF0EF;color:#E2445C;font-size:16px;font-weight:800;cursor:pointer;">×</button>' : '') +
                     '</div>';
                   }).join('') +
                   (S.pollOptions.length < 5
-                    ? '<button type="button" onclick="App.addPollOption()" style="background:#FFF;border:1px dashed #C7C7CC;border-radius:12px;padding:8px 12px;font-size:12px;font-weight:700;color:#007AFF;cursor:pointer;width:100%;margin-top:2px;">+ Ajouter une option</button>'
+                    ? '<button type="button" onclick="App.addPollOption()" style="background:#FFF;border:1px dashed #E4E7EC;border-radius:12px;padding:8px 12px;font-size:12px;font-weight:700;color:#0B63F6;cursor:pointer;width:100%;margin-top:2px;">+ Ajouter une option</button>'
                     : '') +
-                  '<div style="font-size:10.5px;color:#9AA0A8;line-height:1.4;margin-top:6px;">Une seule réponse par membre. Question et au moins 2 options requises.</div>'
+                  '<div style="font-size:10.5px;color:#8A93A0;line-height:1.4;margin-top:6px;">Une seule réponse par membre. Question et au moins 2 options requises.</div>'
                 )
-              : '<button type="button" onclick="App.togglePoll()" style="width:100%;background:#FFF;border:1px dashed #C7C7CC;border-radius:12px;padding:10px;font-size:12.5px;font-weight:700;color:#0EA65C;cursor:pointer;">+ Ajouter un sondage</button>'
+              : '<button type="button" onclick="App.togglePoll()" style="width:100%;background:#FFF;border:1px dashed #E4E7EC;border-radius:12px;padding:10px;font-size:12.5px;font-weight:700;color:#0EA65C;cursor:pointer;">+ Ajouter un sondage</button>'
             ) +
           '</div>' +
 
@@ -1781,12 +1782,12 @@
               '<div style="display:flex;align-items:center;gap:10px;">' +
                 '<span style="width:26px;height:26px;border-radius:13px;background:#FFEDE0;display:inline-flex;align-items:center;justify-content:center;font-size:14px;">🕐</span>' +
                 '<div>' +
-                  '<div style="font-size:13px;font-weight:800;color:#0B0B0C;">Publication éphémère</div>' +
-                  '<div style="font-size:11px;color:#8E8E93;">Disparaît automatiquement après 24h</div>' +
+                  '<div style="font-size:13px;font-weight:800;color:#0B0D12;">Publication éphémère</div>' +
+                  '<div style="font-size:11px;color:#8A93A0;">Disparaît automatiquement après 24h</div>' +
                 '</div>' +
               '</div>' +
               '<label style="position:relative;display:inline-block;width:48px;height:28px;flex-shrink:0;">' +
-                '<input type="checkbox" id="postEphemeral" style="opacity:0;width:0;height:0;" onchange="this.nextElementSibling.style.background=this.checked?\'#FF9500\':\'#DADCE1\'; this.nextElementSibling.children[0].style.transform=this.checked?\'translateX(20px)\':\'translateX(0)\';"/>' +
+                '<input type="checkbox" id="postEphemeral" style="opacity:0;width:0;height:0;" onchange="this.nextElementSibling.style.background=this.checked?\'#D98A0B\':\'#DADCE1\'; this.nextElementSibling.children[0].style.transform=this.checked?\'translateX(20px)\':\'translateX(0)\';"/>' +
                 '<span style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:#DADCE1;transition:.25s;border-radius:28px;">' +
                   '<span style="position:absolute;content:\'\';height:22px;width:22px;left:3px;bottom:3px;background-color:white;transition:.25s;border-radius:50%;box-shadow:0 2px 4px rgba(0,0,0,0.2);"></span>' +
                 '</span>' +
@@ -1795,13 +1796,13 @@
           '</div>' +
         '</div>' +
 
-        '<div style="padding:10px 16px 14px;border-top:0.5px solid #F2F2F7;flex-shrink:0;">' +
+        '<div style="padding:10px 16px 14px;border-top:0.5px solid #F6F7F9;flex-shrink:0;">' +
           // Color palette row
           (S.pendingMedia.length === 0
             ? '<div style="display:flex;gap:8px;align-items:center;overflow-x:auto;padding:2px 0 10px;scrollbar-width:none;">' +
-                '<span style="font-size:11px;font-weight:700;color:#9AA0A8;flex-shrink:0;">Fond</span>' +
+                '<span style="font-size:11px;font-weight:700;color:#8A93A0;flex-shrink:0;">Fond</span>' +
                 // "No color" option
-                '<div onclick="App.setPostBg(null)" style="width:30px;height:30px;border-radius:15px;background:#FFF;border:2px solid ' + (S.postBg===null?'#007AFF':'#E5E5EA') + ';cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;font-weight:700;color:#3A3A3C;">Aa</div>' +
+                '<div onclick="App.setPostBg(null)" style="width:30px;height:30px;border-radius:15px;background:#FFF;border:2px solid ' + (S.postBg===null?'#0B63F6':'#E4E7EC') + ';cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;font-weight:700;color:#25303F;">Aa</div>' +
                 // Color swatches
                 [
                   'linear-gradient(135deg,#1A1A2E,#16213E)',
@@ -1818,20 +1819,20 @@
                   'linear-gradient(135deg,#F7971E,#FFD200)',
                 ].map(function(bg, idx) {
                   var isSel = S.postBg === bg;
-                  return '<div onclick="App.setPostBgIdx(' + idx + ')" style="width:30px;height:30px;border-radius:15px;background:' + bg + ';cursor:pointer;flex-shrink:0;border:2.5px solid ' + (isSel?'#FFF':'transparent') + ';box-shadow:' + (isSel?'0 0 0 2px #007AFF':'0 1px 3px rgba(0,0,0,0.15)') + ';transition:0.15s;"></div>';
+                  return '<div onclick="App.setPostBgIdx(' + idx + ')" style="width:30px;height:30px;border-radius:15px;background:' + bg + ';cursor:pointer;flex-shrink:0;border:2.5px solid ' + (isSel?'#FFF':'transparent') + ';box-shadow:' + (isSel?'0 0 0 2px #0B63F6':'0 1px 3px rgba(0,0,0,0.15)') + ';transition:0.15s;"></div>';
                 }).join('') +
               '</div>'
             : ''
           ) +
           '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
-            '<label style="cursor:pointer;display:flex;align-items:center;gap:6px;color:#007AFF;font-size:12.5px;font-weight:800;background:#EAF2FF;padding:9px 14px;border-radius:16px;">' +
-              '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#007AFF" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>' +
+            '<label style="cursor:pointer;display:flex;align-items:center;gap:6px;color:#0B63F6;font-size:12.5px;font-weight:800;background:#E8EEFB;padding:9px 14px;border-radius:16px;">' +
+              '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0B63F6" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>' +
               'Photo / Vidéo' +
               '<input type="file" accept="image/*,video/*" multiple onchange="App.addMedia(event)" style="display:none;">' +
             '</label>' +
-            '<span style="font-size:11.5px;color:#9AA0A8;font-weight:600;">' + (S.pendingMedia.some(function(m){return isVideoUrl(m);}) ? '1 vidéo' : S.pendingMedia.length + '/10 photos') + '</span>' +
+            '<span style="font-size:11.5px;color:#8A93A0;font-weight:600;">' + (S.pendingMedia.some(function(m){return isVideoUrl(m);}) ? '1 vidéo' : S.pendingMedia.length + '/10 photos') + '</span>' +
           '</div>' +
-          '<label style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer;font-size:12px;color:#6B7280;font-weight:600;line-height:1.4;background:#F6F7F9;padding:10px 12px;border-radius:14px;"><input type="checkbox" ' + (S.reduceVideoQuality?'checked':'') + ' onchange="App.toggleReduceVideoQuality()" style="width:17px;height:17px;flex-shrink:0;accent-color:#007AFF;"> 🎥 Nous réduisons la qualité vidéo en HD pour une expérience plus fluide</label>' +
+          '<label style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer;font-size:12px;color:#5A6472;font-weight:600;line-height:1.4;background:#F6F7F9;padding:10px 12px;border-radius:14px;"><input type="checkbox" ' + (S.reduceVideoQuality?'checked':'') + ' onchange="App.toggleReduceVideoQuality()" style="width:17px;height:17px;flex-shrink:0;accent-color:#0B63F6;"> 🎥 Nous réduisons la qualité vidéo en HD pour une expérience plus fluide</label>' +
         '</div>' +
 
       '</div>' +
@@ -1850,7 +1851,7 @@
 
     var listHtml;
     if (ids.length === 0) {
-      listHtml = '<div style="text-align:center;padding:40px 20px;color:#8E8E93;">' +
+      listHtml = '<div style="text-align:center;padding:40px 20px;color:#8A93A0;">' +
         '<div style="font-size:38px;margin-bottom:10px;">👀</div>' +
         '<div style="font-size:15px;font-weight:800;color:#000;">Aucune vue pour l\'instant</div>' +
         '<div style="font-size:13px;margin-top:4px;">Les membres qui verront cette publication apparaîtront ici.</div>' +
@@ -1860,17 +1861,17 @@
         var vu = users.find(function(x){ return x.id === uid; });
         var nom = vu ? ((vu.prenom||'') + ' ' + (vu.nom||'')).trim() : 'Membre';
         var initial = (vu && vu.prenom ? vu.prenom.charAt(0) : 'M').toUpperCase();
-        var color = (vu && vu.avatar_color) || '#007AFF';
+        var color = (vu && vu.avatar_color) || '#0B63F6';
         var avatarNode = (vu && vu.avatar_url)
           ? '<img src="' + vu.avatar_url + '" style="width:40px;height:40px;border-radius:20px;object-fit:cover;flex-shrink:0;" />'
-          : '<div style="width:40px;height:40px;border-radius:20px;background:linear-gradient(135deg,' + color + ',#0040CC);color:#FFF;font-size:15px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + initial + '</div>';
+          : '<div style="width:40px;height:40px;border-radius:20px;background:' + color + ';color:#FFF;font-size:15px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + initial + '</div>';
         var secs = getUserSections(vu);
         var secLabel = secs.length > 0 ? secs.map(function(s){ return secNom(s); }).join(' · ') : '';
         return '<div onclick="App.closeViewers();App.openUserProfile(\'' + uid + '\')" style="display:flex;align-items:center;gap:12px;padding:10px 4px;cursor:pointer;">' +
           avatarNode +
           '<div style="flex:1;min-width:0;">' +
             '<div style="font-size:14px;font-weight:700;color:#000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(nom) + '</div>' +
-            (secLabel ? '<div style="font-size:12px;color:#8E8E93;margin-top:1px;">' + safeHtml(secLabel) + '</div>' : '') +
+            (secLabel ? '<div style="font-size:12px;color:#8A93A0;margin-top:1px;">' + safeHtml(secLabel) + '</div>' : '') +
           '</div>' +
         '</div>';
       }).join('');
@@ -1881,9 +1882,9 @@
         '<div style="display:flex;justify-content:center;padding:12px 0 8px;cursor:pointer;" onclick="App.closeViewers()">' +
           '<div style="width:38px;height:5px;background:#E2E4E9;border-radius:3px;"></div>' +
         '</div>' +
-        '<div style="text-align:center;padding-bottom:12px;border-bottom:0.5px solid #F2F2F7;">' +
+        '<div style="text-align:center;padding-bottom:12px;border-bottom:0.5px solid #F6F7F9;">' +
           '<h3 style="font-size:16px;font-weight:800;margin:0;color:#000;">Vues</h3>' +
-          '<p style="font-size:12px;color:#8E8E93;margin:2px 0 0;">' + ids.length + ' membre' + (ids.length>1?'s':'') + ' ' + (ids.length>1?'ont':'a') + ' vu cette publication</p>' +
+          '<p style="font-size:12px;color:#8A93A0;margin:2px 0 0;">' + ids.length + ' membre' + (ids.length>1?'s':'') + ' ' + (ids.length>1?'ont':'a') + ' vu cette publication</p>' +
         '</div>' +
         '<div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:8px 16px 24px;">' + listHtml + '</div>' +
       '</div>' +

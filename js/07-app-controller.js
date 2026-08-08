@@ -7,7 +7,7 @@
   window.App = {
     renderAssignmentsList: function() {
       if (!S.eventAssignments || S.eventAssignments.length === 0) {
-        return '<div style="font-size:13px;color:#8E8E93;margin-bottom:12px;">Aucune assignation.</div>';
+        return '<div style="font-size:13px;color:#8A93A0;margin-bottom:12px;">Aucune assignation.</div>';
       }
       var me = S.user;
       var allU = db(SK.USERS, []);
@@ -15,16 +15,16 @@
         S.eventAssignments.map(function(a, idx) {
           var mine = canTouchAssignment(a, me, allU);
           var label = a.isSection
-            ? (a.sectionEmoji ? a.sectionEmoji + ' ' : '') + safeHtml(a.sectionName || '') + ' <span style="font-size:10px;font-weight:800;color:#5856D6;background:#EEF0FF;padding:1px 6px;border-radius:6px;">PÔLE</span>'
+            ? (a.sectionEmoji ? a.sectionEmoji + ' ' : '') + safeHtml(a.sectionName || '') + ' <span style="font-size:10px;font-weight:800;color:#0B63F6;background:#EEF0FF;padding:1px 6px;border-radius:6px;">PÔLE</span>'
             : safeHtml(a.userName || '');
-          return '<div style="display:flex;align-items:center;justify-content:space-between;background:' + (a.isSection ? '#F5F5FF' : '#F2F2F7') + ';padding:8px 12px;border-radius:8px;">' +
+          return '<div style="display:flex;align-items:center;justify-content:space-between;background:' + (a.isSection ? '#F5F5FF' : '#F6F7F9') + ';padding:8px 12px;border-radius:8px;">' +
             '<div style="display:flex;flex-direction:column;min-width:0;">' +
               '<span style="font-size:13px;font-weight:700;color:#000;">' + label + '</span>' +
-              '<span style="font-size:12px;color:#8E8E93;">' + safeHtml(a.task || '') + '</span>' +
+              '<span style="font-size:12px;color:#8A93A0;">' + safeHtml(a.task || '') + '</span>' +
             '</div>' +
             (mine
-              ? '<button type="button" onclick="App.removeAssignment(' + idx + ')" style="background:none;border:none;color:#FF3B30;font-size:16px;cursor:pointer;">&times;</button>'
-              : '<span title="Relève d\'un autre pôle" style="font-size:11px;color:#C7C7CC;white-space:nowrap;">🔒</span>') +
+              ? '<button type="button" onclick="App.removeAssignment(' + idx + ')" style="background:none;border:none;color:#E2445C;font-size:16px;cursor:pointer;">&times;</button>'
+              : '<span title="Relève d\'un autre pôle" style="font-size:11px;color:#E4E7EC;white-space:nowrap;">🔒</span>') +
           '</div>';
         }).join('') +
       '</div>';
@@ -152,7 +152,7 @@
         if (S.user && a.userId === S.user.id) return;
         sendNotificationToUser(a.userId, {
           type: 'EVENT_ASSIGNED',
-          title: '🗓️ Service assigné',
+          title: 'Service assigné',
           text: 'Vous êtes de service (' + a.task + ') pour ' + (post.eventTitle || 'un événement'),
           targetId: post.id
         });
@@ -393,14 +393,14 @@
       if (!err) return;
       if (!s || !e || !s.value || !e.value) { err.style.display = 'none'; return; }
       if (e.value === s.value) {
-        err.textContent = '⚠️ La fin ne peut pas être identique au début.';
-        err.style.color = '#B91C1C';
+        err.textContent = 'La fin ne peut pas être identique au début.';
+        err.style.color = '#B42318';
         err.style.background = '#FEF2F2';
         err.style.display = 'block';
       } else if (e.value < s.value) {
-        err.textContent = '🌙 Se termine le lendemain à ' + e.value + '.';
-        err.style.color = '#5856D6';
-        err.style.background = '#F0EFFF';
+        err.textContent = 'Se termine le lendemain à ' + e.value + '.';
+        err.style.color = '#0B63F6';
+        err.style.background = '#E8EEFB';
         err.style.display = 'block';
       } else {
         err.style.display = 'none';
@@ -498,7 +498,7 @@
         S.eventImage = null;
         S.selectedDate = date;
         render();
-        toast('Événement modifié ! 🎉', 'success');
+        toast('Événement modifié ! ', 'success');
         return;
       }
 
@@ -508,8 +508,8 @@
         userId: S.user.id,
         author: S.user.prenom + ' ' + S.user.nom,
         authorAvatar: (S.user.prenom||'M').charAt(0).toUpperCase(),
-        avatarColor: S.user.avatar_color || '#5856D6',
-        avatar_color: S.user.avatar_color || '#5856D6',
+        avatarColor: S.user.avatar_color || '#0B63F6',
+        avatar_color: S.user.avatar_color || '#0B63F6',
         avatar_url: S.user.avatar_url || null,
         role: S.user.role,
         type: 'EVENT',
@@ -553,7 +553,7 @@
       S.tab = pinned ? 'home' : 'planning';
       render();
       setTimeout(function() { window.scrollTo({ top: 0, behavior: 'smooth' }); }, 50);
-      toast(wasDuplicate ? 'Nouvel événement créé, l\'ancien est conservé ! 🎉' : 'Événement créé avec succès ! 🎉', 'success');
+      toast(wasDuplicate ? 'Nouvel événement créé, l\'ancien est conservé ! ' : 'Événement créé avec succès ! ', 'success');
     },
     // Choix proposé à l'enregistrement d'une modification.
     chooseEventSaveMode: function(mode) {
@@ -590,7 +590,7 @@
       var newPost = {
         id: 'event-'+Date.now(), userId: S.user.id, timestamp: Date.now(),
         author: S.user.prenom + ' ' + S.user.nom, authorAvatar: S.user.prenom.charAt(0).toUpperCase(),
-        avatarColor: S.user.avatar_color || '#007AFF',
+        avatarColor: S.user.avatar_color || '#0B63F6',
         sectionId: sec, sectionNom: secNomStr,
         type: 'EVENT', is_pinned: pin,
         metadata: {
@@ -609,7 +609,7 @@
       S.tab = 'home'; S.q = '';
       render();
       setTimeout(function() { window.scrollTo({ top: 0, behavior: 'smooth' }); }, 50);
-      toast('Événement créé ! 🎉', 'success');
+      toast('Événement créé ! ', 'success');
     },
     togglePin: function(postId) {
       var posts = db(SK.POSTS, []);
@@ -647,8 +647,8 @@
     setSignupRole: function(role) {
       S.signupRole = role;
       // Mise à jour ciblée du style (pas de render() complet pour ne pas effacer les champs déjà saisis)
-      var activeStyle = 'flex:1;height:44px;border-radius:12px;border:1.5px solid #007AFF;background:#F0F6FF;color:#007AFF;font-size:13.5px;font-weight:800;cursor:pointer;';
-      var inactiveStyle = 'flex:1;height:44px;border-radius:12px;border:1.5px solid #E5E5EA;background:#FAFAFA;color:#3A3A3C;font-size:13.5px;font-weight:800;cursor:pointer;';
+      var activeStyle = 'flex:1;height:44px;border-radius:12px;border:1.5px solid #0B63F6;background:#E8EEFB;color:#0B63F6;font-size:13.5px;font-weight:800;cursor:pointer;';
+      var inactiveStyle = 'flex:1;height:44px;border-radius:12px;border:1.5px solid #E4E7EC;background:#F6F7F9;color:#25303F;font-size:13.5px;font-weight:800;cursor:pointer;';
       var mBtn = document.getElementById('signupRoleMembre');
       var rBtn = document.getElementById('signupRoleResp');
       if (mBtn) mBtn.style.cssText = (role === 'MEMBRE') ? activeStyle : inactiveStyle;
@@ -681,8 +681,8 @@
       var html = '<div style="display:flex;flex-wrap:wrap;gap:8px;">';
       sections.forEach(function(s) {
         var isSel = selected.indexOf(s.id) !== -1;
-        var bg = isSel ? '#007AFF' : '#F2F2F7';
-        var color = isSel ? '#FFF' : '#3A3A3C';
+        var bg = isSel ? '#0B63F6' : '#F6F7F9';
+        var color = isSel ? '#FFF' : '#25303F';
         html += '<div onclick="App.' + toggleFnName + '(\'' + s.id + '\')" style="background:' + bg + ';color:' + color + ';padding:6px 12px;border-radius:16px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:4px;transition:0.2s;">' + s.icon + ' ' + s.label + '</div>';
       });
       html += '</div>';
@@ -718,7 +718,7 @@ checkForgotEmail: function(e) {
       S.forgotUser = null;
       S.auth = 'login';
       render();
-      toast('Votre mot de passe a été réinitialisé ! 🎉', 'success');
+      toast('Votre mot de passe a été réinitialisé ! ', 'success');
     },
 toggleParticipation: function(postId, status) {
       if (!S.user) return;
@@ -948,7 +948,7 @@ toggleParticipation: function(postId, status) {
       }
       sendNotificationToUser(S.dmWithUserId, {
         type: 'MESSAGE',
-        title: '💬 Nouveau message',
+        title: 'Nouveau message',
         text: (S.user.prenom || 'Quelqu\'un') + ' : "' + txt.slice(0, 40) + (txt.length > 40 ? '…' : '') + '"',
         targetId: S.user.id
       });
@@ -1345,7 +1345,7 @@ toggleParticipation: function(postId, status) {
       S.tab = 'home';
       try { localStorage.setItem(SK.SESS, JSON.stringify(user)); } catch(e){}
       render();
-      toast('Connexion réussie ! Bienvenue ' + (user.prenom||'Membre') + '. 🎉', 'success');
+      toast('Connexion réussie ! Bienvenue ' + (user.prenom||'Membre') + '. ', 'success');
       try { tryOpenDeepLinkedPost(); } catch(e){}
     },
     signup: async function(e) {
@@ -1370,7 +1370,7 @@ toggleParticipation: function(postId, status) {
       // retiré) — il se fait désormais depuis le profil, panneau Administration.
       var finalRole = (S.signupRole === 'RESP_SECTION' ? 'RESP_SECTION' : 'MEMBRE');
       var hashedPwd = await hashPassword(pwd);
-      var newUser = { id:'u'+Date.now(), prenom:prenom, nom:nom, email:email, sections: userSecs, section_id: userSecs[0], role: finalRole, is_online:true, last_seen_at:new Date().toISOString(), last_action:'Inscription', avatar_color: ['#007AFF','#FF2D55','#34C759','#FF9500','#5856D6','#AF52DE'][Math.floor(Math.random()*6)], pwd: hashedPwd, sec_q1: q1, sec_a1: a1, sec_q2: q2, sec_a2: a2 };
+      var newUser = { id:'u'+Date.now(), prenom:prenom, nom:nom, email:email, sections: userSecs, section_id: userSecs[0], role: finalRole, is_online:true, last_seen_at:new Date().toISOString(), last_action:'Inscription', avatar_color: ['#0B63F6','#FF2D55','#0E9F6E','#D98A0B','#0B63F6','#AF52DE'][Math.floor(Math.random()*6)], pwd: hashedPwd, sec_q1: q1, sec_a1: a1, sec_q2: q2, sec_a2: a2 };
       users.push(newUser); dbSet(SK.USERS, users);
       // Compte créé sur cet appareil : protégé de la purge du cache tant qu'il n'est
       // pas confirmé côté serveur (sinon une inscription hors-ligne serait perdue).
@@ -1394,7 +1394,7 @@ toggleParticipation: function(postId, status) {
 
       S.signupSections = []; S.signupRole = 'MEMBRE';
       render();
-      toast('Bienvenue ' + prenom + ' ! Votre compte a été créé. 🎉', 'success');
+      toast('Bienvenue ' + prenom + ' ! Votre compte a été créé. ', 'success');
     },
     logout: function() {
       if (S.user) {
@@ -1850,7 +1850,7 @@ toggleParticipation: function(postId, status) {
         id: 'rp_' + Date.now(), userId: S.user.id, timestamp: Date.now(),
         author: S.user.prenom + ' ' + S.user.nom,
         authorAvatar: S.user.prenom.charAt(0).toUpperCase(),
-        avatarColor: S.user.avatar_color || '#007AFF',
+        avatarColor: S.user.avatar_color || '#0B63F6',
         avatar_url: S.user.avatar_url || null,
         sectionId: post.sectionId || 'general', sectionNom: post.sectionNom || '',
         type: 'REPOST', originalPostId: postId,
@@ -2086,7 +2086,7 @@ toggleParticipation: function(postId, status) {
         post.checkInAt = Date.now();
         post.checkInByEdit = true;
         if (!post.geo) {
-          toast('📍 Enregistrement de votre position…', 'info');
+          toast('Enregistrement de votre position…', 'info');
           try { post.geo = await capturePosition(12000); }
           catch (err) { post.geo = { available: false, reason: 'unavailable' }; }
         }
@@ -2137,7 +2137,7 @@ toggleParticipation: function(postId, status) {
       S.pendingVideoPoster = null;
       S.postAboutEventId = null;
       render();
-      toast('Publication modifiée ! 🎉', 'success');
+      toast('Publication modifiée ! ', 'success');
     },
     openCreate: function() { S.createOpen=true; S.pendingMedia=[]; S.pendingVideoPoster=null; S.postAboutEventId=null; S.postCheckInEventId=null; S.videoProcessing=false; S.pollOpen=false; S.pollQuestion=''; S.pollOptions=['','']; render(); setTimeout(function(){ var t=document.getElementById('newPostText'); if(t) t.focus(); },120); },
     closeCreate: function() { S.createOpen=false; S.pendingMedia=[]; clearPendingLocalCopies(); S.hashSuggestions=false; S.postBg=null; S.postText=''; S.pendingVideoPoster=null; S.postAboutEventId=null; S.postCheckInEventId=null; S.videoProcessing=false; S.pollOpen=false; S.pollQuestion=''; S.pollOptions=['','']; render(); },
@@ -2238,14 +2238,14 @@ toggleParticipation: function(postId, status) {
 
       var collective = '';
       if (!q || 'tous'.indexOf(q) === 0 || 'all'.indexOf(q) === 0) {
-        collective += '<button type="button" onclick="App.' + insertFn + '(\'@tous \')" style="background:#F0EFFF;color:#5856D6;border:none;padding:5px 10px;border-radius:12px;font-size:12px;font-weight:800;cursor:pointer;">📣 Tous les membres</button>';
+        collective += '<button type="button" onclick="App.' + insertFn + '(\'@tous \')" style="background:#E8EEFB;color:#0B63F6;border:none;padding:5px 10px;border-radius:12px;font-size:12px;font-weight:800;cursor:pointer;">📣 Tous les membres</button>';
       }
       SECTIONS.forEach(function(s) {
         if (q && s.nom.toLowerCase().indexOf(q) !== 0 && s.id.toLowerCase().indexOf(q) !== 0) return;
-        collective += '<button type="button" onclick="App.' + insertFn + '(\'@' + safeHtml(s.nom.replace(/\s+/g,'')) + ' \')" style="background:#F0EFFF;color:#5856D6;border:none;padding:5px 10px;border-radius:12px;font-size:12px;font-weight:700;cursor:pointer;">' + s.emoji + ' Pôle ' + safeHtml(s.nom) + '</button>';
+        collective += '<button type="button" onclick="App.' + insertFn + '(\'@' + safeHtml(s.nom.replace(/\s+/g,'')) + ' \')" style="background:#E8EEFB;color:#0B63F6;border:none;padding:5px 10px;border-radius:12px;font-size:12px;font-weight:700;cursor:pointer;">' + s.emoji + ' Pôle ' + safeHtml(s.nom) + '</button>';
       });
       if (collective) {
-        out += '<div style="font-size:11px;font-weight:800;color:#5856D6;width:100%;margin-bottom:4px;">Mentionner un groupe :</div>' + collective;
+        out += '<div style="font-size:11px;font-weight:800;color:#0B63F6;width:100%;margin-bottom:4px;">Mentionner un groupe :</div>' + collective;
       }
 
       var users = db(SK.USERS, []).filter(function(u) {
@@ -2253,9 +2253,9 @@ toggleParticipation: function(postId, status) {
         return ((u.prenom||'') + ' ' + (u.nom||'')).toLowerCase().indexOf(q) !== -1;
       }).slice(0, 5);
       if (users.length > 0) {
-        out += '<div style="font-size:11px;font-weight:800;color:#007AFF;width:100%;margin:6px 0 4px;">Membres :</div>' +
+        out += '<div style="font-size:11px;font-weight:800;color:#0B63F6;width:100%;margin:6px 0 4px;">Membres :</div>' +
           users.map(function(u) {
-            return '<button type="button" onclick="App.' + insertFn + '(\'@' + safeHtml((u.prenom||'') + (u.nom||'')) + ' \')" style="background:#EBF5FF;color:#007AFF;border:none;padding:5px 10px;border-radius:12px;font-size:12px;font-weight:700;cursor:pointer;">👤 ' + safeHtml((u.prenom||'') + ' ' + (u.nom||'')) + '</button>';
+            return '<button type="button" onclick="App.' + insertFn + '(\'@' + safeHtml((u.prenom||'') + (u.nom||'')) + ' \')" style="background:#EBF5FF;color:#0B63F6;border:none;padding:5px 10px;border-radius:12px;font-size:12px;font-weight:700;cursor:pointer;">👤 ' + safeHtml((u.prenom||'') + ' ' + (u.nom||'')) + '</button>';
           }).join('');
       }
       return out;
@@ -2445,7 +2445,7 @@ toggleParticipation: function(postId, status) {
       if (S.postCheckInEventId) {
         if (S.geoCapturing) return;
         S.geoCapturing = true;
-        toast('📍 Enregistrement de votre position…', 'info');
+        toast('Enregistrement de votre position…', 'info');
         render();
         try { geo = await capturePosition(12000); }
         catch (err) { geo = { available: false, reason: 'unavailable' }; }
@@ -2463,7 +2463,7 @@ toggleParticipation: function(postId, status) {
         id: 'p'+Date.now(), userId: S.user.id, timestamp: Date.now(),
         author: S.user.prenom + ' ' + S.user.nom,
         authorAvatar: S.user.prenom.charAt(0).toUpperCase(),
-        avatarColor: S.user.avatar_color || '#007AFF',
+        avatarColor: S.user.avatar_color || '#0B63F6',
         avatar_url: S.user.avatar_url || null,
         sectionId: secId, sectionNom: secNom(secId),
         isVedette: false, scoreText: '',
@@ -2534,7 +2534,7 @@ toggleParticipation: function(postId, status) {
       S.q = ''; // Optional: clear search if they were searching
       render();
       setTimeout(function() { window.scrollTo({ top: 0, behavior: 'smooth' }); }, 50);
-      toast('Publication publiée avec succès ! 🎉', 'success');
+      toast('Publication publiée avec succès ! ', 'success');
     },
 
     // Options
@@ -2600,7 +2600,7 @@ toggleParticipation: function(postId, status) {
         if (prev) {
           prev.style.padding = '10px 14px 0';
           prev.innerHTML = '<div style="position:relative;display:inline-block;">' +
-            '<img src="'+dataUrl+'" style="width:64px;height:64px;object-fit:cover;border-radius:10px;border:1px solid #E5E5EA;">' +
+            '<img src="'+dataUrl+'" style="width:64px;height:64px;object-fit:cover;border-radius:10px;border:1px solid #E4E7EC;">' +
             '<button type="button" onclick="App.removeCommentImage()" style="position:absolute;top:-6px;right:-6px;background:rgba(0,0,0,0.7);border:none;border-radius:8px;width:18px;height:18px;color:#FFF;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;">×</button>' +
           '</div>';
         } else {
@@ -2665,20 +2665,20 @@ toggleParticipation: function(postId, status) {
       if (!Array.isArray(post.comments)) post.comments = [];
       var parentId = S.replyingToCommentId || null;
       var parentComment = parentId ? post.comments.find(function(c){ return c.id === parentId; }) : null;
-      var newC = { id:'c'+Date.now(), userId:S.user.id, author:(S.user.prenom||'User')+' '+(S.user.nom?S.user.nom.charAt(0):'')+'.', avatarColor:S.user.avatar_color||'#007AFF', text:txt, imageUrl:S.pendingCommentImage||null, timestamp:Date.now(), parentId: parentId };
+      var newC = { id:'c'+Date.now(), userId:S.user.id, author:(S.user.prenom||'User')+' '+(S.user.nom?S.user.nom.charAt(0):'')+'.', avatarColor:S.user.avatar_color||'#0B63F6', text:txt, imageUrl:S.pendingCommentImage||null, timestamp:Date.now(), parentId: parentId };
       post.comments.push(newC); dbSet(SK.POSTS, posts);
       if (supabase && post) supabase.from('kun_com_posts').upsert({ id: post.id, content: post }, { onConflict: 'id' }).then(function(){}, function(e){});
       if (parentComment && parentComment.userId && parentComment.userId !== S.user.id) {
         sendNotificationToUser(parentComment.userId, {
           type: 'REPLY',
-          title: '💬 Nouvelle réponse',
+          title: 'Nouvelle réponse',
           text: S.user.prenom + ' a répondu à votre commentaire : "' + (txt ? txt.slice(0, 40) : '📷 Photo') + '"',
           targetId: post.id
         });
       } else if (!parentComment && post.userId && post.userId !== S.user.id) {
         sendNotificationToUser(post.userId, {
           type: 'COMMENT',
-          title: '💬 Nouveau Commentaire',
+          title: 'Nouveau Commentaire',
           text: S.user.prenom + ' : "' + (txt ? txt.slice(0, 40) : '📷 Photo') + '"',
           targetId: post.id
         });
@@ -2731,7 +2731,7 @@ toggleParticipation: function(postId, status) {
       var dots = document.getElementById('dots-'+postId);
       if (dots && post) {
         dots.innerHTML = post.mediaUrls.map(function(_,di){
-          var a=di===idx; return '<div style="width:'+(a?'18':'6')+'px;height:6px;border-radius:3px;background:'+(a?'#007AFF':'#C7C7CC')+';transition:all 0.25s;"></div>';
+          var a=di===idx; return '<div style="width:'+(a?'18':'6')+'px;height:6px;border-radius:3px;background:'+(a?'#0B63F6':'#E4E7EC')+';transition:all 0.25s;"></div>';
         }).join('');
       }
     },
@@ -2751,7 +2751,7 @@ toggleParticipation: function(postId, status) {
         var html = '';
         for (var i = 0; i < total; i++) {
           var a = i === idx;
-          html += '<div style="width:' + (a?'18':'6') + 'px;height:6px;border-radius:3px;background:' + (a?'#5856D6':'#C7C7CC') + ';transition:all 0.25s;"></div>';
+          html += '<div style="width:' + (a?'18':'6') + 'px;height:6px;border-radius:3px;background:' + (a?'#0B63F6':'#E4E7EC') + ';transition:all 0.25s;"></div>';
         }
         dots.innerHTML = html;
       }
@@ -2774,7 +2774,7 @@ toggleParticipation: function(postId, status) {
         var html = '';
         for (var i = 0; i < total; i++) {
           var a = i === idx;
-          html += '<div style="width:' + (a?'18':'6') + 'px;height:6px;border-radius:3px;background:' + (a?'#5856D6':'#C7C7CC') + ';transition:all 0.25s;"></div>';
+          html += '<div style="width:' + (a?'18':'6') + 'px;height:6px;border-radius:3px;background:' + (a?'#0B63F6':'#E4E7EC') + ';transition:all 0.25s;"></div>';
         }
         dots.innerHTML = html;
       }
@@ -2828,11 +2828,11 @@ toggleParticipation: function(postId, status) {
       var starsEl = document.getElementById('critstars-' + secId + '-' + critId);
       if (starsEl) {
         starsEl.innerHTML = [1,2,3,4,5].map(function(s) {
-          return '<button type="button" onclick="App.rateCriterion(\'' + secId + '\',\'' + critId + '\',' + s + ')" style="font-size:26px;cursor:pointer;background:none;border:none;padding:0;line-height:1;color:' + (s<=score?'#FFD700':'#D1D1D6') + ';">★</button>';
+          return '<button type="button" onclick="App.rateCriterion(\'' + secId + '\',\'' + critId + '\',' + s + ')" style="font-size:26px;cursor:pointer;background:none;border:none;padding:0;line-height:1;color:' + (s<=score?'#FFD700':'#E4E7EC') + ';">★</button>';
         }).join('');
       }
       var valEl = document.getElementById('critval-' + secId + '-' + critId);
-      if (valEl) { valEl.textContent = score + '/5'; valEl.style.color = '#0F172A'; }
+      if (valEl) { valEl.textContent = score + '/5'; valEl.style.color = '#0B0D12'; }
 
       var crit = S.ratings[secId].criteria;
       // La note de tête inclut la ponctualité automatique, comme au rendu.
@@ -2843,7 +2843,7 @@ toggleParticipation: function(postId, status) {
       var avgEl = document.getElementById('evalavg-' + secId);
       if (avgEl) {
         avgEl.textContent = avg > 0 ? avg + '/5' : '—';
-        avgEl.style.color = avg >= 4 ? '#34C759' : avg >= 2 ? '#FF9500' : avg > 0 ? '#FF3B30' : '#C7C7CC';
+        avgEl.style.color = avg >= 4 ? '#0E9F6E' : avg >= 2 ? '#D98A0B' : avg > 0 ? '#E2445C' : '#E4E7EC';
       }
       var subEl = document.getElementById('evalsub-' + secId);
       if (subEl) {
@@ -2858,7 +2858,7 @@ toggleParticipation: function(postId, status) {
     checkIn: function() {
       S.checkedIn = true;
       var btn = document.getElementById('checkInBtn');
-      if (btn) { btn.textContent='✓ Présent'; btn.style.background='linear-gradient(135deg,#34C759,#28A347)'; }
+      if (btn) { btn.textContent='✓ Présent'; btn.style.background='#0E9F6E'; }
       toast('Présence validée ! ✓', 'success');
     },
     // Publie UNE seule publication regroupant toutes les sections évaluées
@@ -2950,7 +2950,7 @@ toggleParticipation: function(postId, status) {
           id: 'eval-' + ts, userId: S.user.id, timestamp: ts,
           author: S.user.prenom + ' ' + S.user.nom,
           authorAvatar: S.user.prenom.charAt(0).toUpperCase(),
-          avatarColor: S.user.avatar_color || '#007AFF',
+          avatarColor: S.user.avatar_color || '#0B63F6',
           avatar_url: S.user.avatar_url || null,
           sectionId: S.user.section_id || 'general', sectionNom: secNom(S.user.section_id || 'general'),
           type: 'EVALUATION',
@@ -2972,7 +2972,7 @@ toggleParticipation: function(postId, status) {
       S.q = '';
       render();
       setTimeout(function() { window.scrollTo({ top: 0, behavior: 'smooth' }); }, 50);
-      toast(existing ? 'Bilan mis à jour ! ✏️' : 'Bilan publié avec succès ! 🎉', 'success');
+      toast(existing ? 'Bilan mis à jour ! ✏️' : 'Bilan publié avec succès ! ', 'success');
     },
 
     // Changement d'événement dans l'écran Notation : si un bilan a déjà été publié
