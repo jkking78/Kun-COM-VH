@@ -1110,73 +1110,88 @@
     }).join('');
 
     // ---- Sticky top bar ----
-    var topBar = '<div style="position:sticky;top:0;z-index:200;background:rgba(0,0,0,0.72);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);display:flex;align-items:center;justify-content:space-between;padding:12px 16px;">' +
+    var topBar = '<div style="position:sticky;top:0;z-index:200;background:' + UI.card + ';border-bottom:0.5px solid ' + UI.line + ';display:flex;align-items:center;justify-content:space-between;padding:12px 16px;">' +
       (isMe
-        ? '<button onclick="App.tab(\'home\')" style="background:rgba(255,255,255,0.15);border:none;width:36px;height:36px;border-radius:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
-            '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>' +
+        ? '<button onclick="App.tab(\'home\')" style="background:none;border:none;width:34px;height:34px;border-radius:' + UI.pill + ';cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;">' +
+            '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="' + UI.muted + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>' +
           '</button>'
-        : '<button onclick="App.closeUserProfile()" style="background:rgba(255,255,255,0.15);border:none;width:36px;height:36px;border-radius:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
-            '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>' +
+        : '<button onclick="App.closeUserProfile()" style="background:none;border:none;width:34px;height:34px;border-radius:' + UI.pill + ';cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;">' +
+            '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="' + UI.muted + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>' +
           '</button>'
       ) +
-      '<div style="font-size:17px;font-weight:800;color:#FFF;letter-spacing:-0.3px;">' + safeHtml(freshU.prenom) + ' ' + safeHtml(freshU.nom) + '</div>' +
+      '<div style="font-size:15.5px;font-weight:600;color:' + UI.ink + ';letter-spacing:-0.2px;">' + safeHtml(freshU.prenom) + ' ' + safeHtml(freshU.nom) + '</div>' +
       '<div style="display:flex;gap:8px;">' +
-        (isMe ? '<button onclick="App.openEditProfile()" style="background:rgba(255,255,255,0.15);border:none;width:36px;height:36px;border-radius:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
-          '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>' +
+        (isMe ? '<button onclick="App.openEditProfile()" style="background:none;border:none;width:34px;height:34px;border-radius:' + UI.pill + ';cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;">' +
+          '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="' + UI.muted + '" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>' +
         '</button>' : '') +
         // Ouvre l'annuaire des membres (avec champ de recherche) : le bouton
         // n'était relié à rien jusqu'ici.
-        '<button onclick="App.openMembersList()" title="Rechercher un membre" style="background:rgba(255,255,255,0.15);border:none;width:36px;height:36px;border-radius:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
-          '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>' +
+        '<button onclick="App.openMembersList()" title="Rechercher un membre" style="background:none;border:none;width:34px;height:34px;border-radius:' + UI.pill + ';cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;">' +
+          '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="' + UI.muted + '" stroke-width="1.9" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>' +
         '</button>' +
       '</div>' +
     '</div>';
 
-    // ---- Hero cover block ----
-    var hero = '<div style="position:relative;' + coverBg + 'min-height:220px;display:flex;flex-direction:column;justify-content:flex-end;">' +
-      '<div style="position:absolute;inset:0;background:linear-gradient(to bottom, rgba(0,0,0,0) 30%, rgba(0,0,0,0.7) 100%);"></div>' +
-      // Camera icon for cover
-      (isMe ? '<label style="position:absolute;top:12px;right:12px;background:rgba(0,0,0,0.5);border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:2;">' +
-        '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>' +
-        '<input type="file" accept="image/*" onchange="App.handleCoverSelect(event)" style="display:none;">' +
-      '</label>' : '') +
-      // Avatar + name bottom left
-      '<div style="position:relative;z-index:2;padding:0 16px 16px;display:flex;align-items:flex-end;justify-content:space-between;">' +
-        '<div style="position:relative;">' +
-          '<div style="width:90px;height:90px;border-radius:45px;border:3px solid #FFF;overflow:hidden;background:#1A1A2E;">' +
-            avatarContent +
+    // ---- Bandeau de couverture + avatar centré ----
+    // L'avatar chevauche la couverture et les deux chiffres l'encadrent, comme
+    // sur les références : la lecture part du visage, pas d'un coin de l'écran.
+    var hStats = punctualityHistory(freshU.id);
+    var isFollowing = !!(S.user && S.user.following && S.user.following.indexOf(freshU.id) !== -1);
+
+    var statCol = function(value, lbl) {
+      return '<div style="flex:1;text-align:center;min-width:0;">' +
+        '<div style="font-size:17px;font-weight:600;color:' + UI.ink + ';line-height:1.2;">' + value + '</div>' +
+        '<div style="font-size:11px;color:' + UI.faint + ';">' + lbl + '</div>' +
+      '</div>';
+    };
+
+    var hero = '<div>' +
+      '<div style="position:relative;' + coverBg + 'height:132px;">' +
+        (isMe ? '<label style="position:absolute;top:10px;right:10px;background:rgba(0,0,0,0.45);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:2;">' +
+          '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>' +
+          '<input type="file" accept="image/*" onchange="App.handleCoverSelect(event)" style="display:none;">' +
+        '</label>' : '') +
+      '</div>' +
+
+      '<div style="background:' + UI.card + ';padding:0 16px 16px;">' +
+        '<div style="display:flex;align-items:flex-start;gap:8px;margin-top:-44px;">' +
+          '<div style="flex:1;padding-top:52px;">' + statCol(myPosts.length, 'Publications') + '</div>' +
+          '<div style="position:relative;flex-shrink:0;">' +
+            '<div style="width:88px;height:88px;border-radius:50%;padding:3px;background:' + theme.primary + ';">' +
+              '<div style="width:100%;height:100%;border-radius:50%;border:3px solid ' + UI.card + ';overflow:hidden;background:' + UI.tile + ';">' + avatarContent + '</div>' +
+            '</div>' +
+            (isMe ? '<label style="position:absolute;bottom:0;right:0;background:' + UI.card + ';border:0.5px solid ' + UI.line2 + ';border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;">' +
+              '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="' + UI.ink + '" stroke-width="2.2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>' +
+              '<input type="file" accept="image/*" onchange="App.handleAvatarSelect(event)" style="display:none;">' +
+            '</label>' : '') +
           '</div>' +
-          (isMe ? '<label style="position:absolute;bottom:2px;right:2px;background:#FFF;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.3);">' +
-            '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>' +
-            '<input type="file" accept="image/*" onchange="App.handleAvatarSelect(event)" style="display:none;">' +
-          '</label>' : '') +
+          '<div style="flex:1;padding-top:52px;">' + statCol(hStats.count, 'Services') + '</div>' +
         '</div>' +
-        // Follow / Edit buttons
-        '<div style="display:flex;gap:8px;">' +
+
+        '<div style="text-align:center;margin-top:10px;">' +
+          '<div style="font-size:19px;font-weight:600;color:' + UI.ink + ';letter-spacing:-0.3px;">' + safeHtml(freshU.prenom + ' ' + freshU.nom) + '</div>' +
+          '<div style="font-size:13px;color:' + theme.primary + ';font-weight:500;margin-top:2px;">' + (ROLE_LABELS[freshU.role]||'Membre') + (uSecs.length ? ' · ' + uSecs.map(function(x){ return secNom(x); }).join(' · ') : '') + '</div>' +
+          (freshU.bio ? '<div style="font-size:13.5px;color:' + UI.muted + ';line-height:1.5;margin-top:8px;white-space:pre-wrap;">' + safeHtml(freshU.bio) + '</div>' : '') +
+        '</div>' +
+
+        '<div style="display:flex;gap:8px;margin-top:14px;">' +
           (isMe
-            ? '<button onclick="App.openEditProfile()" style="background:' + theme.primary + ';color:#FFF;border:none;border-radius:20px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;">Modifier</button>'
-            : '<button onclick="App.toggleFollow(\'' + freshU.id + '\')" style="background:' + ((S.user && S.user.following && S.user.following.indexOf(freshU.id)!==-1) ? '#0E9F6E' : theme.primary) + ';color:#FFF;border:none;border-radius:20px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;">' + ((S.user && S.user.following && S.user.following.indexOf(freshU.id)!==-1) ? '✓ Suivi' : 'Suivre') + '</button>' +
-              '<button onclick="App.openDirectMessage(\'' + freshU.id + '\')" style="background:rgba(255,255,255,0.9);color:#000;border:none;border-radius:20px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;">Message</button>'
+            ? '<button onclick="App.openEditProfile()" style="flex:1;background:' + UI.card + ';color:' + UI.ink + ';border:0.5px solid ' + UI.line2 + ';border-radius:' + UI.r1 + ';padding:11px;font-size:13.5px;font-weight:500;cursor:pointer;">Modifier le profil</button>' +
+              '<button onclick="App.tab(\'home\');App.openCreate();" style="flex:1;background:' + theme.primary + ';color:#FFF;border:none;border-radius:' + UI.r1 + ';padding:11px;font-size:13.5px;font-weight:500;cursor:pointer;">Publier</button>'
+            : '<button onclick="App.toggleFollow(\'' + freshU.id + '\')" style="flex:1;background:' + (isFollowing ? UI.card : theme.primary) + ';color:' + (isFollowing ? UI.ink : '#FFF') + ';border:' + (isFollowing ? '0.5px solid ' + UI.line2 : 'none') + ';border-radius:' + UI.r1 + ';padding:11px;font-size:13.5px;font-weight:500;cursor:pointer;">' + (isFollowing ? 'Suivi' : 'Suivre') + '</button>' +
+              '<button onclick="App.openDirectMessage(\'' + freshU.id + '\')" style="flex:1;background:' + UI.card + ';color:' + UI.ink + ';border:0.5px solid ' + UI.line2 + ';border-radius:' + UI.r1 + ';padding:11px;font-size:13.5px;font-weight:500;cursor:pointer;">Message</button>'
           ) +
         '</div>' +
       '</div>' +
     '</div>';
 
     // ---- Info block ----
-    var infoBlock = '<div style="background:#FFF;padding:16px;border-bottom:8px solid #F6F7F9;">' +
-      // Name + role
-      '<div style="font-size:22px;font-weight:900;color:#000;letter-spacing:-0.5px;margin-bottom:4px;">' + safeHtml(freshU.prenom + ' ' + freshU.nom) + '</div>' +
-      '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;">' +
-        '<span style="font-size:12px;font-weight:800;color:' + theme.badgeText + ';background:' + theme.badgeBg + ';padding:4px 10px;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.1);">' + (ROLE_LABELS[freshU.role]||'Membre') + '</span>' +
-        (secBadges ? '<span style="color:#E4E7EC;">·</span>' + secBadges : '') +
-      '</div>' +
-      // ---- Indice de Confiance : uniquement la PONCTUALITÉ (automatique) ----
+    // Le nom, le rôle, les pôles et la bio sont désormais dans le bandeau centré
+    // ci-dessus : ce bloc ne garde que l'indice de confiance et les informations.
+    var infoBlock = '<div style="background:' + UI.card + ';padding:0 16px 16px;border-bottom:0.5px solid ' + UI.line + ';">' +
       renderPunctualityCard(freshU, cycleStr) +
-      // Bio
-      (freshU.bio ? '<div style="font-size:14px;color:#25303F;line-height:1.5;margin-bottom:14px;white-space:pre-wrap;">' + safeHtml(freshU.bio) + '</div>' : '') +
-      // Infos personnelles
-      '<div style="background:#F6F7F9;border-radius:16px;padding:14px;margin-bottom:14px;">' +
-        '<div style="font-size:13px;font-weight:800;color:#000;margin-bottom:10px;">Informations</div>' +
+      '<div style="background:' + UI.tile + ';border-radius:' + UI.r2 + ';padding:14px;margin-bottom:14px;">' +
+        '<div style="font-size:13px;font-weight:600;color:' + UI.ink + ';margin-bottom:10px;">Informations</div>' +
         '<div style="display:flex;flex-direction:column;gap:8px;">' +
           '<div style="display:flex;align-items:center;gap:10px;font-size:13px;color:#25303F;">' +
             '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8A93A0" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>' +
@@ -1193,14 +1208,8 @@
         '</div>' +
       '</div>' +
       // Action buttons
-      (isMe ? '<div style="display:flex;flex-direction:column;gap:10px;">' +
-        '<div style="display:flex;gap:10px;">' +
-          '<button onclick="App.tab(\'home\');App.openCreate();" style="flex:1;background:' + theme.primary + ';color:#FFF;border:none;border-radius:12px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">' +
-            '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg> Publier' +
-          '</button>' +
-          '<button onclick="App.openEditProfile()" style="flex:1;background:#F6F7F9;color:#000;border:none;border-radius:12px;padding:12px;font-size:14px;font-weight:700;cursor:pointer;">Modifier le profil</button>' +
-        '</div>' +
-        '<div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap;">' +
+      (isMe ? '<div>' +
+        '<div style="display:flex;justify-content:center;align-items:center;gap:8px;flex-wrap:wrap;">' +
           (freshU.role === 'GRAND_RESPONSABLE' ? '<button onclick="App.revokeGrandResponsable()" style="background:none;color:#B0B4BB;border:none;padding:8px 6px;font-size:11.5px;font-weight:700;cursor:pointer;">🔻 Quitter Grand Resp.</button>' : '') +
           '<button onclick="' + (S.adminUnlocked ? 'App.openStorageStats()' : 'App.openAdminGate()') + '" style="background:none;color:#B0B4BB;border:none;padding:8px 6px;font-size:11.5px;font-weight:700;cursor:pointer;">🔧 Administration</button>' +
           '<button onclick="App.openDeleteAccount()" style="background:none;color:#B0B4BB;border:none;padding:8px 6px;font-size:11.5px;font-weight:700;cursor:pointer;">Supprimer mon compte</button>' +
