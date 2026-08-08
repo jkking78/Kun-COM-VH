@@ -1099,12 +1099,19 @@
         '<div style="display:flex;justify-content:center;padding:10px 0 0;cursor:pointer;" onclick="App.closeNotifications()">' +
           '<div style="width:40px;height:4px;background:#E4E7EC;border-radius:2px;"></div>' +
         '</div>' +
-        '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px 12px;border-bottom:0.5px solid #E4E7EC;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 8px 12px 18px;border-bottom:0.5px solid #E4E7EC;">' +
           '<div style="display:flex;align-items:center;gap:8px;">' +
             '<h2 style="font-size:19px;font-weight:900;color:#000;margin:0;">Notifications</h2>' +
             (unreadCount > 0 ? '<span style="background:#E2445C;color:#FFF;font-size:11px;font-weight:900;padding:2px 8px;border-radius:10px;">' + unreadCount + '</span>' : '') +
           '</div>' +
-          (unreadCount > 0 ? '<button onclick="App.markAllNotificationsRead()" style="background:none;border:none;color:#0B63F6;font-size:13px;font-weight:700;cursor:pointer;">Tout lire</button>' : '') +
+          '<div style="display:flex;align-items:center;gap:2px;flex-shrink:0;">' +
+            (unreadCount > 0 ? '<button onclick="App.markAllNotificationsRead()" style="background:none;border:none;color:#0B63F6;font-size:13px;font-weight:700;cursor:pointer;padding:0 8px;height:44px;">Tout lire</button>' : '') +
+            // Auparavant, la seule façon de fermer était de viser la fine bande grise
+            // au-dessus de la feuille ou la petite poignée — difficile à atteindre à
+            // une main sur un écran presque entièrement occupé par la liste. Un bouton
+            // explicite, à taille de cible tactile normale, referme la feuille sans ambiguïté.
+            '<button onclick="App.closeNotifications()" aria-label="Fermer" style="background:none;border:none;width:44px;height:44px;border-radius:' + UI.pill + ';color:#000;font-size:20px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;touch-action:manipulation;">×</button>' +
+          '</div>' +
         '</div>' +
         '<div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;">' +
           itemsHtml +

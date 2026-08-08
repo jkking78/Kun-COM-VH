@@ -1306,22 +1306,23 @@ toggleParticipation: function(postId, status) {
       var users = db(SK.USERS, []);
       var user = users.find(function(u){ return u.email && u.email.toLowerCase() === email.toLowerCase(); });
 
-      // Supabase Remote Search Fallback if user not found in local cache
+      // Filet de secours si le compte n'est pas (encore) dans le cache local —
+      // typique d'une connexion sur un appareil dont la synchronisation initiale
+      // n'a pas eu le temps de se terminer. On relit tous les profils distants
+      // ET ON LES GARDE TOUS, via mergeProfilesWithLocal (qui sait déchiffrer le
+      // "content" sérialisé en JSON par Supabase — voir parseProfileItem).
+      // Avant : ce filet ne conservait QUE le compte trouvé et jetait tous les
+      // autres profils pourtant déjà téléchargés, ET les lisait sans les décoder
+      // (Object.assign sur une chaîne JSON ne fait qu'éclater ses caractères) —
+      // l'annuaire local retombait donc à 1 seul membre après une connexion
+      // rapide, jusqu'à ce qu'une synchronisation complète le répare.
       if (!user && supabase) {
         try {
           var res = await supabase.from('kun_com_profiles').select('*');
           if (res && res.data) {
-            var remoteUsers = res.data.map(function(item){
-              var u = Object.assign({}, item.content || item);
-              if (!u.id && item.id) u.id = item.id;
-              return u;
-            });
-            user = remoteUsers.find(function(u){ return u.email && u.email.toLowerCase() === email.toLowerCase(); });
-            if (user) {
-              if (!user.id) user.id = 'u_' + String(user.email).toLowerCase().replace(/[^a-z0-9]/gi, '_');
-              users.push(user);
-              dbSet(SK.USERS, users);
-            }
+            users = mergeProfilesWithLocal(res.data);
+            dbSet(SK.USERS, users);
+            user = users.find(function(u){ return u.email && u.email.toLowerCase() === email.toLowerCase(); });
           }
         } catch(err){}
       }
@@ -1716,7 +1717,19 @@ toggleParticipation: function(postId, status) {
       if (t === 'debrief' && !(S.user && isGrandResponsable(S.user))) {
         S.debriefView = 'suivi';
       }
-      S.tab=t; S.createOpen=false; S.commentOpen=false; S.optionsOpen=false; render();
+      S.tab=t;
+      // Toucher un onglet de la barre du bas doit TOUJOURS y amener, quoi qu'il
+      // y ait à l'écran. Avant : seuls createOpen/commentOpen/optionsOpen se
+      // fermaient — un profil consulté, une messagerie, une visionneuse d'image
+      // ou n'importe quelle autre fenêtre plein écran restait affichée par-dessus,
+      // et appuyer sur « Accueil » donnait l'impression que rien ne s'était passé.
+      S.createOpen=false; S.commentOpen=false; S.commentPostId=null; S.optionsOpen=false; S.optionsPost=null;
+      S.viewUserProfileId=null; S.notificationsOpen=false; S.editProfileOpen=false;
+      S.postOptionsOpen=false; S.selectedPostId=null; S.createEventOpen=false; S.editPostId=null;
+      S.cropperOpen=false; S.membersListOpen=false; S.repostPostId=null; S.aboutEventPickerOpen=false;
+      S.deleteAccountOpen=false; S.bulkDeleteConfirmOpen=false; S.viewersPostId=null; S.adminGateOpen=false;
+      S.storageStatsOpen=false; S.dmOpen=false; S.dmWithUserId=null; S.assignManagerId=null; S.viewerImage=null;
+      render();
     },
 
     // Charge la page suivante de publications plus anciennes (pagination à la
@@ -2817,6 +2830,71 @@ toggleParticipation: function(postId, status) {
       likedComments[cId] = !likedComments[cId]; dbSet(SK.LIKED_COMMENTS, likedComments);
       var el = document.getElementById('clike-'+cId);
       if (el) el.innerHTML = SVG.heart(likedComments[cId], 15);
+    },
+
+    // Supprime un commentaire (ou une réponse). Réservé à son auteur, à l'auteur
+    // de la publication, ou au Grand Responsable — même logique de permission que
+    // App.deletePost. Un commentaire racine supprimé emporte ses réponses avec
+    // lui : les laisser flotter sans parent créerait une discussion incompréhensible.
+    deleteComment: function(postId, commentId) {
+      var u = S.user || {};
+      var posts = db(SK.POSTS, []);
+      var post = posts.find(function(p){ return p.id === postId; });
+      if (!post || !Array.isArray(post.comments)) return;
+      var c = post.comments.find(function(x){ return x.id === commentId; });
+      if (!c) return;
+      var canDelete = u.role === 'GRAND_RESPONSABLE' || c.userId === u.id || post.userId === u.id;
+      if (!canDelete) { toast('Action non autorisée.', 'error'); return; }
+      post.comments = post.comments.filter(function(x){ return x.id !== commentId && x.parentId !== commentId; });
+      dbSet(SK.POSTS, posts);
+      if (supabase) supabase.from('kun_com_posts').upsert({ id: post.id, content: post }, { onConflict: 'id' }).then(function(){}, function(e){ console.warn('Delete comment error:', e); });
+      render();
+      toast('Commentaire supprimé.', 'success');
+    },
+
+    // Glissement tactile vers la gauche pour révéler le bouton Supprimer d'un
+    // commentaire (comme Mail/Messages iOS). État transitoire porté directement
+    // par le nœud DOM (pas par S) : un simple geste n'a pas besoin de déclencher
+    // de rendu, et un rendu déclenché entre-temps par autre chose (nouveau
+    // commentaire reçu en temps réel...) ne doit pas interrompre le geste en cours.
+    _commentSwipe: {},
+    commentSwipeStart: function(e) {
+      var t = e.touches && e.touches[0]; if (!t) return;
+      App._commentSwipe = { el: e.currentTarget, startX: t.clientX, startY: t.clientY, dx: 0, decided: false, horizontal: false };
+      e.currentTarget.style.transition = 'none';
+    },
+    commentSwipeMove: function(e) {
+      var st = App._commentSwipe;
+      if (!st || !st.el) return;
+      var t = e.touches && e.touches[0]; if (!t) return;
+      var dx = t.clientX - st.startX;
+      var dy = t.clientY - st.startY;
+      if (!st.decided) {
+        // Sous 6 px, on ne sait pas encore si le doigt part à l'horizontale (pour
+        // révéler « Supprimer ») ou à la verticale (pour faire défiler la liste) —
+        // trancher trop tôt bloquerait le scroll normal à chaque frôlement.
+        if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return;
+        st.decided = true;
+        st.horizontal = Math.abs(dx) > Math.abs(dy);
+        if (!st.horizontal) { App._commentSwipe = {}; return; }
+      }
+      if (!st.horizontal) return;
+      if (e.cancelable) e.preventDefault();
+      var base = st.el._swipeOpen ? -76 : 0;
+      var next = base + dx;
+      if (next > 0) next = 0;
+      if (next < -96) next = -96;
+      st.dx = next;
+      st.el.style.transform = 'translateX(' + next + 'px)';
+    },
+    commentSwipeEnd: function() {
+      var st = App._commentSwipe;
+      if (!st || !st.el) { App._commentSwipe = {}; return; }
+      st.el.style.transition = 'transform 0.18s ease-out';
+      var open = st.dx < -40;
+      st.el.style.transform = open ? 'translateX(-76px)' : 'translateX(0)';
+      st.el._swipeOpen = open;
+      App._commentSwipe = {};
     },
     carScroll: function(postId, el) {
       var w = el.clientWidth; if (!w) return;

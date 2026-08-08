@@ -84,8 +84,11 @@
     if (!post) return '';
     var u = S.user || {};
 
+    // Un commentaire est supprimable par son auteur, par l'auteur de la
+    // publication (canManagePost), ou par le Grand Responsable.
+    var canManagePost = u.role === 'GRAND_RESPONSABLE' || post.userId === u.id;
     var commentItems = (post.comments || []).length > 0
-      ? renderCommentsList(post.comments)
+      ? renderCommentsList(post.comments, post.id, canManagePost)
       : '<div style="display:flex;flex-direction:column;align-items:center;padding:44px 20px;text-align:center;"><div style="font-size:44px;margin-bottom:10px;">💬</div><strong style="font-size:15px;color:#000;">Aucun commentaire</strong><p style="font-size:13px;color:#8A93A0;margin:4px 0 0;">Soyez le premier à commenter !</p></div>';
 
     var emojis = ['❤️','👏','🔥','🙌','😍','😂','😮','💪'];
@@ -141,7 +144,7 @@
     '</div>';
   }
 
-  function renderCommentItem(c, isReply) {
+  function renderCommentItem(c, isReply, postId, canManagePost) {
     var likedComments = db(SK.LIKED_COMMENTS, {});
     var isLiked = !!likedComments[c.id];
     var allU = db(SK.USERS, []);
@@ -162,7 +165,12 @@
     var authorJs = (c.author || 'Membre').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
     var replyBtn = isReply ? '' : '<button onclick="App.replyToComment(\'' + c.id + '\', \'' + authorJs + '\')" style="background:none;border:none;padding:0;font-size:12px;font-weight:700;color:#8A93A0;cursor:pointer;">Répondre</button>';
 
-    return '<div id="cwrap-' + c.id + '" style="display:flex;align-items:flex-start;gap:10px;margin-bottom:' + (isReply?'10px':'6px') + ';">' +
+    var u = S.user || {};
+    var canDelete = !!postId && (canManagePost || c.userId === u.id);
+
+    var row = '<div id="cwrap-' + c.id + '" ' +
+      (canDelete ? 'ontouchstart="App.commentSwipeStart(event)" ontouchmove="App.commentSwipeMove(event)" ontouchend="App.commentSwipeEnd(event)" ' : '') +
+      'style="display:flex;align-items:flex-start;gap:10px;padding:2px 2px;background:' + UI.card + ';position:relative;touch-action:pan-y;">' +
       '<div onclick="App.openUserProfile(\'' + c.userId + '\')" style="cursor:pointer;">' + cAvatarNode + '</div>' +
       '<div style="flex:1;">' +
         '<div style="display:flex;align-items:baseline;gap:6px;">' +
@@ -177,12 +185,29 @@
         SVG.heart(isLiked, 15) +
       '</div>' +
     '</div>';
+
+    if (!canDelete) {
+      return '<div style="margin-bottom:' + (isReply?'10px':'6px') + ';">' + row + '</div>';
+    }
+
+    // Glissement vers la gauche pour révéler « Supprimer » (comme Mail/Messages
+    // iOS) — jusqu'ici aucun moyen de retirer un commentaire n'existait dans
+    // l'application. Le bouton rouge reste sous le commentaire, révélé par la
+    // translation horizontale portée par App.commentSwipeMove/End.
+    return '<div style="position:relative;overflow:hidden;border-radius:' + UI.r1 + ';margin-bottom:' + (isReply?'10px':'6px') + ';">' +
+      '<div style="position:absolute;inset:0;background:' + UI.bad + ';display:flex;align-items:center;justify-content:flex-end;">' +
+        '<button onclick="App.deleteComment(\''+postId+'\',\''+c.id+'\')" aria-label="Supprimer le commentaire" style="width:76px;height:100%;min-height:44px;background:none;border:none;display:flex;align-items:center;justify-content:center;cursor:pointer;touch-action:manipulation;">' +
+          '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>' +
+        '</button>' +
+      '</div>' +
+      row +
+    '</div>';
   }
 
   // Regroupe les commentaires en fil principal + réponses imbriquées (1 niveau,
   // à la Instagram). Chaque commentaire racine porte un conteneur "replies-<id>"
   // où les réponses s'ajoutent, y compris via App.submitComment sans re-render complet.
-  function renderCommentsList(comments) {
+  function renderCommentsList(comments, postId, canManagePost) {
     var top = (comments || []).filter(function(c){ return !c.parentId; });
     var byParent = {};
     (comments || []).forEach(function(c) {
@@ -192,9 +217,9 @@
     });
     return top.map(function(c) {
       var replies = byParent[c.id] || [];
-      return renderCommentItem(c, false) +
+      return renderCommentItem(c, false, postId, canManagePost) +
         '<div id="replies-' + c.id + '" style="margin-left:44px;">' +
-          replies.map(function(r){ return renderCommentItem(r, true); }).join('') +
+          replies.map(function(r){ return renderCommentItem(r, true, postId, canManagePost); }).join('') +
         '</div>';
     }).join('');
   }
