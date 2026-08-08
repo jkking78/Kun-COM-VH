@@ -139,7 +139,7 @@
       '<div onclick="event.stopPropagation()" style="width:100%;max-width:460px;background:#FFF;border-top-left-radius:24px;border-top-right-radius:24px;padding:20px;max-height:80vh;overflow-y:auto;animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
         '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;border-bottom:1px solid #E4E7EC;padding-bottom:12px;">' +
           '<h3 style="font-size:16.5px;font-weight:800;margin:0;color:#000;">' + title + '</h3>' +
-          '<button onclick="App.closeRhDetailsModal()" style="background:#F6F7F9;border:none;border-radius:50%;width:30px;height:30px;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;">×</button>' +
+          '<button onclick="App.closeRhDetailsModal()" style="background:#F6F7F9;border:none;border-radius:50%;width:44px;height:44px;flex-shrink:0;touch-action:manipulation;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;">×</button>' +
         '</div>' +
         contentHtml +
       '</div>' +
@@ -229,22 +229,28 @@
     var trends = trendingTags();
 
     var unreadCount = (u && Array.isArray(u.notifications)) ? u.notifications.filter(function(n){ return !n.read; }).length : 0;
+    // 44 px : c'est la taille de cible tactile minimale recommandée par Apple.
+    // À 34 px et 6 px d'écart, comme auparavant, on visait la cloche et on
+    // touchait le « + » — d'autant que ces boutons n'ont plus de fond visible,
+    // donc rien n'indique où commence la zone sensible.
     var iconBtn = function(action, svg, badgeCount) {
-      return '<button onclick="' + action + '" style="position:relative;width:34px;height:34px;border-radius:' + UI.pill + ';background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;">' +
+      return '<button onclick="' + action + '" style="position:relative;width:44px;height:44px;border-radius:' + UI.pill + ';background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;flex-shrink:0;touch-action:manipulation;-webkit-tap-highlight-color:rgba(0,0,0,0.06);">' +
         svg +
-        (badgeCount > 0 ? '<span style="position:absolute;top:1px;right:2px;width:8px;height:8px;border-radius:50%;background:' + UI.accent + ';border:1.5px solid #FFF;"></span>' : '') +
+        (badgeCount > 0 ? '<span style="position:absolute;top:7px;right:8px;width:8px;height:8px;border-radius:50%;background:' + UI.accent + ';border:1.5px solid ' + UI.card + ';"></span>' : '') +
       '</button>';
     };
 
     var header = '<header style="position:sticky;top:0;z-index:200;background:' + UI.card + ';border-bottom:0.5px solid ' + UI.line + ';">' +
       '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px 10px;">' +
-        '<h1 style="font-size:19px;font-weight:600;color:' + UI.ink + ';margin:0;letter-spacing:-0.3px;">Commit</h1>' +
-        '<div style="display:flex;gap:6px;align-items:center;">' +
-          iconBtn('App.openNotifications()', '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="' + UI.muted + '" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>', unreadCount) +
-          iconBtn('App.openCreate()', '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="' + UI.muted + '" stroke-width="1.9" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>', 0) +
-          (u.avatar_url
-            ? '<button onclick="App.tab(\'profile\')" style="width:30px;height:30px;border-radius:' + UI.pill + ';border:none;cursor:pointer;padding:0;overflow:hidden;flex-shrink:0;margin-left:2px;"><img src="' + u.avatar_url + '" style="width:100%;height:100%;object-fit:cover;" /></button>'
-            : '<button onclick="App.tab(\'profile\')" style="width:30px;height:30px;border-radius:' + UI.pill + ';background:' + UI.accent + ';border:none;cursor:pointer;color:#FFF;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;margin-left:2px;">' + initial + '</button>') +
+        '<h1 style="font-size:19px;font-weight:600;color:' + UI.ink + ';margin:0;letter-spacing:-0.3px;min-width:0;">Commit</h1>' +
+        '<div style="display:flex;gap:2px;align-items:center;flex-shrink:0;margin-right:-8px;">' +
+          iconBtn('App.openNotifications()', '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="' + UI.muted + '" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>', unreadCount) +
+          iconBtn('App.openCreate()', '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="' + UI.muted + '" stroke-width="1.9" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>', 0) +
+          '<button onclick="App.tab(\'profile\')" style="width:44px;height:44px;border-radius:' + UI.pill + ';background:none;border:none;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;flex-shrink:0;touch-action:manipulation;">' +
+            (u.avatar_url
+              ? '<img src="' + u.avatar_url + '" style="width:32px;height:32px;border-radius:' + UI.pill + ';object-fit:cover;" />'
+              : '<span style="width:32px;height:32px;border-radius:' + UI.pill + ';background:' + UI.accent + ';color:#FFF;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;">' + initial + '</span>') +
+          '</button>' +
         '</div>' +
       '</div>' +
       '<div style="padding:0 16px 12px;">' +
@@ -974,25 +980,31 @@
     var itemsHtml = '';
     if (notifs.length === 0) {
       itemsHtml = '<div style="padding:50px 20px;text-align:center;color:#8A93A0;">' +
-        '<div style="font-size:48px;margin-bottom:12px;">🔔</div>' +
+        '<div style="margin-bottom:10px;">' + ico('inbox', 40, UI.line2, 1.4) + '</div>' +
         '<div style="font-size:16px;font-weight:800;color:#0B0D12;margin-bottom:6px;">Aucune notification</div>' +
         '<div style="font-size:13px;color:#8A93A0;">Vous êtes à jour ! Aucune nouvelle activité.</div>' +
       '</div>';
     } else {
       itemsHtml = notifs.map(function(n) {
-        var icon = n.type === 'LIKE' ? '❤️' : (n.type === 'COMMENT' || n.type === 'REPLY') ? '💬' : n.type === 'EVALUATION' ? '📊' : n.type === 'MENTION' ? '📣' : n.type === 'MESSAGE' ? '✉️' : n.type === 'FOLLOW' ? '👤' : n.type === 'NEW_MEMBER' ? '' : '🗓️';
+        var iconName = n.type === 'LIKE' ? 'star'
+          : (n.type === 'COMMENT' || n.type === 'REPLY' || n.type === 'MENTION') ? 'message'
+          : n.type === 'EVALUATION' ? 'chart'
+          : n.type === 'MESSAGE' ? 'inbox'
+          : (n.type === 'FOLLOW' || n.type === 'NEW_MEMBER') ? 'users'
+          : 'calendar';
+        var icon = ico(iconName, 10, '#FFF', 2.4);
         var bgIcon = n.type === 'LIKE' ? '#FF2D55' : (n.type === 'COMMENT' || n.type === 'REPLY') ? '#0B63F6' : n.type === 'EVALUATION' ? '#D98A0B' : n.type === 'MENTION' ? '#D98A0B' : n.type === 'MESSAGE' ? '#0E9F6E' : n.type === 'FOLLOW' ? '#AF52DE' : n.type === 'NEW_MEMBER' ? '#0E9F6E' : '#0B63F6';
         var timeAgoStr = timeAgo(n.timestamp || Date.now());
         var isUnread = !n.read;
 
         var avatarHtml = n.senderAvatar
           ? '<img src="' + n.senderAvatar + '" style="width:44px;height:44px;border-radius:22px;object-fit:cover;flex-shrink:0;" />'
-          : '<div style="width:44px;height:44px;border-radius:22px;background:linear-gradient(135deg,' + (n.senderColor||'#0B63F6') + ',#0B63F6);color:#FFF;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + (n.senderName||'S').charAt(0).toUpperCase() + '</div>';
+          : '<div style="width:44px;height:44px;border-radius:22px;background:' + (n.senderColor||'#0B63F6') + ';color:#FFF;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + (n.senderName||'S').charAt(0).toUpperCase() + '</div>';
 
         return '<div onclick="App.clickNotification(\'' + n.id + '\', \'' + (n.targetId||'') + '\')" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:0.5px solid #F6F7F9;background:' + (isUnread ? '#E8EEFB' : '#FFF') + ';cursor:pointer;transition:background 0.2s;position:relative;">' +
           '<div style="position:relative;flex-shrink:0;">' +
             avatarHtml +
-            '<div style="position:absolute;bottom:-2px;right:-2px;width:18px;height:18px;border-radius:9px;background:' + bgIcon + ';color:#FFF;font-size:10px;display:flex;align-items:center;justify-content:center;border:1.5px solid #FFF;">' + icon + '</div>' +
+            '<div style="position:absolute;bottom:-2px;right:-2px;width:19px;height:19px;border-radius:' + UI.pill + ';background:' + bgIcon + ';display:flex;align-items:center;justify-content:center;border:1.5px solid ' + UI.card + ';">' + icon + '</div>' +
           '</div>' +
           '<div style="flex:1;min-width:0;">' +
             '<div style="font-size:13.5px;color:#0B0D12;line-height:1.35;word-break:break-word;">' +
@@ -1121,7 +1133,7 @@
           ? '<div style="position:relative;border-radius:14px;overflow:hidden;background:#000;">' +
               '<img src="' + S.eventImage + '" style="display:block;width:100%;height:auto;max-height:260px;object-fit:contain;background:#000;" />' +
               '<button type="button" onclick="App.editEventImage()" style="position:absolute;top:8px;left:8px;background:rgba(0,0,0,0.72);border:none;border-radius:10px;padding:6px 12px;color:#FFF;font-size:12.5px;font-weight:800;cursor:pointer;">Modifier</button>' +
-              '<button type="button" onclick="App.removeEventImage()" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.72);border:none;border-radius:14px;width:28px;height:28px;color:#FFF;font-size:15px;font-weight:900;cursor:pointer;">×</button>' +
+              '<button type="button" onclick="App.removeEventImage()" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.72);border:none;border-radius:14px;width:32px;height:32px;color:#FFF;font-size:15px;font-weight:900;cursor:pointer;">×</button>' +
             '</div>'
           : '<label style="display:flex;align-items:center;justify-content:center;gap:8px;border:1.5px dashed #E4E7EC;border-radius:14px;padding:22px;cursor:pointer;color:#0B63F6;font-size:14px;font-weight:700;">' +
               'Ajouter une image' +
@@ -1593,7 +1605,7 @@
       return '<div style="position:relative;margin-bottom:12px;border-radius:18px;overflow:hidden;background:#000;">' +
         '<video src="' + videoUrl + '"' + (S.pendingVideoPoster ? ' poster="' + S.pendingVideoPoster + '"' : '') +
           ' controls playsinline preload="auto" onloadeddata="App.primeVideoFrame(this)" style="width:100%;max-height:300px;display:block;background:#000;"></video>' +
-        '<button type="button" onclick="App.removeMedia(0)" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.65);border:none;border-radius:14px;width:28px;height:28px;color:#FFF;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:900;z-index:2;">×</button>' +
+        '<button type="button" onclick="App.removeMedia(0)" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.65);border:none;border-radius:14px;width:32px;height:32px;color:#FFF;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:900;z-index:2;">×</button>' +
       '</div>';
     }
 

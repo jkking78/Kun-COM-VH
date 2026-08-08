@@ -126,7 +126,7 @@
 
     return '<div style="position:fixed;inset:0;z-index:9998;background:#FFF;padding-top:env(safe-area-inset-top);display:flex;flex-direction:column;animation:fadeIn 0.2s ease-out;">' +
       '<div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:0.5px solid #F6F7F9;">' +
-        '<button onclick="App.closeMembersList()" style="background:#F6F7F9;border:none;width:34px;height:34px;border-radius:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' +
+        '<button onclick="App.closeMembersList()" style="background:#F6F7F9;border:none;width:44px;height:44px;flex-shrink:0;touch-action:manipulation;border-radius:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' +
           '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>' +
         '</button>' +
         '<div style="font-size:17px;font-weight:800;color:#000;">Tous les membres <span style="color:#8A93A0;font-weight:600;">(' + allUsers.length + ')</span></div>' +
@@ -190,7 +190,7 @@
       return '<div style="flex:1;min-height:0;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:28px 24px 40px;box-sizing:border-box;background:#FFFFFF;">' +
         '<div style="width:100%;max-width:360px;">' +
           '<div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">' +
-            '<button onclick="S.forgotUser=null;render();" style="background:#F6F7F9;border:none;width:36px;height:36px;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
+            '<button onclick="S.forgotUser=null;render();" style="background:#F6F7F9;border:none;width:44px;height:44px;flex-shrink:0;touch-action:manipulation;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
               '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>' +
             '</button>' +
             '<div><h1 style="font-size:22px;font-weight:900;color:#000;margin:0;">Réinitialisation</h1></div>' +
