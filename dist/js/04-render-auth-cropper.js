@@ -25,7 +25,7 @@
         '</button>' +
       '</div>';
     }
-    return '<div id="cropperModal" style="position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.94);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);display:flex;flex-direction:column;box-sizing:border-box;animation:fadeIn 0.2s ease-out;">' +
+    return '<div id="cropperModal" style="position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.94);padding-top:env(safe-area-inset-top);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);display:flex;flex-direction:column;box-sizing:border-box;animation:fadeIn 0.2s ease-out;">' +
       '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:rgba(0,0,0,0.8);border-bottom:0.5px solid rgba(255,255,255,0.15);box-sizing:border-box;z-index:10;">' +
         '<button onclick="App.closeCropper()" style="background:rgba(255,255,255,0.15);color:#FFF;border:none;border-radius:12px;padding:8px 16px;font-size:13.5px;font-weight:700;cursor:pointer;">Annuler</button>' +
         '<div style="font-size:15px;font-weight:800;color:#FFF;letter-spacing:-0.2px;">' + safeHtml(title) + '</div>' +
@@ -124,7 +124,7 @@
           '</div>';
         }).join('');
 
-    return '<div style="position:fixed;inset:0;z-index:9998;background:#FFF;display:flex;flex-direction:column;animation:fadeIn 0.2s ease-out;">' +
+    return '<div style="position:fixed;inset:0;z-index:9998;background:#FFF;padding-top:env(safe-area-inset-top);display:flex;flex-direction:column;animation:fadeIn 0.2s ease-out;">' +
       '<div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:0.5px solid #F2F2F7;">' +
         '<button onclick="App.closeMembersList()" style="background:#F2F2F7;border:none;width:34px;height:34px;border-radius:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' +
           '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>' +

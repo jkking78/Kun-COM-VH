@@ -68,7 +68,7 @@
       content = renderProfile(targetUser, posts);
     }
     
-    return '<div style="position:fixed;inset:0;background:#FFF;z-index:9000;overflow-y:auto;animation:slideIn 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
+    return '<div style="position:fixed;inset:0;background:#FFF;z-index:9000;overflow-y:auto;padding-top:env(safe-area-inset-top);animation:slideIn 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
       content +
     '</div>';
   }
@@ -167,7 +167,10 @@
     if (S.assignManagerId) modals += renderAssignManagerModal();
 
     return '<div style="position:relative;width:100%;height:100%;display:flex;flex-direction:column;background:#F2F2F7;font-family:-apple-system,BlinkMacSystemFont,\'SF Pro Text\',sans-serif;">' +
-      '<div id="mainContent" style="flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;padding-bottom:70px;">' + content + '</div>' +
+      // La réserve de bas de page suit la hauteur réelle de la barre de navigation,
+      // indicateur d'accueil iPhone compris : sinon le dernier élément du fil reste
+      // caché derrière elle et ne peut plus être atteint.
+      '<div id="mainContent" style="flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;padding-bottom:calc(70px + env(safe-area-inset-bottom));">' + content + '</div>' +
       modals +
       renderNav(initial) +
     '</div>';
@@ -186,7 +189,11 @@
         (a ? '<div style="position:absolute;top:0;left:50%;transform:translateX(-50%);width:16px;height:2px;border-radius:2px;background:#000;"></div>' : '') +
       '</button>';
     }
-    return '<nav style="position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:460px;height:62px;background:rgba(255,255,255,0.96);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-top:0.5px solid rgba(0,0,0,0.12);display:flex;align-items:stretch;z-index:9000;safe-area-inset-bottom:env(safe-area-inset-bottom);">' +
+    // « safe-area-inset-bottom » n'est pas une propriété CSS : la ligne d'origine
+    // ne faisait donc rien et la barre passait sous l'indicateur d'accueil iPhone.
+    // On agrandit la barre de la hauteur réservée et on décale son contenu vers
+    // le haut d'autant, pour que les onglets restent entièrement touchables.
+    return '<nav style="position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:460px;height:calc(62px + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);background:rgba(255,255,255,0.96);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-top:0.5px solid rgba(0,0,0,0.12);display:flex;align-items:stretch;z-index:9000;">' +
       nb('home', SVG.home, 'Accueil') +
       nb('planning', SVG.cal, 'Planning') +
       '<button onclick="App.openCreate()" style="flex:1;background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent;">' +
@@ -1105,7 +1112,7 @@
             '</label>')) +
     '</div>';
 
-    return '<div style="position:fixed;inset:0;background:#FFF;z-index:10000;display:flex;flex-direction:column;animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
+    return '<div style="position:fixed;inset:0;background:#FFF;z-index:10000;padding-top:env(safe-area-inset-top);display:flex;flex-direction:column;animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
       '<header style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #E5E5EA;background:#FFF;z-index:2;">' +
         '<button onclick="App.closeCreateEvent()" style="background:none;border:none;font-size:16px;color:#000;cursor:pointer;">Annuler</button>' +
         '<div style="font-weight:700;font-size:16px;">' + (isEdit ? 'Modifier l\'événement' : 'Nouvel Événement') + '</div>' +

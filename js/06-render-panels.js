@@ -257,7 +257,7 @@
     var u = S.user || {};
     var evDate = post.eventDate ? new Date(post.eventDate + 'T00:00:00').toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long'}) : '';
 
-    return '<div style="position:fixed;inset:0;background:#FFF;z-index:10001;display:flex;flex-direction:column;animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
+    return '<div style="position:fixed;inset:0;background:#FFF;z-index:10001;padding-top:env(safe-area-inset-top);display:flex;flex-direction:column;animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
       '<header style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #E5E5EA;">' +
         '<button onclick="App.closeAssignManager()" style="background:none;border:none;font-size:16px;color:#000;cursor:pointer;">Annuler</button>' +
         '<div style="font-weight:700;font-size:16px;">Assignations</div>' +
@@ -1512,7 +1512,7 @@
       ? '<img src="' + displayCover + '" style="width:100%;height:100%;object-fit:cover;" />'
       : '';
 
-    return '<div style="position:fixed;inset:0;background:#FFF;z-index:10000;display:flex;flex-direction:column;animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
+    return '<div style="position:fixed;inset:0;background:#FFF;z-index:10000;padding-top:env(safe-area-inset-top);display:flex;flex-direction:column;animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
       '<header style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #E5E5EA;background:#FFF;z-index:2;">' +
         '<button onclick="App.closeEditProfile()" style="background:none;border:none;font-size:16px;color:#000;cursor:pointer;">Annuler</button>' +
         '<div style="font-weight:700;font-size:16px;">Modifier le profil</div>' +
