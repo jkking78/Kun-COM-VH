@@ -441,27 +441,30 @@
     return Object.keys(map).map(function(k) { return map[k]; });
   }
 
-  // purgeWindow : à activer quand remoteData correspond à la page LA PLUS RÉCENTE
-  // (synchronisation initiale et sondage), jamais pour "Charger plus" qui ne
-  // rapporte qu'une tranche ancienne de l'historique.
+  // mergePostsWithLocal : fusionne les publications distantes avec le cache local
+  // de manière additive et non destructrice. Les anciennes publications conservées
+  // localement ne sont JAMAIS effacées par omission (principe Local-First).
   function mergePostsWithLocal(remoteData, purgeWindow) {
     var localPosts = db(SK.POSTS, []);
     var map = {};
     (localPosts || []).forEach(function(p) {
-      if (p && p.id) map[p.id] = p;
+      if (p && p.id && p.status !== 'deleted') map[p.id] = p;
     });
     (remoteData || []).forEach(function(item) {
       var p = item.content || item;
       if (p && p.id) {
+        if (p.status === 'deleted') {
+          delete map[p.id];
+          return;
+        }
         var local = map[p.id];
         if (local) {
-          // Smart merge: keep whichever has more comments/likes (most recent data)
+          // Smart merge: conserve les commentaires et mentions J'aime les plus récents
           var localComments = (local.comments || []).length;
           var remoteComments = (p.comments || []).length;
           var localLikes = (local.likedBy || []).length;
           var remoteLikes = (p.likedBy || []).length;
           if (localComments > remoteComments || localLikes > remoteLikes) {
-            // Local has newer interactions, keep local but merge remote metadata
             map[p.id] = Object.assign({}, p, local);
           } else {
             map[p.id] = p;
@@ -471,63 +474,6 @@
         }
       }
     });
-
-    // Purge des publications supprimées côté serveur. Avec la pagination, "absente
-    // de la réponse" ne veut pas dire "supprimée" : elle peut simplement être plus
-    // ancienne que la page reçue. On ne purge donc QUE la fenêtre réellement
-    // couverte — soit les publications au moins aussi récentes que la plus ancienne
-    // de la page. Sans ça, une publication supprimée restait affichée à vie sur les
-    // autres appareils.
-    if (purgeWindow && Array.isArray(remoteData)) {
-      var remotePostIds = {};
-      var oldestInPage = Infinity;
-      remoteData.forEach(function(item) {
-        var p = item.content || item;
-        if (!p || !p.id) return;
-        remotePostIds[p.id] = true;
-        var ts = p.timestamp || 0;
-        if (ts < oldestInPage) oldestInPage = ts;
-      });
-      // Page incomplète = le serveur a renvoyé TOUT l'historique : plus de zone
-      // d'incertitude, on peut purger sans limite d'ancienneté.
-      var serverReturnedEverything = remoteData.length < POSTS_PAGE_SIZE;
-
-      // GARDE-FOU (même piège que pour les profils) : une réponse anormalement
-      // courte — coupure réseau, requête interrompue à la reprise de l'app —
-      // était interprétée comme « tout a été supprimé » et vidait le cache. Le
-      // fil affichait alors une roue de chargement jusqu'à la synchronisation
-      // suivante. On ne purge donc rien tant que la réponse paraît incomplète.
-      var localCount = Object.keys(map).length;
-      var reponseSuspecte = (remoteData.length === 0 && localCount > 0)
-        || (localCount > 1 && remoteData.length < localCount - 1 && remoteData.length < localCount * 0.5);
-      if (reponseSuspecte) {
-        var sansPurge = Object.keys(map).map(function(k){ return map[k]; });
-        sansPurge.sort(function(a, b) { return (b.timestamp || 0) - (a.timestamp || 0); });
-        return sansPurge;
-      }
-      // Publications créées à l'instant : peut-être pas encore remontées au serveur.
-      var tooRecentToJudge = Date.now() - 15 * 60 * 1000;
-      // Les événements PASSÉS ne sont plus rapatriés (la synchronisation ne demande
-      // que les événements en cours et à venir, pour qu'un nouveau membre n'hérite
-      // pas de tout l'historique). Leur absence de la réponse ne prouve donc rien :
-      // les purger effacerait l'historique de planning des membres déjà en place.
-      var todayIso = new Date().toISOString().split('T')[0];
-      Object.keys(map).forEach(function(id) {
-        var p = map[id];
-        if (!p) return;
-        if (remotePostIds[id]) return;                        // toujours présente
-        if (p.type === 'EVENT' && p.eventDate && p.eventDate < todayIso) return;  // hors périmètre de la requête
-        // Un événement archivé (supprimé mais conservé pour ses étoiles, voir
-        // App.deletePost) n'est jamais purgé du cache local : son absence de la
-        // page générale récente ne prouve rien, et le perdre reviendrait à faire
-        // disparaître les étoiles qu'il protège.
-        if (p.type === 'EVENT_ARCHIVED') return;
-        var ts = p.timestamp || 0;
-        if (ts > tooRecentToJudge) return;                    // envoi possiblement en cours
-        if (!serverReturnedEverything && ts < oldestInPage) return;  // hors fenêtre connue
-        delete map[id];                                       // supprimée sur le serveur
-      });
-    }
 
     var merged = Object.keys(map).map(function(k) { return map[k]; });
     merged.sort(function(a, b) { return (b.timestamp || 0) - (a.timestamp || 0); });
