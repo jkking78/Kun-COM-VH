@@ -1127,15 +1127,9 @@ toggleParticipation: function(postId, status) {
       
       S.user = updatedUser;
       
-      // Save session safely
-      try {
-        localStorage.setItem(SK.SESS, JSON.stringify(updatedUser));
-      } catch(e) {
-        var cleanUser = Object.assign({}, updatedUser);
-        if (cleanUser.avatar_url && cleanUser.avatar_url.length > 30000) cleanUser.avatar_url = null;
-        if (cleanUser.cover_url && cleanUser.cover_url.length > 30000) cleanUser.cover_url = null;
-        try { localStorage.setItem(SK.SESS, JSON.stringify(cleanUser)); } catch(e2){}
-      }
+      // Sauvegarde tolérante au quota (voir sauverSession dans 01-core.js) :
+      // allègement progressif au lieu d'une exception qui interromprait la suite.
+      sauverSession(updatedUser);
       
       var users = db(SK.USERS, []);
       var idx = users.findIndex(function(x){ return x.id === u.id; });
@@ -1352,19 +1346,14 @@ toggleParticipation: function(postId, status) {
       else users.push(user);
       dbSet(SK.USERS, users);
 
-      try {
-        localStorage.setItem(SK.SESS, JSON.stringify(user));
-      } catch(quotaErr) {
-        var cleanUser = Object.assign({}, user);
-        if (cleanUser.avatar_url && cleanUser.avatar_url.length > 30000) cleanUser.avatar_url = null;
-        if (cleanUser.cover_url && cleanUser.cover_url.length > 30000) cleanUser.cover_url = null;
-        localStorage.setItem(SK.SESS, JSON.stringify(cleanUser));
-      }
+      // Sauvegarde tolérante au quota : une session qui ne tient pas sur le disque
+      // ne doit JAMAIS empêcher la connexion d'aboutir (l'exception non rattrapée
+      // ici interrompait le reste de la fonction, connexion comprise).
+      sauverSession(user);
 
       S.user = user;
       S.auth = 'app';
       S.tab = 'home';
-      try { localStorage.setItem(SK.SESS, JSON.stringify(user)); } catch(e){}
       render();
       toast('Connexion réussie ! Bienvenue ' + (user.prenom||'Membre') + '. ', 'success');
       try { tryOpenDeepLinkedPost(); } catch(e){}
@@ -1396,7 +1385,7 @@ toggleParticipation: function(postId, status) {
       // Compte créé sur cet appareil : protégé de la purge du cache tant qu'il n'est
       // pas confirmé côté serveur (sinon une inscription hors-ligne serait perdue).
       addLocalAccountId(newUser.id);
-      localStorage.setItem(SK.SESS, JSON.stringify(newUser));
+      sauverSession(newUser);
       S.user = newUser; S.auth = 'app';
 
       if (supabase) {

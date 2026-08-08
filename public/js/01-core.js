@@ -595,13 +595,18 @@
       // Profils (déjà récupérés en parallèle ci-dessus)
       if (resProf && resProf.data) {
         var mergedProfiles = mergeProfilesWithLocal(resProf.data);
-        DB_CACHE[SK.USERS] = mergedProfiles;
-        localStorage.setItem(SK.USERS, JSON.stringify(mergedProfiles));
+        // dbSet et non localStorage.setItem en direct : cette ligne écrivait sans
+        // aucune protection et levait QuotaExceededError dès que le stockage était
+        // plein. L'exception interrompait alors TOUT le reste de la synchronisation —
+        // y compris S.initialLoading = false plus bas — d'où la roue de chargement
+        // qui ne s'arrêtait jamais, l'absence d'abonnement temps réel, et la perte
+        // silencieuse de la liste des membres et des notifications lues.
+        dbSet(SK.USERS, mergedProfiles);
         if (S.user) {
           var freshMe = mergedProfiles.find(function(x){ return x.id === S.user.id; });
           if (freshMe) {
             S.user = freshMe;
-            localStorage.setItem(SK.SESS, JSON.stringify(freshMe));
+            sauverSession(freshMe);
           }
         }
         // Renvoi rétroactif LIMITÉ au compte connecté sur cet appareil. Auparavant
@@ -657,22 +662,25 @@
       }
 
       _syncRetryCount = 0;
-      S.initialLoading = false;
-      if (window.App && window.App.tab) {
-         render();
-      }
       try { tryOpenDeepLinkedPost(); } catch(e){}
     } catch(e) {
       console.warn("Supabase Sync Error:", e);
-      // Réessaie automatiquement (réseau instable au démarrage) avant d'abandonner
-      // et d'afficher un état "Aucune publication" définitif.
-      if (_syncRetryCount < MAX_SYNC_RETRIES) {
+      // Un problème de STOCKAGE local (quota dépassé) n'est pas un problème de
+      // réseau : réessayer ne fera qu'échouer à l'identique en boucle. On ne
+      // relance que sur les erreurs réellement transitoires.
+      var quotaSature = e && (e.name === 'QuotaExceededError' || /quota/i.test(String(e.message || e)));
+      if (!quotaSature && _syncRetryCount < MAX_SYNC_RETRIES) {
         _syncRetryCount++;
         setTimeout(function(){ syncSupabaseToLocal(); }, 1500 * _syncRetryCount);
-      } else {
-        S.initialLoading = false;
-        render();
       }
+    } finally {
+      // GARANTIE ABSOLUE : quoi qu'il arrive au-dessus — quota saturé, réseau
+      // coupé, réponse malformée — l'écran de chargement se libère et l'interface
+      // se redessine. C'était le défaut central : une exception en plein milieu
+      // (l'écriture des profils, ligne ~599) sautait par-dessus cette libération,
+      // et l'application restait bloquée sur la roue indéfiniment.
+      S.initialLoading = false;
+      try { render(); } catch(eRender) { console.warn('Rendu après synchronisation :', eRender); }
     }
   }
   
@@ -767,16 +775,103 @@
     });
   }
 
+  // Même problème que pour les publications, mais sur les PROFILS — et jamais
+  // traité jusqu'ici : une photo de profil ou une couverture encore au format
+  // base64 (ancien format, avant l'hébergement des images) pèse plusieurs Mo.
+  // Avec une dizaine de membres, le quota localStorage (5 Mo) explose, l'écriture
+  // de kc_profiles échoue, et PLUS RIEN ne se sauvegarde : ni la liste des
+  // membres, ni les notifications lues (elles sont stockées dans le profil).
+  // C'était la cause commune de « l'annuaire à 1 membre » et des « notifications
+  // qui redeviennent non lues ». Les images restent servies depuis le serveur.
+  function stripHeavyProfilesForStorage(profiles) {
+    if (!Array.isArray(profiles)) return profiles;
+    var lourd = function(u){ return typeof u === 'string' && u.indexOf('data:') === 0 && u.length > 20000; };
+    return profiles.map(function(p) {
+      if (!p) return p;
+      if (!lourd(p.avatar_url) && !lourd(p.cover_url)) return p;
+      var copy = Object.assign({}, p);
+      if (lourd(copy.avatar_url)) copy.avatar_url = null;
+      if (lourd(copy.cover_url)) copy.cover_url = null;
+      return copy;
+    });
+  }
+
+  // Réduit un profil à l'essentiel : dernier recours quand l'allègement des
+  // images ne suffit pas. On garde de quoi afficher et identifier un membre —
+  // le reste se retrouve au prochain passage du serveur.
+  function profilsMinimum(profiles, gardeId) {
+    if (!Array.isArray(profiles)) return profiles;
+    return profiles.map(function(p) {
+      if (!p) return p;
+      if (gardeId && p.id === gardeId) return p;   // jamais son propre compte
+      return {
+        id: p.id, prenom: p.prenom, nom: p.nom, email: p.email, role: p.role,
+        sections: p.sections, section_id: p.section_id,
+        avatar_url: (typeof p.avatar_url === 'string' && p.avatar_url.indexOf('data:') !== 0) ? p.avatar_url : null,
+        avatar_color: p.avatar_color,
+        pwd: p.pwd, sec_q1: p.sec_q1, sec_a1: p.sec_a1, sec_q2: p.sec_q2, sec_a2: p.sec_a2,
+        notifications: Array.isArray(p.notifications) ? p.notifications.slice(0, 30) : []
+      };
+    });
+  }
+
+  // Écriture locale à tolérance de quota. Le cache mémoire (DB_CACHE) est TOUJOURS
+  // mis à jour en premier : même si le disque refuse tout, la session en cours
+  // continue de fonctionner normalement. En cas de quota dépassé, on réessaie en
+  // allégeant progressivement plutôt que de tout jeter — auparavant un dépassement
+  // effaçait purement et simplement le cache des publications.
   function dbSet(key, val) {
     DB_CACHE[key] = val;
-    try {
-      var toStore = (key === SK.POSTS) ? stripHeavyMediaForStorage(val) : val;
-      localStorage.setItem(key, JSON.stringify(toStore));
-    } catch(e) {
-      // Quota dépassé : on purge le cache local des publications plutôt que de
-      // laisser l'appli dans un état instable (les données restent sur le serveur).
-      if (key === SK.POSTS) { try { localStorage.removeItem(SK.POSTS); } catch(e2){} }
+    var essais = [];
+    if (key === SK.POSTS) {
+      essais = [
+        function(){ return stripHeavyMediaForStorage(val); },
+        function(){ return stripHeavyMediaForStorage(val).slice(0, 40); },
+        function(){ return stripHeavyMediaForStorage(val).slice(0, 15); }
+      ];
+    } else if (key === SK.USERS) {
+      essais = [
+        function(){ return stripHeavyProfilesForStorage(val); },
+        function(){ return profilsMinimum(stripHeavyProfilesForStorage(val), S.user && S.user.id); }
+      ];
+    } else {
+      essais = [ function(){ return val; } ];
     }
+
+    for (var i = 0; i < essais.length; i++) {
+      try {
+        localStorage.setItem(key, JSON.stringify(essais[i]()));
+        return true;
+      } catch(e) {
+        // Au dernier essai seulement, on libère de la place en sacrifiant le cache
+        // des publications (toujours re-téléchargeable) — jamais les profils, qui
+        // portent les comptes créés hors-ligne et les notifications lues.
+        if (i === essais.length - 1) {
+          if (key !== SK.POSTS) { try { localStorage.removeItem(SK.POSTS); DB_CACHE[SK.POSTS] = undefined; } catch(e2){} }
+          try { localStorage.setItem(key, JSON.stringify(essais[i]())); return true; } catch(e3) {}
+          console.warn('Stockage local saturé pour « ' + key + ' » : la session continue en mémoire.');
+        }
+      }
+    }
+    return false;
+  }
+
+  // Sauvegarde la session (compte connecté) sans jamais lever d'exception : une
+  // écriture de session qui échoue ne doit surtout pas interrompre l'opération en
+  // cours (connexion, inscription, synchronisation...). Si le profil complet ne
+  // passe pas, on retente sans les images lourdes, puis à l'essentiel.
+  function sauverSession(u) {
+    if (!u) return false;
+    var essais = [
+      function(){ return u; },
+      function(){ return stripHeavyProfilesForStorage([u])[0]; },
+      function(){ return profilsMinimum([u])[0]; }
+    ];
+    for (var i = 0; i < essais.length; i++) {
+      try { localStorage.setItem(SK.SESS, JSON.stringify(essais[i]())); return true; } catch(e) {}
+    }
+    console.warn('Session non sauvegardée localement (stockage saturé) — la session en cours reste active.');
+    return false;
   }
 
   // ============================================================
@@ -1009,7 +1104,7 @@
           if (!freshU.id && freshU.email) freshU.id = 'u_' + String(freshU.email).toLowerCase().replace(/[^a-z0-9]/gi, '_');
           S.user = freshU;
           S.auth = 'app';
-          localStorage.setItem(SK.SESS, JSON.stringify(freshU));
+          sauverSession(freshU);
         }
       }
     } catch(e) {}
