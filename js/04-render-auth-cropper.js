@@ -120,7 +120,7 @@
               '<div style="font-size:14.5px;font-weight:800;color:#000;">' + safeHtml((u.prenom||'') + ' ' + (u.nom||'')) + '</div>' +
               (secs ? '<div style="font-size:12px;color:#8A93A0;margin-top:2px;">' + safeHtml(secs) + '</div>' : '') +
             '</div>' +
-            '<span style="font-size:11px;font-weight:800;color:#0B63F6;background:#E8EEFB;padding:4px 10px;border-radius:10px;white-space:nowrap;flex-shrink:0;">' + uRoleLabel + '</span>' +
+            (function(){ var t = roleTint(u.role); return '<span style="font-size:11px;font-weight:600;color:' + t.fg + ';background:' + t.bg + ';padding:4px 10px;border-radius:' + UI.pill + ';white-space:nowrap;flex-shrink:0;">' + uRoleLabel + '</span>'; })() +
           '</div>';
         }).join('');
 

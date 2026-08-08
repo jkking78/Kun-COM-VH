@@ -784,7 +784,10 @@
   // Indice de Confiance du profil : entièrement basé sur la ponctualité, calculée
   // automatiquement à partir des heures d'arrivée. Aucune saisie manuelle.
   function renderPunctualityCard(freshU, cycleStr) {
-    var h = punctualityHistory(freshU.id);
+    // Bornée au CYCLE en cours : c'est ce qu'annonce l'en-tête de la carte.
+    // Le total depuis la création du compte est affiché séparément, en haut du
+    // profil à côté de l'avatar.
+    var h = punctualityHistory(freshU.id, currentCycleStartTs());
     var avg = h.average;                    // de -4 à 5
     // Conversion en pourcentage pour l'anneau : -4 → 0 %, 5 → 100 %.
     var pct = h.count ? Math.max(0, Math.min(100, Math.round(((avg + 4) / 9) * 100))) : 0;
@@ -864,7 +867,7 @@
               '<div style="font-size:10px;color:' + UI.faint + ';letter-spacing:0.5px;text-transform:uppercase;padding:10px 0 2px;">Derniers services</div>' +
               recent +
             '</div>'
-          : '<div style="font-size:11.5px;color:' + UI.faint + ';text-align:center;padding:6px 0;">Aucun service assigné pour le moment.</div>') +
+          : '<div style="font-size:11.5px;color:' + UI.faint + ';text-align:center;padding:6px 0;">Aucun service sur ce cycle.</div>') +
       '</div>' +
     '</div>';
   }
@@ -1147,6 +1150,7 @@
     // ---- Bandeau de couverture + avatar centré ----
     // L'avatar chevauche la couverture et les deux chiffres l'encadrent, comme
     // sur les références : la lecture part du visage, pas d'un coin de l'écran.
+    // Sans borne de date : total des services depuis la création du compte.
     var hStats = punctualityHistory(freshU.id);
     var isFollowing = !!(S.user && S.user.following && S.user.following.indexOf(freshU.id) !== -1);
 
@@ -1177,7 +1181,7 @@
               '<input type="file" accept="image/*" onchange="App.handleAvatarSelect(event)" style="display:none;">' +
             '</label>' : '') +
           '</div>' +
-          '<div style="flex:1;padding-top:52px;">' + statCol(hStats.count, 'Services') + '</div>' +
+          '<div style="flex:1;padding-top:52px;">' + statCol(hStats.count, 'Services au total') + '</div>' +
         '</div>' +
 
         '<div style="text-align:center;margin-top:10px;">' +

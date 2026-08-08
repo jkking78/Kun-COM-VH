@@ -1714,13 +1714,28 @@
     return Math.round((sum / vals.length) * 10) / 10;
   }
 
+  // Les grades n'ont plus d'emoji : ceux d'avant (🎬 clap, 🎥 caméra) étaient
+  // empruntés au vocabulaire vidéo et entraient en collision avec les emoji des
+  // PÔLES — 🎬 désigne Prod et 🎥 Cadrage. Un membre du pôle Vente se retrouvait
+  // ainsi étiqueté d'un clap de cinéma. La hiérarchie passe désormais par la
+  // couleur du badge (voir roleTint), qui elle ne peut rien signifier d'autre.
   var ROLE_LABELS = {
-    GRAND_RESPONSABLE: '👑 Grand Resp.',
-    RESP_SECTION: '🎬 Responsable',
-    MEMBRE: '🎥 Membre',
-    STAGIAIRE: '✏️ Stagiaire'
+    GRAND_RESPONSABLE: 'Grand responsable',
+    RESP_SECTION: 'Responsable',
+    MEMBRE: 'Membre',
+    STAGIAIRE: 'Stagiaire'
   };
   function roleLabel(role) { return ROLE_LABELS[role] || ROLE_LABELS.MEMBRE; }
+
+  // Teinte du badge de grade : plus le rôle porte de responsabilité, plus la
+  // couleur est marquante. Le membre reste neutre, c'est le cas courant.
+  var ROLE_TINTS = {
+    GRAND_RESPONSABLE: { fg: '#7A5B12', bg: '#FBF1DA' },   // doré
+    RESP_SECTION:      { fg: '#0B4FC4', bg: '#E8EEFB' },   // bleu d'accent
+    MEMBRE:            { fg: '#5A6472', bg: '#EEF1F6' },   // neutre
+    STAGIAIRE:         { fg: '#8A5A0B', bg: '#FDF0DC' }    // ambre
+  };
+  function roleTint(role) { return ROLE_TINTS[role] || ROLE_TINTS.MEMBRE; }
 
   function secNom(id) { var s = SECTIONS.find(function(x){ return x.id===id; }); return s ? s.nom : 'Général'; }
   function secEmoji(id) { var s = SECTIONS.find(function(x){ return x.id===id; }); return s ? s.emoji : '📢'; }

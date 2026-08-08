@@ -1592,7 +1592,7 @@ toggleParticipation: function(postId, status) {
       S.adminGateOpen = false;
       S.adminCodeInput = '';
       render();
-      toast('Accès Grand Responsable accordé. 👑', 'success');
+      toast('Accès Grand Responsable accordé.', 'success');
     },
     lockAdmin: function() {
       S.adminUnlocked = false;
