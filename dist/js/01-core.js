@@ -965,11 +965,17 @@
       var uStr = localStorage.getItem(SK.SESS) || sessionStorage.getItem(SK.SESS);
       if (uStr) {
         var parsedU = JSON.parse(uStr);
-        var users = db(SK.USERS, []);
-        var freshU = users.find(function(x){ return x.id === parsedU.id; }) || parsedU;
-        S.user = freshU;
-        S.auth = 'app';
-        localStorage.setItem(SK.SESS, JSON.stringify(freshU));
+        if (parsedU) {
+          if (!parsedU.id && parsedU.email) {
+            parsedU.id = 'u_' + String(parsedU.email).toLowerCase().replace(/[^a-z0-9]/gi, '_');
+          }
+          var users = db(SK.USERS, []);
+          var freshU = users.find(function(x){ return (x.id && x.id === parsedU.id) || (x.email && x.email.toLowerCase() === (parsedU.email||'').toLowerCase()); }) || parsedU;
+          if (!freshU.id && freshU.email) freshU.id = 'u_' + String(freshU.email).toLowerCase().replace(/[^a-z0-9]/gi, '_');
+          S.user = freshU;
+          S.auth = 'app';
+          localStorage.setItem(SK.SESS, JSON.stringify(freshU));
+        }
       }
     } catch(e) {}
     // Restore saved posts

@@ -81,6 +81,9 @@
 
     var html = '';
     try {
+      if (S.user && !S.user.id && S.user.email) {
+        S.user.id = 'u_' + String(S.user.email).toLowerCase().replace(/[^a-z0-9]/gi, '_');
+      }
       if (S.auth === 'app' && (!S.user || !S.user.id)) {
         console.warn("Session non valide ou utilisateur manquant -> retour écran de connexion");
         S.auth = 'login';

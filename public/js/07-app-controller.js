@@ -1311,9 +1311,14 @@ toggleParticipation: function(postId, status) {
         try {
           var res = await supabase.from('kun_com_profiles').select('*');
           if (res && res.data) {
-            var remoteUsers = res.data.map(function(item){ return item.content || item; });
+            var remoteUsers = res.data.map(function(item){
+              var u = Object.assign({}, item.content || item);
+              if (!u.id && item.id) u.id = item.id;
+              return u;
+            });
             user = remoteUsers.find(function(u){ return u.email && u.email.toLowerCase() === email.toLowerCase(); });
             if (user) {
+              if (!user.id) user.id = 'u_' + String(user.email).toLowerCase().replace(/[^a-z0-9]/gi, '_');
               users.push(user);
               dbSet(SK.USERS, users);
             }
@@ -1324,6 +1329,10 @@ toggleParticipation: function(postId, status) {
       if (!user) {
         toast('Compte introuvable. Veuillez vérifier votre e-mail ou vous inscrire.', 'error');
         return;
+      }
+
+      if (!user.id && user.email) {
+        user.id = 'u_' + String(user.email).toLowerCase().replace(/[^a-z0-9]/gi, '_');
       }
 
       var hashedLoginPwd = await hashPassword(pwd);
