@@ -326,6 +326,40 @@
     } catch(e) {}
   }
 
+  // Fusionne deux listes de notifications par identifiant. Règle essentielle :
+  // « lu » ne redevient JAMAIS « non lu ». C'est un état à sens unique, décidé
+  // par le propriétaire du compte ; le serveur, lui, ne fait que recevoir des
+  // écritures d'autres appareils qui n'en savent rien.
+  function mergeNotifications(locales, distantes) {
+    var A = Array.isArray(locales) ? locales : [];
+    var B = Array.isArray(distantes) ? distantes : [];
+    // Le plafond s'applique aussi aux raccourcis : sans cela une liste déjà
+    // trop longue passait à travers sans être tronquée.
+    var plafonne = function(list) {
+      var out = list.slice();
+      out.sort(function(x, y){ return (y.timestamp || 0) - (x.timestamp || 0); });
+      return out.slice(0, 100);
+    };
+    if (!A.length) return plafonne(B);
+    if (!B.length) return plafonne(A);
+
+    var parId = {};
+    var ordre = [];
+    var prendre = function(n) {
+      if (!n || !n.id) return;
+      if (!parId[n.id]) { parId[n.id] = Object.assign({}, n); ordre.push(n.id); return; }
+      var deja = parId[n.id];
+      // Une lecture constatée d'un côté ou de l'autre l'emporte toujours.
+      deja.read = !!(deja.read || n.read);
+    };
+    B.forEach(prendre);   // le serveur fait foi pour la LISTE
+    A.forEach(prendre);   // le local fait foi pour les LECTURES
+
+    var out = ordre.map(function(id){ return parId[id]; });
+    out.sort(function(x, y){ return (y.timestamp || 0) - (x.timestamp || 0); });
+    return out.slice(0, 100);
+  }
+
       function mergeProfilesWithLocal(remoteData) {
     var localUsers = db(SK.USERS, []);
     var map = {};
@@ -382,6 +416,12 @@
         if (existing.pwd && !merged.pwd) merged.pwd = existing.pwd;
         if (existing.sec_a1 && !merged.sec_a1) merged.sec_a1 = existing.sec_a1;
         if (existing.sec_a2 && !merged.sec_a2) merged.sec_a2 = existing.sec_a2;
+        // Les NOTIFICATIONS ne peuvent pas être simplement écrasées par la
+        // version du serveur : celle-ci est écrite par n'importe quel appareil
+        // qui vous notifie, et ignore donc les lectures faites ailleurs. Sans
+        // fusion, une notification déjà ouverte redevenait non lue à chaque
+        // retour dans l'application.
+        merged.notifications = mergeNotifications(existing.notifications, rUser.notifications);
         map[rUser.id] = merged;
       }
     });

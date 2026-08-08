@@ -1239,27 +1239,38 @@ toggleParticipation: function(postId, status) {
       S.notificationsOpen = false;
       render();
     },
+    // Enregistre l'état de lecture. On relit d'abord le profil côté serveur pour
+    // ne pas effacer une notification arrivée pendant qu'on lisait, puis on
+    // fusionne : une notification lue le reste, quelle que soit la version.
+    _persistNotifications: function() {
+      var moi = S.user;
+      if (!moi) return;
+      var allUsers = db(SK.USERS, []);
+      var uIdx = allUsers.findIndex(function(u){ return u.id === moi.id; });
+      if (uIdx !== -1) allUsers[uIdx] = moi;
+      dbSet(SK.USERS, allUsers);
+      try { localStorage.setItem(SK.SESS, JSON.stringify(moi)); } catch(e){}
+      if (!supabase) return;
+      supabase.from('kun_com_profiles').select('content').eq('id', moi.id).single()
+        .then(function(res) {
+          var distant = (res && res.data && res.data.content) ? res.data.content : null;
+          if (distant) moi.notifications = mergeNotifications(moi.notifications, distant.notifications);
+          return supabase.from('kun_com_profiles').upsert({ id: moi.id, content: moi }, { onConflict: 'id' });
+        })
+        .then(function(){}, function(e){ console.warn('Notifications :', e); });
+    },
+
     markAllNotificationsRead: function() {
       if (!S.user || !Array.isArray(S.user.notifications)) return;
       S.user.notifications.forEach(function(n){ n.read = true; });
-      var allUsers = db(SK.USERS, []);
-      var uIdx = allUsers.findIndex(function(u){ return u.id === S.user.id; });
-      if (uIdx !== -1) allUsers[uIdx] = S.user;
-      dbSet(SK.USERS, allUsers);
-      try { localStorage.setItem(SK.SESS, JSON.stringify(S.user)); } catch(e){}
-      if (supabase) supabase.from('kun_com_profiles').upsert({ id: S.user.id, content: S.user }, { onConflict: 'id' }).then(function(){}, function(e){});
+      this._persistNotifications();
       render();
     },
     clickNotification: function(notifId, targetId) {
       if (!S.user || !Array.isArray(S.user.notifications)) return;
       var notif = S.user.notifications.find(function(n){ return n.id === notifId; });
       if (notif) notif.read = true;
-      var allUsers = db(SK.USERS, []);
-      var uIdx = allUsers.findIndex(function(u){ return u.id === S.user.id; });
-      if (uIdx !== -1) allUsers[uIdx] = S.user;
-      dbSet(SK.USERS, allUsers);
-      try { localStorage.setItem(SK.SESS, JSON.stringify(S.user)); } catch(e){}
-      if (supabase) supabase.from('kun_com_profiles').upsert({ id: S.user.id, content: S.user }, { onConflict: 'id' }).then(function(){}, function(e){});
+      this._persistNotifications();
       
       S.notificationsOpen = false;
       render();
