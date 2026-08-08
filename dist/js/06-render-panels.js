@@ -420,6 +420,7 @@
       }
     });
     var dates = Object.keys(dateMap).sort().map(function(k){ return dateMap[k]; });
+    var nowTsSlider = Date.now();
 
     var slider = '<div style="background:#FFF;padding:16px;border-bottom:1px solid #E4E7EC;display:flex;gap:12px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;">' +
       dates.map(function(d) {
@@ -430,7 +431,7 @@
         var bg = isSel ? '#000' : '#F6F7F9';
         var col = isSel ? '#FFF' : '#8A93A0';
         var numCol = isSel ? '#FFF' : '#000';
-        var hasEv = allPosts.some(function(p){ return p.type==='EVENT' && p.eventDate===iso; });
+        var hasEv = allPosts.some(function(p){ return p.type==='EVENT' && p.eventDate===iso && !isEventPast(p, nowTsSlider); });
         var dot = hasEv ? '<div style="width:4px;height:4px;border-radius:2px;background:'+(isSel?'#FFF':'#E2445C')+';margin-top:2px;"></div>' : '<div style="height:6px;"></div>';
         return '<div onclick="App.selectDate(\''+iso+'\')" style="min-width:54px;height:74px;border-radius:16px;background:'+bg+';display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:0.2s;">' +
           '<span style="font-size:11px;font-weight:700;color:'+col+';margin-bottom:2px;">'+dayName+'</span>' +
@@ -445,7 +446,12 @@
     // carrousel s'ouvre donc toujours sur ce qui concerne l'utilisateur maintenant.
     var nowTs = Date.now();
     var dayEvents = allPosts.filter(function(p) {
-      return p.type === 'EVENT' && p.eventDate === S.selectedDate;
+      if (p.type !== 'EVENT' || p.eventDate !== S.selectedDate) return false;
+      // « À venir » ne montre que ce qui reste à venir ou est en cours. Un
+      // événement déjà terminé n'a rien à y faire — il n'appartient qu'à
+      // l'Historique. Sans ce filtre, la vue affichait des fiches « Terminé »
+      // dans l'onglet censé lister ce qui arrive.
+      return !isEventPast(p, nowTs);
     }).sort(function(a,b) {
       var aPast = isEventPast(a, nowTs) ? 1 : 0;
       var bPast = isEventPast(b, nowTs) ? 1 : 0;
@@ -785,24 +791,30 @@
     var col = !h.count ? UI.faint : avg >= 4 ? UI.ok : avg >= 2 ? UI.warn : UI.bad;
     var label = !h.count ? 'Aucun service' : avg >= 4 ? 'Excellent' : avg >= 2 ? 'À améliorer' : avg >= 0 ? 'Critique' : 'Rattrapage requis';
 
-    // Jauge en arc SVG (et non plus un conic-gradient) : le trait arrondi se
-    // lit mieux en petit et rend la même chose sur tous les navigateurs.
-    var R = 32, C = Math.round(2 * Math.PI * R);
-    var gauge = '<div style="position:relative;width:76px;height:76px;flex-shrink:0;">' +
-      '<svg width="76" height="76" viewBox="0 0 76 76">' +
-        '<circle cx="38" cy="38" r="' + R + '" fill="none" stroke="#EFF1F4" stroke-width="7"/>' +
-        (h.count ? '<circle cx="38" cy="38" r="' + R + '" fill="none" stroke="' + col + '" stroke-width="7" stroke-linecap="round" stroke-dasharray="' + C + '" stroke-dashoffset="' + Math.round(C * (1 - pct / 100)) + '" transform="rotate(-90 38 38)"/>' : '') +
+    // Jauge circulaire en débord au-dessus de la carte, façon compteur : la
+    // valeur se lit d'un coup d'œil avant même le reste du contenu.
+    var R = 40, C = Math.round(2 * Math.PI * R);
+    var gauge = '<div style="position:relative;width:104px;height:104px;margin:0 auto;">' +
+      '<div style="position:absolute;inset:0;border-radius:50%;background:' + UI.card + ';box-shadow:' + UI.sh2 + ';"></div>' +
+      '<svg width="104" height="104" viewBox="0 0 104 104" style="position:relative;">' +
+        '<circle cx="52" cy="52" r="' + R + '" fill="none" stroke="' + UI.tile + '" stroke-width="8"/>' +
+        (h.count ? '<circle cx="52" cy="52" r="' + R + '" fill="none" stroke="' + col + '" stroke-width="8" stroke-linecap="round" stroke-dasharray="' + C + '" stroke-dashoffset="' + Math.round(C * (1 - pct / 100)) + '" transform="rotate(-90 52 52)"/>' : '') +
       '</svg>' +
       '<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">' +
-        '<div style="font-size:19px;font-weight:600;color:' + UI.ink + ';line-height:1;">' + (h.count ? String(avg).replace('.', ',') : '—') + '</div>' +
+        '<div style="margin-bottom:1px;">' + ico('star', 15, col) + '</div>' +
+        '<div style="font-size:22px;font-weight:600;color:' + UI.ink + ';line-height:1;">' + (h.count ? String(avg).replace('.', ',') : '—') + '</div>' +
         '<div style="font-size:10px;color:' + UI.faint + ';">sur 5</div>' +
       '</div>' +
     '</div>';
 
-    var tile = function(value, lbl) {
-      return '<div style="background:' + UI.tile + ';border-radius:' + UI.r1 + ';padding:9px 10px;">' +
-        '<div style="font-size:10.5px;color:' + UI.faint + ';margin-bottom:2px;">' + lbl + '</div>' +
-        '<div style="font-size:16px;font-weight:600;color:' + UI.ink + ';">' + value + '</div>' +
+    // Tuiles chiffrées à pastille ronde, reprises de la référence fournie.
+    var tile = function(iconName, value, lbl, tint) {
+      return '<div style="flex:1;min-width:0;background:' + UI.card + ';border-radius:' + UI.r2 + ';box-shadow:' + UI.sh2 + ';padding:11px 12px;display:flex;align-items:center;gap:10px;">' +
+        '<div style="width:28px;height:28px;border-radius:50%;background:' + tint + '1A;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + ico(iconName, 15, tint) + '</div>' +
+        '<div style="min-width:0;">' +
+          '<div style="font-size:9.5px;color:' + UI.faint + ';letter-spacing:0.5px;text-transform:uppercase;">' + lbl + '</div>' +
+          '<div style="font-size:16px;font-weight:600;color:' + UI.ink + ';line-height:1.2;">' + value + '</div>' +
+        '</div>' +
       '</div>';
     };
 
@@ -818,30 +830,27 @@
       '</div>';
     }).join('');
 
-    return '<div style="margin:14px 0;">' +
-      '<div style="background:' + UI.card + ';border:0.5px solid ' + UI.line + ';border-radius:' + UI.r2 + ';padding:16px;">' +
-        '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">' +
+    return '<div style="margin:16px 0 14px;">' +
+      // Le bloc entier repose sur le fond gris de l'écran ; la jauge déborde
+      // au-dessus de la carte, qui remonte sous elle pour l'encastrer.
+      gauge +
+      '<div style="background:' + UI.tile + ';border-radius:' + UI.r3 + ';padding:44px 14px 14px;margin-top:-36px;">' +
+        '<div style="text-align:center;margin-bottom:14px;">' +
           '<div style="font-size:14px;font-weight:600;color:' + UI.ink + ';">Ma ponctualité</div>' +
-          '<div style="font-size:11px;color:' + UI.faint + ';">Cycle ' + cycleStr + '</div>' +
+          '<div style="font-size:11px;color:' + UI.faint + ';margin-top:1px;">Cycle ' + cycleStr + ' · ' + label + '</div>' +
         '</div>' +
 
-        '<div style="display:flex;align-items:center;gap:16px;margin-bottom:' + (h.debt < 0 || recent ? '14px' : '0') + ';">' +
-          gauge +
-          '<div style="flex:1;min-width:0;">' +
-            '<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:8px;">' +
-              tile(h.onTimeCount, "À l'heure") +
-              tile(h.count, 'Services') +
-            '</div>' +
-            '<div style="display:inline-flex;align-items:center;gap:5px;font-size:11px;color:' + col + ';">' + ico('star', 13, col) + label + '</div>' +
-          '</div>' +
+        '<div style="display:flex;gap:10px;margin-bottom:' + (h.debt < 0 || recent || h.avgDelay > 0 ? '12px' : '0') + ';">' +
+          tile('check', h.onTimeCount, "À l'heure", UI.ok) +
+          tile('calendar', h.count, 'Services', UI.accent) +
         '</div>' +
 
         (h.avgDelay > 0
-          ? '<div style="font-size:11.5px;color:' + UI.faint + ';margin-bottom:12px;">Retard moyen de ' + h.avgDelay + ' min sur les services concernés.</div>'
+          ? '<div style="font-size:11.5px;color:' + UI.muted + ';text-align:center;margin-bottom:12px;">Retard moyen de ' + h.avgDelay + ' min sur les services concernés.</div>'
           : '') +
 
         (h.debt < 0
-          ? '<div style="display:flex;gap:9px;background:#FEF2F2;border:0.5px solid #FBD5D5;border-radius:' + UI.r1 + ';padding:11px 12px;margin-bottom:12px;">' +
+          ? '<div style="display:flex;gap:9px;background:' + UI.card + ';border-radius:' + UI.r2 + ';box-shadow:' + UI.sh2 + ';padding:11px 12px;margin-bottom:12px;">' +
               ico('alert', 16, UI.bad) +
               '<div style="min-width:0;">' +
                 '<div style="font-size:12.5px;font-weight:600;color:#B42318;margin-bottom:2px;">Rattrapage requis : ' + h.debt + ' étoiles</div>' +
@@ -851,8 +860,11 @@
           : '') +
 
         (recent
-          ? '<div><div style="font-size:11px;color:' + UI.faint + ';margin-bottom:2px;">Derniers services</div>' + recent + '</div>'
-          : '<div style="font-size:11.5px;color:' + UI.faint + ';text-align:center;padding:8px 0;">Aucun service assigné pour le moment.</div>') +
+          ? '<div style="background:' + UI.card + ';border-radius:' + UI.r2 + ';box-shadow:' + UI.sh2 + ';padding:4px 14px 10px;">' +
+              '<div style="font-size:10px;color:' + UI.faint + ';letter-spacing:0.5px;text-transform:uppercase;padding:10px 0 2px;">Derniers services</div>' +
+              recent +
+            '</div>'
+          : '<div style="font-size:11.5px;color:' + UI.faint + ';text-align:center;padding:6px 0;">Aucun service assigné pour le moment.</div>') +
       '</div>' +
     '</div>';
   }

@@ -460,7 +460,7 @@
     var curIdx = S.eventGroupIdx && S.eventGroupIdx[dateIso] ? S.eventGroupIdx[dateIso] : 0;
     var anyPinned = events.some(function(e){ return e.is_pinned; });
 
-    return '<article style="background:' + UI.card + ';border:0.5px solid ' + UI.line + ';border-radius:' + UI.r2 + ';margin:0 12px 12px;overflow:hidden;">' +
+    return '<article style="background:' + UI.card + ';border-radius:' + UI.r2 + ';box-shadow:' + UI.sh2 + ';margin:0 12px 12px;overflow:hidden;">' +
       (anyPinned ? '<div style="background:#0B63F6;color:#FFF;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:1px;padding:4px 12px;display:flex;align-items:center;gap:6px;"><span style="font-size:12px;">📌</span> ÉPINGLÉ</div>' : '') +
       '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px 8px;">' +
         '<div style="min-width:0;">' +
@@ -881,7 +881,7 @@
 
     // Carte blanche détachée sur le fond gris de l'écran : c'est ce qui donne
     // au fil sa respiration, au lieu de bandes blanches collées bord à bord.
-    var finalHtml = '<article id="post-'+post.id+'" data-postid="'+post.id+'" style="background:' + UI.card + ';border:0.5px solid ' + UI.line + ';border-radius:' + UI.r2 + ';margin:0 12px 12px;overflow:hidden;">' +
+    var finalHtml = '<article id="post-'+post.id+'" data-postid="'+post.id+'" style="background:' + UI.card + ';border-radius:' + UI.r2 + ';box-shadow:' + UI.sh2 + ';margin:0 12px 12px;overflow:hidden;">' +
       repostBanner +
       pinnedBadge +
       (post.is_ephemeral ? '<div style="padding:10px 16px 0;"><span style="display:inline-flex;align-items:center;gap:5px;background:' + UI.tile + ';color:' + UI.muted + ';font-size:11px;padding:3px 9px;border-radius:' + UI.pill + ';">' + ico('clock', 12, UI.muted) + 'Éphémère · disparaît dans ' + (function(){ var h = Math.max(0, Math.round((post.ephemeral_expiry - Date.now()) / 3600000)); return h > 0 ? h + ' h' : 'bientôt'; })() + '</span></div>' : '') +

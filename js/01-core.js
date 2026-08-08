@@ -964,11 +964,14 @@
     muted: '#5A6472',        // libellés secondaires
     faint: '#8A93A0',        // métadonnées, horodatages
 
-    page:  '#F4F5F7',        // fond d'écran
+    // Le fond d'écran est nettement plus soutenu que les cartes : quand les deux
+    // sont quasi blancs, l'œil ne distingue plus les blocs et l'écran fatigue.
+    // Ce gris bleuté fait ressortir les cartes et réduit la surface éblouissante.
+    page:  '#E8ECF2',        // fond d'écran
     card:  '#FFFFFF',        // surface d'une carte
-    tile:  '#F6F7F9',        // encadré interne (tuile de statistique)
-    line:  '#EAECF0',        // filet de séparation
-    line2: '#E4E7EC',        // bordure de contrôle
+    tile:  '#F2F5F9',        // encadré interne (tuile de statistique)
+    line:  '#E2E7EF',        // filet de séparation
+    line2: '#DCE2EB',        // bordure de contrôle
 
     // Identité réservée aux ÉVÉNEMENTS : vert profond et or. Ce contraste les
     // rend reconnaissables au premier coup d'œil dans le fil, et n'apparaît
@@ -984,7 +987,8 @@
     ok: '#0E9F6E', warn: '#D98A0B', bad: '#E2445C',
 
     r1: '12px', r2: '16px', r3: '20px', pill: '999px',
-    sh: '0 1px 2px rgba(16,24,40,0.04)'
+    sh:  '0 1px 2px rgba(16,24,40,0.04)',
+    sh2: '0 4px 16px rgba(23,43,77,0.07)'   // relief doux des cartes détachées
   };
 
   // Icônes au trait remplaçant les emoji d'interface. Les emoji des PÔLES
