@@ -855,6 +855,8 @@
     // Enregistrement d'arrivée : événement pour lequel la publication en cours
     // vaut pointage (distinct de postAboutEventId, purement informatif).
     postCheckInEventId: null,
+    // Image affichée en grand par-dessus l'écran (commentaires, publications).
+    viewerImage: null,
     // Aperçu du lien collé dans le composeur (titre, description, image).
     linkPreview: null,        // objet renvoyé par /api/og
     linkPreviewUrl: null,     // URL pour laquelle l'aperçu a été demandé
@@ -1223,6 +1225,15 @@
   // sans ça, les étoiles déjà attribuées disparaîtraient avec l'événement.
   function isEventLike(p) {
     return !!p && (p.type === 'EVENT' || p.type === 'EVENT_ARCHIVED');
+  }
+
+  // Une épingle ne vaut que pour ce qui est encore d'actualité : un événement
+  // terminé garde son drapeau en base (le remettre à une date future le
+  // ré-épingle tout seul) mais cesse d'être remonté en tête du fil.
+  function isPinnedNow(post, nowTs) {
+    if (!post || !post.is_pinned) return false;
+    if (isEventLike(post) && isEventPast(post, nowTs)) return false;
+    return true;
   }
 
   // Un événement est "passé" dès qu'il est TERMINÉ, pas seulement quand sa date

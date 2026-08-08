@@ -11,7 +11,8 @@
 
     // Filter posts
     var filtered = posts.slice().sort(function(a,b){
-        if (a.is_pinned !== b.is_pinned) return a.is_pinned ? -1 : 1;
+        var ap = isPinnedNow(a), bp = isPinnedNow(b);
+        if (ap !== bp) return ap ? -1 : 1;
         return (b.timestamp||0)-(a.timestamp||0); 
       }).filter(function(p) {
         // Événement supprimé mais archivé pour préserver les étoiles déjà
@@ -165,6 +166,8 @@
     if (S.storageStatsOpen) modals += renderStorageStatsModal();
     if (S.dmOpen) modals += renderDirectMessageModal();
     if (S.assignManagerId) modals += renderAssignManagerModal();
+    // En dernier : la visionneuse doit passer par-dessus toutes les autres fenêtres.
+    if (S.viewerImage) modals += renderImageViewer();
 
     return '<div style="position:relative;width:100%;height:100%;display:flex;flex-direction:column;background:' + UI.page + ';font-family:-apple-system,BlinkMacSystemFont,\'SF Pro Text\',sans-serif;">' +
       // La réserve de bas de page suit la hauteur réelle de la barre de navigation,
@@ -464,7 +467,7 @@
     var dateLabel = d.toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long' });
     var carId = 'evgrp-' + dateIso.replace(/-/g, '');
     var curIdx = S.eventGroupIdx && S.eventGroupIdx[dateIso] ? S.eventGroupIdx[dateIso] : 0;
-    var anyPinned = events.some(function(e){ return e.is_pinned; });
+    var anyPinned = events.some(function(e){ return isPinnedNow(e); });
 
     return '<article style="background:' + UI.card + ';border-radius:' + UI.r2 + ';box-shadow:' + UI.sh2 + ';margin:0 12px 12px;overflow:hidden;">' +
       (anyPinned ? '<div style="background:#0B63F6;color:#FFF;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:1px;padding:4px 12px;display:flex;align-items:center;gap:6px;"><span style="font-size:12px;">📌</span> ÉPINGLÉ</div>' : '') +
@@ -656,6 +659,16 @@
     '</div>';
   }
 
+  // Image en plein écran. Un simple toucher n'importe où referme : c'est le
+  // geste attendu, et le bouton de fermeture reste là pour ceux qui le cherchent.
+  function renderImageViewer() {
+    if (!S.viewerImage) return '';
+    return '<div onclick="App.closeImageViewer()" style="position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,0.94);display:flex;align-items:center;justify-content:center;padding:16px;padding-top:calc(16px + env(safe-area-inset-top));padding-bottom:calc(16px + env(safe-area-inset-bottom));animation:fadeIn 0.18s ease-out;">' +
+      '<button onclick="event.stopPropagation();App.closeImageViewer()" aria-label="Fermer" style="position:absolute;top:calc(10px + env(safe-area-inset-top));right:10px;background:rgba(255,255,255,0.16);border:none;border-radius:50%;width:44px;height:44px;color:#FFF;font-size:20px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;touch-action:manipulation;">×</button>' +
+      '<img src="' + safeHtml(S.viewerImage) + '" onclick="event.stopPropagation()" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:' + UI.r1 + ';" />' +
+    '</div>';
+  }
+
   // Vignette d'un lien : image si le site en fournit une, sinon domaine seul.
   // « compact » sert dans le composeur, où la place est comptée.
   function renderLinkPreviewCard(pv, opts) {
@@ -762,7 +775,7 @@
               // preload="auto" + onloadeddata : si aucune vignette n'a pu être générée,
               // on force le navigateur à afficher la première image plutôt qu'un écran noir.
               ? '<video src="'+url+'"' + (post.videoPoster ? ' poster="'+post.videoPoster+'"' : '') + ' controls playsinline preload="auto" onloadeddata="App.primeVideoFrame(this)" style="display:block;width:auto;height:auto;max-width:100%;max-height:640px;object-fit:contain;margin:0 auto;background:#000;"></video>'
-              : '<img src="'+url+'" loading="lazy" style="display:block;width:auto;height:auto;max-width:100%;max-height:640px;object-fit:contain;margin:0 auto;"/>';
+              : '<img src="'+url+'" loading="lazy" onclick="App.openImageViewer(\''+url+'\')" style="display:block;width:auto;height:auto;max-width:100%;max-height:640px;object-fit:contain;margin:0 auto;cursor:pointer;"/>';
             return '<div style="flex:0 0 100%;scroll-snap-align:start;display:flex;justify-content:center;">'+mediaTag+'</div>';
           }).join('') +
         '</div>' +
@@ -800,7 +813,7 @@
       }
     }
 
-    var pinnedBadge = post.is_pinned ? '<div style="background:#0B63F6;color:#FFF;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:1px;padding:4px 12px;display:flex;align-items:center;gap:6px;"><span style="font-size:12px;">📌</span> ÉPINGLÉ</div>' : '';
+    var pinnedBadge = isPinnedNow(post) ? '<div style="background:#0B63F6;color:#FFF;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:1px;padding:4px 12px;display:flex;align-items:center;gap:6px;"><span style="font-size:12px;">📌</span> ÉPINGLÉ</div>' : '';
 
       var contentZone = '';
       // Handle new-format EVENT posts (created by saveEvent)

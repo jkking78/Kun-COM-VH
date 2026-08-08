@@ -612,15 +612,21 @@
       toast('Événement créé ! ', 'success');
     },
     togglePin: function(postId) {
+      var u = S.user || {};
       var posts = db(SK.POSTS, []);
       var p = posts.find(function(x){ return x.id === postId; });
-      if (p) {
-        p.is_pinned = !p.is_pinned;
-        dbSet(SK.POSTS, posts);
-        if (supabase) supabase.from('kun_com_posts').upsert({ id: p.id, content: p }, { onConflict: 'id' }).then(function(){});
+      if (!p) { toast('Publication introuvable.', 'error'); return; }
+      // Le créateur de la publication et le Grand Responsable, personne d'autre.
+      if (u.role !== 'GRAND_RESPONSABLE' && p.userId !== u.id) {
+        toast('Seul l\'auteur peut épingler cette publication.', 'error');
+        return;
       }
+      p.is_pinned = !p.is_pinned;
+      dbSet(SK.POSTS, posts);
+      if (supabase) supabase.from('kun_com_posts').upsert({ id: p.id, content: p }, { onConflict: 'id' }).then(function(){}, function(e){ console.warn('Épingle :', e); });
       S.optionsOpen = false; S.optionsPost = null;
       render();
+      toast(p.is_pinned ? 'Épinglé en haut du fil.' : 'Épingle retirée.', 'success');
     },
     
     
@@ -2141,6 +2147,14 @@ toggleParticipation: function(postId, status) {
     },
     openCreate: function() { S.createOpen=true; S.pendingMedia=[]; S.pendingVideoPoster=null; S.postAboutEventId=null; S.postCheckInEventId=null; S.videoProcessing=false; S.pollOpen=false; S.pollQuestion=''; S.pollOptions=['','']; S.linkPreview=null; S.linkPreviewUrl=null; S.linkPreviewLoading=false; S.linkPreviewDismissed=false; render(); setTimeout(function(){ var t=document.getElementById('newPostText'); if(t) t.focus(); },120); },
     closeCreate: function() { S.createOpen=false; S.pendingMedia=[]; clearPendingLocalCopies(); S.hashSuggestions=false; S.postBg=null; S.postText=''; S.pendingVideoPoster=null; S.postAboutEventId=null; S.postCheckInEventId=null; S.videoProcessing=false; S.pollOpen=false; S.pollQuestion=''; S.pollOptions=['','']; S.linkPreview=null; S.linkPreviewUrl=null; S.linkPreviewLoading=false; S.linkPreviewDismissed=false; render(); },
+    // ---- Visionneuse d'image ----
+    openImageViewer: function(url) {
+      if (!url) return;
+      S.viewerImage = url;
+      render();
+    },
+    closeImageViewer: function() { S.viewerImage = null; render(); },
+
     // ---- Aperçu de lien (composeur) ----
     // Détecte le premier lien du texte et va chercher ses métadonnées. Attend
     // 700 ms après la dernière frappe pour ne pas interroger le serveur à chaque

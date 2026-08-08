@@ -35,6 +35,23 @@
           '<span style="font-size:15px;font-weight:600;color:#000;">' + (S.savedPosts[post.id] ? 'Retirer des favoris' : 'Enregistrer') + '</span>' +
         '</button>' +
 
+        // Épingler / désépingler. Jusqu'ici App.togglePin existait mais n'était
+        // appelée nulle part : l'épingle ne pouvait se retirer qu'en rouvrant le
+        // formulaire de l'événement. Réservé au créateur et au Grand Responsable.
+        (canDelete
+          ? (function(){
+              var estEpingle = !!post.is_pinned;
+              var perime = isEventLike(post) && isEventPast(post) && estEpingle;
+              return '<button onclick="App.togglePin(\''+post.id+'\')" style="width:100%;background:' + UI.tile + ';border:none;border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;margin-bottom:10px;text-align:left;">' +
+                ico('pinned', 20, estEpingle ? UI.bad : UI.ink) +
+                '<span style="min-width:0;">' +
+                  '<span style="display:block;font-size:15px;font-weight:600;color:' + (estEpingle ? UI.bad : UI.ink) + ';">' + (estEpingle ? 'Retirer l\'épingle' : 'Épingler en haut du fil') + '</span>' +
+                  (perime ? '<span style="display:block;font-size:11.5px;color:' + UI.faint + ';margin-top:1px;">Événement terminé : l\'épingle est déjà sans effet</span>' : '') +
+                '</span>' +
+              '</button>';
+            })()
+          : '') +
+
         (canAssignHere
           ? '<button onclick="App.openAssignManager(\''+post.id+'\')" style="width:100%;background:#E8EEFB;border:1px solid #E2E0FF;border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;margin-bottom:10px;text-align:left;">' +
               '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0B63F6" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>' +
@@ -153,7 +170,7 @@
           '<span style="font-size:11.5px;color:#8A93A0;">' + timeAgo(c.timestamp) + '</span>' +
         '</div>' +
         (c.text ? '<p style="font-size:14px;color:#0B0D12;margin:3px 0 5px;line-height:1.4;">' + hashtagify(c.text) + '</p>' : '') +
-        (c.imageUrl ? '<img src="'+c.imageUrl+'" style="max-width:180px;max-height:180px;border-radius:12px;margin:2px 0 6px;display:block;object-fit:cover;">' : '') +
+        (c.imageUrl ? '<img src="'+c.imageUrl+'" onclick="event.stopPropagation();App.openImageViewer(\''+c.imageUrl+'\')" style="max-width:180px;max-height:180px;border-radius:' + UI.r1 + ';margin:2px 0 6px;display:block;object-fit:cover;cursor:pointer;">' : '') +
         replyBtn +
       '</div>' +
       '<div id="clike-'+c.id+'" onclick="App.likeComment(\''+c.id+'\')" style="cursor:pointer;padding:4px;margin-top:2px;">' +
