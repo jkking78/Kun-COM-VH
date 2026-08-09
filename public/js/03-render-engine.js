@@ -152,6 +152,16 @@
 
     // Secousse de la cloche à l'arrivée d'une notification.
     try { pulseNotifOnNew(); } catch(e){}
+
+    // Cale les carrousels d'événements sur la hauteur de leur volet visible.
+    // Deux passages : tout de suite, puis après un souffle, le temps que la mise
+    // en page soit calculée (polices, images déjà en cache).
+    try {
+      if (window.App && App.recalerCarrousels) {
+        App.recalerCarrousels();
+        setTimeout(function(){ try { App.recalerCarrousels(); } catch(e){} }, 60);
+      }
+    } catch(e){}
   }
 
   // Vibration courte à l'arrivée d'une notification. L'ANIMATION, elle, n'est

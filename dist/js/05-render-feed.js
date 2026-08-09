@@ -455,7 +455,10 @@
     // L'affiche de l'événement s'ouvre en grand : c'est souvent là que se
     // trouvent les détails (horaires, lieu) écrits dans le visuel lui-même.
     var evImage = post.eventImage
-      ? '<img src="' + post.eventImage + '" loading="lazy" onclick="event.stopPropagation();App.openImageViewer(\'' + post.eventImage + '\')" style="display:block;width:100%;height:auto;max-height:240px;object-fit:cover;border-radius:' + UI.r1 + ';margin-bottom:14px;background:#000;cursor:pointer;" />'
+      // height fixe plutôt que auto : sans hauteur connue, l'affiche occupait zéro
+      // pixel jusqu'à son arrivée, puis faisait grandir la carte d'un coup. Le
+      // recalage du carrousel est déclenché à son chargement.
+      ? '<img src="' + post.eventImage + '" loading="lazy" onload="App.recalerCarrousels()" onclick="event.stopPropagation();App.openImageViewer(\'' + post.eventImage + '\')" style="display:block;width:100%;height:200px;object-fit:cover;border-radius:' + UI.r1 + ';margin-bottom:14px;background:#000;cursor:pointer;" />'
       : '';
 
     // Vert profond + or : identité réservée aux événements, pour qu'ils se
@@ -539,7 +542,12 @@
         '</div>' +
         '<div id="evgrpBadge-' + carId + '" style="background:#E8EEFB;color:#0B63F6;font-size:12px;font-weight:800;padding:4px 10px;border-radius:20px;flex-shrink:0;">' + (curIdx + 1) + '/' + events.length + '</div>' +
       '</div>' +
-      '<div id="' + carId + '" onscroll="App.eventGroupScroll(\'' + dateIso + '\',\'' + carId + '\',this)" style="display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;gap:0;">' +
+      // align-items:flex-start + hauteur pilotée en JS (voir App.recalerCarrousels) :
+      // une rangée flex prend sinon la hauteur de son PLUS GRAND volet. Quand l'un
+      // des événements porte une affiche et l'autre non, le volet court laissait
+      // dessous un vide blanc de plusieurs centaines de pixels — vide qui grandissait
+      // encore au chargement de l'image, et repoussait tout le fil vers le bas.
+      '<div id="' + carId + '" data-carrousel-ev="1" onscroll="App.eventGroupScroll(\'' + dateIso + '\',\'' + carId + '\',this)" style="display:flex;align-items:flex-start;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;gap:0;transition:height 0.18s ease;">' +
         events.map(function(ev) {
           // La carte entière ouvre l'événement dans le Planning, à la bonne date :
           // sans cela il fallait quitter le fil et le retrouver à la main.

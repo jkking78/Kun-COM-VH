@@ -1295,6 +1295,28 @@ toggleParticipation: function(postId, status) {
     nav: function(v) { S.auth = v; S.champsAuth = {}; render(); },
     // Mémorise la frappe SANS redessiner (un render() à chaque touche ferait
     // sauter le curseur et le clavier sur mobile).
+    // Aligne la hauteur de chaque carrousel d'événements sur celle du volet
+    // actuellement visible. Sans cela, la rangée flex adopte la hauteur du plus
+    // grand volet et laisse un vide blanc sous les plus courts.
+    recalerCarrousels: function() {
+      try {
+        var listes = document.querySelectorAll('[data-carrousel-ev="1"]');
+        for (var i = 0; i < listes.length; i++) {
+          var el = listes[i];
+          var largeur = el.clientWidth;
+          if (!largeur || !el.children.length) continue;
+          var idx = Math.round(el.scrollLeft / largeur);
+          if (idx < 0) idx = 0;
+          if (idx > el.children.length - 1) idx = el.children.length - 1;
+          var volet = el.children[idx];
+          if (!volet) continue;
+          var h = volet.offsetHeight;
+          // Une hauteur nulle signifie que le contenu n'est pas encore mesurable
+          // (média non chargé) : on ne fige surtout pas le carrousel à zéro.
+          if (h > 0) el.style.height = h + 'px';
+        }
+      } catch(e) {}
+    },
     // Un média vient de s'afficher : on retient sa proportion pour réserver
     // exactement sa place aux prochains rendus (voir memoriserRatioMedia). Aucun
     // redessin ici — la carte est déjà à la bonne taille, et redessiner pendant
@@ -3129,6 +3151,8 @@ toggleParticipation: function(postId, status) {
         }
         dots.innerHTML = html;
       }
+      // Le volet affiché change : la hauteur du carrousel le suit.
+      App.recalerCarrousels();
     },
 
     // Debrief
