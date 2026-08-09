@@ -880,9 +880,17 @@
             var mediaTag = isVideoUrl(url)
               // preload="auto" + onloadeddata : si aucune vignette n'a pu être générée,
               // on force le navigateur à afficher la première image plutôt qu'un écran noir.
-              ? '<video src="'+url+'"' + (post.videoPoster ? ' poster="'+post.videoPoster+'"' : '') + ' controls playsinline preload="auto" onloadeddata="App.primeVideoFrame(this)" style="display:block;width:auto;height:auto;max-width:100%;max-height:640px;object-fit:contain;margin:0 auto;background:#000;"></video>'
-              : '<img src="'+url+'" loading="lazy" onclick="App.openImageViewer(\''+url+'\')" style="display:block;width:auto;height:auto;max-width:100%;max-height:640px;object-fit:contain;margin:0 auto;cursor:pointer;"/>';
-            return '<div style="flex:0 0 100%;scroll-snap-align:start;display:flex;justify-content:center;">'+mediaTag+'</div>';
+              ? '<video src="'+url+'"' + (post.videoPoster ? ' poster="'+post.videoPoster+'"' : '') + ' controls playsinline preload="auto" onloadedmetadata="App.mediaCharge(this,\''+url+'\')" onloadeddata="App.primeVideoFrame(this)" style="display:block;width:auto;height:auto;max-width:100%;max-height:640px;object-fit:contain;margin:0 auto;background:#000;"></video>'
+              : '<img src="'+url+'" loading="lazy" onload="App.mediaCharge(this,\''+url+'\')" onclick="App.openImageViewer(\''+url+'\')" style="display:block;width:auto;height:auto;max-width:100%;max-height:640px;object-fit:contain;margin:0 auto;cursor:pointer;"/>';
+            // Réservation de la hauteur AVANT que le média n'arrive : avec sa
+            // proportion connue, la place est exacte et rien ne bouge ; sinon on
+            // réserve une hauteur raisonnable, ce qui évite déjà que la carte soit
+            // plate et que le pied de liste remonte en haut de l'écran.
+            var r = ratioMedia(url);
+            var reserve = r
+              ? 'aspect-ratio:' + r + ';max-height:640px;'
+              : 'min-height:320px;';
+            return '<div style="flex:0 0 100%;scroll-snap-align:start;display:flex;align-items:center;justify-content:center;' + reserve + '">'+mediaTag+'</div>';
           }).join('') +
         '</div>' +
         (isMulti ? '<div id="dots-'+post.id+'" style="display:flex;justify-content:center;gap:5px;padding:8px 0;background:#FFF;">' +

@@ -1295,6 +1295,16 @@ toggleParticipation: function(postId, status) {
     nav: function(v) { S.auth = v; S.champsAuth = {}; render(); },
     // Mémorise la frappe SANS redessiner (un render() à chaque touche ferait
     // sauter le curseur et le clavier sur mobile).
+    // Un média vient de s'afficher : on retient sa proportion pour réserver
+    // exactement sa place aux prochains rendus (voir memoriserRatioMedia). Aucun
+    // redessin ici — la carte est déjà à la bonne taille, et redessiner pendant
+    // le défilement serait pire que le mal.
+    mediaCharge: function(el, url) {
+      if (!el) return;
+      var w = el.naturalWidth || el.videoWidth || 0;
+      var h = el.naturalHeight || el.videoHeight || 0;
+      if (w && h) memoriserRatioMedia(url, w, h);
+    },
     saisieAuth: function(id, val) {
       if (!S.champsAuth) S.champsAuth = {};
       S.champsAuth[id] = val;

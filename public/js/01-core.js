@@ -614,6 +614,55 @@
   // ce qui est déjà affiché (mergePostsWithLocal est toujours additif).
   var POSTS_PAGE_SIZE = 60;
 
+  // ============================================================
+  // PROPORTIONS DES MÉDIAS (réservation de la place avant chargement)
+  // ============================================================
+  // Une image sans dimensions connues occupe ZÉRO pixel tant qu'elle n'est pas
+  // chargée : les cartes du fil sont alors plates, et le pied « Vous êtes à jour »
+  // se retrouve tout en haut de l'écran, avant même que les publications ne soient
+  // visibles. Puis chaque image qui arrive fait grandir sa carte et repousse tout
+  // vers le bas. On mémorise donc la proportion de chaque média la première fois
+  // qu'il s'affiche, pour réserver ensuite exactement la bonne hauteur.
+  var SK_RATIOS = 'kc_media_ratios';
+  var MAX_RATIOS = 400;
+  var RATIOS_MEDIA = (function() {
+    try { return JSON.parse(localStorage.getItem(SK_RATIOS) || '{}') || {}; }
+    catch(e) { return {}; }
+  })();
+
+  // Clé courte et stable : les URL Supabase sont longues, et le nom de fichier
+  // suffit à les distinguer.
+  function cleMedia(url) {
+    if (typeof url !== 'string' || !url) return null;
+    if (url.indexOf('data:') === 0) return null; // média encore en base64, non hébergé
+    var sansParams = url.split('?')[0];
+    return sansParams.slice(-60);
+  }
+
+  function ratioMedia(url) {
+    var k = cleMedia(url);
+    return (k && RATIOS_MEDIA[k]) ? RATIOS_MEDIA[k] : null;
+  }
+
+  function memoriserRatioMedia(url, w, h) {
+    var k = cleMedia(url);
+    if (!k || !w || !h) return;
+    var r = Math.round((w / h) * 1000) / 1000;
+    if (!isFinite(r) || r <= 0) return;
+    if (RATIOS_MEDIA[k] === r) return;
+    RATIOS_MEDIA[k] = r;
+    var cles = Object.keys(RATIOS_MEDIA);
+    if (cles.length > MAX_RATIOS) {
+      // Simple garde-fou de taille : on repart des plus récentes.
+      var recentes = {};
+      cles.slice(-Math.floor(MAX_RATIOS / 2)).forEach(function(c){ recentes[c] = RATIOS_MEDIA[c]; });
+      RATIOS_MEDIA = recentes;
+    }
+    // Écriture tolérante : ce confort d'affichage ne doit jamais faire échouer
+    // quoi que ce soit si le stockage est plein.
+    try { localStorage.setItem(SK_RATIOS, JSON.stringify(RATIOS_MEDIA)); } catch(e) {}
+  }
+
   var _syncRetryCount = 0;
   var MAX_SYNC_RETRIES = 4;
 
