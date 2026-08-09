@@ -349,24 +349,19 @@
       // publications le repoussait ensuite vers le bas. C'est le saut visuel
       // constaté au chargement.
       var footerHtml = '';
-      if (!chargementEnCours && elements.length > 0) {
-        // "Charger plus" ne s'applique qu'au fil principal non filtré (pagination
-        // côté serveur) — avec une recherche ou une section active, on a déjà tout
-        // ce qui est en cache local sous les yeux.
-        var canLoadMore = S.story === 'all' && !S.q && !S.postsAllLoaded;
-        if (canLoadMore) {
-          footerHtml = '<div style="padding:20px;text-align:center;background:#FFF;margin-top:8px;">' +
-            (S.loadingMorePosts
-              ? '<div style="display:flex;justify-content:center;padding:10px;"><div style="width:22px;height:22px;border:2.5px solid #E4E7EC;border-top-color:#0B63F6;border-radius:50%;animation:spin 0.7s linear infinite;"></div></div>'
-              : '<button onclick="App.loadMorePosts()" style="background:#F6F7F9;color:#000;border:none;border-radius:14px;padding:12px 22px;font-size:13.5px;font-weight:800;cursor:pointer;">Charger plus d\'anciennes publications</button>') +
-          '</div>';
-        } else {
-          footerHtml = '<div style="padding:36px 20px;text-align:center;background:#FFF;margin-top:8px;">' +
-            '<div style="width:40px;height:40px;border-radius:20px;background:#E8EEFB;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;">' + SVG.check + '</div>' +
-            '<h4 style="font-size:15px;font-weight:800;color:#000;margin:0;">Vous êtes à jour ✓</h4>' +
-            '<p style="font-size:12.5px;color:#8A93A0;margin:4px 0 0;">Toutes les publications ont été affichées.</p>' +
-          '</div>';
-        }
+      // « Charger plus » uniquement, et seulement s'il reste vraiment quelque
+      // chose à charger. Le bloc « Vous êtes à jour ✓ » a été retiré : il
+      // n'offrait aucune action et ne faisait que signaler la fin d'une liste
+      // déjà visiblement terminée.
+      // Le pied ne paraît que si la synchronisation est finie ET qu'au moins une
+      // carte est réellement rendue, et toujours APRÈS elles.
+      var canLoadMore = S.story === 'all' && !S.q && !S.postsAllLoaded;
+      if (!chargementEnCours && elements.length > 0 && canLoadMore) {
+        footerHtml = '<div style="padding:20px;text-align:center;background:#FFF;margin-top:8px;">' +
+          (S.loadingMorePosts
+            ? '<div style="display:flex;justify-content:center;padding:10px;"><div style="width:22px;height:22px;border:2.5px solid #E4E7EC;border-top-color:#0B63F6;border-radius:50%;animation:spin 0.7s linear infinite;"></div></div>'
+            : '<button onclick="App.loadMorePosts()" style="background:#F6F7F9;color:#000;border:none;border-radius:14px;padding:12px 22px;font-size:13.5px;font-weight:800;cursor:pointer;">Charger plus d\'anciennes publications</button>') +
+        '</div>';
       }
 
       // Pendant le chargement, des squelettes réservent la place des publications
