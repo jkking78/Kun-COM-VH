@@ -39,18 +39,32 @@
   // comporte de façon inexplicable. On vérifie donc que les briques essentielles
   // sont bien là avant de démarrer, et on recharge UNE fois en contournant le
   // cache si ce n'est pas le cas.
-  var APP_VERSION = 'v104';
+  var APP_VERSION = 'v105';
+  // Nom du cache tenu par le service worker pour CETTE version. Doit rester
+  // aligné sur CACHE_NAME dans sw.js.
+  var CACHE_COURANT = 'kun-com-pwa-' + APP_VERSION;
+
   function verifierIntegrite() {
-    // Synchronisation automatique des conteneurs PWA / Safari : dès qu'une nouvelle
-    // version est déployée, les anciens caches de l'application installée sur l'écran
-    // d'accueil sont vidés pour forcer l'alignement avec le serveur.
+    // Synchronisation automatique des conteneurs PWA / Safari : à chaque nouvelle
+    // version, les caches des versions PRÉCÉDENTES sont vidés.
+    //
+    // Attention : on ne touche surtout pas au cache de la version courante. Ce
+    // code effaçait auparavant TOUS les caches, y compris celui que le service
+    // worker venait de remplir en s'installant. Résultat : chaque déploiement
+    // garantissait un démarrage lent, tout étant à retélécharger — et comme les
+    // essais se font justement juste après une mise en ligne, les optimisations
+    // de chargement paraissaient ne rien changer. Le service worker sait déjà
+    // supprimer les anciens caches à son activation ; ceci n'est qu'un filet de
+    // sécurité au cas où il ne serait pas actif.
     try {
       var savedVer = localStorage.getItem('kc_app_version');
       if (savedVer !== APP_VERSION) {
         localStorage.setItem('kc_app_version', APP_VERSION);
         if (window.caches && caches.keys) {
           caches.keys().then(function(cles){
-            return Promise.all(cles.map(function(c){ return caches.delete(c); }));
+            return Promise.all(cles
+              .filter(function(c){ return c !== CACHE_COURANT; })
+              .map(function(c){ return caches.delete(c); }));
           });
         }
       }
