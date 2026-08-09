@@ -19,6 +19,11 @@
       '@keyframes heartFloat{0%{transform:translate(-50%,-50%) scale(0);opacity:1}50%{transform:translate(-50%,-80%) scale(1.2);opacity:1}100%{transform:translate(-50%,-120%) scale(0.8);opacity:0}}',
       '@keyframes heartPop{0%{transform:scale(1)}30%{transform:scale(1.35)}60%{transform:scale(0.9)}100%{transform:scale(1)}}',
       '@keyframes spin{to{transform:rotate(360deg)}}',
+      // Balayage des cartes squelettes affichées pendant le chargement du fil.
+      '@keyframes shimmer{0%{background-position:-400px 0}100%{background-position:400px 0}}',
+      // Respecte le réglage système « réduire les animations » (accessibilité,
+      // et confort pour les personnes sensibles au mouvement).
+      '@media (prefers-reduced-motion: reduce){*{animation-duration:0.01ms !important;animation-iteration-count:1 !important;}}',
       'article{transition:opacity 0.2s;}',
       'nav button:active>div{transform:scale(0.9);}',
     ].join('');
@@ -34,7 +39,7 @@
   // comporte de façon inexplicable. On vérifie donc que les briques essentielles
   // sont bien là avant de démarrer, et on recharge UNE fois en contournant le
   // cache si ce n'est pas le cas.
-  var APP_VERSION = 'v99';
+  var APP_VERSION = 'v100';
   function verifierIntegrite() {
     // Synchronisation automatique des conteneurs PWA / Safari : dès qu'une nouvelle
     // version est déployée, les anciens caches de l'application installée sur l'écran

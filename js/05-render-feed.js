@@ -304,12 +304,15 @@
     var isActuallySyncing = ((S.initialLoading || S.syncEnCours) && allLocalPosts.length === 0) ||
       (allLocalPosts.length > 0 && filtered.length === 0 && !S.q && S.story === 'all');
 
+    // Le fil est-il encore en train de se charger ? S.syncEnCours reste vrai
+    // jusqu'à la fin RÉELLE de la requête (voir syncSupabaseToLocal) : tant qu'il
+    // l'est, on ne prétend pas savoir ce que le fil contient.
+    var chargementEnCours = !!(S.initialLoading || S.syncEnCours);
+
     if (isActuallySyncing && !S.q && S.story === 'all') {
-      // Chargement initial ou synchronisation en cours : on évite d'afficher un faux
-      // "Aucune publication" passager qui clignoterait avant l'arrivée des posts.
-      feed = '<div style="display:flex;justify-content:center;padding:48px 24px;">' +
-        '<div style="width:26px;height:26px;border:2.5px solid #E4E7EC;border-top-color:#0B63F6;border-radius:50%;animation:spin 0.7s linear infinite;"></div>' +
-      '</div>';
+      // Squelettes plutôt qu'une roue : la place des publications est réservée
+      // dès le premier affichage, donc rien ne saute quand elles arrivent.
+      feed = renderSkeletonCards(3);
     } else if (filtered.length === 0) {
       feed = '<div style="display:flex;flex-direction:column;align-items:center;padding:70px 24px;text-align:center;">' +
         '<div style="font-size:52px;margin-bottom:16px;">📭</div>' +
@@ -322,24 +325,6 @@
           : '<button onclick="App.openCreate()" style="' + btnStyle('#0B63F6') + 'height:44px;width:auto;padding:0 22px;font-size:14px;">Créer un post</button>') +
       '</div>';
     } else {
-      // "Charger plus" ne s'applique qu'au fil principal non filtré (pagination
-      // côté serveur) — avec une recherche ou une section active, on a déjà tout
-      // ce qui est en cache local sous les yeux.
-      var canLoadMore = S.story === 'all' && !S.q && !S.postsAllLoaded;
-      var footerHtml;
-      if (canLoadMore) {
-        footerHtml = '<div style="padding:20px;text-align:center;background:#FFF;margin-top:8px;">' +
-          (S.loadingMorePosts
-            ? '<div style="display:flex;justify-content:center;padding:10px;"><div style="width:22px;height:22px;border:2.5px solid #E4E7EC;border-top-color:#0B63F6;border-radius:50%;animation:spin 0.7s linear infinite;"></div></div>'
-            : '<button onclick="App.loadMorePosts()" style="background:#F6F7F9;color:#000;border:none;border-radius:14px;padding:12px 22px;font-size:13.5px;font-weight:800;cursor:pointer;">Charger plus d\'anciennes publications</button>') +
-        '</div>';
-      } else {
-        footerHtml = '<div style="padding:36px 20px;text-align:center;background:#FFF;margin-top:8px;">' +
-          '<div style="width:40px;height:40px;border-radius:20px;background:#E8EEFB;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;">' + SVG.check + '</div>' +
-          '<h4 style="font-size:15px;font-weight:800;color:#000;margin:0;">Vous êtes à jour ✓</h4>' +
-          '<p style="font-size:12.5px;color:#8A93A0;margin:4px 0 0;">Toutes les publications ont été affichées.</p>' +
-        '</div>';
-      }
       // Les événements d'une même journée sont fusionnés en un carrousel unique ;
       // une journée à un seul événement garde exactement la carte habituelle.
       // À partir de DEUX épinglés, on les sort du flux pour les regrouper dans
@@ -349,15 +334,90 @@
       var regroupe = epingles.length >= 2;
       var reste = regroupe ? filtered.filter(function(p){ return !isPinnedNow(p); }) : filtered;
 
-      feed = (regroupe ? renderPinnedStack(epingles) : '') +
-        groupSameDayEvents(reste).map(function(item) {
-          if (item.kind === 'post') return renderPostCard(item.post);
-          if (item.events.length === 1) return renderPostCard(item.events[0]);
-          return renderEventGroupCard(item.date, item.events);
-        }).join('') + footerHtml;
+      var elements = groupSameDayEvents(reste);
+      var cartes = elements.map(function(item) {
+        if (item.kind === 'post') return renderPostCard(item.post);
+        if (item.events.length === 1) return renderPostCard(item.events[0]);
+        return renderEventGroupCard(item.date, item.events);
+      }).join('');
+
+      // Le pied de liste n'apparaît QUE si la synchronisation est terminée ET
+      // qu'au moins une carte est réellement affichée — et toujours APRÈS elles.
+      // Avant : quand le cache ne contenait que des épinglés (sortis du flux dans
+      // leur propre bloc), la liste restante était vide mais le pied s'affichait
+      // quand même, collé sous les épinglés dès la première image ; l'arrivée des
+      // publications le repoussait ensuite vers le bas. C'est le saut visuel
+      // constaté au chargement.
+      var footerHtml = '';
+      if (!chargementEnCours && elements.length > 0) {
+        // "Charger plus" ne s'applique qu'au fil principal non filtré (pagination
+        // côté serveur) — avec une recherche ou une section active, on a déjà tout
+        // ce qui est en cache local sous les yeux.
+        var canLoadMore = S.story === 'all' && !S.q && !S.postsAllLoaded;
+        if (canLoadMore) {
+          footerHtml = '<div style="padding:20px;text-align:center;background:#FFF;margin-top:8px;">' +
+            (S.loadingMorePosts
+              ? '<div style="display:flex;justify-content:center;padding:10px;"><div style="width:22px;height:22px;border:2.5px solid #E4E7EC;border-top-color:#0B63F6;border-radius:50%;animation:spin 0.7s linear infinite;"></div></div>'
+              : '<button onclick="App.loadMorePosts()" style="background:#F6F7F9;color:#000;border:none;border-radius:14px;padding:12px 22px;font-size:13.5px;font-weight:800;cursor:pointer;">Charger plus d\'anciennes publications</button>') +
+          '</div>';
+        } else {
+          footerHtml = '<div style="padding:36px 20px;text-align:center;background:#FFF;margin-top:8px;">' +
+            '<div style="width:40px;height:40px;border-radius:20px;background:#E8EEFB;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;">' + SVG.check + '</div>' +
+            '<h4 style="font-size:15px;font-weight:800;color:#000;margin:0;">Vous êtes à jour ✓</h4>' +
+            '<p style="font-size:12.5px;color:#8A93A0;margin:4px 0 0;">Toutes les publications ont été affichées.</p>' +
+          '</div>';
+        }
+      }
+
+      // Pendant le chargement, des squelettes réservent la place des publications
+      // encore en route : la hauteur de la page ne change donc plus quand elles
+      // arrivent, et le pied ne remonte jamais se coller sous les épinglés.
+      var squelettes = chargementEnCours ? renderSkeletonCards(elements.length > 0 ? 1 : 3) : '';
+
+      feed = (regroupe ? renderPinnedStack(epingles) : '') + cartes + squelettes + footerHtml;
     }
 
     return header + trendsHtml + stories + feed;
+  }
+
+  // ============================================================
+  // SQUELETTES DE CHARGEMENT
+  // ============================================================
+  // Cartes grises animées affichées à la place des publications tant que la
+  // synchronisation n'a pas répondu. Elles occupent à peu près la hauteur d'une
+  // vraie carte : la page ne se réorganise donc plus sous les yeux quand les
+  // publications arrivent, contrairement à une simple roue qui ne réserve rien.
+  function renderSkeletonBloc(largeur, hauteur, rayon, marge) {
+    return '<div style="width:' + largeur + ';height:' + hauteur + 'px;border-radius:' + rayon + 'px;' +
+      (marge ? 'margin:' + marge + ';' : '') +
+      'background:linear-gradient(90deg,#EDEFF3 25%,#F6F7F9 50%,#EDEFF3 75%);background-size:800px 100%;' +
+      'animation:shimmer 1.4s linear infinite;"></div>';
+  }
+
+  function renderSkeletonCards(nb) {
+    var une =
+      '<article aria-hidden="true" style="background:' + UI.card + ';border-radius:' + UI.r2 + ';margin:0 0 8px;overflow:hidden;box-shadow:' + UI.sh2 + ';">' +
+        '<div style="display:flex;align-items:center;gap:10px;padding:13px 16px 11px;">' +
+          renderSkeletonBloc('36px', 36, 18) +
+          '<div style="flex:1;">' +
+            renderSkeletonBloc('42%', 11, 6) +
+            renderSkeletonBloc('26%', 9, 5, '7px 0 0') +
+          '</div>' +
+        '</div>' +
+        '<div style="padding:0 16px 12px;">' +
+          renderSkeletonBloc('92%', 10, 5) +
+          renderSkeletonBloc('68%', 10, 5, '8px 0 0') +
+        '</div>' +
+        renderSkeletonBloc('100%', 190, 0) +
+        '<div style="display:flex;gap:18px;padding:13px 16px;">' +
+          renderSkeletonBloc('54px', 13, 6) +
+          renderSkeletonBloc('54px', 13, 6) +
+          renderSkeletonBloc('54px', 13, 6) +
+        '</div>' +
+      '</article>';
+    var out = '';
+    for (var i = 0; i < (nb || 3); i++) out += une;
+    return out;
   }
 
   // ============================================================
