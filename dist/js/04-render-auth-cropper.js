@@ -60,7 +60,42 @@
     var lbl = btn.querySelector('span'); if (lbl) lbl.textContent = S.cropperSquare ? 'Libre' : 'Carré';
   }
 
+  // Charge Cropper.js (script + feuille de style) au premier recadrage seulement.
+  // Il était auparavant dans l'en-tête de la page, où il retardait l'affichage de
+  // TOUTE l'application le temps d'un aller-retour vers un CDN tiers — alors qu'il
+  // ne sert qu'à recadrer une photo.
+  var _cropperEnChargement = null;
+  function chargerCropper() {
+    if (window.Cropper) return Promise.resolve(true);
+    if (_cropperEnChargement) return _cropperEnChargement;
+    _cropperEnChargement = new Promise(function(resoudre) {
+      try {
+        if (!document.getElementById('cropperCss')) {
+          var css = document.createElement('link');
+          css.id = 'cropperCss';
+          css.rel = 'stylesheet';
+          css.href = 'https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.css';
+          document.head.appendChild(css);
+        }
+        var s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.2/cropper.min.js';
+        s.onload = function(){ resoudre(true); };
+        s.onerror = function(){
+          console.warn('Cropper.js indisponible : la photo sera utilisée sans recadrage.');
+          resoudre(false);
+        };
+        document.head.appendChild(s);
+      } catch(e) { resoudre(false); }
+    });
+    return _cropperEnChargement;
+  }
+
   function initCropperIfNeeded() {
+    if (S.cropperOpen && S.cropperDataUrl && !window.Cropper) {
+      // Pas encore chargé : on le récupère, puis on relance l'initialisation.
+      chargerCropper().then(function(ok){ if (ok) initCropperIfNeeded(); });
+      return;
+    }
     if (S.cropperOpen && S.cropperDataUrl && window.Cropper) {
       setTimeout(function() {
         var img = document.getElementById('cropperTargetImage');

@@ -39,7 +39,7 @@
   // comporte de façon inexplicable. On vérifie donc que les briques essentielles
   // sont bien là avant de démarrer, et on recharge UNE fois en contournant le
   // cache si ce n'est pas le cas.
-  var APP_VERSION = 'v102';
+  var APP_VERSION = 'v103';
   function verifierIntegrite() {
     // Synchronisation automatique des conteneurs PWA / Safari : dès qu'une nouvelle
     // version est déployée, les anciens caches de l'application installée sur l'écran
