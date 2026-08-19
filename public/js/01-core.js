@@ -363,6 +363,85 @@
     console.error("Supabase init error:", e);
   }
 
+  // ============================================================
+  // SESSION SUPABASE AUTH — source de vérité de l'authentification.
+  // Les identifiants vivent dans auth.users (gérés par Supabase). Le RÔLE vient
+  // du JWT (app_metadata.role), écrit uniquement côté serveur : un membre ne peut
+  // plus se promouvoir Responsable/Grand Responsable en modifiant le stockage
+  // local ou la base — les policies RLS n'accordent les droits que sur le JWT.
+  // ============================================================
+  function applyAuthUser(authUser) {
+    if (!authUser) { S.user = null; S.auth = 'login'; return; }
+    var role = (authUser.app_metadata && authUser.app_metadata.role) || 'MEMBRE';
+    var meta = authUser.user_metadata || {};
+    var users = db(SK.USERS, []);
+    var me = users.find(function(x){ return x && x.id === authUser.id; });
+    if (me) {
+      me.role = role;                     // le rôle du JWT fait toujours autorité
+      me.email = me.email || authUser.email;
+      S.user = me;
+    } else {
+      // Profil pas encore dans le cache local : squelette minimal (complété par la
+      // synchronisation) et on garantit que la ligne profil existe côté serveur.
+      // On récupère les sections/nom choisis à l'inscription si une confirmation
+      // e-mail avait différé la création de la fiche (voir signup > kc_pending_signup).
+      var pending = null;
+      try {
+        var praw = localStorage.getItem('kc_pending_signup');
+        if (praw) { var pj = JSON.parse(praw);
+          if (pj && pj.email && authUser.email && pj.email.toLowerCase() === authUser.email.toLowerCase()) pending = pj; }
+      } catch(e){}
+      S.user = { id: authUser.id, email: authUser.email, role: role,
+                 prenom: (pending && pending.prenom) || meta.prenom || '',
+                 nom: (pending && pending.nom) || meta.nom || '',
+                 sections: (pending && pending.sections) || [],
+                 section_id: (pending && pending.section_id) || null,
+                 avatar_color: '#0B63F6',
+                 is_online: true, last_seen_at: new Date().toISOString() };
+      try { if (pending) localStorage.removeItem('kc_pending_signup'); } catch(e){}
+      users.push(S.user);
+      try { dbSet(SK.USERS, users); } catch(e){}
+      try {
+        if (supabase) supabase.from('kun_com_profiles')
+          .upsert({ id: S.user.id, content: S.user }, { onConflict: 'id' })
+          .then(function(){}, function(){});
+      } catch(e){}
+    }
+    S.auth = 'app';
+    try { sauverSession(S.user); } catch(e){}
+  }
+
+  async function initAuthSession() {
+    if (!supabase || !supabase.auth) { S.auth = 'login'; return; }
+    try {
+      var resp = await supabase.auth.getSession();
+      var session = resp && resp.data && resp.data.session;
+      if (session && session.user) applyAuthUser(session.user);
+      else { S.user = null; S.auth = 'login'; }
+    } catch(e) {
+      console.warn('initAuthSession:', e); S.auth = 'login';
+    }
+    try {
+      supabase.auth.onAuthStateChange(function(event, sess){
+        if (event === 'PASSWORD_RECOVERY') {
+          var np = window.prompt('Choisissez un nouveau mot de passe (8 caractères min.) :');
+          if (np && np.length >= 8) {
+            supabase.auth.updateUser({ password: np }).then(function(r){
+              if (r && r.error) toast('Échec de la réinitialisation : ' + r.error.message, 'error');
+              else toast('Mot de passe mis à jour. ', 'success');
+            });
+          } else if (np !== null) {
+            toast('Mot de passe trop court (8 caractères minimum).', 'error');
+          }
+          return;
+        }
+        if (sess && sess.user) applyAuthUser(sess.user);
+        else { S.user = null; S.auth = 'login'; }
+        try { if (typeof render === 'function') render(); } catch(e){}
+      });
+    } catch(e){}
+  }
+
   // Password hashing utility (SHA-256)
   async function hashPassword(pwd) {
     try {

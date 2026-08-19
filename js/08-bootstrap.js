@@ -39,7 +39,7 @@
   // comporte de façon inexplicable. On vérifie donc que les briques essentielles
   // sont bien là avant de démarrer, et on recharge UNE fois en contournant le
   // cache si ce n'est pas le cas.
-  var APP_VERSION = 'v105';
+  var APP_VERSION = 'v106';
   // Nom du cache tenu par le service worker pour CETTE version. Doit rester
   // aligné sur CACHE_NAME dans sw.js.
   var CACHE_COURANT = 'kun-com-pwa-' + APP_VERSION;
@@ -75,6 +75,7 @@
       render: typeof render, renderApp: typeof renderApp, renderLogin: typeof renderLogin,
       App: (window && window.App) ? 'object' : 'undefined',
       mergeNotifications: typeof mergeNotifications,
+      initAuthSession: typeof initAuthSession, applyAuthUser: typeof applyAuthUser,
       mergeProfilesWithLocal: typeof mergeProfilesWithLocal,
       mergePostsWithLocal: typeof mergePostsWithLocal,
       punctualityStars: typeof punctualityStars,
@@ -103,11 +104,16 @@
     return false;
   }
 
-  function init() {
+  async function init() {
     if (!verifierIntegrite()) return;
-    try { syncSupabaseToLocal(); } catch(e) { console.warn("syncSupabaseToLocal init error:", e); }
     try { injectCSS(); } catch(e) {}
+    // L'authentification est désormais gouvernée par Supabase Auth : on attend la
+    // restauration de session (ou son absence -> écran de connexion) AVANT le
+    // premier rendu, sinon l'application s'afficherait brièvement à partir d'un
+    // cache local sans session valide.
+    try { await initAuthSession(); } catch(e) { console.warn("initAuthSession error:", e); }
     render();
+    try { syncSupabaseToLocal(); } catch(e) { console.warn("syncSupabaseToLocal init error:", e); }
     try { tryOpenDeepLinkedPost(); } catch(e){}
   }
 
