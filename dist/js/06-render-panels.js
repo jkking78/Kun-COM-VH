@@ -1216,6 +1216,9 @@
             (elevated ? '<span style="background:' + theme.badgeBg + ';color:' + theme.badgeText + ';font-size:11px;font-weight:800;padding:3px 9px;border-radius:999px;">' + roleLbl + '</span>' : '') +
           '</div>' +
           (uSecs.length ? '<div style="font-size:13.5px;color:' + UI.muted + ';margin-top:4px;">' + uSecs.map(function(s){ return secNom(s); }).join(' · ') + '</div>' : '') +
+          (freshU.joined_at ? '<div style="font-size:12.5px;color:' + UI.faint + ';margin-top:4px;display:flex;align-items:center;gap:5px;">' +
+            '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="' + UI.faint + '" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>' +
+            'Membre depuis ' + new Date(freshU.joined_at).toLocaleDateString('fr-FR', {month:'long', year:'numeric'}) + '</div>' : '') +
         '</div>' +
         '<div style="position:relative;flex-shrink:0;">' +
           '<div style="width:76px;height:76px;border-radius:50%;overflow:hidden;background:' + UI.tile + ';box-shadow:0 2px 8px rgba(0,0,0,0.08);">' + avatarInner + '</div>' +
@@ -1260,10 +1263,6 @@
             '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8A93A0" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>' +
             '<span>Église Vase d\'Honneur · Abidjan</span>' +
           '</div>' +
-          '<div style="display:flex;align-items:center;gap:10px;font-size:13px;color:#25303F;">' +
-            '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8A93A0" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>' +
-            '<span>Membre depuis ' + (freshU.joined_at ? new Date(freshU.joined_at).toLocaleDateString('fr-FR', {month:'long', year:'numeric'}) : '2024') + '</span>' +
-          '</div>' +
           (uSecs.length > 0 ? '<div style="display:flex;align-items:center;gap:10px;font-size:13px;color:#25303F;">' +
             '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#8A93A0" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>' +
             '<span>' + uSecs.map(function(s){ return secNom(s); }).join(' · ') + '</span>' +
@@ -1273,8 +1272,8 @@
       // Action buttons
       (isMe ? '<div>' +
         '<div style="display:flex;justify-content:center;align-items:center;gap:8px;flex-wrap:wrap;">' +
-          (freshU.role === 'GRAND_RESPONSABLE' ? '<button onclick="App.openRolesPanel()" style="background:#EEF3FE;color:#0B63F6;border:none;border-radius:10px;padding:8px 14px;font-size:12.5px;font-weight:800;cursor:pointer;">👑 Gérer les rôles</button>' : '') +
-          (freshU.role === 'GRAND_RESPONSABLE' ? '<button onclick="App.revokeGrandResponsable()" style="background:none;color:#B0B4BB;border:none;padding:8px 6px;font-size:11.5px;font-weight:700;cursor:pointer;">🔻 Quitter Admin</button>' : '') +
+          ((freshU.role === 'GRAND_RESPONSABLE' || S.jwtRole === 'GRAND_RESPONSABLE') ? '<button onclick="App.openRolesPanel()" style="background:#EEF3FE;color:#0B63F6;border:none;border-radius:10px;padding:8px 14px;font-size:12.5px;font-weight:800;cursor:pointer;">👑 Gérer les rôles</button>' : '') +
+          ((freshU.role === 'GRAND_RESPONSABLE' || S.jwtRole === 'GRAND_RESPONSABLE') ? '<button onclick="App.revokeGrandResponsable()" style="background:none;color:#B0B4BB;border:none;padding:8px 6px;font-size:11.5px;font-weight:700;cursor:pointer;">🔻 Quitter Admin</button>' : '') +
           '<button onclick="App.openDeleteAccount()" style="background:none;color:#B0B4BB;border:none;padding:8px 6px;font-size:11.5px;font-weight:700;cursor:pointer;">Supprimer mon compte</button>' +
           '<button onclick="App.logout()" style="background:#FEE2E2;color:#E2445C;border:none;border-radius:10px;padding:8px 14px;font-size:12.5px;font-weight:800;cursor:pointer;">Se déconnecter 🚪</button>' +
         '</div>' +

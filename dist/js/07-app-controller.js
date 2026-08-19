@@ -1118,6 +1118,9 @@ toggleParticipation: function(postId, status) {
         avatar_url: avatar_url,
         cover_url: cover_url
       });
+      // Le rôle reste celui du JWT (source de vérité) : une sauvegarde de profil
+      // ne doit jamais rétrograder un Admin par une valeur locale périmée.
+      updatedUser.role = S.jwtRole || u.role || 'MEMBRE';
       delete updatedUser.section_id;
       delete updatedUser.section_nom;
       
@@ -1442,7 +1445,7 @@ toggleParticipation: function(postId, status) {
           sections: userSecs, section_id: userSecs[0], role: 'MEMBRE', is_online: true,
           last_seen_at: new Date().toISOString(), last_action: 'Inscription',
           avatar_color: ['#0B63F6','#FF2D55','#0E9F6E','#D98A0B','#0B63F6','#AF52DE'][Math.floor(Math.random()*6)],
-          welcomeStars: 5 };   // bonus de bienvenue : chaque inscrit démarre avec 5★
+          welcomeStars: 5, joined_at: Date.now() };   // bonus 5★ + date d'inscription
 
         // Écrit le profil (SANS aucun secret : ni mot de passe, ni question de
         // sécurité). Autorisé par la policy RLS car id = auth.uid().
@@ -1773,7 +1776,11 @@ toggleParticipation: function(postId, status) {
     // se promouvoir lui-même. La personne concernée doit se reconnecter pour que
     // son nouveau jeton (et donc ses droits) prenne effet.
     openRolesPanel: function() {
-      if (!S.user || S.user.role !== 'GRAND_RESPONSABLE') { toast('Réservé au Admin.', 'error'); return; }
+      var meProf = S.user && db(SK.USERS, []).find(function(x){ return x.id === S.user.id; });
+      var amAdmin = S.jwtRole === 'GRAND_RESPONSABLE'
+        || (S.user && S.user.role === 'GRAND_RESPONSABLE')
+        || (meProf && meProf.role === 'GRAND_RESPONSABLE');
+      if (!amAdmin) { toast('Réservé à l\'Admin.', 'error'); return; }
       S.rolesPanelOpen = true; render();
     },
     closeRolesPanel: function() { S.rolesPanelOpen = false; S.roleUpdatingId = null; render(); },

@@ -474,7 +474,7 @@
                  nom: (pending && pending.nom) || meta.nom || '',
                  sections: (pending && pending.sections) || [],
                  section_id: (pending && pending.section_id) || null,
-                 avatar_color: '#0B63F6', welcomeStars: 5,
+                 avatar_color: '#0B63F6', welcomeStars: 5, joined_at: Date.now(),
                  is_online: true, last_seen_at: new Date().toISOString() };
       try { if (pending) localStorage.removeItem('kc_pending_signup'); } catch(e){}
       users.push(S.user);
@@ -696,17 +696,17 @@
     });
     var ownIds = localAccountIds();
 
-    var remoteCount = (remoteData || []).length;
-    var localCount = (localUsers || []).length;
-    var suspiciouslyIncomplete = localCount > 0
-      && remoteCount < localCount - 1
-      && remoteCount < localCount * 0.7;
+    // Le serveur Supabase fait autorité pour l'annuaire : une fiche absente du
+    // serveur et qui n'est pas la nôtre est retirée du cache (compte supprimé).
+    // On ne purge QUE si le serveur a répondu avec au moins une fiche, pour ne
+    // pas vider l'annuaire sur une réponse vide fortuite (réseau, erreur).
+    var remoteEmpty = !((remoteData || []).length);
 
     (localUsers || []).forEach(function(raw) {
       var u = parseProfileItem(raw);
       if (!u || !u.id) return;
       var isMine = (S.user && S.user.id === u.id) || ownIds.indexOf(u.id) !== -1;
-      if (!remoteIds[u.id] && !isMine && !suspiciouslyIncomplete) return;
+      if (!remoteIds[u.id] && !isMine && !remoteEmpty) return;
       map[u.id] = u;
     });
     (remoteData || []).forEach(function(item) {

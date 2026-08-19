@@ -147,9 +147,12 @@
         '</div>'
       : users.map(function(u){
           var initial = (u.prenom||'M').charAt(0).toUpperCase();
-          var avatarNode = u.avatar_url
-            ? '<img src="' + u.avatar_url + '" style="width:48px;height:48px;border-radius:24px;object-fit:cover;flex-shrink:0;" />'
-            : '<div style="width:48px;height:48px;border-radius:24px;background:' + (u.avatar_color||'#0B63F6') + ';color:#FFF;font-size:18px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + initial + '</div>';
+          var avatarImg = u.avatar_url
+            ? '<img src="' + u.avatar_url + '" style="width:48px;height:48px;border-radius:24px;object-fit:cover;" />'
+            : '<div style="width:48px;height:48px;border-radius:24px;background:' + (u.avatar_color||'#0B63F6') + ';color:#FFF;font-size:18px;font-weight:800;display:flex;align-items:center;justify-content:center;">' + initial + '</div>';
+          var avatarNode = '<div style="position:relative;flex-shrink:0;">' + avatarImg +
+            (u.is_online ? '<span style="position:absolute;bottom:1px;right:1px;width:12px;height:12px;border-radius:50%;background:#22C55E;border:2.5px solid #FFF;"></span>' : '') +
+          '</div>';
           var uRoleLabel = roleLabel(u.role);
           var secs = getUserSections(u).filter(function(s){ return SECTIONS.some(function(x){ return x.id === s; }); }).map(function(s){ return secNom(s); }).join(' · ');
           return '<div onclick="App.closeMembersList();App.openUserProfile(\'' + u.id + '\');" style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:0.5px solid #F7F7F7;cursor:pointer;">' +
