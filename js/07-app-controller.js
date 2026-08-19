@@ -2175,8 +2175,11 @@ toggleParticipation: function(postId, status) {
       p.geo = g;                 // on n'écrase PAS checkInAt : la ponctualité est inchangée
       dbSet(SK.POSTS, posts);
       if (supabase) supabase.from('kun_com_posts').upsert({ id: p.id, content: p }, { onConflict: 'id' }).then(function(){}, function(e){});
+      var evP = posts.find(function(x){ return x.id === p.checkInEventId && isEventLike(x); });
+      var onsite = evP ? (checkInPresence(p, evP) === 'onsite') : true;
+      if (onsite && evP) { try { announceArrival(p, evP); } catch(e){} }   // présence validée → tout le monde est prévenu
       render();
-      toast('Présence enregistrée. ', 'success');
+      toast(onsite ? 'Présence confirmée sur place. ' : 'Position enregistrée, mais hors zone.', onsite ? 'success' : 'info');
     },
     goToEvent: function(eventId) {
       var posts = db(SK.POSTS, []);
@@ -2738,6 +2741,8 @@ toggleParticipation: function(postId, status) {
         // pas celle de la publication : sans cela, il suffirait de publier à
         // l'heure puis de pointer plus tard pour effacer son retard.
         checkInAt: checkInStamp,
+        // Échéance de la fenêtre de grâce pour obtenir la position (voir CHECKIN_GRACE_MS).
+        checkInGraceUntil: checkInStamp ? (checkInStamp + CHECKIN_GRACE_MS) : null,
         // Sondage optionnel : question + options figées à la publication, votes vides.
         poll: pollData,
         // Aperçu du lien figé ici : la publication reste lisible même si le site
@@ -2772,6 +2777,16 @@ toggleParticipation: function(postId, status) {
         } catch(err) {
           console.warn("Supabase submitPost sync error:", err);
         }
+      }
+
+      // Pointage : présence validée → on prévient tout le monde ; position pas
+      // encore obtenue → vérification en arrière-plan (3 essais sur 1 min) avant
+      // d'éventuellement basculer en « non vérifié ».
+      if (newPost.checkInEventId) {
+        var evCI = db(SK.POSTS, []).find(function(x){ return x.id === newPost.checkInEventId && isEventLike(x); });
+        var presCI = checkInPresence(newPost, evCI);
+        if (presCI === 'onsite' || presCI === 'no_venue') { try { announceArrival(newPost, evCI); } catch(e){} }
+        else if (presCI === 'pending') { try { scheduleCheckInVerify(newPost.id); } catch(e){} }
       }
 
       // Notifie automatiquement les membres des sections ciblées

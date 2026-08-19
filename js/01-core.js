@@ -265,6 +265,83 @@
     });
   }
 
+  // Diffuse à TOUT LE MONDE l'arrivée validée d'un membre à un événement, et lie
+  // la notification à la publication de pointage (l'ouvrir mène à la publication,
+  // elle-même reliée à l'événement). Ne se déclenche qu'UNE fois par pointage.
+  function announceArrival(post, ev) {
+    if (!post || !post.id || post.arrivalAnnounced) return;
+    var author = db(SK.USERS, []).find(function(u){ return u && u.id === post.userId; }) || S.user || {};
+    var evTitle = (ev && (ev.eventTitle || ev.caption)) || 'un événement';
+    var notif = {
+      id: 'n_arr_' + post.id,
+      senderId: post.userId,
+      senderName: (author.prenom || '') + ' ' + (author.nom ? author.nom.charAt(0) + '.' : ''),
+      senderAvatar: avatarLeger(author.avatar_url),
+      senderColor: author.avatar_color || '#0E9F6E',
+      type: 'ARRIVAL',
+      title: '📍 Arrivée',
+      text: 'est arrivé(e) pour « ' + evTitle + ' ».',
+      targetId: post.id,               // ouvre la publication de pointage
+      timestamp: Date.now(),
+      read: false
+    };
+    // Marque le pointage comme annoncé (persisté) pour ne pas re-notifier.
+    var posts = db(SK.POSTS, []);
+    var pp = posts.find(function(x){ return x.id === post.id; });
+    if (pp) { pp.arrivalAnnounced = true; dbSet(SK.POSTS, posts); post.arrivalAnnounced = true;
+      if (supabase) supabase.from('kun_com_posts').upsert({ id: pp.id, content: pp }, { onConflict: 'id' }).then(function(){}, function(){}); }
+    else { post.arrivalAnnounced = true; }
+
+    var allUsers = db(SK.USERS, []);
+    var touched = [];
+    allUsers.forEach(function(u) {
+      if (!u || !u.id || u.id === post.userId) return;
+      if (!Array.isArray(u.notifications)) u.notifications = [];
+      if (u.notifications.some(function(n){ return n.id === notif.id; })) return;
+      u.notifications.unshift(Object.assign({}, notif));
+      if (u.notifications.length > 50) u.notifications = u.notifications.slice(0, 50);
+      touched.push(u);
+    });
+    if (touched.length === 0) return;
+    dbSet(SK.USERS, allUsers);
+    touched.forEach(function(u) {
+      pushNotificationToProfile(u.id, Object.assign({}, notif), u).then(function(){}, function(e){ console.warn('Annonce arrivée :', e); });
+    });
+  }
+
+  // Vérification en arrière-plan de la position d'un pointage : jusqu'à 3 essais
+  // répartis sur la minute de grâce. Dès qu'une position valable arrive, on
+  // l'attache ; si elle est « sur place », on annonce l'arrivée à tout le monde.
+  function scheduleCheckInVerify(postId) {
+    var attempts = 0;
+    var tick = function() {
+      attempts++;
+      capturePosition(9000, 0, false).then(function(g) {
+        var posts = db(SK.POSTS, []);
+        var p = posts.find(function(x){ return x.id === postId; });
+        if (!p) return;
+        var deadline = p.checkInGraceUntil || 0;
+        if (g && g.available) {
+          p.geo = g; dbSet(SK.POSTS, posts);
+          if (supabase) supabase.from('kun_com_posts').upsert({ id: p.id, content: p }, { onConflict: 'id' }).then(function(){}, function(){});
+          var ev = posts.find(function(x){ return x.id === p.checkInEventId && isEventLike(x); });
+          if (ev && checkInPresence(p, ev) === 'onsite') announceArrival(p, ev);
+          try { render(); } catch(e){}
+          return; // succès : on arrête les essais
+        }
+        if (attempts < CHECKIN_MAX_ATTEMPTS && Date.now() < deadline) setTimeout(tick, 20000);
+        else { try { render(); } catch(e){} }   // grâce écoulée : le score bascule en non vérifié
+      }, function() {
+        var posts = db(SK.POSTS, []);
+        var p = posts.find(function(x){ return x.id === postId; });
+        var deadline = p ? (p.checkInGraceUntil || 0) : 0;
+        if (attempts < CHECKIN_MAX_ATTEMPTS && Date.now() < deadline) setTimeout(tick, 20000);
+        else { try { render(); } catch(e){} }
+      });
+    };
+    setTimeout(tick, 3000);   // premier réessai peu après la publication
+  }
+
   // Jetons de mention collective : @tous notifie tout le monde.
   var MENTION_ALL_TOKENS = ['tous', 'toutes', 'all', 'everyone', 'tout'];
 
@@ -1860,6 +1937,29 @@
   // le GPS est imprécis en intérieur, mieux vaut ne pas accuser à tort.
   var ON_SITE_RADIUS_M = 1500;
 
+  // Fenêtre de grâce pour obtenir la position d'un pointage : 1 minute, avec
+  // jusqu'à 3 tentatives automatiques. Tant qu'on est dans cette fenêtre, une
+  // position absente n'est PAS pénalisée (état « en cours de vérification »).
+  // Passé ce délai sans position valable → pointage non vérifié → sanctionné.
+  var CHECKIN_GRACE_MS = 60000;
+  var CHECKIN_MAX_ATTEMPTS = 3;
+
+  // État de présence d'un pointage, indépendant de l'heure d'arrivée :
+  //  'onsite' | 'offsite' | 'pending' (grâce en cours) | 'unverified' (grâce
+  //  écoulée sans position) | 'no_venue' (lieu non renseigné).
+  function checkInPresence(post, ev) {
+    var venueKnown = ev && typeof ev.eventLat === 'number' && typeof ev.eventLng === 'number';
+    if (!venueKnown) return 'no_venue';
+    var geo = post && post.geo;
+    if (geo && geo.available && typeof geo.lat === 'number') {
+      var dist = geoDistance(geo.lat, geo.lng, ev.eventLat, ev.eventLng);
+      return dist <= ON_SITE_RADIUS_M ? 'onsite' : 'offsite';
+    }
+    var arrival = (post && (post.checkInAt || post.timestamp)) || 0;
+    var deadline = (post && post.checkInGraceUntil) || (arrival + CHECKIN_GRACE_MS);
+    return Date.now() < deadline ? 'pending' : 'unverified';
+  }
+
   // Distance entre une publication d'arrivée et le lieu de son événement.
   // Retourne null si l'un des deux n'a pas de coordonnées.
   function checkInDistance(post, ev) {
@@ -1994,21 +2094,20 @@
     //  - 'offsite'    : position relevée MAIS loin du lieu       → ⚠️ hors zone (sanctionné)
     //  - 'unverified' : pas de position (refus / lent / indispo) → ⏳ non pénalisé
     //  - 'no_venue'   : lieu de l'événement non renseigné        → rien à vérifier
-    var venueKnown = ev && typeof ev.eventLat === 'number' && typeof ev.eventLng === 'number';
-    var presence;
-    if (!venueKnown) presence = 'no_venue';
-    else if (geo && geo.available && onSite === true) presence = 'onsite';
-    else if (geo && geo.available && onSite === false) presence = 'offsite';
-    else presence = 'unverified';
+    var presence = checkInPresence(checkIn, ev);
 
-    // SEUL le hors-zone AVÉRÉ (position réelle, loin du lieu) retire des points.
-    // Une position simplement absente (refus/lenteur/indispo) ne pénalise PLUS la
-    // ponctualité : l'heure d'arrivée fait foi, et la présence reste « à confirmer »
-    // (bouton « Confirmer ma présence » côté membre, revue possible côté Admin).
+    // Sanction (-4★) pour un HORS ZONE avéré (position loin du lieu) OU une
+    // présence NON VÉRIFIÉE une fois la fenêtre de grâce (1 min / 3 essais)
+    // écoulée. Pendant la grâce ('pending') : aucune pénalité, position en cours
+    // de vérification. 'onsite'/'no_venue' : ponctualité fondée sur l'heure.
     if (presence === 'offsite') {
       offsite = true;
       stars = PUNCTUALITY_OFFSITE_STARS;
       label = 'Pointage à ' + formatDistance(dist) + ' du lieu — hors zone';
+    } else if (presence === 'unverified') {
+      offsite = true;
+      stars = PUNCTUALITY_OFFSITE_STARS;
+      label = 'Présence non vérifiée — pointage non validé';
     }
 
     return {

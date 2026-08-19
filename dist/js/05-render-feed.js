@@ -697,6 +697,10 @@
 
     var starCol = stars === null ? '#8A93A0' : stars >= 4 ? '#0E9F6E' : stars >= 2 ? '#D98A0B' : '#E2445C';
 
+    var confirmBtn = isAuthor
+      ? '<div style="margin-top:6px;"><button onclick="App.confirmPresence(\'' + post.id + '\')"' + (S.geoCapturing ? ' disabled' : '') + ' style="background:#EEF3FE;color:#0B63F6;border:none;border-radius:10px;padding:7px 12px;font-size:12px;font-weight:800;cursor:pointer;">📍 Confirmer ma présence</button></div>'
+      : '';
+
     // Bloc position selon l'état de présence.
     var geoBlock;
     if (presence === 'onsite') {
@@ -708,20 +712,28 @@
       geoBlock = (geo && geo.available)
         ? '<span style="color:#5A6472;">Position enregistrée' + (geo.accuracy ? ' (±' + geo.accuracy + ' m)' : '') + ' · lieu de l\'événement non défini</span>'
         : '<span style="color:#8A93A0;">Lieu de l\'événement non défini</span>';
-    } else { // unverified : présence pas encore prouvée — SANS pénalité
-      geoBlock = '<span style="color:#B45309;font-weight:800;">⏳ Présence non vérifiée</span>' +
-        '<span style="color:#8A93A0;"> · l\'heure d\'arrivée est bien prise en compte</span>' +
-        (isAuthor ? '<div style="margin-top:6px;"><button onclick="App.confirmPresence(\'' + post.id + '\')"' + (S.geoCapturing ? ' disabled' : '') + ' style="background:#EEF3FE;color:#0B63F6;border:none;border-radius:10px;padding:7px 12px;font-size:12px;font-weight:800;cursor:pointer;">📍 Confirmer ma présence</button></div>' : '');
+    } else if (presence === 'pending') { // fenêtre de grâce en cours — PAS de pénalité
+      geoBlock = '<span style="color:#B45309;font-weight:800;">⏳ Vérification de la présence en cours…</span>' +
+        '<span style="color:#8A93A0;"> · l\'heure d\'arrivée est déjà prise en compte</span>' + confirmBtn;
+    } else { // unverified : grâce écoulée sans position — sanctionné
+      geoBlock = '<span style="color:#B42318;font-weight:800;">' + ico('ban',12,'#B42318') + ' Présence non vérifiée</span>' +
+        '<span style="color:#8A93A0;"> · position non obtenue dans le délai</span>' + confirmBtn;
     }
 
-    var isBad = presence === 'offsite';
-    var isWarn = presence === 'unverified';
+    var isBad = presence === 'offsite' || presence === 'unverified';
+    var isWarn = presence === 'pending';
     var bg = isBad ? '#FEF2F2' : (isWarn ? '#FFFBEB' : '#F8FAFC');
     var border = isBad ? '#FECACA' : (isWarn ? '#FDE68A' : '#E4E7EC');
+    var headLabel = presence === 'offsite' ? ico('ban',12,'#B42318') + ' Pointage hors zone'
+      : presence === 'unverified' ? ico('ban',12,'#B42318') + ' Pointage non validé'
+      : ico('clock',12,'#64748B') + ' Arrivée enregistrée';
+    var penaltyNote = presence === 'offsite'
+      ? 'Arrivée non comptabilisée : il fallait être à moins de ' + formatDistance(ON_SITE_RADIUS_M) + ' du lieu.'
+      : (presence === 'unverified' ? 'Arrivée non comptabilisée : présence non vérifiée dans la minute (position non partagée). Utilise « Confirmer ma présence » si tu es sur place.' : '');
 
     return '<div style="margin:0 14px 10px;padding:10px 12px;background:' + bg + ';border:1px solid ' + border + ';border-radius:14px;">' +
       '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px;">' +
-        '<span style="font-size:10px;font-weight:800;color:' + (isBad ? '#B42318' : '#8A93A0') + ';text-transform:uppercase;letter-spacing:0.5px;">' + (isBad ? ico('ban',12,'#B42318') + ' Pointage hors zone' : ico('clock',12,'#64748B') + ' Arrivée enregistrée') + '</span>' +
+        '<span style="font-size:10px;font-weight:800;color:' + (isBad ? '#B42318' : '#8A93A0') + ';text-transform:uppercase;letter-spacing:0.5px;">' + headLabel + '</span>' +
         (stars === null ? '' : '<span style="font-size:12.5px;font-weight:900;color:' + starCol + ';white-space:nowrap;">' + (stars>0?'+':'') + stars + '★</span>') +
       '</div>' +
       '<div style="font-size:11.5px;color:#5A6472;line-height:1.5;">' +
@@ -729,7 +741,7 @@
         new Date(arrival).toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'}) +
       '</div>' +
       '<div style="font-size:11.5px;line-height:1.5;margin-top:2px;">' + geoBlock + '</div>' +
-      (isBad ? '<div style="font-size:10.5px;color:#B42318;margin-top:3px;font-weight:700;line-height:1.4;">Arrivée non comptabilisée : il fallait être à moins de ' + formatDistance(ON_SITE_RADIUS_M) + ' du lieu.</div>' : '') +
+      (penaltyNote ? '<div style="font-size:10.5px;color:#B42318;margin-top:3px;font-weight:700;line-height:1.4;">' + penaltyNote + '</div>' : '') +
       (post.checkInByEdit ? '<div style="font-size:10.5px;color:#B42318;margin-top:3px;font-weight:700;">Rattaché à l\'événement après publication</div>' : '') +
     '</div>';
   }
