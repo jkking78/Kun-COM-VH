@@ -837,22 +837,19 @@
 
     // Jauge circulaire en débord au-dessus de la carte, façon compteur : la
     // valeur se lit d'un coup d'œil avant même le reste du contenu.
-    // Jauge en ARC (dial ouvert en bas) plutôt qu'un cercle plein.
-    var R = 42, C = 2 * Math.PI * R;
-    var arcFrac = 0.72;                          // ~260° d'arc, ouverture centrée en bas
-    var arcLen = C * arcFrac;
-    var rot = 90 + (1 - arcFrac) * 180;          // positionne l'ouverture en bas
-    var prog = arcLen * Math.max(0, Math.min(1, pct / 100));
-    var gauge = '<div style="position:relative;width:104px;height:104px;margin:0 auto;">' +
-      '<div style="position:absolute;inset:0;border-radius:50%;background:' + UI.card + ';box-shadow:' + UI.sh2 + ';"></div>' +
-      '<svg width="104" height="104" viewBox="0 0 104 104" style="position:relative;">' +
-        '<circle cx="52" cy="52" r="' + R + '" fill="none" stroke="' + UI.tile + '" stroke-width="9" stroke-linecap="round" stroke-dasharray="' + arcLen + ' ' + (C * 2) + '" transform="rotate(' + rot + ' 52 52)"/>' +
-        '<circle cx="52" cy="52" r="' + R + '" fill="none" stroke="' + col + '" stroke-width="9" stroke-linecap="round" stroke-dasharray="' + prog + ' ' + (C * 2) + '" transform="rotate(' + rot + ' 52 52)" style="transition:stroke-dasharray 0.5s ease;"/>' +
+    // Jauge en DEMI-CERCLE (compteur) : arc courbe ouvert en bas, plus lisible
+    // qu'un anneau — le niveau se lit d'un coup d'œil.
+    var R = 54, HALF = Math.PI * R, FULL = 2 * Math.PI * R;
+    var prog = HALF * Math.max(0, Math.min(1, pct / 100));
+    var gauge = '<div style="position:relative;width:140px;height:82px;margin:0 auto;">' +
+      '<svg width="140" height="82" viewBox="0 0 140 82">' +
+        '<circle cx="70" cy="70" r="' + R + '" fill="none" stroke="' + UI.tile + '" stroke-width="12" stroke-linecap="round" stroke-dasharray="' + HALF + ' ' + (FULL * 2) + '" transform="rotate(180 70 70)"/>' +
+        '<circle cx="70" cy="70" r="' + R + '" fill="none" stroke="' + col + '" stroke-width="12" stroke-linecap="round" stroke-dasharray="' + prog + ' ' + (FULL * 2) + '" transform="rotate(180 70 70)" style="transition:stroke-dasharray 0.5s ease;"/>' +
       '</svg>' +
-      '<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">' +
-        '<div style="margin-bottom:1px;">' + ico('star', 15, col) + '</div>' +
-        '<div style="font-size:24px;font-weight:800;color:' + UI.ink + ';line-height:1;">' + String(avg).replace('.', ',') + '</div>' +
-        '<div style="font-size:10px;color:' + UI.faint + ';margin-top:1px;">sur 5</div>' +
+      '<div style="position:absolute;left:0;right:0;top:24px;display:flex;flex-direction:column;align-items:center;">' +
+        ico('star', 15, col) +
+        '<div style="font-size:26px;font-weight:800;color:' + UI.ink + ';line-height:1;margin-top:2px;">' + String(avg).replace('.', ',') + '</div>' +
+        '<div style="font-size:10px;color:' + UI.faint + ';margin-top:2px;">sur 5</div>' +
       '</div>' +
     '</div>';
 
@@ -883,7 +880,7 @@
       // Le bloc entier repose sur le fond gris de l'écran ; la jauge déborde
       // au-dessus de la carte, qui remonte sous elle pour l'encastrer.
       gauge +
-      '<div style="background:' + UI.tile + ';border-radius:' + UI.r3 + ';padding:44px 14px 14px;margin-top:-36px;">' +
+      '<div style="background:' + UI.tile + ';border-radius:' + UI.r3 + ';padding:22px 14px 14px;margin-top:-10px;">' +
         '<div style="text-align:center;margin-bottom:14px;">' +
           '<div style="font-size:14px;font-weight:600;color:' + UI.ink + ';">Ma ponctualité</div>' +
           '<div style="font-size:11px;color:' + UI.faint + ';margin-top:1px;">Cycle ' + cycleStr + ' · ' + label + '</div>' +
