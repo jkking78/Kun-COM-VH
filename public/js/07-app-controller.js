@@ -633,37 +633,24 @@
       html += '</div>';
       return html;
     },
-    checkForgotEmail: function(e) {
+    checkForgotEmail: async function(e) {
       e && e.preventDefault();
       var email = ((document.getElementById('forgotEmail')||{}).value||'').trim();
-      var users = db(SK.USERS, []);
-      var u = users.find(function(x){ return x.email.toLowerCase() === email.toLowerCase(); });
-      if (!u) { toast('Aucun compte trouvé avec cet e-mail.', 'error'); return; }
-      if (!u.sec_q1) { toast('Ce compte n\'a pas configuré de questions de sécurité.', 'error'); return; }
-      S.forgotUser = u;
-      render();
+      if (!email) { toast('Veuillez saisir votre e-mail.', 'error'); return; }
+      if (!supabase || !supabase.auth) { toast('Service indisponible.', 'error'); return; }
+      try {
+        await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin });
+      } catch(err) { console.warn('reset email:', err); }
+      // Message neutre : ne révèle pas si un compte existe pour cet e-mail.
+      toast('Si un compte existe pour cet e-mail, un lien de réinitialisation vient d\'être envoyé.', 'success');
+      S.forgotUser = null; S.auth = 'login'; render();
     },
+    // La réinitialisation effective passe par l'e-mail Supabase : au retour via le
+    // lien, l'événement PASSWORD_RECOVERY (voir initAuthSession) demande le nouveau
+    // mot de passe. Ce point d'entrée reste seulement pour compatibilité.
     resetPassword: async function(e) {
       e && e.preventDefault();
-      if (!S.forgotUser) return;
-      var a1 = ((document.getElementById('forgotA1')||{}).value||'').trim().toLowerCase();
-      var a2 = ((document.getElementById('forgotA2')||{}).value||'').trim().toLowerCase();
-      var newPwd = ((document.getElementById('forgotPwd')||{}).value||'').trim();
-      if (a1 !== S.forgotUser.sec_a1 || a2 !== S.forgotUser.sec_a2) {
-        toast('Les réponses de sécurité sont incorrectes.', 'error'); return;
-      }
-      var users = db(SK.USERS, []);
-      var idx = users.findIndex(function(x){ return x.id === S.forgotUser.id; });
-      if (idx !== -1) {
-        var hashedNewPwd = await hashPassword(newPwd);
-        users[idx].pwd = hashedNewPwd;
-        dbSet(SK.USERS, users);
-        if (supabase) supabase.from('kun_com_profiles').upsert({ id: users[idx].id, content: users[idx] }, { onConflict: 'id' }).then(function(){});
-      }
-      S.forgotUser = null;
-      S.auth = 'login';
-      render();
-      toast('Votre mot de passe a été réinitialisé ! ', 'success');
+      toast('Utilisez le lien reçu par e-mail pour définir un nouveau mot de passe.', 'success');
     },
 toggleParticipation: function(postId, status) {
       if (!S.user) return;
@@ -1349,113 +1336,21 @@ toggleParticipation: function(postId, status) {
       if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; btn.textContent = 'Connexion...'; }
 
       try {
-        // TOUS les comptes portant cet e-mail, pas seulement le premier trouvé.
-        // Constaté en production : un membre inscrit deux fois (pendant la période
-        // du stockage saturé) a deux fiches serveur avec le même e-mail mais des
-        // mots de passe potentiellement différents. Le serveur renvoyant les
-        // fiches dans un ordre variable, « prendre la première » faisait échouer
-        // la connexion une fois sur deux (« Mot de passe incorrect » aléatoire,
-        // qui finissait par passer après plusieurs tentatives). Désormais le mot
-        // de passe est essayé contre CHAQUE fiche candidate et on se connecte à
-        // celle qui correspond — comportement déterministe quel que soit l'ordre.
-        var chercheCandidats = function(liste) {
-          return (liste || []).filter(function(u){ return u && u.email && u.email.toLowerCase() === email.toLowerCase(); });
-        };
-        var users = db(SK.USERS, []);
-        var candidats = chercheCandidats(users);
-        var user = candidats.length === 1 ? candidats[0] : null;
-
-        // Filet de secours si le compte n'est pas (encore) dans le cache local —
-        // typique d'une connexion sur un appareil dont la synchronisation initiale
-        // n'a pas eu le temps de se terminer. On relit tous les profils distants
-        // ET ON LES GARDE TOUS, via mergeProfilesWithLocal (qui sait déchiffrer le
-        // "content" sérialisé en JSON par Supabase — voir parseProfileItem).
-        // Avant : ce filet ne conservait QUE le compte trouvé et jetait tous les
-        // autres profils pourtant déjà téléchargés, ET les lisait sans les décoder
-        // (Object.assign sur une chaîne JSON ne fait qu'éclater ses caractères) —
-        // l'annuaire local retombait donc à 1 seul membre après une connexion
-        // rapide, jusqu'à ce qu'une synchronisation complète le répare.
-        if (!candidats.length && supabase) {
-          try {
-            // Délai maximal de 12 s : sur un réseau mobile lent, cette requête
-            // pouvait rester en attente plusieurs minutes sans aucun retour à
-            // l'utilisateur — qui retapait alors "Se connecter" plusieurs fois,
-            // ce qui ne faisait qu'ajouter d'autres téléchargements complets à la
-            // file au lieu d'accélérer quoi que ce soit.
-            var delaiDepasse = new Promise(function(resolve){ setTimeout(function(){ resolve('TIMEOUT'); }, 12000); });
-            var res = await Promise.race([
-              supabase.from('kun_com_profiles').select('*'),
-              delaiDepasse
-            ]);
-            if (res === 'TIMEOUT') {
-              toast('Connexion lente. Vérifiez votre réseau et réessayez.', 'error');
-              return;
-            }
-            if (res && res.data) {
-              users = mergeProfilesWithLocal(res.data);
-              dbSet(SK.USERS, users);
-              candidats = chercheCandidats(users);
-              // Répare au passage les profils distants encore lourds : le prochain
-              // appareil qui se connecte (soi-même la prochaine fois, ou un
-              // collègue) n'aura plus à retélécharger ces méga-octets hérités.
-              try { purgerNotificationsBloateesServeur(res.data); } catch(e2) {}
-            }
-          } catch(err){}
-        }
-
-        if (!candidats.length) {
-          toast('Compte introuvable. Veuillez vérifier votre e-mail ou vous inscrire.', 'error');
+        // AUTHENTIFICATION SUPABASE — plus aucune comparaison de mot de passe côté
+        // client. Supabase vérifie l'identifiant contre auth.users (bcrypt côté
+        // serveur) et renvoie une session + un JWT (avec le rôle dans app_metadata).
+        if (!supabase || !supabase.auth) { toast('Connexion indisponible.', 'error'); return; }
+        var resp = await supabase.auth.signInWithPassword({ email: email, password: pwd });
+        if (!resp || resp.error || !resp.data || !resp.data.user) {
+          toast('E-mail ou mot de passe incorrect.', 'error');
           return;
         }
-
-        var hashedLoginPwd = await hashPassword(pwd);
-        // Le mot de passe est comparé à CHAQUE fiche candidate (anciens comptes en
-        // clair comme récents hachés). Aucune correspondance -> incorrect. Plusieurs
-        // correspondances (doublon inscrit deux fois avec le même mot de passe) ->
-        // la fiche la plus récemment active l'emporte, pour que tous les appareils
-        // convergent vers le MÊME compte au lieu de se répartir sur les doublons.
-        var correspondants = candidats.filter(function(u) {
-          return !u.pwd || u.pwd === pwd || u.pwd === hashedLoginPwd;
-        });
-        if (!correspondants.length) {
-          toast('Mot de passe incorrect.', 'error');
-          return;
-        }
-        correspondants.sort(function(a, b) {
-          // Une fiche dont le mot de passe correspond VRAIMENT passe avant une
-          // vieille fiche sans mot de passe enregistré ; à égalité, la plus
-          // récemment active l'emporte.
-          var pa = (a.pwd === pwd || a.pwd === hashedLoginPwd) ? 1 : 0;
-          var pb = (b.pwd === pwd || b.pwd === hashedLoginPwd) ? 1 : 0;
-          if (pa !== pb) return pb - pa;
-          return (Date.parse(b.last_seen_at || 0) || 0) - (Date.parse(a.last_seen_at || 0) || 0);
-        });
-        user = correspondants[0];
-
-        if (!user.id && user.email) {
-          user.id = 'u_' + String(user.email).toLowerCase().replace(/[^a-z0-9]/gi, '_');
-        }
-
-        user.is_online = true;
-        user.last_seen_at = new Date().toISOString();
-        user.last_action = 'Connexion';
-
-        var uIdx = users.findIndex(function(x){ return x.id === user.id; });
-        if (uIdx !== -1) users[uIdx] = user;
-        else users.push(user);
-        dbSet(SK.USERS, users);
-
-        // Sauvegarde tolérante au quota : une session qui ne tient pas sur le disque
-        // ne doit JAMAIS empêcher la connexion d'aboutir (l'exception non rattrapée
-        // ici interrompait le reste de la fonction, connexion comprise).
-        sauverSession(user);
-
-        S.user = user;
-        S.auth = 'app';
+        applyAuthUser(resp.data.user);   // définit S.user (rôle depuis le JWT) + S.auth='app'
         S.tab = 'home';
         S.champsAuth = {};
         render();
-        toast('Connexion réussie ! Bienvenue ' + (user.prenom||'Membre') + '. ', 'success');
+        toast('Connexion réussie ! Bienvenue ' + (S.user && S.user.prenom || 'Membre') + '. ', 'success');
+        try { syncSupabaseToLocal(); } catch(e){}
         try { tryOpenDeepLinkedPost(); } catch(e){}
       } finally {
         App._loginEnCours = false;
@@ -1476,77 +1371,69 @@ toggleParticipation: function(postId, status) {
       var nom = ((document.getElementById('signupNom')||{}).value||'').trim();
       var email = ((document.getElementById('signupEmail')||{}).value||'').trim();
       var pwd = ((document.getElementById('signupPwd')||{}).value||'').trim();
-      var q1 = ((document.getElementById('signupQ1')||{}).value||'');
-      var a1 = ((document.getElementById('signupA1')||{}).value||'').trim().toLowerCase();
-      var q2 = ((document.getElementById('signupQ2')||{}).value||'');
-      var a2 = ((document.getElementById('signupA2')||{}).value||'').trim().toLowerCase();
-      if (!prenom||!nom||!email||!pwd||!a1||!a2) { toast('Veuillez remplir tous les champs et questions de sécurité.', 'error'); return; }
+      if (!prenom || !nom || !email || !pwd) { toast('Veuillez remplir tous les champs.', 'error'); return; }
+      if (pwd.length < 8) { toast('Le mot de passe doit contenir au moins 8 caractères.', 'error'); return; }
       if (S.signupSections.length === 0) { toast('Veuillez choisir au moins 1 section.', 'error'); return; }
+      if (!supabase || !supabase.auth) { toast('Inscription indisponible.', 'error'); return; }
 
-      var users = db(SK.USERS, []);
-      if (users.find(function(u){ return u && u.email && u.email.toLowerCase()===email.toLowerCase(); })) {
-        toast('Un compte existe déjà avec cet e-mail.', 'error'); return;
-      }
-      // ORIGINE DES COMPTES EN DOUBLE : ce contrôle ne consultait QUE le cache
-      // local. Sur un appareil dont la synchronisation n'avait pas abouti (réseau
-      // lent, ou stockage saturé à l'époque du bug de quota), le cache paraissait
-      // vide — l'inscription était donc acceptée alors que le compte existait déjà
-      // côté serveur. Deux fiches pour la même personne, avec des mots de passe
-      // pouvant différer : de là venaient les « Mot de passe incorrect » aléatoires
-      // (le serveur renvoyant les fiches dans un ordre variable). On vérifie donc
-      // désormais le SERVEUR avant de créer quoi que ce soit.
-      if (supabase) {
-        try {
-          var delaiVerif = new Promise(function(resolve){ setTimeout(function(){ resolve('TIMEOUT'); }, 12000); });
-          var resExist = await Promise.race([
-            supabase.from('kun_com_profiles').select('*'),
-            delaiVerif
-          ]);
-          if (resExist === 'TIMEOUT') {
-            toast('Connexion lente : impossible de vérifier votre e-mail. Réessayez.', 'error');
-            return;
-          }
-          if (resExist && resExist.data) {
-            var profilsDistants = mergeProfilesWithLocal(resExist.data);
-            dbSet(SK.USERS, profilsDistants);
-            users = profilsDistants;
-            if (profilsDistants.find(function(u){ return u && u.email && u.email.toLowerCase() === email.toLowerCase(); })) {
-              toast('Un compte existe déjà avec cet e-mail. Connectez-vous.', 'error');
-              return;
-            }
-          }
-        } catch(errVerif) { console.warn('Vérification e-mail avant inscription :', errVerif); }
-      }
       var userSecs = S.signupSections.length > 0 ? S.signupSections.slice() : ['cadrage'];
-      // L'accès Grand Responsable ne se donne plus à l'inscription (champ "Autre"
-      // retiré) — il se fait désormais depuis le profil, panneau Administration.
-      var finalRole = (S.signupRole === 'RESP_SECTION' ? 'RESP_SECTION' : 'MEMBRE');
-      var hashedPwd = await hashPassword(pwd);
-      var newUser = { id:'u'+Date.now(), prenom:prenom, nom:nom, email:email, sections: userSecs, section_id: userSecs[0], role: finalRole, is_online:true, last_seen_at:new Date().toISOString(), last_action:'Inscription', avatar_color: ['#0B63F6','#FF2D55','#0E9F6E','#D98A0B','#0B63F6','#AF52DE'][Math.floor(Math.random()*6)], pwd: hashedPwd, sec_q1: q1, sec_a1: a1, sec_q2: q2, sec_a2: a2 };
-      users.push(newUser); dbSet(SK.USERS, users);
-      // Compte créé sur cet appareil : protégé de la purge du cache tant qu'il n'est
-      // pas confirmé côté serveur (sinon une inscription hors-ligne serait perdue).
-      addLocalAccountId(newUser.id);
-      sauverSession(newUser);
-      S.user = newUser; S.auth = 'app';
-
-      if (supabase) {
-        try {
-          var syncRes = await supabase.from('kun_com_profiles').upsert({ id: newUser.id, content: newUser }, { onConflict: 'id' });
-          if (syncRes.error) {
-            console.error("Supabase profile save error:", syncRes.error);
-          }
-        } catch(err) {
-          console.warn("Supabase signup sync exception:", err);
+      try {
+        // INSCRIPTION SUPABASE AUTH — crée le compte dans auth.users. Le rôle est
+        // TOUJOURS MEMBRE ; l'élévation (Responsable / Grand Responsable) ne se fait
+        // qu'ensuite, par un Grand Responsable via l'Edge Function protégée.
+        var resp = await supabase.auth.signUp({
+          email: email, password: pwd,
+          options: { data: { prenom: prenom, nom: nom } }
+        });
+        if (resp.error) {
+          var m = resp.error.message || '';
+          if (/registered|already|exists/i.test(m)) toast('Un compte existe déjà avec cet e-mail.', 'error');
+          else toast('Inscription impossible : ' + m, 'error');
+          return;
         }
+        var authUser = resp.data && resp.data.user;
+        var session = resp.data && resp.data.session;
+        if (!session) {
+          // Pas de session immédiate = la confirmation e-mail est activée. On ne
+          // connecte pas et on n'écrit pas encore le profil (l'upsert serait refusé
+          // par la RLS faute de session) : la fiche sera créée à la 1re connexion
+          // confirmée, via applyAuthUser. On mémorise les sections choisies pour
+          // qu'elles soient conservées à ce moment-là.
+          try { localStorage.setItem('kc_pending_signup', JSON.stringify({ email: email, prenom: prenom, nom: nom, sections: userSecs, section_id: userSecs[0] })); } catch(e){}
+          toast('Compte créé ! Vérifiez votre e-mail pour confirmer, puis connectez-vous.', 'success');
+          S.auth = 'login'; S.signupSections = []; S.signupRole = 'MEMBRE'; S.champsAuth = {};
+          render();
+          return;
+        }
+
+        var newUser = { id: authUser.id, prenom: prenom, nom: nom, email: email,
+          sections: userSecs, section_id: userSecs[0], role: 'MEMBRE', is_online: true,
+          last_seen_at: new Date().toISOString(), last_action: 'Inscription',
+          avatar_color: ['#0B63F6','#FF2D55','#0E9F6E','#D98A0B','#0B63F6','#AF52DE'][Math.floor(Math.random()*6)] };
+
+        // Écrit le profil (SANS aucun secret : ni mot de passe, ni question de
+        // sécurité). Autorisé par la policy RLS car id = auth.uid().
+        try {
+          var syncRes = await supabase.from('kun_com_profiles')
+            .upsert({ id: newUser.id, content: newUser }, { onConflict: 'id' });
+          if (syncRes.error) console.error('Supabase profile save error:', syncRes.error);
+        } catch(err) { console.warn('Supabase signup sync exception:', err); }
+
+        var users = db(SK.USERS, []);
+        users.push(newUser); dbSet(SK.USERS, users);
+        sauverSession(newUser);
+        S.user = newUser; S.auth = 'app';
+
+        try { announceNewMember(newUser); } catch(e){}
+
+        S.signupSections = []; S.signupRole = 'MEMBRE'; S.champsAuth = {};
+        render();
+        toast('Bienvenue ' + prenom + ' ! Votre compte a été créé. ', 'success');
+        try { syncSupabaseToLocal(); } catch(e){}
+      } catch(err) {
+        console.warn('signup error:', err);
+        toast('Inscription impossible. Réessayez.', 'error');
       }
-
-      // Annonce l'arrivée du nouveau membre à toute l'équipe.
-      announceNewMember(newUser);
-
-      S.signupSections = []; S.signupRole = 'MEMBRE'; S.champsAuth = {};
-      render();
-      toast('Bienvenue ' + prenom + ' ! Votre compte a été créé. ', 'success');
     },
     logout: function() {
       if (S.user) {

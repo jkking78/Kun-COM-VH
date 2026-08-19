@@ -218,10 +218,10 @@
             '</button>' +
             '<div><h1 style="font-size:22px;font-weight:900;color:#000;margin:0;">Mot de passe oublié</h1></div>' +
           '</div>' +
-          '<p style="font-size:14px;color:#8A93A0;margin-bottom:24px;">Saisissez votre adresse e-mail pour retrouver votre compte et répondre à vos questions de sécurité.</p>' +
+          '<p style="font-size:14px;color:#8A93A0;margin-bottom:24px;">Saisissez votre adresse e-mail : vous recevrez un lien pour définir un nouveau mot de passe.</p>' +
           '<form onsubmit="event.preventDefault(); App.checkForgotEmail(event);" style="display:flex;flex-direction:column;gap:14px;">' +
             renderField('forgotEmail', 'email', 'E-mail', 'jean.dupont@eglise.org', 'email') +
-            '<button type="submit" style="' + btnStyle('#0B63F6') + '">Suivant →</button>' +
+            '<button type="submit" style="' + btnStyle('#0B63F6') + '">Envoyer le lien de réinitialisation</button>' +
           '</form>' +
         '</div></div>';
     } else {
@@ -269,30 +269,7 @@
             App.renderSectionBadges(S.signupSections, 'toggleSignupSection') +
           '</div>' +
         '</div>' +
-        '<div><label style="font-size:12px;font-weight:700;color:#25303F;display:block;margin-bottom:8px;">Votre fonction <span style="color:#E2445C;">*</span></label>' +
-          '<div style="display:flex;gap:8px;">' +
-            '<button type="button" id="signupRoleMembre" onclick="App.setSignupRole(\'MEMBRE\')" style="flex:1;height:44px;border-radius:12px;border:1.5px solid #0B63F6;background:#E8EEFB;color:#0B63F6;font-size:13.5px;font-weight:800;cursor:pointer;">🎥 Membre</button>' +
-            '<button type="button" id="signupRoleResp" onclick="App.setSignupRole(\'RESP_SECTION\')" style="flex:1;height:44px;border-radius:12px;border:1.5px solid #E4E7EC;background:#F6F7F9;color:#25303F;font-size:13.5px;font-weight:800;cursor:pointer;">🎬 Responsable</button>' +
-          '</div>' +
-        '</div>' +
         renderField('signupPwd', 'password', 'Mot de passe', '8 caractères minimum', 'new-password') +
-        '<div style="margin-top:10px;border-top:1px dashed #E4E7EC;padding-top:12px;"><p style="font-size:13px;font-weight:800;margin:0 0 10px;">Questions de sécurité (Récupération)</p>' +
-        '<div><label style="font-size:12px;font-weight:700;color:#25303F;display:block;margin-bottom:5px;">Question 1</label>' +
-          '<select id="signupQ1" style="width:100%;height:44px;border-radius:12px;border:1.5px solid #E4E7EC;background:#F6F7F9;padding:0 14px;font-size:13px;color:#000;box-sizing:border-box;margin-bottom:8px;outline:none;">' +
-            '<option>Quel est votre verset préféré ?</option>' +
-            '<option>Quel est le nom de votre premier animal ?</option>' +
-            '<option>Quelle est votre couleur préférée ?</option>' +
-          '</select>' +
-          '<input id="signupA1" type="text" value="' + safeHtml((S.champsAuth && S.champsAuth['signupA1']) || '') + '" oninput="App.saisieAuth(&#39;signupA1&#39;, this.value)" placeholder="Réponse secrète" required style="width:100%;height:44px;border-radius:12px;border:1.5px solid #E4E7EC;background:#F6F7F9;padding:0 14px;font-size:13px;box-sizing:border-box;margin-bottom:12px;outline:none;" />' +
-        '</div>' +
-        '<div><label style="font-size:12px;font-weight:700;color:#25303F;display:block;margin-bottom:5px;">Question 2</label>' +
-          '<select id="signupQ2" style="width:100%;height:44px;border-radius:12px;border:1.5px solid #E4E7EC;background:#F6F7F9;padding:0 14px;font-size:13px;color:#000;box-sizing:border-box;margin-bottom:8px;outline:none;">' +
-            '<option>Quelle est votre fonction dans la COM ?</option>' +
-            '<option>Quel est le prénom de votre mère ?</option>' +
-            '<option>Quel est votre plat préféré ?</option>' +
-          '</select>' +
-          '<input id="signupA2" type="text" value="' + safeHtml((S.champsAuth && S.champsAuth['signupA2']) || '') + '" oninput="App.saisieAuth(&#39;signupA2&#39;, this.value)" placeholder="Réponse secrète" required style="width:100%;height:44px;border-radius:12px;border:1.5px solid #E4E7EC;background:#F6F7F9;padding:0 14px;font-size:13px;box-sizing:border-box;margin-bottom:12px;outline:none;" />' +
-        '</div></div>' +
         '<button type="submit" style="' + btnStyle('#0B63F6') + 'margin-top:6px;">Créer mon compte</button>' +
       '</form>' +
 
