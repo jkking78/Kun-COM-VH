@@ -1755,7 +1755,10 @@
         && lng >= CI_BOUNDS.minLng && lng <= CI_BOUNDS.maxLng;
   }
 
-  function capturePosition(timeoutMs) {
+  // timeoutMs : délai max. maxAgeMs : âge maximal d'un fix déjà connu que l'on
+  // accepte de réutiliser (0 = toujours frais). highAccuracy : GPS précis (plus
+  // lent) — inutile ici, le rayon « sur place » est large (1500 m).
+  function capturePosition(timeoutMs, maxAgeMs, highAccuracy) {
     return new Promise(function(resolve) {
       if (!navigator || !navigator.geolocation) {
         resolve({ available: false, reason: 'unsupported' });
@@ -1799,9 +1802,40 @@
           // code 1 = permission refusée, 2 = position indisponible, 3 = délai dépassé
           resolve({ available: false, reason: err && err.code === 1 ? 'denied' : 'unavailable' });
         },
-        { enableHighAccuracy: true, timeout: timeoutMs || 12000, maximumAge: 0 }
+        { enableHighAccuracy: highAccuracy !== false, timeout: timeoutMs || 12000, maximumAge: maxAgeMs || 0 }
       );
     });
+  }
+
+  // ============================================================
+  // PRÉ-CHAUFFAGE DE LA POSITION (pointage sans attente ni pénalité injuste)
+  // ============================================================
+  // Dès que le membre déclare vouloir pointer, on lance une capture EN AVANCE,
+  // pendant qu'il rédige. Au moment de publier, la position est déjà prête :
+  // plus d'attente de dernière minute, plus de prompt au pire moment.
+  var _prewarmedGeo = null;      // dernier fix exploitable (avec .at)
+  var _prewarmInFlight = false;
+  function startGeoPrewarm() {
+    if (_prewarmInFlight) return;
+    // Un bon fix récent (< 90 s) suffit : inutile de relancer.
+    if (_prewarmedGeo && _prewarmedGeo.available && _prewarmedGeo.at && (Date.now() - _prewarmedGeo.at) < 90000) return;
+    _prewarmInFlight = true;
+    // Précision normale (rapide) + réutilisation d'un fix jusqu'à 90 s.
+    capturePosition(15000, 90000, false).then(function(g) {
+      // Ne jamais écraser un bon fix par un refus/échec ultérieur.
+      if (g && g.available) _prewarmedGeo = g;
+      else if (!_prewarmedGeo) _prewarmedGeo = g;
+      _prewarmInFlight = false;
+    }, function() { _prewarmInFlight = false; });
+  }
+  // Position pour le pointage, SANS bloquer l'horodatage : un fix pré-chauffé
+  // récent s'il existe, sinon une capture courte (l'heure d'arrivée, elle, est
+  // déjà figée par l'appelant avant tout appel GPS).
+  function positionForCheckIn() {
+    if (_prewarmedGeo && _prewarmedGeo.available && _prewarmedGeo.at && (Date.now() - _prewarmedGeo.at) < 120000) {
+      return Promise.resolve(_prewarmedGeo);
+    }
+    return capturePosition(8000, 120000, false);
   }
 
   // Distance en mètres entre deux points (formule de haversine).
@@ -1955,19 +1989,26 @@
     var label = labelForDelay(delayMinutes);
     var offsite = false;
 
-    // Le lieu ne fait foi que si le responsable l'a renseigné : sans coordonnées
-    // d'événement, on ne peut rien reprocher au membre.
+    // Statut de présence, INDÉPENDANT de la ponctualité (l'heure d'arrivée) :
+    //  - 'onsite'     : position relevée dans le rayon du lieu   → ✅ confirmé
+    //  - 'offsite'    : position relevée MAIS loin du lieu       → ⚠️ hors zone (sanctionné)
+    //  - 'unverified' : pas de position (refus / lent / indispo) → ⏳ non pénalisé
+    //  - 'no_venue'   : lieu de l'événement non renseigné        → rien à vérifier
     var venueKnown = ev && typeof ev.eventLat === 'number' && typeof ev.eventLng === 'number';
-    if (venueKnown) {
-      if (!geo || !geo.available) {
-        offsite = true;
-        stars = PUNCTUALITY_OFFSITE_STARS;
-        label = geoStatusLabel(geo) + ' — pointage non validé';
-      } else if (onSite === false) {
-        offsite = true;
-        stars = PUNCTUALITY_OFFSITE_STARS;
-        label = 'Pointage à ' + formatDistance(dist) + ' du lieu — non validé';
-      }
+    var presence;
+    if (!venueKnown) presence = 'no_venue';
+    else if (geo && geo.available && onSite === true) presence = 'onsite';
+    else if (geo && geo.available && onSite === false) presence = 'offsite';
+    else presence = 'unverified';
+
+    // SEUL le hors-zone AVÉRÉ (position réelle, loin du lieu) retire des points.
+    // Une position simplement absente (refus/lenteur/indispo) ne pénalise PLUS la
+    // ponctualité : l'heure d'arrivée fait foi, et la présence reste « à confirmer »
+    // (bouton « Confirmer ma présence » côté membre, revue possible côté Admin).
+    if (presence === 'offsite') {
+      offsite = true;
+      stars = PUNCTUALITY_OFFSITE_STARS;
+      label = 'Pointage à ' + formatDistance(dist) + ' du lieu — hors zone';
     }
 
     return {
@@ -1976,8 +2017,10 @@
       label: label,
       checkInPostId: checkIn.id,
       absent: false,
-      // Pointage effectué, mais invalidé faute d'être sur place.
+      // Pointage effectué mais invalidé car hors zone (position loin du lieu).
       offsite: offsite,
+      // Statut de présence à part (voir ci-dessus) — pour l'affichage.
+      presence: presence,
       geo: geo,
       byEdit: !!checkIn.checkInByEdit,
       distance: dist,

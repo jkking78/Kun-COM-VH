@@ -600,7 +600,7 @@
               var when = d.absent ? 'aucune publication' : (d.delayMinutes <= 0 ? "à l'heure" : '+' + d.delayMinutes + ' min');
               var geoNote = '';
               if (!d.absent) {
-                if (!d.geo || !d.geo.available) geoNote = '<span style="display:block;font-size:10.5px;color:#B42318;font-weight:700;">' + geoStatusLabel(d.geo) + '</span>';
+                if (!d.geo || !d.geo.available) geoNote = '<span style="display:block;font-size:10.5px;color:#B45309;font-weight:700;">présence non vérifiée</span>';
                 else if (d.distance === null || d.distance === undefined) geoNote = '';
                 else if (d.onSite) geoNote = '<span style="display:block;font-size:10.5px;color:#047857;">sur place (' + formatDistance(d.distance) + ')</span>';
                 else geoNote = '<span style="display:block;font-size:10.5px;color:#B42318;font-weight:700;">à ' + formatDistance(d.distance) + ' du lieu</span>';
@@ -687,31 +687,41 @@
     var isThisCheckIn = official && official.checkInPostId === post.id;
     var stars = isThisCheckIn ? official.stars : (delay === null ? null : starsForDelay(delay));
     var offsite = isThisCheckIn && official.offsite;
+    // État de présence (indépendant de la ponctualité) : voir punctualityStars.
+    var venueKnown = typeof ev.eventLat === 'number' && typeof ev.eventLng === 'number';
+    var presence = (isThisCheckIn && official.presence)
+      ? official.presence
+      : (!venueKnown ? 'no_venue'
+         : (geo && geo.available ? (dist !== null && dist <= ON_SITE_RADIUS_M ? 'onsite' : 'offsite') : 'unverified'));
+    var isAuthor = S.user && post.userId === S.user.id;
 
     var starCol = stars === null ? '#8A93A0' : stars >= 4 ? '#0E9F6E' : stars >= 2 ? '#D98A0B' : '#E2445C';
 
-    // Bloc position : c'est lui qui rend la triche visible.
+    // Bloc position selon l'état de présence.
     var geoBlock;
-    if (geo && geo.available) {
-      if (dist === null) {
-        geoBlock = '<span style="color:#5A6472;">Position enregistrée' + (geo.accuracy ? ' (±' + geo.accuracy + ' m)' : '') + ' · lieu de l\'événement non défini</span>';
-      } else {
-        var near = dist <= ON_SITE_RADIUS_M;
-        geoBlock = '<span style="color:' + (near ? '#047857' : '#B42318') + ';font-weight:800;">' +
-          (near ? ico('pin',12,'#047857') + ' Sur place' : ico('alert',12,'#B42318') + ' À ' + formatDistance(dist) + ' du lieu') +
-          '</span>' +
-          (near ? '<span style="color:#5A6472;"> · à ' + formatDistance(dist) + ' du point de référence</span>' : '');
-      }
-    } else {
-      geoBlock = '<span style="color:#B42318;font-weight:800;">' + geoStatusLabel(geo) + '</span>';
+    if (presence === 'onsite') {
+      geoBlock = '<span style="color:#047857;font-weight:800;">' + ico('pin',12,'#047857') + ' Sur place</span>' +
+        (dist !== null ? '<span style="color:#5A6472;"> · à ' + formatDistance(dist) + ' du point de référence</span>' : '');
+    } else if (presence === 'offsite') {
+      geoBlock = '<span style="color:#B42318;font-weight:800;">' + ico('alert',12,'#B42318') + ' Hors zone — à ' + formatDistance(dist) + ' du lieu</span>';
+    } else if (presence === 'no_venue') {
+      geoBlock = (geo && geo.available)
+        ? '<span style="color:#5A6472;">Position enregistrée' + (geo.accuracy ? ' (±' + geo.accuracy + ' m)' : '') + ' · lieu de l\'événement non défini</span>'
+        : '<span style="color:#8A93A0;">Lieu de l\'événement non défini</span>';
+    } else { // unverified : présence pas encore prouvée — SANS pénalité
+      geoBlock = '<span style="color:#B45309;font-weight:800;">⏳ Présence non vérifiée</span>' +
+        '<span style="color:#8A93A0;"> · l\'heure d\'arrivée est bien prise en compte</span>' +
+        (isAuthor ? '<div style="margin-top:6px;"><button onclick="App.confirmPresence(\'' + post.id + '\')"' + (S.geoCapturing ? ' disabled' : '') + ' style="background:#EEF3FE;color:#0B63F6;border:none;border-radius:10px;padding:7px 12px;font-size:12px;font-weight:800;cursor:pointer;">📍 Confirmer ma présence</button></div>' : '');
     }
 
-    var bg = (geo && geo.available && (dist === null || dist <= ON_SITE_RADIUS_M)) ? '#F8FAFC' : '#FEF2F2';
-    var border = (geo && geo.available && (dist === null || dist <= ON_SITE_RADIUS_M)) ? '#E4E7EC' : '#FECACA';
+    var isBad = presence === 'offsite';
+    var isWarn = presence === 'unverified';
+    var bg = isBad ? '#FEF2F2' : (isWarn ? '#FFFBEB' : '#F8FAFC');
+    var border = isBad ? '#FECACA' : (isWarn ? '#FDE68A' : '#E4E7EC');
 
     return '<div style="margin:0 14px 10px;padding:10px 12px;background:' + bg + ';border:1px solid ' + border + ';border-radius:14px;">' +
       '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px;">' +
-        '<span style="font-size:10px;font-weight:800;color:' + (offsite ? '#B42318' : '#8A93A0') + ';text-transform:uppercase;letter-spacing:0.5px;">' + (offsite ? ico('ban',12,'#B42318') + ' Pointage non validé' : ico('clock',12,'#64748B') + ' Arrivée enregistrée') + '</span>' +
+        '<span style="font-size:10px;font-weight:800;color:' + (isBad ? '#B42318' : '#8A93A0') + ';text-transform:uppercase;letter-spacing:0.5px;">' + (isBad ? ico('ban',12,'#B42318') + ' Pointage hors zone' : ico('clock',12,'#64748B') + ' Arrivée enregistrée') + '</span>' +
         (stars === null ? '' : '<span style="font-size:12.5px;font-weight:900;color:' + starCol + ';white-space:nowrap;">' + (stars>0?'+':'') + stars + '★</span>') +
       '</div>' +
       '<div style="font-size:11.5px;color:#5A6472;line-height:1.5;">' +
@@ -719,7 +729,7 @@
         new Date(arrival).toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'}) +
       '</div>' +
       '<div style="font-size:11.5px;line-height:1.5;margin-top:2px;">' + geoBlock + '</div>' +
-      (offsite ? '<div style="font-size:10.5px;color:#B42318;margin-top:3px;font-weight:700;line-height:1.4;">Arrivée non comptabilisée : il fallait être à moins de ' + formatDistance(ON_SITE_RADIUS_M) + ' du lieu.</div>' : '') +
+      (isBad ? '<div style="font-size:10.5px;color:#B42318;margin-top:3px;font-weight:700;line-height:1.4;">Arrivée non comptabilisée : il fallait être à moins de ' + formatDistance(ON_SITE_RADIUS_M) + ' du lieu.</div>' : '') +
       (post.checkInByEdit ? '<div style="font-size:10.5px;color:#B42318;margin-top:3px;font-weight:700;">Rattaché à l\'événement après publication</div>' : '') +
     '</div>';
   }

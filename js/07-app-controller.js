@@ -2131,7 +2131,7 @@ toggleParticipation: function(postId, status) {
     clearAboutEvent: function() { S.postAboutEventId = null; render(); },
     // Enregistrement d'arrivée : c'est CE choix, et lui seul, qui déclenche le
     // relevé de position et le calcul de ponctualité.
-    setCheckInEvent: function(eventId) { S.postCheckInEventId = eventId || null; render(); },
+    setCheckInEvent: function(eventId) { S.postCheckInEventId = eventId || null; if (eventId) { try { startGeoPrewarm(); } catch(e){} } render(); },
     // Ouvre le composeur directement en mode pointage pour cet événement.
     startCheckIn: function(eventId) {
       var ev = db(SK.POSTS, []).find(function(p){ return p.id === eventId && p.type === 'EVENT'; });
@@ -2142,6 +2142,9 @@ toggleParticipation: function(postId, status) {
       S.postAboutEventId = null;
       S.postCheckInEventId = eventId;
       S.postText = 'Je suis arrivé pour ' + (ev.eventTitle || 'le service') + '.';
+      // Pré-chauffe la position pendant que le membre rédige : au moment de
+      // publier, elle est déjà prête (pas d'attente ni de prompt de dernière minute).
+      try { startGeoPrewarm(); } catch(e){}
       render();
       setTimeout(function(){
         var t = document.getElementById('newPostText');
@@ -2149,6 +2152,32 @@ toggleParticipation: function(postId, status) {
       }, 140);
     },
     clearCheckInEvent: function() { S.postCheckInEventId = null; render(); },
+    // Rattrapage : attache (ou met à jour) la position d'un pointage déjà publié,
+    // sans toucher à l'heure d'arrivée (la ponctualité reste figée). Sert quand la
+    // localisation avait été refusée par erreur, était lente, ou indisponible.
+    confirmPresence: async function(postId) {
+      var posts = db(SK.POSTS, []);
+      var p = posts.find(function(x){ return x.id === postId; });
+      if (!p || !p.checkInEventId) return;
+      if (!S.user || p.userId !== S.user.id) { toast('Seul l\'auteur peut confirmer sa présence.', 'error'); return; }
+      if (S.geoCapturing) return;
+      S.geoCapturing = true; render();
+      var g;
+      // Capture FRAÎCHE (la personne peut s'être rapprochée du lieu entre-temps).
+      try { g = await capturePosition(12000, 0, false); }
+      catch (e) { g = { available: false, reason: 'unavailable' }; }
+      S.geoCapturing = false;
+      if (!g || !g.available) {
+        render();
+        toast('Localisation indisponible. Active-la dans les réglages puis réessaie.', 'error');
+        return;
+      }
+      p.geo = g;                 // on n'écrase PAS checkInAt : la ponctualité est inchangée
+      dbSet(SK.POSTS, posts);
+      if (supabase) supabase.from('kun_com_posts').upsert({ id: p.id, content: p }, { onConflict: 'id' }).then(function(){}, function(e){});
+      render();
+      toast('Présence enregistrée. ', 'success');
+    },
     goToEvent: function(eventId) {
       var posts = db(SK.POSTS, []);
       var ev = posts.find(function(p){ return p.id === eventId && p.type === 'EVENT'; });
@@ -2665,12 +2694,16 @@ toggleParticipation: function(postId, status) {
       // « À propos » vers un événement ne géolocalise rien : c'est une mention,
       // pas un pointage.
       var geo = null;
+      // L'HEURE D'ARRIVÉE est figée MAINTENANT, au clic — jamais après le GPS.
+      // Un GPS lent ou refusé ne peut donc plus dégrader la ponctualité.
+      var checkInStamp = S.postCheckInEventId ? Date.now() : null;
       if (S.postCheckInEventId) {
         if (S.geoCapturing) return;
         S.geoCapturing = true;
-        toast('Enregistrement de votre position…', 'info');
         render();
-        try { geo = await capturePosition(12000); }
+        // Position pré-chauffée si dispo (instantané), sinon capture courte.
+        // L'horodatage étant déjà figé, cette étape ne pénalise plus l'heure.
+        try { geo = await positionForCheckIn(); }
         catch (err) { geo = { available: false, reason: 'unavailable' }; }
         S.geoCapturing = false;
       }
@@ -2704,7 +2737,7 @@ toggleParticipation: function(postId, status) {
         // Moment du pointage. C'est CETTE heure qui fait foi pour la ponctualité,
         // pas celle de la publication : sans cela, il suffirait de publier à
         // l'heure puis de pointer plus tard pour effacer son retard.
-        checkInAt: S.postCheckInEventId ? Date.now() : null,
+        checkInAt: checkInStamp,
         // Sondage optionnel : question + options figées à la publication, votes vides.
         poll: pollData,
         // Aperçu du lien figé ici : la publication reste lisible même si le site

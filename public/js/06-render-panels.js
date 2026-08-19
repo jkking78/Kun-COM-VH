@@ -252,9 +252,7 @@
         '</div>' +
         (p.offsite
           ? '<div style="font-size:11px;color:#B42318;font-weight:700;margin-top:4px;line-height:1.4;">' +
-              (p.geo && p.geo.available
-                ? 'Vous deviez être à moins de ' + formatDistance(ON_SITE_RADIUS_M) + ' du lieu.'
-                : geoStatusLabel(p.geo) + '. La position est obligatoire pour valider une arrivée.') +
+              'Pointage hors zone : vous deviez être à moins de ' + formatDistance(ON_SITE_RADIUS_M) + ' du lieu.' +
             '</div>'
           : '') +
       '</div>';
@@ -919,7 +917,7 @@
   function renderGeoFlag(d) {
     if (d.absent) return '';
     if (!d.geo || !d.geo.available) {
-      return '<span style="display:block;color:#B42318;font-weight:700;font-size:10.5px;">' + geoStatusLabel(d.geo) + '</span>';
+      return '<span style="display:block;color:#B45309;font-weight:700;font-size:10.5px;">présence non vérifiée</span>';
     }
     if (d.distance === null || d.distance === undefined) {
       return '<span style="display:block;color:#8A93A0;font-size:10.5px;">position enregistrée (lieu non défini)</span>';
