@@ -1268,6 +1268,7 @@
       // Action buttons
       (isMe ? '<div>' +
         '<div style="display:flex;justify-content:center;align-items:center;gap:8px;flex-wrap:wrap;">' +
+          (freshU.role === 'GRAND_RESPONSABLE' ? '<button onclick="App.openRolesPanel()" style="background:#EEF3FE;color:#0B63F6;border:none;border-radius:10px;padding:8px 14px;font-size:12.5px;font-weight:800;cursor:pointer;">👑 Gérer les rôles</button>' : '') +
           (freshU.role === 'GRAND_RESPONSABLE' ? '<button onclick="App.revokeGrandResponsable()" style="background:none;color:#B0B4BB;border:none;padding:8px 6px;font-size:11.5px;font-weight:700;cursor:pointer;">🔻 Quitter Grand Resp.</button>' : '') +
           '<button onclick="' + (S.adminUnlocked ? 'App.openStorageStats()' : 'App.openAdminGate()') + '" style="background:none;color:#B0B4BB;border:none;padding:8px 6px;font-size:11.5px;font-weight:700;cursor:pointer;">🔧 Administration</button>' +
           '<button onclick="App.openDeleteAccount()" style="background:none;color:#B0B4BB;border:none;padding:8px 6px;font-size:11.5px;font-weight:700;cursor:pointer;">Supprimer mon compte</button>' +
@@ -1459,6 +1460,63 @@
               '<button type="button" onclick="App.closeAdminGate()" style="width:100%;background:#F6F7F9;color:#000;border:none;border-radius:14px;padding:13px;font-size:14.5px;font-weight:700;cursor:pointer;">Annuler</button>' +
             '</div>' +
           '</form>' +
+        '</div>' +
+      '</div>';
+    }
+
+    // Panneau « Gérer les rôles » : liste les membres et permet à un Grand
+    // Responsable de changer leur rôle (via l'Edge Function set-role → JWT).
+    function renderRolesModal() {
+      var me = S.user || {};
+      var rank = { GRAND_RESPONSABLE: 0, RESP_SECTION: 1, MEMBRE: 2 };
+      var members = (db(SK.USERS, []) || []).filter(function(m){ return m && m.id; });
+      members.sort(function(a, b) {
+        var ra = rank[a.role] == null ? 2 : rank[a.role];
+        var rb = rank[b.role] == null ? 2 : rank[b.role];
+        if (ra !== rb) return ra - rb;
+        return (((a.prenom||'') + ' ' + (a.nom||'')).trim()).localeCompare(((b.prenom||'') + ' ' + (b.nom||'')).trim());
+      });
+      var roleBtn = function(m, role, label) {
+        var active = (m.role || 'MEMBRE') === role;
+        var busy = S.roleUpdatingId === m.id;
+        var isSelf = m.id === me.id;
+        var disabled = active || busy || isSelf;
+        var bg = active ? '#0B63F6' : '#F1F3F6';
+        var col = active ? '#FFF' : '#25303F';
+        return '<button ' + (disabled ? 'disabled ' : '') +
+          'onclick="App.setMemberRole(\'' + m.id + '\',\'' + role + '\')" ' +
+          'style="flex:1;background:' + bg + ';color:' + col + ';border:none;border-radius:10px;padding:8px 4px;font-size:11px;font-weight:800;cursor:' + (disabled ? 'default' : 'pointer') + ';opacity:' + ((busy || (isSelf && !active)) ? '0.45' : '1') + ';">' + label + '</button>';
+      };
+      var rows = members.map(function(m) {
+        var name = safeHtml((((m.prenom||'') + ' ' + (m.nom||'')).trim()) || 'Membre');
+        var color = m.avatar_color || '#0B63F6';
+        var initial = (m.prenom || 'M').charAt(0).toUpperCase();
+        var isMe = m.id === me.id;
+        return '<div style="padding:12px 0;border-bottom:1px solid #F0F1F4;">' +
+          '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">' +
+            '<div style="width:36px;height:36px;border-radius:18px;background:' + color + ';color:#FFF;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;">' + initial + '</div>' +
+            '<div style="min-width:0;flex:1;">' +
+              '<div style="font-size:14px;font-weight:800;color:#0B0D12;">' + name + (isMe ? ' <span style="font-size:10px;color:#8A93A0;font-weight:700;">(vous)</span>' : '') + '</div>' +
+              '<div style="font-size:11.5px;color:#8A93A0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(m.email || '') + '</div>' +
+            '</div>' +
+          '</div>' +
+          '<div style="display:flex;gap:6px;">' +
+            roleBtn(m, 'MEMBRE', 'Membre') +
+            roleBtn(m, 'RESP_SECTION', 'Responsable') +
+            roleBtn(m, 'GRAND_RESPONSABLE', 'Grand Resp.') +
+          '</div>' +
+        '</div>';
+      }).join('');
+
+      return '<div onclick="App.closeRolesPanel()" style="position:fixed;inset:0;background:rgba(15,15,20,0.55);backdrop-filter:blur(2px);z-index:10004;display:flex;justify-content:center;align-items:flex-end;">' +
+        '<div onclick="event.stopPropagation()" style="width:100%;max-width:460px;background:#FFF;border-top-left-radius:28px;border-top-right-radius:28px;max-height:88vh;overflow-y:auto;box-shadow:0 -8px 40px rgba(0,0,0,0.18);animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
+          '<div style="display:flex;justify-content:center;padding:10px 0 0;cursor:pointer;" onclick="App.closeRolesPanel()"><div style="width:38px;height:5px;background:#E2E4E9;border-radius:3px;"></div></div>' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px 4px;">' +
+            '<h3 style="font-size:16px;font-weight:900;margin:0;color:#0B0D12;">👑 Gérer les rôles</h3>' +
+            '<button onclick="App.closeRolesPanel()" style="background:#F6F7F9;border:none;border-radius:16px;width:44px;height:44px;flex-shrink:0;touch-action:manipulation;font-size:14px;cursor:pointer;">✕</button>' +
+          '</div>' +
+          '<p style="font-size:12px;color:#8A93A0;padding:2px 20px 8px;margin:0;line-height:1.4;">Choisis un rôle pour chaque membre. La personne devra se <b>déconnecter puis reconnecter</b> pour que son nouveau rôle prenne effet.</p>' +
+          '<div style="padding:0 20px 28px;">' + (rows || '<p style="text-align:center;color:#8A93A0;padding:24px 0;">Aucun membre pour le moment.</p>') + '</div>' +
         '</div>' +
       '</div>';
     }

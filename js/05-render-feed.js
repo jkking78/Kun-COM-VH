@@ -93,6 +93,7 @@
     if (S.viewersPostId) modals += renderViewersModal();
     if (S.adminGateOpen) modals += renderAdminGateModal();
     if (S.storageStatsOpen) modals += renderStorageStatsModal();
+    if (S.rolesPanelOpen) modals += renderRolesModal();
     if (S.dmOpen) modals += renderDirectMessageModal();
     if (S.assignManagerId) modals += renderAssignManagerModal();
     // En dernier : la visionneuse doit passer par-dessus toutes les autres fenêtres.

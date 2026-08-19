@@ -373,6 +373,7 @@
   function applyAuthUser(authUser) {
     if (!authUser) { S.user = null; S.auth = 'login'; return; }
     var role = (authUser.app_metadata && authUser.app_metadata.role) || 'MEMBRE';
+    S.jwtRole = role;                     // rôle de référence pour l'utilisateur courant
     var meta = authUser.user_metadata || {};
     var users = db(SK.USERS, []);
     var me = users.find(function(x){ return x && x.id === authUser.id; });
@@ -1009,6 +1010,7 @@
         if (S.user) {
           var freshMe = mergedProfiles.find(function(x){ return x.id === S.user.id; });
           if (freshMe) {
+            if (S.jwtRole) freshMe.role = S.jwtRole;   // le JWT reste la référence du rôle
             S.user = freshMe;
             sauverSession(freshMe);
           }
@@ -1109,6 +1111,7 @@
       if (S.user) {
         var freshMe = mergedProfiles.find(function(x){ return x.id === S.user.id; });
         if (freshMe) {
+          if (S.jwtRole) freshMe.role = S.jwtRole;   // le JWT reste la référence du rôle
           S.user = freshMe;
           sauverSession(freshMe);
         }
@@ -1464,6 +1467,12 @@
     adminCodeInput: '',
     adminCodeError: false,
     adminUnlocked: false,
+    // Panneau « Gérer les rôles » (Grand Responsable) — voir renderRolesModal.
+    rolesPanelOpen: false,
+    roleUpdatingId: null,
+    // Rôle issu du JWT (app_metadata) : fait autorité pour l'utilisateur courant,
+    // même si une fiche serveur porte encore un ancien rôle.
+    jwtRole: null,
     storageStatsOpen: false,
     storageStatsLoading: false,
     storageStatsError: null,

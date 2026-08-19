@@ -1647,11 +1647,9 @@ toggleParticipation: function(postId, status) {
         try { localStorage.setItem('kc_admin_unlocked', '1'); } catch(err) {}
         render();
         App.openStorageStats();
-      } else if (v === GRAND_RESPONSABLE_CODE) {
-        App.grantGrandResponsable();
-      } else if (v === RESP_SECTION_CODE) {
-        App.grantRespSection();
       } else {
+        // Les rôles ne se donnent plus par code secret : ils se gèrent depuis le
+        // panneau « Gérer les rôles » (réservé au Grand Responsable), via le JWT.
         S.adminCodeError = true;
         render();
         setTimeout(function(){ var i = document.getElementById('adminCodeInput'); if (i) i.focus(); }, 120);
@@ -1739,6 +1737,38 @@ toggleParticipation: function(postId, status) {
       App.loadStorageStats();
     },
     closeStorageStats: function() { S.storageStatsOpen = false; render(); },
+
+    // ---- Gestion des rôles (réservée au Grand Responsable) ----
+    // Le changement de rôle passe par l'Edge Function « set-role » qui écrit le
+    // rôle dans le JWT (app_metadata) côté serveur — un membre ne peut donc pas
+    // se promouvoir lui-même. La personne concernée doit se reconnecter pour que
+    // son nouveau jeton (et donc ses droits) prenne effet.
+    openRolesPanel: function() {
+      if (!S.user || S.user.role !== 'GRAND_RESPONSABLE') { toast('Réservé au Grand Responsable.', 'error'); return; }
+      S.rolesPanelOpen = true; render();
+    },
+    closeRolesPanel: function() { S.rolesPanelOpen = false; S.roleUpdatingId = null; render(); },
+    setMemberRole: async function(userId, role) {
+      if (!S.user || S.user.role !== 'GRAND_RESPONSABLE') { toast('Réservé au Grand Responsable.', 'error'); return; }
+      if (userId === S.user.id) { toast('Vous ne pouvez pas modifier votre propre rôle ici (évite de te verrouiller dehors). Passe par un autre Grand Responsable.', 'info'); return; }
+      if (!supabase || !supabase.functions) { toast('Service indisponible.', 'error'); return; }
+      var LABELS = { MEMBRE: 'Membre', RESP_SECTION: 'Responsable', GRAND_RESPONSABLE: 'Grand Responsable' };
+      S.roleUpdatingId = userId; render();
+      try {
+        var r = await supabase.functions.invoke('set-role', { body: { userId: userId, role: role } });
+        if (r && r.error) {
+          var msg = 'Échec de la mise à jour.';
+          try { if (r.error.context && r.error.context.json) { var b = await r.error.context.json(); if (b && b.error) msg = b.error; } } catch(e){}
+          toast(msg, 'error');
+        } else {
+          var users = db(SK.USERS, []);
+          var idx = users.findIndex(function(u){ return u.id === userId; });
+          if (idx !== -1) { users[idx].role = role; dbSet(SK.USERS, users); }
+          toast('Rôle mis à jour : ' + (LABELS[role] || role) + '. La personne doit se reconnecter.', 'success');
+        }
+      } catch(e) { toast('Échec de la mise à jour.', 'error'); }
+      S.roleUpdatingId = null; render();
+    },
     // Additionne la taille de tous les fichiers du bucket post-media, page par page
     // (l'API Storage limite à 1000 résultats par appel).
     loadStorageStats: async function() {
