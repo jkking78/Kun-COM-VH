@@ -837,17 +837,22 @@
 
     // Jauge circulaire en débord au-dessus de la carte, façon compteur : la
     // valeur se lit d'un coup d'œil avant même le reste du contenu.
-    var R = 40, C = Math.round(2 * Math.PI * R);
+    // Jauge en ARC (dial ouvert en bas) plutôt qu'un cercle plein.
+    var R = 42, C = 2 * Math.PI * R;
+    var arcFrac = 0.72;                          // ~260° d'arc, ouverture centrée en bas
+    var arcLen = C * arcFrac;
+    var rot = 90 + (1 - arcFrac) * 180;          // positionne l'ouverture en bas
+    var prog = arcLen * Math.max(0, Math.min(1, pct / 100));
     var gauge = '<div style="position:relative;width:104px;height:104px;margin:0 auto;">' +
       '<div style="position:absolute;inset:0;border-radius:50%;background:' + UI.card + ';box-shadow:' + UI.sh2 + ';"></div>' +
       '<svg width="104" height="104" viewBox="0 0 104 104" style="position:relative;">' +
-        '<circle cx="52" cy="52" r="' + R + '" fill="none" stroke="' + UI.tile + '" stroke-width="8"/>' +
-        '<circle cx="52" cy="52" r="' + R + '" fill="none" stroke="' + col + '" stroke-width="8" stroke-linecap="round" stroke-dasharray="' + C + '" stroke-dashoffset="' + Math.round(C * (1 - pct / 100)) + '" transform="rotate(-90 52 52)"/>' +
+        '<circle cx="52" cy="52" r="' + R + '" fill="none" stroke="' + UI.tile + '" stroke-width="9" stroke-linecap="round" stroke-dasharray="' + arcLen + ' ' + (C * 2) + '" transform="rotate(' + rot + ' 52 52)"/>' +
+        '<circle cx="52" cy="52" r="' + R + '" fill="none" stroke="' + col + '" stroke-width="9" stroke-linecap="round" stroke-dasharray="' + prog + ' ' + (C * 2) + '" transform="rotate(' + rot + ' 52 52)" style="transition:stroke-dasharray 0.5s ease;"/>' +
       '</svg>' +
       '<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">' +
         '<div style="margin-bottom:1px;">' + ico('star', 15, col) + '</div>' +
-        '<div style="font-size:22px;font-weight:600;color:' + UI.ink + ';line-height:1;">' + String(avg).replace('.', ',') + '</div>' +
-        '<div style="font-size:10px;color:' + UI.faint + ';">sur 5</div>' +
+        '<div style="font-size:24px;font-weight:800;color:' + UI.ink + ';line-height:1;">' + String(avg).replace('.', ',') + '</div>' +
+        '<div style="font-size:10px;color:' + UI.faint + ';margin-top:1px;">sur 5</div>' +
       '</div>' +
     '</div>';
 
@@ -1196,77 +1201,53 @@
     var isFollowing = !!(S.user && S.user.following && S.user.following.indexOf(freshU.id) !== -1);
 
     // Barre de données façon "readout" caméra : chiffres en chasse fixe.
-    var statCell = function(value, lbl, accent) {
-      return '<div style="flex:1;text-align:center;padding:12px 6px;min-width:0;">' +
-        '<div style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:19px;font-weight:700;letter-spacing:-0.5px;line-height:1;color:' + (accent ? theme.primary : UI.ink) + ';">' + value + '</div>' +
-        '<div style="font-size:9.5px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;color:' + UI.faint + ';margin-top:5px;">' + lbl + '</div>' +
-      '</div>';
-    };
-    var vfBracket = function(css) { return '<div style="position:absolute;width:15px;height:15px;' + css + '"></div>'; };
     var online = !!freshU.is_online;
     var avatarInner = freshU.avatar_url
       ? '<img src="' + freshU.avatar_url + '" style="width:100%;height:100%;object-fit:cover;display:block;" />'
-      : '<div style="width:100%;height:100%;background:linear-gradient(135deg,' + theme.primary + ',#000);color:#FFF;font-size:32px;font-weight:900;display:flex;align-items:center;justify-content:center;">' + (freshU.prenom||'M').charAt(0).toUpperCase() + '</div>';
+      : '<div style="width:100%;height:100%;background:linear-gradient(135deg,' + theme.primary + ',#0B0D12);color:#FFF;font-size:30px;font-weight:800;display:flex;align-items:center;justify-content:center;">' + (freshU.prenom||'M').charAt(0).toUpperCase() + '</div>';
+    var roleLbl = ROLE_LABELS[freshU.role] || 'Membre';
+    var elevated = freshU.role && freshU.role !== 'MEMBRE';
+    var statInline = function(v, l){
+      return '<div><span style="font-size:16px;font-weight:800;color:' + UI.ink + ';">' + v + '</span> <span style="font-size:13px;color:' + UI.faint + ';">' + l + '</span></div>';
+    };
 
-    var hero = '<div>' +
-      '<div style="position:relative;' + coverBg + 'height:150px;overflow:hidden;">' +
-        '<div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0.28),rgba(0,0,0,0) 45%,rgba(0,0,0,0.35));"></div>' +
-        vfBracket('top:12px;left:12px;border-top:2px solid rgba(255,255,255,0.55);border-left:2px solid rgba(255,255,255,0.55);') +
-        vfBracket('top:12px;right:12px;border-top:2px solid rgba(255,255,255,0.55);border-right:2px solid rgba(255,255,255,0.55);') +
-        vfBracket('bottom:12px;left:12px;border-bottom:2px solid rgba(255,255,255,0.55);border-left:2px solid rgba(255,255,255,0.55);') +
-        vfBracket('bottom:12px;right:12px;border-bottom:2px solid rgba(255,255,255,0.55);border-right:2px solid rgba(255,255,255,0.55);') +
-        '<div style="position:absolute;top:14px;left:50%;transform:translateX(-50%);display:inline-flex;align-items:center;gap:7px;background:rgba(0,0,0,0.5);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);padding:5px 11px;border-radius:999px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;font-weight:700;letter-spacing:1.5px;color:#FFF;white-space:nowrap;">' +
-          '<span style="width:7px;height:7px;border-radius:50%;background:' + (online ? '#22C55E' : '#9AA3AE') + ';box-shadow:0 0 0 3px ' + (online ? 'rgba(34,197,94,0.28)' : 'rgba(154,163,174,0.22)') + ';"></span>' +
-          (online ? 'EN LIGNE' : 'HORS LIGNE') +
+    var hero = '<div style="background:' + UI.card + ';padding:18px 18px 18px;">' +
+      '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;">' +
+        '<div style="flex:1;min-width:0;">' +
+          '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
+            '<span style="font-size:23px;font-weight:800;letter-spacing:-0.4px;color:' + UI.ink + ';line-height:1.15;">' + safeHtml(freshU.prenom + ' ' + freshU.nom) + '</span>' +
+            (elevated ? '<span style="background:' + theme.badgeBg + ';color:' + theme.badgeText + ';font-size:11px;font-weight:800;padding:3px 9px;border-radius:999px;">' + roleLbl + '</span>' : '') +
+          '</div>' +
+          (uSecs.length ? '<div style="font-size:13.5px;color:' + UI.muted + ';margin-top:4px;">' + uSecs.map(function(s){ return secNom(s); }).join(' · ') + '</div>' : '') +
         '</div>' +
-        (isMe ? '<label style="position:absolute;top:11px;right:11px;background:rgba(0,0,0,0.5);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:3;">' +
-          '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>' +
-          '<input type="file" accept="image/*" onchange="App.handleCoverSelect(event)" style="display:none;">' +
-        '</label>' : '') +
+        '<div style="position:relative;flex-shrink:0;">' +
+          '<div style="width:76px;height:76px;border-radius:50%;overflow:hidden;background:' + UI.tile + ';box-shadow:0 2px 8px rgba(0,0,0,0.08);">' + avatarInner + '</div>' +
+          (online && !isMe ? '<span style="position:absolute;bottom:3px;right:3px;width:14px;height:14px;border-radius:50%;background:#22C55E;border:3px solid ' + UI.card + ';"></span>' : '') +
+          (isMe ? '<label style="position:absolute;bottom:-2px;right:-2px;background:' + UI.card + ';border:1px solid ' + UI.line2 + ';border-radius:50%;width:27px;height:27px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.12);">' +
+            '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="' + UI.ink + '" stroke-width="2.2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>' +
+            '<input type="file" accept="image/*" onchange="App.handleAvatarSelect(event)" style="display:none;">' +
+          '</label>' : '') +
+        '</div>' +
       '</div>' +
 
-      '<div style="background:' + UI.card + ';padding:0 16px 18px;">' +
-        '<div style="margin-top:-42px;position:relative;z-index:2;display:flex;align-items:flex-end;justify-content:space-between;gap:12px;">' +
-          '<div style="position:relative;flex-shrink:0;">' +
-            '<div style="width:84px;height:84px;border-radius:24px;padding:3px;background:' + theme.primary + ';box-shadow:0 8px 22px rgba(0,0,0,0.22);">' +
-              '<div style="width:100%;height:100%;border-radius:21px;border:3px solid ' + UI.card + ';overflow:hidden;background:' + UI.tile + ';">' + avatarInner + '</div>' +
-            '</div>' +
-            (isMe ? '<label style="position:absolute;bottom:-4px;right:-4px;background:' + UI.card + ';border:1px solid ' + UI.line2 + ';border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.12);">' +
-              '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="' + UI.ink + '" stroke-width="2.2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>' +
-              '<input type="file" accept="image/*" onchange="App.handleAvatarSelect(event)" style="display:none;">' +
-            '</label>' : '') +
-          '</div>' +
-          '<span style="display:inline-flex;align-items:center;gap:6px;background:' + theme.badgeBg + ';color:' + theme.badgeText + ';font-size:10.5px;font-weight:800;letter-spacing:0.8px;text-transform:uppercase;padding:6px 11px;border-radius:999px;margin-bottom:4px;">' + (ROLE_LABELS[freshU.role] || 'Membre') + '</span>' +
-        '</div>' +
+      (freshU.bio ? '<div style="font-size:14px;color:' + UI.muted + ';line-height:1.5;margin-top:12px;white-space:pre-wrap;">' + safeHtml(freshU.bio) + '</div>' : '') +
+      (freshU.skills ? '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:11px;">' +
+        freshU.skills.split(',').map(function(s){ var t=(s||'').trim(); return t ? '<span style="background:' + UI.tile + ';color:' + UI.ink + ';font-size:12.5px;font-weight:600;padding:5px 12px;border-radius:999px;">' + safeHtml(t) + '</span>' : ''; }).join('') +
+      '</div>' : '') +
 
-        '<div style="margin-top:12px;">' +
-          '<div style="font-size:23px;font-weight:800;letter-spacing:-0.6px;color:' + UI.ink + ';line-height:1.1;word-break:break-word;">' + safeHtml(freshU.prenom + ' ' + freshU.nom) + '</div>' +
-          (uSecs.length ? '<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;">' + secBadges + '</div>' : '') +
-        '</div>' +
+      '<div style="display:flex;gap:20px;margin-top:14px;">' +
+        statInline(myPosts.length, 'Publications') +
+        statInline(hStats.count, 'Services') +
+        statInline(String(hStats.average).replace('.', ',') + '★', 'Note') +
+      '</div>' +
 
-        '<div style="display:flex;align-items:stretch;background:' + UI.tile + ';border:0.5px solid ' + UI.line2 + ';border-radius:16px;overflow:hidden;margin-top:16px;">' +
-          statCell(myPosts.length, 'Publications', false) +
-          '<div style="width:0.5px;background:' + UI.line + ';"></div>' +
-          statCell(hStats.count, 'Services', false) +
-          '<div style="width:0.5px;background:' + UI.line + ';"></div>' +
-          statCell(String(hStats.average).replace('.', ',') + '★', 'Note', true) +
-        '</div>' +
-
-        (freshU.bio ? '<div style="font-size:13.5px;color:' + UI.muted + ';line-height:1.5;margin-top:14px;white-space:pre-wrap;">' + safeHtml(freshU.bio) + '</div>' : '') +
-        (freshU.skills ? '<div style="margin-top:14px;">' +
-          '<div style="font-size:10.5px;font-weight:800;color:' + UI.faint + ';text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Savoir-faire</div>' +
-          '<div style="display:flex;flex-wrap:wrap;gap:6px;">' +
-            freshU.skills.split(',').map(function(s){ var t=(s||'').trim(); return t ? '<span style="background:' + theme.primary + '14;color:' + theme.primary + ';font-size:12px;font-weight:700;padding:6px 11px;border-radius:10px;">' + safeHtml(t) + '</span>' : ''; }).join('') +
-          '</div></div>' : '') +
-
-        '<div style="display:flex;gap:8px;margin-top:16px;">' +
-          (isMe
-            ? '<button onclick="App.openEditProfile()" style="flex:1;background:' + UI.card + ';color:' + UI.ink + ';border:1px solid ' + UI.line2 + ';border-radius:14px;padding:12px;font-size:13.5px;font-weight:700;cursor:pointer;">Modifier le profil</button>' +
-              '<button onclick="App.tab(\'home\');App.openCreate();" style="flex:1;background:' + theme.primary + ';color:#FFF;border:none;border-radius:14px;padding:12px;font-size:13.5px;font-weight:700;cursor:pointer;box-shadow:0 4px 12px ' + theme.primary + '40;">Publier</button>'
-            : '<button onclick="App.toggleFollow(\'' + freshU.id + '\')" style="flex:1;background:' + (isFollowing ? UI.card : theme.primary) + ';color:' + (isFollowing ? UI.ink : '#FFF') + ';border:' + (isFollowing ? '1px solid ' + UI.line2 : 'none') + ';border-radius:14px;padding:12px;font-size:13.5px;font-weight:700;cursor:pointer;">' + (isFollowing ? 'Suivi' : 'Suivre') + '</button>' +
-              '<button onclick="App.openDirectMessage(\'' + freshU.id + '\')" style="flex:1;background:' + UI.card + ';color:' + UI.ink + ';border:1px solid ' + UI.line2 + ';border-radius:14px;padding:12px;font-size:13.5px;font-weight:700;cursor:pointer;">Message</button>'
-          ) +
-        '</div>' +
+      '<div style="display:flex;gap:8px;margin-top:16px;">' +
+        (isMe
+          ? '<button onclick="App.openEditProfile()" style="flex:1;background:' + UI.tile + ';color:' + UI.ink + ';border:none;border-radius:10px;padding:10px;font-size:14px;font-weight:700;cursor:pointer;">Modifier le profil</button>' +
+            '<button onclick="App.tab(\'home\');App.openCreate();" style="flex:1;background:' + theme.primary + ';color:#FFF;border:none;border-radius:10px;padding:10px;font-size:14px;font-weight:700;cursor:pointer;">Publier</button>'
+          : '<button onclick="App.toggleFollow(\'' + freshU.id + '\')" style="flex:1;background:' + (isFollowing ? UI.tile : theme.primary) + ';color:' + (isFollowing ? UI.ink : '#FFF') + ';border:none;border-radius:10px;padding:10px;font-size:14px;font-weight:700;cursor:pointer;">' + (isFollowing ? 'Suivi' : 'Suivre') + '</button>' +
+            '<button onclick="App.openDirectMessage(\'' + freshU.id + '\')" style="flex:1;background:' + UI.tile + ';color:' + UI.ink + ';border:none;border-radius:10px;padding:10px;font-size:14px;font-weight:700;cursor:pointer;">Message</button>'
+        ) +
       '</div>' +
     '</div>';
 
@@ -1297,7 +1278,6 @@
         '<div style="display:flex;justify-content:center;align-items:center;gap:8px;flex-wrap:wrap;">' +
           (freshU.role === 'GRAND_RESPONSABLE' ? '<button onclick="App.openRolesPanel()" style="background:#EEF3FE;color:#0B63F6;border:none;border-radius:10px;padding:8px 14px;font-size:12.5px;font-weight:800;cursor:pointer;">👑 Gérer les rôles</button>' : '') +
           (freshU.role === 'GRAND_RESPONSABLE' ? '<button onclick="App.revokeGrandResponsable()" style="background:none;color:#B0B4BB;border:none;padding:8px 6px;font-size:11.5px;font-weight:700;cursor:pointer;">🔻 Quitter Admin</button>' : '') +
-          '<button onclick="' + (S.adminUnlocked ? 'App.openStorageStats()' : 'App.openAdminGate()') + '" style="background:none;color:#B0B4BB;border:none;padding:8px 6px;font-size:11.5px;font-weight:700;cursor:pointer;">🔧 Administration</button>' +
           '<button onclick="App.openDeleteAccount()" style="background:none;color:#B0B4BB;border:none;padding:8px 6px;font-size:11.5px;font-weight:700;cursor:pointer;">Supprimer mon compte</button>' +
           '<button onclick="App.logout()" style="background:#FEE2E2;color:#E2445C;border:none;border-radius:10px;padding:8px 14px;font-size:12.5px;font-weight:800;cursor:pointer;">Se déconnecter 🚪</button>' +
         '</div>' +
