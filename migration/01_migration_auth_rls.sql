@@ -70,6 +70,13 @@ create policy p_dms_delete on public.kun_com_dms
   using (from_id = auth.uid()::text);
 
 -- 6) STOCKAGE (buckets avatars / post-media) ---------------------------------
+-- Créer les buckets s'ils n'existent pas (publics en lecture). Sans eux, chaque
+-- upload d'avatar/média échouait et l'app retombait sur du base64 stocké EN BASE
+-- — d'où l'explosion de l'egress (re-téléchargement à chaque synchronisation).
+insert into storage.buckets (id, name, public)
+values ('avatars','avatars',true), ('post-media','post-media',true)
+on conflict (id) do update set public = true;
+
 create policy p_storage_read on storage.objects
   for select using (bucket_id in ('avatars','post-media'));
 create policy p_storage_write on storage.objects
