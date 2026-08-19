@@ -1195,53 +1195,76 @@
     var hStats = punctualityHistory(freshU.id);
     var isFollowing = !!(S.user && S.user.following && S.user.following.indexOf(freshU.id) !== -1);
 
-    var statCol = function(value, lbl) {
-      return '<div style="flex:1;text-align:center;min-width:0;">' +
-        '<div style="font-size:17px;font-weight:600;color:' + UI.ink + ';line-height:1.2;">' + value + '</div>' +
-        '<div style="font-size:11px;color:' + UI.faint + ';">' + lbl + '</div>' +
+    // Barre de données façon "readout" caméra : chiffres en chasse fixe.
+    var statCell = function(value, lbl, accent) {
+      return '<div style="flex:1;text-align:center;padding:12px 6px;min-width:0;">' +
+        '<div style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:19px;font-weight:700;letter-spacing:-0.5px;line-height:1;color:' + (accent ? theme.primary : UI.ink) + ';">' + value + '</div>' +
+        '<div style="font-size:9.5px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase;color:' + UI.faint + ';margin-top:5px;">' + lbl + '</div>' +
       '</div>';
     };
+    var vfBracket = function(css) { return '<div style="position:absolute;width:15px;height:15px;' + css + '"></div>'; };
+    var online = !!freshU.is_online;
+    var avatarInner = freshU.avatar_url
+      ? '<img src="' + freshU.avatar_url + '" style="width:100%;height:100%;object-fit:cover;display:block;" />'
+      : '<div style="width:100%;height:100%;background:linear-gradient(135deg,' + theme.primary + ',#000);color:#FFF;font-size:32px;font-weight:900;display:flex;align-items:center;justify-content:center;">' + (freshU.prenom||'M').charAt(0).toUpperCase() + '</div>';
 
     var hero = '<div>' +
-      '<div style="position:relative;' + coverBg + 'height:132px;">' +
-        (isMe ? '<label style="position:absolute;top:10px;right:10px;background:rgba(0,0,0,0.45);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:2;">' +
+      '<div style="position:relative;' + coverBg + 'height:150px;overflow:hidden;">' +
+        '<div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0.28),rgba(0,0,0,0) 45%,rgba(0,0,0,0.35));"></div>' +
+        vfBracket('top:12px;left:12px;border-top:2px solid rgba(255,255,255,0.55);border-left:2px solid rgba(255,255,255,0.55);') +
+        vfBracket('top:12px;right:12px;border-top:2px solid rgba(255,255,255,0.55);border-right:2px solid rgba(255,255,255,0.55);') +
+        vfBracket('bottom:12px;left:12px;border-bottom:2px solid rgba(255,255,255,0.55);border-left:2px solid rgba(255,255,255,0.55);') +
+        vfBracket('bottom:12px;right:12px;border-bottom:2px solid rgba(255,255,255,0.55);border-right:2px solid rgba(255,255,255,0.55);') +
+        '<div style="position:absolute;top:14px;left:50%;transform:translateX(-50%);display:inline-flex;align-items:center;gap:7px;background:rgba(0,0,0,0.5);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);padding:5px 11px;border-radius:999px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;font-weight:700;letter-spacing:1.5px;color:#FFF;white-space:nowrap;">' +
+          '<span style="width:7px;height:7px;border-radius:50%;background:' + (online ? '#22C55E' : '#9AA3AE') + ';box-shadow:0 0 0 3px ' + (online ? 'rgba(34,197,94,0.28)' : 'rgba(154,163,174,0.22)') + ';"></span>' +
+          (online ? 'EN LIGNE' : 'HORS LIGNE') +
+        '</div>' +
+        (isMe ? '<label style="position:absolute;top:11px;right:11px;background:rgba(0,0,0,0.5);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:3;">' +
           '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>' +
           '<input type="file" accept="image/*" onchange="App.handleCoverSelect(event)" style="display:none;">' +
         '</label>' : '') +
       '</div>' +
 
-      '<div style="background:' + UI.card + ';padding:0 16px 16px;">' +
-        '<div style="display:flex;align-items:flex-start;gap:8px;margin-top:-44px;">' +
-          '<div style="flex:1;padding-top:52px;">' + statCol(myPosts.length, 'Publications') + '</div>' +
+      '<div style="background:' + UI.card + ';padding:0 16px 18px;">' +
+        '<div style="margin-top:-42px;position:relative;z-index:2;display:flex;align-items:flex-end;justify-content:space-between;gap:12px;">' +
           '<div style="position:relative;flex-shrink:0;">' +
-            '<div style="width:88px;height:88px;border-radius:50%;padding:3px;background:' + theme.primary + ';">' +
-              '<div style="width:100%;height:100%;border-radius:50%;border:3px solid ' + UI.card + ';overflow:hidden;background:' + UI.tile + ';">' + avatarContent + '</div>' +
+            '<div style="width:84px;height:84px;border-radius:24px;padding:3px;background:' + theme.primary + ';box-shadow:0 8px 22px rgba(0,0,0,0.22);">' +
+              '<div style="width:100%;height:100%;border-radius:21px;border:3px solid ' + UI.card + ';overflow:hidden;background:' + UI.tile + ';">' + avatarInner + '</div>' +
             '</div>' +
-            (isMe ? '<label style="position:absolute;bottom:0;right:0;background:' + UI.card + ';border:0.5px solid ' + UI.line2 + ';border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;">' +
+            (isMe ? '<label style="position:absolute;bottom:-4px;right:-4px;background:' + UI.card + ';border:1px solid ' + UI.line2 + ';border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.12);">' +
               '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="' + UI.ink + '" stroke-width="2.2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>' +
               '<input type="file" accept="image/*" onchange="App.handleAvatarSelect(event)" style="display:none;">' +
             '</label>' : '') +
           '</div>' +
-          '<div style="flex:1;padding-top:52px;">' + statCol(hStats.count, 'Services au total') + '</div>' +
+          '<span style="display:inline-flex;align-items:center;gap:6px;background:' + theme.badgeBg + ';color:' + theme.badgeText + ';font-size:10.5px;font-weight:800;letter-spacing:0.8px;text-transform:uppercase;padding:6px 11px;border-radius:999px;margin-bottom:4px;">' + (ROLE_LABELS[freshU.role] || 'Membre') + '</span>' +
         '</div>' +
 
-        '<div style="text-align:center;margin-top:10px;">' +
-          '<div style="font-size:19px;font-weight:600;color:' + UI.ink + ';letter-spacing:-0.3px;">' + safeHtml(freshU.prenom + ' ' + freshU.nom) + '</div>' +
-          '<div style="font-size:13px;color:' + theme.primary + ';font-weight:500;margin-top:2px;">' + (ROLE_LABELS[freshU.role]||'Membre') + (uSecs.length ? ' · ' + uSecs.map(function(x){ return secNom(x); }).join(' · ') : '') + '</div>' +
-          (freshU.bio ? '<div style="font-size:13.5px;color:' + UI.muted + ';line-height:1.5;margin-top:8px;white-space:pre-wrap;">' + safeHtml(freshU.bio) + '</div>' : '') +
-          (freshU.skills ? '<div style="margin-top:12px;">' +
-            '<div style="font-size:11px;font-weight:800;color:' + UI.faint + ';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Savoir-faire</div>' +
-            '<div style="display:flex;flex-wrap:wrap;gap:6px;">' +
-              freshU.skills.split(',').map(function(s){ var t=(s||'').trim(); return t ? '<span style="background:#EEF3FE;color:#0B63F6;font-size:12px;font-weight:700;padding:5px 10px;border-radius:12px;">' + safeHtml(t) + '</span>' : ''; }).join('') +
-            '</div></div>' : '') +
+        '<div style="margin-top:12px;">' +
+          '<div style="font-size:23px;font-weight:800;letter-spacing:-0.6px;color:' + UI.ink + ';line-height:1.1;word-break:break-word;">' + safeHtml(freshU.prenom + ' ' + freshU.nom) + '</div>' +
+          (uSecs.length ? '<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;">' + secBadges + '</div>' : '') +
         '</div>' +
 
-        '<div style="display:flex;gap:8px;margin-top:14px;">' +
+        '<div style="display:flex;align-items:stretch;background:' + UI.tile + ';border:0.5px solid ' + UI.line2 + ';border-radius:16px;overflow:hidden;margin-top:16px;">' +
+          statCell(myPosts.length, 'Publications', false) +
+          '<div style="width:0.5px;background:' + UI.line + ';"></div>' +
+          statCell(hStats.count, 'Services', false) +
+          '<div style="width:0.5px;background:' + UI.line + ';"></div>' +
+          statCell(String(hStats.average).replace('.', ',') + '★', 'Note', true) +
+        '</div>' +
+
+        (freshU.bio ? '<div style="font-size:13.5px;color:' + UI.muted + ';line-height:1.5;margin-top:14px;white-space:pre-wrap;">' + safeHtml(freshU.bio) + '</div>' : '') +
+        (freshU.skills ? '<div style="margin-top:14px;">' +
+          '<div style="font-size:10.5px;font-weight:800;color:' + UI.faint + ';text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Savoir-faire</div>' +
+          '<div style="display:flex;flex-wrap:wrap;gap:6px;">' +
+            freshU.skills.split(',').map(function(s){ var t=(s||'').trim(); return t ? '<span style="background:' + theme.primary + '14;color:' + theme.primary + ';font-size:12px;font-weight:700;padding:6px 11px;border-radius:10px;">' + safeHtml(t) + '</span>' : ''; }).join('') +
+          '</div></div>' : '') +
+
+        '<div style="display:flex;gap:8px;margin-top:16px;">' +
           (isMe
-            ? '<button onclick="App.openEditProfile()" style="flex:1;background:' + UI.card + ';color:' + UI.ink + ';border:0.5px solid ' + UI.line2 + ';border-radius:' + UI.r1 + ';padding:11px;font-size:13.5px;font-weight:500;cursor:pointer;">Modifier le profil</button>' +
-              '<button onclick="App.tab(\'home\');App.openCreate();" style="flex:1;background:' + theme.primary + ';color:#FFF;border:none;border-radius:' + UI.r1 + ';padding:11px;font-size:13.5px;font-weight:500;cursor:pointer;">Publier</button>'
-            : '<button onclick="App.toggleFollow(\'' + freshU.id + '\')" style="flex:1;background:' + (isFollowing ? UI.card : theme.primary) + ';color:' + (isFollowing ? UI.ink : '#FFF') + ';border:' + (isFollowing ? '0.5px solid ' + UI.line2 : 'none') + ';border-radius:' + UI.r1 + ';padding:11px;font-size:13.5px;font-weight:500;cursor:pointer;">' + (isFollowing ? 'Suivi' : 'Suivre') + '</button>' +
-              '<button onclick="App.openDirectMessage(\'' + freshU.id + '\')" style="flex:1;background:' + UI.card + ';color:' + UI.ink + ';border:0.5px solid ' + UI.line2 + ';border-radius:' + UI.r1 + ';padding:11px;font-size:13.5px;font-weight:500;cursor:pointer;">Message</button>'
+            ? '<button onclick="App.openEditProfile()" style="flex:1;background:' + UI.card + ';color:' + UI.ink + ';border:1px solid ' + UI.line2 + ';border-radius:14px;padding:12px;font-size:13.5px;font-weight:700;cursor:pointer;">Modifier le profil</button>' +
+              '<button onclick="App.tab(\'home\');App.openCreate();" style="flex:1;background:' + theme.primary + ';color:#FFF;border:none;border-radius:14px;padding:12px;font-size:13.5px;font-weight:700;cursor:pointer;box-shadow:0 4px 12px ' + theme.primary + '40;">Publier</button>'
+            : '<button onclick="App.toggleFollow(\'' + freshU.id + '\')" style="flex:1;background:' + (isFollowing ? UI.card : theme.primary) + ';color:' + (isFollowing ? UI.ink : '#FFF') + ';border:' + (isFollowing ? '1px solid ' + UI.line2 : 'none') + ';border-radius:14px;padding:12px;font-size:13.5px;font-weight:700;cursor:pointer;">' + (isFollowing ? 'Suivi' : 'Suivre') + '</button>' +
+              '<button onclick="App.openDirectMessage(\'' + freshU.id + '\')" style="flex:1;background:' + UI.card + ';color:' + UI.ink + ';border:1px solid ' + UI.line2 + ';border-radius:14px;padding:12px;font-size:13.5px;font-weight:700;cursor:pointer;">Message</button>'
           ) +
         '</div>' +
       '</div>' +

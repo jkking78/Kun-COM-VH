@@ -2549,7 +2549,7 @@
   // ainsi étiqueté d'un clap de cinéma. La hiérarchie passe désormais par la
   // couleur du badge (voir roleTint), qui elle ne peut rien signifier d'autre.
   var ROLE_LABELS = {
-    GRAND_RESPONSABLE: 'Grand responsable',
+    GRAND_RESPONSABLE: 'Admin',
     RESP_SECTION: 'Responsable',
     MEMBRE: 'Membre',
     STAGIAIRE: 'Stagiaire'
