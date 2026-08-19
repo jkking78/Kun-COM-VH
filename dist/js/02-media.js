@@ -73,25 +73,62 @@
   // publications grandit. En cas d'échec (bucket pas encore créé, hors-ligne,
   // etc.) on retombe automatiquement sur le data:URL, pour ne jamais bloquer
   // la publication.
+  // Nombre d'uploads média encore en cours. Sert à mettre le bouton « Publier »
+  // en attente le temps que Storage réponde, pour ne JAMAIS enregistrer un média
+  // en base64 dans la base par précipitation.
+  var _mediaUploadsPending = 0;
+  function mediaUploadsPending() { return _mediaUploadsPending; }
+  // Attend la fin des uploads en cours. Pendant l'attente, met le bouton fourni
+  // en état « Envoi du média… » (désactivé). Plafond de 60 s pour ne jamais
+  // bloquer indéfiniment (au pire on publie ce qu'on a).
+  function waitForMediaUploads(btn) {
+    return new Promise(function(resolve) {
+      if (_mediaUploadsPending <= 0) { resolve(); return; }
+      var original = null, waited = 0;
+      if (btn) { original = btn.textContent; btn.disabled = true; btn.style.opacity = '0.7'; btn.textContent = 'Envoi du média…'; }
+      var timer = setInterval(function() {
+        waited += 120;
+        if (_mediaUploadsPending <= 0 || waited > 60000) {
+          clearInterval(timer);
+          if (btn) { btn.disabled = false; btn.style.opacity = ''; if (original !== null) btn.textContent = original; }
+          resolve();
+        }
+      }, 120);
+    });
+  }
+
   function uploadMediaToStorage(dataUrl, callback) {
     if (!supabase || !supabase.storage) { callback(null); return; }
+    var path, blob;
     try {
       var ext = extFromDataUrl(dataUrl);
-      var blob = dataUrlToBlob(dataUrl);
+      blob = dataUrlToBlob(dataUrl);
       var folder = (S.user && S.user.id) ? S.user.id : 'anon';
-      var path = folder + '/' + Date.now() + '_' + Math.random().toString(36).slice(2, 8) + '.' + ext;
+      path = folder + '/' + Date.now() + '_' + Math.random().toString(36).slice(2, 8) + '.' + ext;
+    } catch (e) { callback(null); return; }
+
+    // À partir d'ici l'envoi est engagé : on compte un upload en cours, et on
+    // garantit qu'il est décompté exactement une fois, quelle que soit l'issue.
+    _mediaUploadsPending++;
+    var settled = false;
+    var done = function(url) {
+      if (settled) return; settled = true;
+      _mediaUploadsPending = Math.max(0, _mediaUploadsPending - 1);
+      callback(url);
+    };
+    try {
       supabase.storage.from('post-media').upload(path, blob, { contentType: blob.type || undefined, upsert: false }).then(
         function(res) {
-          if (!res || res.error) { console.warn('Storage upload error:', res && res.error); callback(null); return; }
+          if (!res || res.error) { console.warn('Storage upload error:', res && res.error); done(null); return; }
           try {
             var pub = supabase.storage.from('post-media').getPublicUrl(path);
             var url = pub && pub.data ? pub.data.publicUrl : null;
-            callback(url || null);
-          } catch (e) { callback(null); }
+            done(url || null);
+          } catch (e) { done(null); }
         },
-        function(err) { console.warn('Storage upload exception:', err); callback(null); }
+        function(err) { console.warn('Storage upload exception:', err); done(null); }
       );
-    } catch (e) { callback(null); }
+    } catch (e) { done(null); }
   }
 
   // Extrait le chemin interne (bucket path) d'une URL publique Supabase Storage,

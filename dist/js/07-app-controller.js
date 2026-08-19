@@ -431,6 +431,10 @@
       }
       if (S.eventImageProcessing) { toast('L\'image est encore en cours de traitement.', 'info'); return; }
 
+      // Attendre la fin de l'envoi de l'image vers Storage (jamais de base64 en base).
+      // Le bouton passe en « Envoi du média… » le temps que Storage réponde.
+      await waitForMediaUploads(btn);
+
       // ---- Mode MODIFICATION ----
       // Deux issues possibles : écraser l'événement existant, ou en créer un
       // nouveau en conservant l'ancien (pratique pour les événements répétitifs :
@@ -2609,6 +2613,12 @@ toggleParticipation: function(postId, status) {
       var txt = ((document.getElementById('newPostText')||{}).value||'').trim();
       if (!txt && S.pendingMedia.length===0 && !S.pollOpen) { toast('Ajoutez du texte, une photo ou un sondage.', 'error'); return; }
       if (!S.user) { toast('Vous devez être connecté.', 'error'); return; }
+
+      // Ne jamais enregistrer un média en base64 : si un envoi vers Storage est
+      // encore en cours, on met « Publier » en attente (« Envoi du média… ») et on
+      // ne construit la publication qu'une fois les URLs hébergées disponibles.
+      var _submitBtn = (e && e.submitter) || document.querySelector('button[form="createPostForm"]');
+      await waitForMediaUploads(_submitBtn);
 
       // Sondage optionnel : validé avant tout appel réseau (géoloc), pour ne
       // pas faire attendre l'utilisateur pour rien s'il a laissé le formulaire incomplet.
