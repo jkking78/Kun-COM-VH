@@ -39,9 +39,9 @@
       var task = taskInput.value.trim();
       S.eventAssignments = S.eventAssignments || [];
 
-      // Valeur "sec:<id>" = tâche confiée à un pôle entier (Grand Responsable).
+      // Valeur "sec:<id>" = tâche confiée à un pôle entier (Admin).
       if (select.value.indexOf('sec:') === 0) {
-        if (!isGrandResponsable(S.user)) { toast('Seul le Grand Responsable peut assigner un pôle entier.', 'error'); return; }
+        if (!isGrandResponsable(S.user)) { toast('Seul le Admin peut assigner un pôle entier.', 'error'); return; }
         var secId = select.value.slice(4);
         var sec = SECTIONS.find(function(s){ return s.id === secId; });
         if (!sec) return;
@@ -96,7 +96,7 @@
     // GESTION DES ASSIGNATIONS SUR UN ÉVÉNEMENT EXISTANT
     // ============================================================
     // Permet à un responsable de section de désigner qui est de service dans SON
-    // pôle sur un événement créé par quelqu'un d'autre (le Grand Responsable en
+    // pôle sur un événement créé par quelqu'un d'autre (le Admin en
     // général), sans lui donner le droit de modifier l'événement lui-même.
     openAssignManager: function(postId) {
       var post = db(SK.POSTS, []).find(function(p){ return p.id === postId; });
@@ -565,7 +565,7 @@
       var posts = db(SK.POSTS, []);
       var p = posts.find(function(x){ return x.id === postId; });
       if (!p) { toast('Publication introuvable.', 'error'); return; }
-      // Le créateur de la publication et le Grand Responsable, personne d'autre.
+      // Le créateur de la publication et le Admin, personne d'autre.
       if (u.role !== 'GRAND_RESPONSABLE' && p.userId !== u.id) {
         toast('Seul l\'auteur peut épingler cette publication.', 'error');
         return;
@@ -1383,8 +1383,8 @@ toggleParticipation: function(postId, status) {
       var userSecs = S.signupSections.length > 0 ? S.signupSections.slice() : ['cadrage'];
       try {
         // INSCRIPTION SUPABASE AUTH — crée le compte dans auth.users. Le rôle est
-        // TOUJOURS MEMBRE ; l'élévation (Responsable / Grand Responsable) ne se fait
-        // qu'ensuite, par un Grand Responsable via l'Edge Function protégée.
+        // TOUJOURS MEMBRE ; l'élévation (Responsable / Admin) ne se fait
+        // qu'ensuite, par un Admin via l'Edge Function protégée.
         var resp = await supabase.auth.signUp({
           email: email, password: pwd,
           options: { data: { prenom: prenom, nom: nom } }
@@ -1637,7 +1637,7 @@ toggleParticipation: function(postId, status) {
     // stockage AZ7887 et l'ancien code "Admin78" du champ "Autre" à l'inscription,
     // désormais retiré du formulaire) :
     // - AZ7887 ouvre le panneau de statistiques de stockage
-    // - Admin78 promeut le compte actuellement connecté au rôle Grand Responsable
+    // - Admin78 promeut le compte actuellement connecté au rôle Admin
     submitAdminCode: function(e) {
       e && e.preventDefault();
       var v = (S.adminCodeInput || '').trim().toUpperCase();
@@ -1649,20 +1649,20 @@ toggleParticipation: function(postId, status) {
         App.openStorageStats();
       } else {
         // Les rôles ne se donnent plus par code secret : ils se gèrent depuis le
-        // panneau « Gérer les rôles » (réservé au Grand Responsable), via le JWT.
+        // panneau « Gérer les rôles » (réservé au Admin), via le JWT.
         S.adminCodeError = true;
         render();
         setTimeout(function(){ var i = document.getElementById('adminCodeInput'); if (i) i.focus(); }, 120);
       }
     },
-    // Promeut le compte connecté au rôle Grand Responsable (accès complet : création
+    // Promeut le compte connecté au rôle Admin (accès complet : création
     // de publications, suppression de n'importe quelle publication, etc.).
     grantGrandResponsable: function() {
       if (!S.user) { S.adminCodeError = true; render(); return; }
       if (S.user.role === 'GRAND_RESPONSABLE') {
         S.adminGateOpen = false;
         render();
-        toast('Ce compte est déjà Grand Responsable.', 'info');
+        toast('Ce compte est déjà Admin.', 'info');
         return;
       }
       S.user.role = 'GRAND_RESPONSABLE';
@@ -1675,7 +1675,7 @@ toggleParticipation: function(postId, status) {
       S.adminGateOpen = false;
       S.adminCodeInput = '';
       render();
-      toast('Accès Grand Responsable accordé.', 'success');
+      toast('Accès Admin accordé.', 'success');
     },
     // Promeut le compte connecté au rôle Responsable de pôle (code RP787).
     grantRespSection: function() {
@@ -1686,14 +1686,14 @@ toggleParticipation: function(postId, status) {
         toast('Ce compte est déjà Responsable.', 'info');
         return;
       }
-      // Un Grand Responsable a un accès PLUS large : ce code ne doit pas le lui
+      // Un Admin a un accès PLUS large : ce code ne doit pas le lui
       // retirer par une simple faute de frappe dans le même champ de saisie. Le
       // changement volontaire d'un rôle se fait depuis la fiche du membre.
       if (S.user.role === 'GRAND_RESPONSABLE') {
         S.adminGateOpen = false;
         S.adminCodeInput = '';
         render();
-        toast('Ce compte est Grand Responsable, un accès déjà supérieur. Rôle inchangé.', 'info');
+        toast('Ce compte est Admin, un accès déjà supérieur. Rôle inchangé.', 'info');
         return;
       }
       S.user.role = 'RESP_SECTION';
@@ -1716,10 +1716,10 @@ toggleParticipation: function(postId, status) {
       toast('Panneau admin verrouillé.', 'success');
     },
     // Rétrograde le compte connecté au rôle MEMBRE (seul moyen de sortir du rôle
-    // Grand Responsable — il n'existait auparavant aucun bouton pour cela).
+    // Admin — il n'existait auparavant aucun bouton pour cela).
     revokeGrandResponsable: function() {
       if (!S.user || S.user.role !== 'GRAND_RESPONSABLE') return;
-      if (!window.confirm('Quitter le rôle Grand Responsable et repasser en Membre simple ?')) return;
+      if (!window.confirm('Quitter le rôle Admin et repasser en Membre simple ?')) return;
       S.user.role = 'MEMBRE';
       var allUsers = db(SK.USERS, []);
       var uIdx = allUsers.findIndex(function(u){ return u.id === S.user.id; });
@@ -1728,7 +1728,7 @@ toggleParticipation: function(postId, status) {
       sauverSession(S.user);
       if (supabase) supabase.from('kun_com_profiles').upsert({ id: S.user.id, content: S.user }, { onConflict: 'id' }).then(function(){}, function(e){});
       render();
-      toast('Rôle Grand Responsable retiré — vous êtes de nouveau Membre.', 'success');
+      toast('Rôle Admin retiré — vous êtes de nouveau Membre.', 'success');
     },
     openStorageStats: function() {
       if (!S.adminUnlocked) { App.openAdminGate(); return; }
@@ -1738,21 +1738,21 @@ toggleParticipation: function(postId, status) {
     },
     closeStorageStats: function() { S.storageStatsOpen = false; render(); },
 
-    // ---- Gestion des rôles (réservée au Grand Responsable) ----
+    // ---- Gestion des rôles (réservée au Admin) ----
     // Le changement de rôle passe par l'Edge Function « set-role » qui écrit le
     // rôle dans le JWT (app_metadata) côté serveur — un membre ne peut donc pas
     // se promouvoir lui-même. La personne concernée doit se reconnecter pour que
     // son nouveau jeton (et donc ses droits) prenne effet.
     openRolesPanel: function() {
-      if (!S.user || S.user.role !== 'GRAND_RESPONSABLE') { toast('Réservé au Grand Responsable.', 'error'); return; }
+      if (!S.user || S.user.role !== 'GRAND_RESPONSABLE') { toast('Réservé au Admin.', 'error'); return; }
       S.rolesPanelOpen = true; render();
     },
     closeRolesPanel: function() { S.rolesPanelOpen = false; S.roleUpdatingId = null; render(); },
     setMemberRole: async function(userId, role) {
-      if (!S.user || S.user.role !== 'GRAND_RESPONSABLE') { toast('Réservé au Grand Responsable.', 'error'); return; }
-      if (userId === S.user.id) { toast('Vous ne pouvez pas modifier votre propre rôle ici (évite de te verrouiller dehors). Passe par un autre Grand Responsable.', 'info'); return; }
+      if (!S.user || S.user.role !== 'GRAND_RESPONSABLE') { toast('Réservé au Admin.', 'error'); return; }
+      if (userId === S.user.id) { toast('Vous ne pouvez pas modifier votre propre rôle ici (évite de te verrouiller dehors). Passe par un autre Admin.', 'info'); return; }
       if (!supabase || !supabase.functions) { toast('Service indisponible.', 'error'); return; }
-      var LABELS = { MEMBRE: 'Membre', RESP_SECTION: 'Responsable', GRAND_RESPONSABLE: 'Grand Responsable' };
+      var LABELS = { MEMBRE: 'Membre', RESP_SECTION: 'Responsable', GRAND_RESPONSABLE: 'Admin' };
       S.roleUpdatingId = userId; render();
       try {
         var r = await supabase.functions.invoke('set-role', { body: { userId: userId, role: role } });
@@ -2959,7 +2959,7 @@ toggleParticipation: function(postId, status) {
     },
 
     // Supprime un commentaire (ou une réponse). Réservé à son auteur, à l'auteur
-    // de la publication, ou au Grand Responsable — même logique de permission que
+    // de la publication, ou au Admin — même logique de permission que
     // App.deletePost. Un commentaire racine supprimé emporte ses réponses avec
     // lui : les laisser flotter sans parent créerait une discussion incompréhensible.
     deleteComment: function(postId, commentId) {

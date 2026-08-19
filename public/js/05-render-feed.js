@@ -1213,7 +1213,7 @@
   // La modification d'un événement n'utilise donc PLUS l'éditeur de publication
   // générique : elle réutilise ce formulaire, avec les mêmes champs métier.
   // Options du sélecteur d'assignation, groupées par pôle.
-  // Le Grand Responsable voit tout le monde + une entrée « pôle entier » par
+  // Le Admin voit tout le monde + une entrée « pôle entier » par
   // section ; un responsable de section ne voit que ses propres membres.
   function renderAssignSelectOptions(u) {
     var allU = db(SK.USERS, []);
@@ -1243,7 +1243,7 @@
       '</optgroup>';
     });
 
-    // Membres sans pôle reconnu (uniquement visibles du Grand Responsable).
+    // Membres sans pôle reconnu (uniquement visibles du Admin).
     var orphans = members.filter(function(m){ return !placed[m.id]; });
     if (orphans.length > 0) {
       out += '<optgroup label="Sans pôle">' +

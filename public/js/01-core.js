@@ -367,7 +367,7 @@
   // SESSION SUPABASE AUTH — source de vérité de l'authentification.
   // Les identifiants vivent dans auth.users (gérés par Supabase). Le RÔLE vient
   // du JWT (app_metadata.role), écrit uniquement côté serveur : un membre ne peut
-  // plus se promouvoir Responsable/Grand Responsable en modifiant le stockage
+  // plus se promouvoir Responsable/Admin en modifiant le stockage
   // local ou la base — les policies RLS n'accordent les droits que sur le JWT.
   // ============================================================
   function applyAuthUser(authUser) {
@@ -871,7 +871,7 @@
   }
 
   // Enregistre les publications d'autrui dont on vient de retirer les traces d'un
-  // compte supprimé. Réservé au Grand Responsable, comme pour les pierres
+  // compte supprimé. Réservé au Admin, comme pour les pierres
   // tombales : c'est une modification du contenu des autres.
   function enregistrerNettoyageTraces(modifies) {
     if (!supabase || !modifies || !modifies.length) return;
@@ -885,7 +885,7 @@
 
   // Rend la disparition DÉFINITIVE et visible par tous : sans pierre tombale, la
   // fusion étant volontairement additive, les publications reviendraient sur les
-  // appareils qui les ont encore en cache. Réservé au Grand Responsable : c'est
+  // appareils qui les ont encore en cache. Réservé au Admin : c'est
   // une écriture destructrice, elle ne doit pas partir de n'importe quel appareil.
   function tombaliserOrphelines(orphelines) {
     if (!supabase || !orphelines || !orphelines.length) return;
@@ -1467,7 +1467,7 @@
     adminCodeInput: '',
     adminCodeError: false,
     adminUnlocked: false,
-    // Panneau « Gérer les rôles » (Grand Responsable) — voir renderRolesModal.
+    // Panneau « Gérer les rôles » (Admin) — voir renderRolesModal.
     rolesPanelOpen: false,
     roleUpdatingId: null,
     // Rôle issu du JWT (app_metadata) : fait autorité pour l'utilisateur courant,
@@ -1534,7 +1534,7 @@
   // contre quelqu'un qui inspecte le code source.
   var ADMIN_ACCESS_CODE = 'AZ7887';
   // Ancien code du champ "Autre" à l'inscription (désormais retiré du formulaire) :
-  // promeut le compte connecté au rôle Grand Responsable, saisi dans le même champ
+  // promeut le compte connecté au rôle Admin, saisi dans le même champ
   // que ADMIN_ACCESS_CODE ci-dessus.
   var GRAND_RESPONSABLE_CODE = 'ADMIN78';
   // Même principe, un cran en dessous : promeut le compte connecté au rôle
@@ -1988,7 +1988,7 @@
   // ============================================================
   // ASSIGNATIONS : QUI PEUT ASSIGNER QUOI
   // ============================================================
-  // - Grand Responsable : assigne n'importe quel membre, et peut confier une tâche
+  // - Admin : assigne n'importe quel membre, et peut confier une tâche
   //   à un pôle entier (à charge pour son responsable de la répartir).
   // - Responsable de section : assigne uniquement les membres de son ou ses pôles,
   //   y compris sur un événement créé par quelqu'un d'autre (typiquement le Grand
@@ -2004,7 +2004,7 @@
   }
 
   // Pôles sur lesquels l'utilisateur a autorité pour assigner.
-  // Le Grand Responsable les a tous.
+  // Le Admin les a tous.
   function assignableSectionIds(u) {
     if (isGrandResponsable(u)) return SECTIONS.map(function(s){ return s.id; });
     if (isSectionResponsable(u)) return getUserSections(u).slice();
@@ -2023,7 +2023,7 @@
   }
 
   // Peut-il intervenir sur les assignations de cet événement ?
-  // Oui pour le Grand Responsable, oui pour un responsable de section (limité à
+  // Oui pour le Admin, oui pour un responsable de section (limité à
   // ses propres membres), même si l'événement a été créé par un autre.
   function canManageEventAssignments(post, u) {
     if (!post || post.type !== 'EVENT') return false;
@@ -2031,7 +2031,7 @@
   }
 
   // Peut-il modifier l'événement lui-même (titre, date, lieu, pôles) ?
-  // Réservé au Grand Responsable et au créateur.
+  // Réservé au Admin et au créateur.
   function canEditEvent(post, u) {
     if (!post || !u) return false;
     return isGrandResponsable(u) || post.userId === u.id;

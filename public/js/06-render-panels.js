@@ -37,7 +37,7 @@
 
         // Épingler / désépingler. Jusqu'ici App.togglePin existait mais n'était
         // appelée nulle part : l'épingle ne pouvait se retirer qu'en rouvrant le
-        // formulaire de l'événement. Réservé au créateur et au Grand Responsable.
+        // formulaire de l'événement. Réservé au créateur et au Admin.
         (canDelete
           ? (function(){
               var estEpingle = !!post.is_pinned;
@@ -85,7 +85,7 @@
     var u = S.user || {};
 
     // Un commentaire est supprimable par son auteur, par l'auteur de la
-    // publication (canManagePost), ou par le Grand Responsable.
+    // publication (canManagePost), ou par le Admin.
     var canManagePost = u.role === 'GRAND_RESPONSABLE' || post.userId === u.id;
     var commentItems = (post.comments || []).length > 0
       ? renderCommentsList(post.comments, post.id, canManagePost)
@@ -292,7 +292,7 @@
   // ============================================================
   // Écran restreint : on n'y touche QUE les assignations, pas l'événement.
   // C'est ce qui permet au responsable d'un pôle de désigner qui est de service
-  // dans son équipe sur un événement créé par le Grand Responsable.
+  // dans son équipe sur un événement créé par le Admin.
   function renderAssignManagerModal() {
     var post = db(SK.POSTS, []).find(function(p){ return p.id === S.assignManagerId; });
     if (!post) return '';
@@ -653,7 +653,7 @@
       ]) +
     '</div>';
 
-    var emptyMsg = '<div style="font-size:13.5px;line-height:1.5;">' + (canEvaluate ? 'Publiez un bilan depuis l\'onglet « Noter » : les moyennes et l\'évolution de chaque pôle apparaîtront ici.' : 'Dès qu\'un Grand Responsable publiera un bilan, les moyennes et l\'évolution de chaque pôle apparaîtront ici.') + '</div>';
+    var emptyMsg = '<div style="font-size:13.5px;line-height:1.5;">' + (canEvaluate ? 'Publiez un bilan depuis l\'onglet « Noter » : les moyennes et l\'évolution de chaque pôle apparaîtront ici.' : 'Dès qu\'un Admin publiera un bilan, les moyennes et l\'évolution de chaque pôle apparaîtront ici.') + '</div>';
     var emptyBlock = function(title) {
       return '<div style="padding:50px 24px;text-align:center;color:#8A93A0;">' +
           '<div style="font-size:44px;margin-bottom:12px;">📊</div>' +
@@ -1269,7 +1269,7 @@
       (isMe ? '<div>' +
         '<div style="display:flex;justify-content:center;align-items:center;gap:8px;flex-wrap:wrap;">' +
           (freshU.role === 'GRAND_RESPONSABLE' ? '<button onclick="App.openRolesPanel()" style="background:#EEF3FE;color:#0B63F6;border:none;border-radius:10px;padding:8px 14px;font-size:12.5px;font-weight:800;cursor:pointer;">👑 Gérer les rôles</button>' : '') +
-          (freshU.role === 'GRAND_RESPONSABLE' ? '<button onclick="App.revokeGrandResponsable()" style="background:none;color:#B0B4BB;border:none;padding:8px 6px;font-size:11.5px;font-weight:700;cursor:pointer;">🔻 Quitter Grand Resp.</button>' : '') +
+          (freshU.role === 'GRAND_RESPONSABLE' ? '<button onclick="App.revokeGrandResponsable()" style="background:none;color:#B0B4BB;border:none;padding:8px 6px;font-size:11.5px;font-weight:700;cursor:pointer;">🔻 Quitter Admin</button>' : '') +
           '<button onclick="' + (S.adminUnlocked ? 'App.openStorageStats()' : 'App.openAdminGate()') + '" style="background:none;color:#B0B4BB;border:none;padding:8px 6px;font-size:11.5px;font-weight:700;cursor:pointer;">🔧 Administration</button>' +
           '<button onclick="App.openDeleteAccount()" style="background:none;color:#B0B4BB;border:none;padding:8px 6px;font-size:11.5px;font-weight:700;cursor:pointer;">Supprimer mon compte</button>' +
           '<button onclick="App.logout()" style="background:#FEE2E2;color:#E2445C;border:none;border-radius:10px;padding:8px 14px;font-size:12.5px;font-weight:800;cursor:pointer;">Se déconnecter 🚪</button>' +
@@ -1451,7 +1451,7 @@
         '<div onclick="event.stopPropagation()" style="width:100%;max-width:340px;background:#FFF;border-radius:24px;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
           '<div style="width:52px;height:52px;border-radius:26px;background:#E8EEFB;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:24px;">🔧</div>' +
           '<h3 style="font-size:17px;font-weight:900;color:#000;margin:0 0 6px;text-align:center;">Accès administration</h3>' +
-          '<p style="font-size:12.5px;color:#5A6472;line-height:1.5;margin:0 0 14px;text-align:center;">Entrez un code d\'accès administrateur (statistiques de stockage ou accès Grand Responsable).</p>' +
+          '<p style="font-size:12.5px;color:#5A6472;line-height:1.5;margin:0 0 14px;text-align:center;">Entrez un code d\'accès administrateur (statistiques de stockage ou accès Admin).</p>' +
           '<form onsubmit="App.submitAdminCode(event)">' +
             '<input id="adminCodeInput" type="text" autocapitalize="characters" autocomplete="off" value="' + safeHtml(S.adminCodeInput||'') + '" oninput="App.onAdminCodeInput(this.value)" placeholder="Code d\'accès" style="width:100%;height:44px;border-radius:12px;border:1.5px solid ' + (err?'#E2445C':'#E4E7EC') + ';background:#F6F7F9;padding:0 14px;font-size:15px;font-weight:700;outline:none;box-sizing:border-box;text-align:center;letter-spacing:1px;text-transform:uppercase;" />' +
             (err ? '<div style="color:#E2445C;font-size:12px;font-weight:700;text-align:center;margin-top:8px;">Code incorrect.</div>' : '') +
@@ -1503,7 +1503,7 @@
           '<div style="display:flex;gap:6px;">' +
             roleBtn(m, 'MEMBRE', 'Membre') +
             roleBtn(m, 'RESP_SECTION', 'Responsable') +
-            roleBtn(m, 'GRAND_RESPONSABLE', 'Grand Resp.') +
+            roleBtn(m, 'GRAND_RESPONSABLE', 'Admin') +
           '</div>' +
         '</div>';
       }).join('');
