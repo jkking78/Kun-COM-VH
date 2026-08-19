@@ -1653,17 +1653,8 @@
       '</header>' +
       '<div style="flex:1;overflow-y:auto;background:#F6F7F9;">' +
         
-        '<!-- Cover Area -->' +
-        '<div style="position:relative;width:100%;height:140px;background:#E4E7EC;">' +
-          '<div id="editCoverPreview" style="width:100%;height:100%;">' + coverContent + '</div>' +
-          '<label style="position:absolute;bottom:12px;right:12px;width:32px;height:32px;border-radius:16px;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);color:#FFF;display:flex;align-items:center;justify-content:center;cursor:pointer;">' +
-            '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>' +
-            '<input type="file" id="editCoverInput" accept="image/*" style="display:none;" onchange="App.handleCoverSelect(event)" />' +
-          '</label>' +
-        '</div>' +
-        
         '<!-- Avatar Area -->' +
-        '<div style="display:flex;justify-content:center;margin-top:-45px;margin-bottom:20px;">' +
+        '<div style="display:flex;justify-content:center;margin-top:24px;margin-bottom:20px;">' +
           '<div style="position:relative;">' +
             '<div style="width:90px;height:90px;border-radius:45px;border:4px solid #F6F7F9;overflow:hidden;background:#FFF;">' +
                avatarContent +
@@ -1706,7 +1697,22 @@
 
           '<div style="background:#FFF;border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);">' +
             '<label style="font-size:14px;font-weight:700;color:#000;display:block;margin-bottom:12px;">Sections (2 max)</label>' +
-            '<div id="editSectionBadgesContainer">' + App.renderSectionBadges(S.editSections, 'toggleEditSection') + '</div>' + 
+            '<div id="editSectionBadgesContainer">' + App.renderSectionBadges(S.editSections, 'toggleEditSection') + '</div>' +
+          '</div>' +
+
+          '<div style="background:#FFF;border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-top:16px;">' +
+            '<label style="font-size:14px;font-weight:700;color:#000;display:block;margin-bottom:12px;">Connexion</label>' +
+            '<div style="display:flex;flex-direction:column;gap:16px;">' +
+              '<div style="display:flex;flex-direction:column;gap:4px;">' +
+                '<label style="font-size:13px;color:#8A93A0;font-weight:600;">Adresse e-mail</label>' +
+                '<input type="email" id="editEmail" value="' + safeHtml(freshU.email||'') + '" autocomplete="email" style="border:none;border-bottom:1px solid #E4E7EC;font-size:16px;outline:none;padding-bottom:8px;border-radius:0;background:none;" />' +
+              '</div>' +
+              '<div style="display:flex;flex-direction:column;gap:4px;">' +
+                '<label style="font-size:13px;color:#8A93A0;font-weight:600;">Nouveau mot de passe</label>' +
+                '<input type="password" id="editNewPwd" placeholder="Laisser vide pour ne pas changer" autocomplete="new-password" style="border:none;border-bottom:1px solid #E4E7EC;font-size:16px;outline:none;padding-bottom:8px;border-radius:0;background:none;" />' +
+                '<span style="font-size:11.5px;color:#B0B4BB;margin-top:4px;">8 caractères minimum. Un changement d\'e-mail peut demander une confirmation par e-mail.</span>' +
+              '</div>' +
+            '</div>' +
           '</div>' +
         '</div>' +
 

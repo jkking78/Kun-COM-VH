@@ -1055,6 +1055,8 @@ toggleParticipation: function(postId, status) {
       var nom = document.getElementById('editNom').value.trim();
       var bio = document.getElementById('editBio').value.trim();
       var skills = ((document.getElementById('editSavoirFaire')||{}).value || '').trim();
+      var newEmail = ((document.getElementById('editEmail')||{}).value || '').trim();
+      var newPwd = ((document.getElementById('editNewPwd')||{}).value || '').trim();
 
       if (S.editSections.length === 0) {
         toast('Veuillez sélectionner au moins 1 section.', 'error');
@@ -1111,6 +1113,7 @@ toggleParticipation: function(postId, status) {
         nom: nom,
         bio: bio,
         skills: skills,
+        email: (newEmail || u.email),
         sections: S.editSections.slice(),
         avatar_url: avatar_url,
         cover_url: cover_url
@@ -1165,9 +1168,32 @@ toggleParticipation: function(postId, status) {
         }
       }
       
+      // Identifiants de connexion (e-mail / mot de passe) via Supabase Auth.
+      var authMsgs = [];
+      if (supabase && supabase.auth) {
+        if (newEmail && newEmail.toLowerCase() !== (u.email || '').toLowerCase()) {
+          try {
+            var er = await supabase.auth.updateUser({ email: newEmail });
+            if (er && er.error) authMsgs.push('E-mail : ' + er.error.message);
+            else authMsgs.push('Vérifiez votre boîte mail pour confirmer la nouvelle adresse.');
+          } catch(e) { authMsgs.push('Échec du changement d\'e-mail.'); }
+        }
+        if (newPwd) {
+          if (newPwd.length < 8) { authMsgs.push('Mot de passe : 8 caractères minimum.'); }
+          else {
+            try {
+              var pr = await supabase.auth.updateUser({ password: newPwd });
+              if (pr && pr.error) authMsgs.push('Mot de passe : ' + pr.error.message);
+              else authMsgs.push('Mot de passe mis à jour.');
+            } catch(e) { authMsgs.push('Échec du changement de mot de passe.'); }
+          }
+        }
+      }
+
       S.editProfileOpen = false;
       render();
-      toast('Profil mis à jour !', 'success');    },
+      toast(authMsgs.length ? ('Profil mis à jour. ' + authMsgs.join(' ')) : 'Profil mis à jour !', 'success');
+    },
     openNotifications: function() {
       S.notificationsOpen = true;
       if ('Notification' in window && Notification.permission === 'default') {
