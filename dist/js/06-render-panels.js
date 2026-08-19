@@ -828,11 +828,12 @@
     // Le total depuis la création du compte est affiché séparément, en haut du
     // profil à côté de l'avatar.
     var h = punctualityHistory(freshU.id, currentCycleStartTs());
-    var avg = h.average;                    // de -4 à 5
-    // Conversion en pourcentage pour l'anneau : -4 → 0 %, 5 → 100 %.
-    var pct = h.count ? Math.max(0, Math.min(100, Math.round(((avg + 4) / 9) * 100))) : 0;
-    var col = !h.count ? UI.faint : avg >= 4 ? UI.ok : avg >= 2 ? UI.warn : UI.bad;
-    var label = !h.count ? 'Aucun service' : avg >= 4 ? 'Excellent' : avg >= 2 ? 'À améliorer' : avg >= 0 ? 'Critique' : 'Rattrapage requis';
+    var avg = h.average;                    // de -4 à 5 (inclut le bonus de bienvenue +5★)
+    // Conversion en pourcentage pour l'anneau : -4 → 0 %, 5 → 100 %. La note de
+    // départ (5★ de bienvenue) est TOUJOURS affichée, même sans service encore assuré.
+    var pct = Math.max(0, Math.min(100, Math.round(((avg + 4) / 9) * 100)));
+    var col = avg >= 4 ? UI.ok : avg >= 2 ? UI.warn : UI.bad;
+    var label = !h.count ? 'Note de départ' : avg >= 4 ? 'Excellent' : avg >= 2 ? 'À améliorer' : avg >= 0 ? 'Critique' : 'Rattrapage requis';
 
     // Jauge circulaire en débord au-dessus de la carte, façon compteur : la
     // valeur se lit d'un coup d'œil avant même le reste du contenu.
@@ -841,11 +842,11 @@
       '<div style="position:absolute;inset:0;border-radius:50%;background:' + UI.card + ';box-shadow:' + UI.sh2 + ';"></div>' +
       '<svg width="104" height="104" viewBox="0 0 104 104" style="position:relative;">' +
         '<circle cx="52" cy="52" r="' + R + '" fill="none" stroke="' + UI.tile + '" stroke-width="8"/>' +
-        (h.count ? '<circle cx="52" cy="52" r="' + R + '" fill="none" stroke="' + col + '" stroke-width="8" stroke-linecap="round" stroke-dasharray="' + C + '" stroke-dashoffset="' + Math.round(C * (1 - pct / 100)) + '" transform="rotate(-90 52 52)"/>' : '') +
+        '<circle cx="52" cy="52" r="' + R + '" fill="none" stroke="' + col + '" stroke-width="8" stroke-linecap="round" stroke-dasharray="' + C + '" stroke-dashoffset="' + Math.round(C * (1 - pct / 100)) + '" transform="rotate(-90 52 52)"/>' +
       '</svg>' +
       '<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">' +
         '<div style="margin-bottom:1px;">' + ico('star', 15, col) + '</div>' +
-        '<div style="font-size:22px;font-weight:600;color:' + UI.ink + ';line-height:1;">' + (h.count ? String(avg).replace('.', ',') : '—') + '</div>' +
+        '<div style="font-size:22px;font-weight:600;color:' + UI.ink + ';line-height:1;">' + String(avg).replace('.', ',') + '</div>' +
         '<div style="font-size:10px;color:' + UI.faint + ';">sur 5</div>' +
       '</div>' +
     '</div>';
@@ -1228,6 +1229,11 @@
           '<div style="font-size:19px;font-weight:600;color:' + UI.ink + ';letter-spacing:-0.3px;">' + safeHtml(freshU.prenom + ' ' + freshU.nom) + '</div>' +
           '<div style="font-size:13px;color:' + theme.primary + ';font-weight:500;margin-top:2px;">' + (ROLE_LABELS[freshU.role]||'Membre') + (uSecs.length ? ' · ' + uSecs.map(function(x){ return secNom(x); }).join(' · ') : '') + '</div>' +
           (freshU.bio ? '<div style="font-size:13.5px;color:' + UI.muted + ';line-height:1.5;margin-top:8px;white-space:pre-wrap;">' + safeHtml(freshU.bio) + '</div>' : '') +
+          (freshU.skills ? '<div style="margin-top:12px;">' +
+            '<div style="font-size:11px;font-weight:800;color:' + UI.faint + ';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Savoir-faire</div>' +
+            '<div style="display:flex;flex-wrap:wrap;gap:6px;">' +
+              freshU.skills.split(',').map(function(s){ var t=(s||'').trim(); return t ? '<span style="background:#EEF3FE;color:#0B63F6;font-size:12px;font-weight:700;padding:5px 10px;border-radius:12px;">' + safeHtml(t) + '</span>' : ''; }).join('') +
+            '</div></div>' : '') +
         '</div>' +
 
         '<div style="display:flex;gap:8px;margin-top:14px;">' +
@@ -1677,6 +1683,7 @@
                 var prenomVal = eData.prenom !== undefined ? eData.prenom : (freshU.prenom||'');
                 var nomVal = eData.nom !== undefined ? eData.nom : (freshU.nom||'');
                 var bioVal = eData.bio !== undefined ? eData.bio : (freshU.bio||'');
+                var skillsVal = eData.skills !== undefined ? eData.skills : (freshU.skills||'');
                 return '<div style="display:flex;flex-direction:column;gap:4px;">' +
                   '<label style="font-size:13px;color:#8A93A0;font-weight:600;">Prénom</label>' +
                   '<input type="text" id="editPrenom" value="' + safeHtml(prenomVal) + '" style="border:none;border-bottom:1px solid #E4E7EC;font-size:16px;outline:none;padding-bottom:8px;border-radius:0;" />' +
@@ -1688,6 +1695,10 @@
                 '<div style="display:flex;flex-direction:column;gap:4px;">' +
                   '<label style="font-size:13px;color:#8A93A0;font-weight:600;">Bio</label>' +
                   '<textarea id="editBio" style="border:none;font-size:16px;outline:none;resize:none;font-family:inherit;min-height:60px;background:#F6F7F9;padding:12px;border-radius:12px;">' + safeHtml(bioVal) + '</textarea>' +
+                '</div>' +
+                '<div style="display:flex;flex-direction:column;gap:4px;">' +
+                  '<label style="font-size:13px;color:#8A93A0;font-weight:600;">Savoir-faire</label>' +
+                  '<textarea id="editSavoirFaire" placeholder="Ex. Montage vidéo, Cadrage, Éclairage, Son…" style="border:none;font-size:16px;outline:none;resize:none;font-family:inherit;min-height:50px;background:#F6F7F9;padding:12px;border-radius:12px;">' + safeHtml(skillsVal) + '</textarea>' +
                 '</div>';
               })() +
             '</div>' +

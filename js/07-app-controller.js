@@ -1054,7 +1054,8 @@ toggleParticipation: function(postId, status) {
       var prenom = document.getElementById('editPrenom').value.trim();
       var nom = document.getElementById('editNom').value.trim();
       var bio = document.getElementById('editBio').value.trim();
-      
+      var skills = ((document.getElementById('editSavoirFaire')||{}).value || '').trim();
+
       if (S.editSections.length === 0) {
         toast('Veuillez sélectionner au moins 1 section.', 'error');
         if (btn) { btn.innerHTML = 'Terminer'; btn.disabled = false; }
@@ -1109,6 +1110,7 @@ toggleParticipation: function(postId, status) {
         prenom: prenom,
         nom: nom,
         bio: bio,
+        skills: skills,
         sections: S.editSections.slice(),
         avatar_url: avatar_url,
         cover_url: cover_url
@@ -1413,7 +1415,8 @@ toggleParticipation: function(postId, status) {
         var newUser = { id: authUser.id, prenom: prenom, nom: nom, email: email,
           sections: userSecs, section_id: userSecs[0], role: 'MEMBRE', is_online: true,
           last_seen_at: new Date().toISOString(), last_action: 'Inscription',
-          avatar_color: ['#0B63F6','#FF2D55','#0E9F6E','#D98A0B','#0B63F6','#AF52DE'][Math.floor(Math.random()*6)] };
+          avatar_color: ['#0B63F6','#FF2D55','#0E9F6E','#D98A0B','#0B63F6','#AF52DE'][Math.floor(Math.random()*6)],
+          welcomeStars: 5 };   // bonus de bienvenue : chaque inscrit démarre avec 5★
 
         // Écrit le profil (SANS aucun secret : ni mot de passe, ni question de
         // sécurité). Autorisé par la policy RLS car id = auth.uid().

@@ -474,7 +474,7 @@
                  nom: (pending && pending.nom) || meta.nom || '',
                  sections: (pending && pending.sections) || [],
                  section_id: (pending && pending.section_id) || null,
-                 avatar_color: '#0B63F6',
+                 avatar_color: '#0B63F6', welcomeStars: 5,
                  is_online: true, last_seen_at: new Date().toISOString() };
       try { if (pending) localStorage.removeItem('kc_pending_signup'); } catch(e){}
       users.push(S.user);
@@ -2259,8 +2259,14 @@
     });
     entries.sort(function(a,b){ return b.startTs - a.startTs; });
 
-    var total = entries.reduce(function(acc, e){ return acc + e.stars; }, 0);
-    var average = entries.length ? Math.round((total / entries.length) * 10) / 10 : 0;
+    var sumEvents = entries.reduce(function(acc, e){ return acc + e.stars; }, 0);
+    // Bonus de BIENVENUE : chaque membre démarre avec 5★ (posé à l'inscription via
+    // welcomeStars ; 5 par défaut). Compté comme une note de départ — dans le total
+    // ET la moyenne — mais PAS comme un service assuré (count = nb réel d'événements).
+    var _me = db(SK.USERS, []).find(function(u){ return u && u.id === userId; });
+    var welcomeBonus = (_me && typeof _me.welcomeStars === 'number') ? _me.welcomeStars : 5;
+    var total = sumEvents + welcomeBonus;
+    var average = Math.round((total / (entries.length + 1)) * 10) / 10;
     var lateEntries = entries.filter(function(e){ return !e.absent && e.delayMinutes > 0; });
     var avgDelay = lateEntries.length
       ? Math.round(lateEntries.reduce(function(acc,e){ return acc + e.delayMinutes; }, 0) / lateEntries.length)
