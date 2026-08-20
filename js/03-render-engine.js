@@ -104,14 +104,14 @@
       console.error('Erreur de rendu :', err);
       window.__lastRenderError = err;
       html =
-        '<div style="min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;text-align:center;font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#E8ECF2;">' +
+        '<div style="min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;text-align:center;font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:var(--page);">' +
           '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#E2445C" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>' +
-          '<h2 style="font-size:17px;font-weight:600;color:#0B0D12;margin:14px 0 6px;">Cet écran n\'a pas pu s\'afficher</h2>' +
-          '<p style="color:#5A6472;font-size:13px;line-height:1.5;margin:0 0 4px;max-width:300px;">Votre compte reste connecté. Réessayez, ou revenez à l\'accueil.</p>' +
-          '<code style="font-size:11px;color:#8A93A0;word-break:break-word;max-width:300px;display:block;margin-bottom:18px;">' + safeHtml(err && err.message ? err.message : String(err)) + '</code>' +
+          '<h2 style="font-size:17px;font-weight:600;color:var(--ink);margin:14px 0 6px;">Cet écran n\'a pas pu s\'afficher</h2>' +
+          '<p style="color:var(--muted);font-size:13px;line-height:1.5;margin:0 0 4px;max-width:300px;">Votre compte reste connecté. Réessayez, ou revenez à l\'accueil.</p>' +
+          '<code style="font-size:11px;color:var(--faint);word-break:break-word;max-width:300px;display:block;margin-bottom:18px;">' + safeHtml(err && err.message ? err.message : String(err)) + '</code>' +
           '<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">' +
             '<button onclick="App.tab(\'home\')" style="padding:12px 18px;border-radius:12px;background:#0B63F6;color:#FFF;border:none;font-size:14px;font-weight:500;cursor:pointer;">Retour à l\'accueil</button>' +
-            '<button onclick="location.reload()" style="padding:12px 18px;border-radius:12px;background:#FFF;color:#0B0D12;border:0.5px solid #DCE2EB;font-size:14px;font-weight:500;cursor:pointer;">Recharger</button>' +
+            '<button onclick="location.reload()" style="padding:12px 18px;border-radius:12px;background:var(--card);color:var(--ink);border:0.5px solid var(--line2);font-size:14px;font-weight:500;cursor:pointer;">Recharger</button>' +
           '</div>' +
         '</div>';
     }

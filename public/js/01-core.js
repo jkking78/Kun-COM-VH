@@ -1546,6 +1546,8 @@
     adminUnlocked: false,
     // Panneau « Gérer les rôles » (Admin) — voir renderRolesModal.
     rolesPanelOpen: false,
+    // Thème sombre (voir applyTheme / App.toggleTheme).
+    darkMode: false,
     roleUpdatingId: null,
     // Rôle issu du JWT (app_metadata) : fait autorité pour l'utilisateur courant,
     // même si une fiche serveur porte encore un ancien rôle.
@@ -1651,7 +1653,16 @@
   // ============================================================
   // RESTORE SESSION
   // ============================================================
+  // Applique le thème (clair/sombre) via un attribut sur <html> ; les variables
+  // CSS (voir injectCSS) font basculer toutes les couleurs neutres.
+  function applyTheme() {
+    try { document.documentElement.setAttribute('data-theme', S.darkMode ? 'dark' : 'light'); } catch(e) {}
+  }
+
   (function restoreSession() {
+    // Thème mémorisé sur cet appareil (avant le 1er rendu, pour éviter un flash).
+    try { S.darkMode = localStorage.getItem('kc_dark') === '1'; } catch(e) {}
+    applyTheme();
     try {
       var uStr = localStorage.getItem(SK.SESS) || sessionStorage.getItem(SK.SESS);
       if (uStr) {
@@ -1686,24 +1697,23 @@
   // à l'interface son aspect « généré automatiquement ». Tout passe désormais
   // par cet objet : une seule couleur d'accent, quatre rayons, aucun dégradé
   // hors des cartes d'événement.
+  // Les couleurs neutres passent par des VARIABLES CSS (voir injectCSS) pour
+  // basculer entre thème clair et sombre sans re-rendre chaque écran.
   var UI = {
-    accent:     '#0B63F6',   // l'unique couleur d'action de l'app
-    accentSoft: '#E8EEFB',
-    accentInk:  '#0B4FC4',   // texte lisible sur accentSoft
+    accent:     '#0B63F6',   // l'unique couleur d'action de l'app (identique clair/sombre)
+    accentSoft: 'var(--accent-soft)',
+    accentInk:  'var(--accent-ink)',   // texte lisible sur accentSoft
 
-    ink:   '#0B0D12',        // titres
-    ink2:  '#25303F',        // corps de texte
-    muted: '#5A6472',        // libellés secondaires
-    faint: '#8A93A0',        // métadonnées, horodatages
+    ink:   'var(--ink)',     // titres
+    ink2:  'var(--ink2)',    // corps de texte
+    muted: 'var(--muted)',   // libellés secondaires
+    faint: 'var(--faint)',   // métadonnées, horodatages
 
-    // Le fond d'écran est nettement plus soutenu que les cartes : quand les deux
-    // sont quasi blancs, l'œil ne distingue plus les blocs et l'écran fatigue.
-    // Ce gris bleuté fait ressortir les cartes et réduit la surface éblouissante.
-    page:  '#E8ECF2',        // fond d'écran
-    card:  '#FFFFFF',        // surface d'une carte
-    tile:  '#F2F5F9',        // encadré interne (tuile de statistique)
-    line:  '#E2E7EF',        // filet de séparation
-    line2: '#DCE2EB',        // bordure de contrôle
+    page:  'var(--page)',    // fond d'écran
+    card:  'var(--card)',    // surface d'une carte
+    tile:  'var(--tile)',    // encadré interne (tuile de statistique)
+    line:  'var(--line)',    // filet de séparation
+    line2: 'var(--line2)',   // bordure de contrôle
 
     // Identité réservée aux ÉVÉNEMENTS : vert profond et or. Ce contraste les
     // rend reconnaissables au premier coup d'œil dans le fil, et n'apparaît
@@ -1719,8 +1729,8 @@
     ok: '#0E9F6E', warn: '#D98A0B', bad: '#E2445C',
 
     r1: '12px', r2: '16px', r3: '20px', pill: '999px',
-    sh:  '0 1px 2px rgba(16,24,40,0.04)',
-    sh2: '0 4px 16px rgba(23,43,77,0.07)'   // relief doux des cartes détachées
+    sh:  'var(--sh)',
+    sh2: 'var(--sh2)'   // relief doux des cartes détachées (voir injectCSS)
   };
 
   // Icônes au trait remplaçant les emoji d'interface. Les emoji des PÔLES
@@ -2561,7 +2571,7 @@
   var ROLE_TINTS = {
     GRAND_RESPONSABLE: { fg: '#7A5B12', bg: '#FBF1DA' },   // doré
     RESP_SECTION:      { fg: '#0B4FC4', bg: '#E8EEFB' },   // bleu d'accent
-    MEMBRE:            { fg: '#5A6472', bg: '#EEF1F6' },   // neutre
+    MEMBRE:            { fg: 'var(--muted)', bg: '#EEF1F6' },   // neutre
     STAGIAIRE:         { fg: '#8A5A0B', bg: '#FDF0DC' }    // ambre
   };
   function roleTint(role) { return ROLE_TINTS[role] || ROLE_TINTS.MEMBRE; }

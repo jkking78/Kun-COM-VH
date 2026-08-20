@@ -62,14 +62,14 @@
     
     var content = '';
     if (S.loadingUserProfile) {
-      content = '<div style="padding:100px 20px;text-align:center;"><div style="font-size:32px;animation:spin 1s linear infinite;">⏳</div><div style="margin-top:16px;font-size:14px;color:#8A93A0;">Chargement du profil...</div></div>';
+      content = '<div style="padding:100px 20px;text-align:center;"><div style="font-size:32px;animation:spin 1s linear infinite;">⏳</div><div style="margin-top:16px;font-size:14px;color:var(--faint);">Chargement du profil...</div></div>';
     } else if (!targetUser) {
       content = '<div style="padding:100px 20px;text-align:center;"><div style="font-size:40px;">😕</div><div style="margin-top:16px;font-size:16px;font-weight:600;">Utilisateur introuvable</div><button onclick="App.closeUserProfile()" style="margin-top:20px;padding:10px 20px;background:#0B63F6;color:#FFF;border:none;border-radius:20px;font-weight:600;cursor:pointer;">Retour</button></div>';
     } else {
       content = renderProfile(targetUser, posts);
     }
     
-    return '<div class="safe-top" style="position:fixed;inset:0;background:#FFF;z-index:9000;overflow-y:auto;animation:slideIn 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
+    return '<div class="safe-top" style="position:fixed;inset:0;background:var(--card);z-index:9000;overflow-y:auto;animation:slideIn 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
       content +
     '</div>';
   }
@@ -126,7 +126,7 @@
     // ne faisait donc rien et la barre passait sous l'indicateur d'accueil iPhone.
     // On agrandit la barre de la hauteur réservée et on décale son contenu vers
     // le haut d'autant, pour que les onglets restent entièrement touchables.
-    return '<nav style="position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:460px;height:calc(62px + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);background:rgba(255,255,255,0.96);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-top:0.5px solid rgba(0,0,0,0.12);display:flex;align-items:stretch;z-index:9000;">' +
+    return '<nav style="position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:460px;height:calc(62px + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);background:var(--nav-bg);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-top:0.5px solid var(--nav-line);display:flex;align-items:stretch;z-index:9000;">' +
       nb('home', SVG.home, 'Accueil') +
       nb('planning', SVG.cal, 'Planning') +
       '<button onclick="App.openCreate()" style="flex:1;background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent;">' +
@@ -317,8 +317,8 @@
     } else if (filtered.length === 0) {
       feed = '<div style="display:flex;flex-direction:column;align-items:center;padding:70px 24px;text-align:center;">' +
         '<div style="font-size:52px;margin-bottom:16px;">📭</div>' +
-        '<h3 style="font-size:18px;font-weight:800;color:#000;margin:0 0 8px;">' + (S.q ? 'Aucun résultat' : 'Aucune publication') + '</h3>' +
-        '<p style="font-size:13.5px;color:#8A93A0;margin:0 0 22px;max-width:240px;line-height:1.5;">' +
+        '<h3 style="font-size:18px;font-weight:800;color:var(--ink);margin:0 0 8px;">' + (S.q ? 'Aucun résultat' : 'Aucune publication') + '</h3>' +
+        '<p style="font-size:13.5px;color:var(--faint);margin:0 0 22px;max-width:240px;line-height:1.5;">' +
           (S.q ? 'Aucun résultat trouvé pour "' + safeHtml(S.q) + '"' : 'Aucune publication pour le moment. Soyez le premier à publier ! ') +
         '</p>' +
         (S.q
@@ -358,10 +358,10 @@
       // carte est réellement rendue, et toujours APRÈS elles.
       var canLoadMore = S.story === 'all' && !S.q && !S.postsAllLoaded;
       if (!chargementEnCours && elements.length > 0 && canLoadMore) {
-        footerHtml = '<div style="padding:20px;text-align:center;background:#FFF;margin-top:8px;">' +
+        footerHtml = '<div style="padding:20px;text-align:center;background:var(--card);margin-top:8px;">' +
           (S.loadingMorePosts
-            ? '<div style="display:flex;justify-content:center;padding:10px;"><div style="width:22px;height:22px;border:2.5px solid #E4E7EC;border-top-color:#0B63F6;border-radius:50%;animation:spin 0.7s linear infinite;"></div></div>'
-            : '<button onclick="App.loadMorePosts()" style="background:#F6F7F9;color:#000;border:none;border-radius:14px;padding:12px 22px;font-size:13.5px;font-weight:800;cursor:pointer;">Charger plus d\'anciennes publications</button>') +
+            ? '<div style="display:flex;justify-content:center;padding:10px;"><div style="width:22px;height:22px;border:2.5px solid var(--line);border-top-color:#0B63F6;border-radius:50%;animation:spin 0.7s linear infinite;"></div></div>'
+            : '<button onclick="App.loadMorePosts()" style="background:var(--tile);color:var(--ink);border:none;border-radius:14px;padding:12px 22px;font-size:13.5px;font-weight:800;cursor:pointer;">Charger plus d\'anciennes publications</button>') +
         '</div>';
       }
 
@@ -386,7 +386,7 @@
   function renderSkeletonBloc(largeur, hauteur, rayon, marge) {
     return '<div style="width:' + largeur + ';height:' + hauteur + 'px;border-radius:' + rayon + 'px;' +
       (marge ? 'margin:' + marge + ';' : '') +
-      'background:linear-gradient(90deg,#EDEFF3 25%,#F6F7F9 50%,#EDEFF3 75%);background-size:800px 100%;' +
+      'background:linear-gradient(90deg,#EDEFF3 25%,var(--tile) 50%,#EDEFF3 75%);background-size:800px 100%;' +
       'animation:shimmer 1.4s linear infinite;"></div>';
   }
 
@@ -533,8 +533,8 @@
       (anyPinned ? '<div style="background:#0B63F6;color:#FFF;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:1px;padding:4px 12px;display:flex;align-items:center;gap:6px;"><span style="font-size:12px;">📌</span> ÉPINGLÉ</div>' : '') +
       '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px 8px;">' +
         '<div style="min-width:0;">' +
-          '<div style="font-size:15px;font-weight:900;color:#0B0D12;text-transform:capitalize;">' + safeHtml(dateLabel) + '</div>' +
-          '<div style="font-size:12px;color:#8A93A0;font-weight:600;margin-top:2px;">' + events.length + ' événements · faites défiler</div>' +
+          '<div style="font-size:15px;font-weight:900;color:var(--ink);text-transform:capitalize;">' + safeHtml(dateLabel) + '</div>' +
+          '<div style="font-size:12px;color:var(--faint);font-weight:600;margin-top:2px;">' + events.length + ' événements · faites défiler</div>' +
         '</div>' +
         '<div id="evgrpBadge-' + carId + '" style="background:#E8EEFB;color:#0B63F6;font-size:12px;font-weight:800;padding:4px 10px;border-radius:20px;flex-shrink:0;">' + (curIdx + 1) + '/' + events.length + '</div>' +
       '</div>' +
@@ -558,7 +558,7 @@
       '<div id="evgrpDots-' + carId + '" style="display:flex;justify-content:center;gap:5px;padding:8px 0 12px;">' +
         events.map(function(_, di) {
           var a = di === curIdx;
-          return '<div style="width:' + (a?'18':'6') + 'px;height:6px;border-radius:3px;background:' + (a?'#0B63F6':'#E4E7EC') + ';transition:all 0.25s;"></div>';
+          return '<div style="width:' + (a?'18':'6') + 'px;height:6px;border-radius:3px;background:' + (a?'#0B63F6':'var(--line)') + ';transition:all 0.25s;"></div>';
         }).join('') +
       '</div>' +
     '</article>';
@@ -572,8 +572,8 @@
     var crit = ev.criteria || {};
     return '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">' +
         '<div>' +
-          '<div style="display:inline-flex;align-items:center;gap:4px;background:#FFF;padding:4px 8px;border-radius:8px;font-size:10px;font-weight:800;color:#8A93A0;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05);"><span>📊</span> Évaluation</div>' +
-          '<div style="font-size:20px;font-weight:900;color:#0B0D12;letter-spacing:-0.5px;">' + (ev.emoji ? ev.emoji + ' ' : '') + safeHtml(ev.teamName || '') + '</div>' +
+          '<div style="display:inline-flex;align-items:center;gap:4px;background:var(--card);padding:4px 8px;border-radius:8px;font-size:10px;font-weight:800;color:var(--faint);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05);"><span>📊</span> Évaluation</div>' +
+          '<div style="font-size:20px;font-weight:900;color:var(--ink);letter-spacing:-0.5px;">' + (ev.emoji ? ev.emoji + ' ' : '') + safeHtml(ev.teamName || '') + '</div>' +
         '</div>' +
         '<div style="background:' + badgeBg + ';color:#FFF;padding:12px 16px;border-radius:16px;font-size:24px;font-weight:900;box-shadow:0 6px 16px ' + badgeShadow + ';text-shadow:0 2px 4px rgba(0,0,0,0.1);white-space:nowrap;">' + score + '/5</div>' +
       '</div>' +
@@ -583,8 +583,8 @@
           var pct = (v/5)*100;
           var cCol = v>=4?'#0E9F6E':v>=2?'#D98A0B':'#E2445C';
           return '<div style="display:flex;flex-direction:column;gap:6px;">' +
-                   '<div style="display:flex;justify-content:space-between;font-size:12.5px;font-weight:800;color:#5A6472;"><span>' + safeHtml(k) + '</span><span style="color:#0B0D12;">' + v + '/5</span></div>' +
-                   '<div style="height:10px;background:#E4E7EC;border-radius:5px;overflow:hidden;box-shadow:inset 0 1px 3px rgba(0,0,0,0.06);">' +
+                   '<div style="display:flex;justify-content:space-between;font-size:12.5px;font-weight:800;color:var(--muted);"><span>' + safeHtml(k) + '</span><span style="color:var(--ink);">' + v + '/5</span></div>' +
+                   '<div style="height:10px;background:var(--line);border-radius:5px;overflow:hidden;box-shadow:inset 0 1px 3px rgba(0,0,0,0.06);">' +
                      '<div style="height:100%;width:' + pct + '%;background:' + cCol + ';border-radius:5px;box-shadow:0 1px 2px rgba(0,0,0,0.1);"></div>' +
                    '</div>' +
                  '</div>';
@@ -594,7 +594,7 @@
       // chacun a apporté au total du pôle.
       (ev.punctuality && ev.punctuality.details && ev.punctuality.details.length
         ? '<div style="margin-top:16px;padding-top:14px;border-top:1px dashed #CBD5E1;">' +
-            '<div style="font-size:10.5px;font-weight:800;color:#8A93A0;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Ponctualité — calcul automatique</div>' +
+            '<div style="font-size:10.5px;font-weight:800;color:var(--faint);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Ponctualité — calcul automatique</div>' +
             ev.punctuality.details.map(function(d) {
               var dc = d.stars >= 4 ? '#0E9F6E' : d.stars >= 2 ? '#D98A0B' : '#E2445C';
               var when = d.absent ? 'aucune publication' : (d.delayMinutes <= 0 ? "à l'heure" : '+' + d.delayMinutes + ' min');
@@ -606,17 +606,17 @@
                 else geoNote = '<span style="display:block;font-size:10.5px;color:#B42318;font-weight:700;">à ' + formatDistance(d.distance) + ' du lieu</span>';
               }
               return '<div style="display:flex;justify-content:space-between;align-items:flex-start;font-size:12px;padding:3px 0;gap:10px;">' +
-                '<span style="color:#5A6472;min-width:0;">' + safeHtml(d.name) + (d.task ? ' <span style="color:#8A93A0;">· ' + safeHtml(d.task) + '</span>' : '') + geoNote + '</span>' +
+                '<span style="color:var(--muted);min-width:0;">' + safeHtml(d.name) + (d.task ? ' <span style="color:var(--faint);">· ' + safeHtml(d.task) + '</span>' : '') + geoNote + '</span>' +
                 '<span style="font-weight:800;color:' + dc + ';white-space:nowrap;">' + (d.stars>0?'+':'') + d.stars + '★ · ' + when + '</span>' +
               '</div>';
             }).join('') +
-            '<div style="display:flex;justify-content:space-between;align-items:center;font-size:12.5px;font-weight:800;color:#0B0D12;padding-top:8px;margin-top:6px;border-top:1px solid #E4E7EC;">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;font-size:12.5px;font-weight:800;color:var(--ink);padding-top:8px;margin-top:6px;border-top:1px solid var(--line);">' +
               '<span>Total du pôle (' + ev.punctuality.count + ' membre' + (ev.punctuality.count>1?'s':'') + ')</span>' +
               '<span>' + ev.punctuality.average + '/5</span>' +
             '</div>' +
           '</div>'
         : '') +
-      (ev.comment ? '<p style="font-size:13px;color:#25303F;margin:14px 0 0;line-height:1.4;">' + safeHtml(ev.comment) + '</p>' : '');
+      (ev.comment ? '<p style="font-size:13px;color:var(--ink2);margin:14px 0 0;line-height:1.4;">' + safeHtml(ev.comment) + '</p>' : '');
   }
 
   // Publication d'évaluation. Plusieurs sections évaluées = un carrousel horizontal
@@ -634,7 +634,7 @@
       evals = [{ teamName: meta.teamName, globalScore: meta.globalScore, criteria: meta.criteria, comment: post.caption || '' }];
     }
 
-    var boxStyle = 'padding:18px;background:linear-gradient(135deg, #F8FAFC 0%, #F6F7F9 100%);border-radius:20px;border:1px solid #E4E7EC;box-shadow:inset 0 2px 4px rgba(255,255,255,0.8), 0 4px 12px rgba(0,0,0,0.03);';
+    var boxStyle = 'padding:18px;background:linear-gradient(135deg, #F8FAFC 0%, var(--tile) 100%);border-radius:20px;border:1px solid var(--line);box-shadow:inset 0 2px 4px rgba(255,255,255,0.8), 0 4px 12px rgba(0,0,0,0.03);';
 
     if (evals.length === 1) {
       return '<div style="margin:10px 14px;' + boxStyle + '">' + evBadge + renderEvaluationSlide(evals[0]) + '</div>';
@@ -654,7 +654,7 @@
       '<div id="evalDots-' + post.id + '" style="display:flex;justify-content:center;gap:5px;margin-top:10px;">' +
         evals.map(function(_, di) {
           var a = di === curIdx;
-          return '<div style="width:' + (a?'18':'6') + 'px;height:6px;border-radius:3px;background:' + (a?'#0B63F6':'#E4E7EC') + ';transition:all 0.25s;"></div>';
+          return '<div style="width:' + (a?'18':'6') + 'px;height:6px;border-radius:3px;background:' + (a?'#0B63F6':'var(--line)') + ';transition:all 0.25s;"></div>';
         }).join('') +
       '</div>' +
     '</div>';
@@ -695,7 +695,7 @@
          : (geo && geo.available ? (dist !== null && dist <= ON_SITE_RADIUS_M ? 'onsite' : 'offsite') : 'unverified'));
     var isAuthor = S.user && post.userId === S.user.id;
 
-    var starCol = stars === null ? '#8A93A0' : stars >= 4 ? '#0E9F6E' : stars >= 2 ? '#D98A0B' : '#E2445C';
+    var starCol = stars === null ? 'var(--faint)' : stars >= 4 ? '#0E9F6E' : stars >= 2 ? '#D98A0B' : '#E2445C';
 
     var confirmBtn = isAuthor
       ? '<div style="margin-top:6px;"><button onclick="App.confirmPresence(\'' + post.id + '\')"' + (S.geoCapturing ? ' disabled' : '') + ' style="background:#EEF3FE;color:#0B63F6;border:none;border-radius:10px;padding:7px 12px;font-size:12px;font-weight:800;cursor:pointer;">📍 Confirmer ma présence</button></div>'
@@ -705,25 +705,25 @@
     var geoBlock;
     if (presence === 'onsite') {
       geoBlock = '<span style="color:#047857;font-weight:800;">' + ico('pin',12,'#047857') + ' Sur place</span>' +
-        (dist !== null ? '<span style="color:#5A6472;"> · à ' + formatDistance(dist) + ' du point de référence</span>' : '');
+        (dist !== null ? '<span style="color:var(--muted);"> · à ' + formatDistance(dist) + ' du point de référence</span>' : '');
     } else if (presence === 'offsite') {
       geoBlock = '<span style="color:#B42318;font-weight:800;">' + ico('alert',12,'#B42318') + ' Hors zone — à ' + formatDistance(dist) + ' du lieu</span>';
     } else if (presence === 'no_venue') {
       geoBlock = (geo && geo.available)
-        ? '<span style="color:#5A6472;">Position enregistrée' + (geo.accuracy ? ' (±' + geo.accuracy + ' m)' : '') + ' · lieu de l\'événement non défini</span>'
-        : '<span style="color:#8A93A0;">Lieu de l\'événement non défini</span>';
+        ? '<span style="color:var(--muted);">Position enregistrée' + (geo.accuracy ? ' (±' + geo.accuracy + ' m)' : '') + ' · lieu de l\'événement non défini</span>'
+        : '<span style="color:var(--faint);">Lieu de l\'événement non défini</span>';
     } else if (presence === 'pending') { // fenêtre de grâce en cours — PAS de pénalité
       geoBlock = '<span style="color:#B45309;font-weight:800;">⏳ Vérification de la présence en cours…</span>' +
-        '<span style="color:#8A93A0;"> · l\'heure d\'arrivée est déjà prise en compte</span>' + confirmBtn;
+        '<span style="color:var(--faint);"> · l\'heure d\'arrivée est déjà prise en compte</span>' + confirmBtn;
     } else { // unverified : grâce écoulée sans position — sanctionné
       geoBlock = '<span style="color:#B42318;font-weight:800;">' + ico('ban',12,'#B42318') + ' Présence non vérifiée</span>' +
-        '<span style="color:#8A93A0;"> · position non obtenue dans le délai</span>' + confirmBtn;
+        '<span style="color:var(--faint);"> · position non obtenue dans le délai</span>' + confirmBtn;
     }
 
     var isBad = presence === 'offsite' || presence === 'unverified';
     var isWarn = presence === 'pending';
     var bg = isBad ? '#FEF2F2' : (isWarn ? '#FFFBEB' : '#F8FAFC');
-    var border = isBad ? '#FECACA' : (isWarn ? '#FDE68A' : '#E4E7EC');
+    var border = isBad ? '#FECACA' : (isWarn ? '#FDE68A' : 'var(--line)');
     var headLabel = presence === 'offsite' ? ico('ban',12,'#B42318') + ' Pointage hors zone'
       : presence === 'unverified' ? ico('ban',12,'#B42318') + ' Pointage non validé'
       : ico('clock',12,'#64748B') + ' Arrivée enregistrée';
@@ -733,10 +733,10 @@
 
     return '<div style="margin:0 14px 10px;padding:10px 12px;background:' + bg + ';border:1px solid ' + border + ';border-radius:14px;">' +
       '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px;">' +
-        '<span style="font-size:10px;font-weight:800;color:' + (isBad ? '#B42318' : '#8A93A0') + ';text-transform:uppercase;letter-spacing:0.5px;">' + headLabel + '</span>' +
+        '<span style="font-size:10px;font-weight:800;color:' + (isBad ? '#B42318' : 'var(--faint)') + ';text-transform:uppercase;letter-spacing:0.5px;">' + headLabel + '</span>' +
         (stars === null ? '' : '<span style="font-size:12.5px;font-weight:900;color:' + starCol + ';white-space:nowrap;">' + (stars>0?'+':'') + stars + '★</span>') +
       '</div>' +
-      '<div style="font-size:11.5px;color:#5A6472;line-height:1.5;">' +
+      '<div style="font-size:11.5px;color:var(--muted);line-height:1.5;">' +
         (delay === null ? '' : (delay <= 0 ? "À l'heure" : 'Retard de ' + delay + ' min') + ' · ') +
         new Date(arrival).toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'}) +
       '</div>' +
@@ -838,19 +838,19 @@
 
     return '<div style="margin:0 14px 10px;padding:14px;background:#F6FBF8;border:1px solid #DCF3E6;border-radius:16px;">' +
       '<div style="font-size:10px;font-weight:800;color:#0EA65C;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;display:flex;align-items:center;gap:6px;"><span>📊</span> Sondage</div>' +
-      '<div style="font-size:14.5px;font-weight:800;color:#0B0D12;margin-bottom:10px;line-height:1.4;">' + safeHtml(poll.question||'') + '</div>' +
+      '<div style="font-size:14.5px;font-weight:800;color:var(--ink);margin-bottom:10px;line-height:1.4;">' + safeHtml(poll.question||'') + '</div>' +
       poll.options.map(function(opt, idx) {
         var pct = pollOptionPct(poll, idx);
         var mine = myVote === idx;
-        return '<div onclick="App.votePoll(\'' + post.id + '\', ' + idx + ')" style="position:relative;margin-bottom:7px;border-radius:12px;overflow:hidden;background:#FFF;border:1.5px solid ' + (mine?'#0EA65C':'#E4E7EC') + ';cursor:pointer;">' +
+        return '<div onclick="App.votePoll(\'' + post.id + '\', ' + idx + ')" style="position:relative;margin-bottom:7px;border-radius:12px;overflow:hidden;background:var(--card);border:1.5px solid ' + (mine?'#0EA65C':'var(--line)') + ';cursor:pointer;">' +
           (hasVoted ? '<div style="position:absolute;top:0;left:0;bottom:0;width:' + pct + '%;background:' + (mine?'rgba(14,166,92,0.16)':'rgba(142,142,147,0.12)') + ';transition:width 0.3s;"></div>' : '') +
           '<div style="position:relative;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;">' +
             '<span style="font-size:13px;font-weight:' + (mine?'800':'600') + ';color:' + (mine?'#0B7A42':'#0B0D12') + ';">' + (mine ? '✓ ' : '') + safeHtml(opt) + '</span>' +
-            (hasVoted ? '<span style="font-size:12px;font-weight:800;color:#8A93A0;white-space:nowrap;">' + pct + '%</span>' : '') +
+            (hasVoted ? '<span style="font-size:12px;font-weight:800;color:var(--faint);white-space:nowrap;">' + pct + '%</span>' : '') +
           '</div>' +
         '</div>';
       }).join('') +
-      '<div style="font-size:11px;color:#8A93A0;font-weight:600;margin-top:2px;">' + total + ' vote' + (total!==1?'s':'') + (hasVoted ? ' · touchez pour changer votre choix' : ' · touchez une option pour voter') + '</div>' +
+      '<div style="font-size:11px;color:var(--faint);font-weight:600;margin-top:2px;">' + total + ' vote' + (total!==1?'s':'') + (hasVoted ? ' · touchez pour changer votre choix' : ' · touchez une option pour voter') + '</div>' +
     '</div>';
   }
 
@@ -864,7 +864,7 @@
     var curIdx = S.carouselIdx[post.id] || 0;
     var expanded = !!S.expandedCaptions[post.id];
     var ago = timeAgo(post.timestamp);
-    var sec = SECTIONS.find(function(s){ return s.id === post.sectionId; }) || { emoji:'📢', color:'#8A93A0' };
+    var sec = SECTIONS.find(function(s){ return s.id === post.sectionId; }) || { emoji:'📢', color:'var(--faint)' };
     var likeCount = Array.isArray(post.likedBy) ? post.likedBy.length : (post.likes || 0);
     var viewCount = Array.isArray(post.viewedBy) ? post.viewedBy.length : 0;
     var postAuthorUser = db(SK.USERS, []).find(function(u){ return u.id === post.userId; });
@@ -884,11 +884,11 @@
     var needsTruncate = fullCaption.length > 120 || lines.length > 3;
     if (!expanded && needsTruncate) {
       var short = fullCaption.slice(0, 120);
-      captionHtml = hashtagify(short) + '... <span onclick="App.expandCaption(\'' + post.id + '\')" style="color:#8A93A0;cursor:pointer;font-weight:600;">plus</span>';
+      captionHtml = hashtagify(short) + '... <span onclick="App.expandCaption(\'' + post.id + '\')" style="color:var(--faint);cursor:pointer;font-weight:600;">plus</span>';
     } else {
       captionHtml = hashtagify(fullCaption);
       if (needsTruncate && expanded) {
-        captionHtml += ' <span onclick="App.expandCaption(\'' + post.id + '\')" style="color:#8A93A0;cursor:pointer;font-weight:600;">moins</span>';
+        captionHtml += ' <span onclick="App.expandCaption(\'' + post.id + '\')" style="color:var(--faint);cursor:pointer;font-weight:600;">moins</span>';
       }
     }
 
@@ -919,10 +919,10 @@
             return '<div style="flex:0 0 100%;scroll-snap-align:start;display:flex;align-items:center;justify-content:center;' + reserve + '">'+mediaTag+'</div>';
           }).join('') +
         '</div>' +
-        (isMulti ? '<div id="dots-'+post.id+'" style="display:flex;justify-content:center;gap:5px;padding:8px 0;background:#FFF;">' +
+        (isMulti ? '<div id="dots-'+post.id+'" style="display:flex;justify-content:center;gap:5px;padding:8px 0;background:var(--card);">' +
           post.mediaUrls.map(function(_,di){
             var a = di === curIdx;
-            return '<div style="width:'+(a?'18':'6')+'px;height:6px;border-radius:3px;background:'+(a?'#0B63F6':'#E4E7EC')+';transition:all 0.25s;"></div>';
+            return '<div style="width:'+(a?'18':'6')+'px;height:6px;border-radius:3px;background:'+(a?'#0B63F6':'var(--line)')+';transition:all 0.25s;"></div>';
           }).join('') +
         '</div>' : '') +
       '</div>';
@@ -945,7 +945,7 @@
         mediaZone = '<div ondblclick="App.doubleTapLike(\''+post.id+'\')" style="background:linear-gradient(135deg,#1A1A2E,#2D2D44);min-height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;text-align:center;position:relative;">' +
           '<div style="width:44px;height:44px;border-radius:22px;background:rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center;margin-bottom:8px;font-size:22px;">' + sec.emoji + '</div>' +
           (post.isVedette ? '<div style="background:linear-gradient(135deg,#FFD700,#D98A0B);color:#5D3A00;font-size:10px;font-weight:900;padding:4px 12px;border-radius:20px;letter-spacing:0.8px;margin-bottom:6px;">SECTION VEDETTE</div>' : '') +
-          (post.scoreText ? '<div style="background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);padding:5px 12px;border-radius:12px;position:absolute;bottom:12px;right:12px;"><strong style="font-size:13px;color:#0B0D12;">★ ' + post.scoreText + '</strong></div>' : '') +
+          (post.scoreText ? '<div style="background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);padding:5px 12px;border-radius:12px;position:absolute;bottom:12px;right:12px;"><strong style="font-size:13px;color:var(--ink);">★ ' + post.scoreText + '</strong></div>' : '') +
         '</div>';
       } else {
         // Plain text post — no background, caption shown below
@@ -969,35 +969,35 @@
                  partAvatars += '<div style="width:24px;height:24px;border-radius:12px;background:#0B63F6;color:#FFF;border:2px solid #FFF;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;margin-left:-8px;">👤</div>';
              }
              if (participants.length > 3) {
-                 partAvatars += '<div style="width:24px;height:24px;border-radius:12px;background:#E4E7EC;color:#000;border:2px solid #FFF;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;margin-left:-8px;">+'+(participants.length-3)+'</div>';
+                 partAvatars += '<div style="width:24px;height:24px;border-radius:12px;background:var(--line);color:var(--ink);border:2px solid #FFF;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;margin-left:-8px;">+'+(participants.length-3)+'</div>';
              }
              partAvatars += '</div>';
          }
 
-         contentZone = '<div style="margin:10px 14px;padding:20px;background:#F6F7F9;border-radius:20px;border-left:5px solid #0B63F6;box-shadow:0 4px 12px rgba(0,0,0,0.03);position:relative;overflow:hidden;">' +
+         contentZone = '<div style="margin:10px 14px;padding:20px;background:var(--tile);border-radius:20px;border-left:5px solid #0B63F6;box-shadow:0 4px 12px rgba(0,0,0,0.03);position:relative;overflow:hidden;">' +
           '<div style="position:absolute;top:0;right:0;width:100px;height:100px;background:radial-gradient(circle, rgba(88,86,214,0.05) 0%, rgba(255,255,255,0) 70%);border-radius:50%;transform:translate(30%,-30%);"></div>' +
           
           '<div style="display:inline-block;background:rgba(88,86,214,0.1);color:#0B63F6;padding:4px 10px;border-radius:6px;font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin-bottom:16px;">Événement Planning</div>' +
           
           '<div style="display:flex;gap:16px;align-items:center;margin-bottom:16px;">' +
-            '<div style="background:#FFF;border-radius:16px;overflow:hidden;box-shadow:0 6px 16px rgba(0,0,0,0.08);width:70px;text-align:center;flex-shrink:0;border:1px solid #EAECF0;">' +
+            '<div style="background:var(--card);border-radius:16px;overflow:hidden;box-shadow:0 6px 16px rgba(0,0,0,0.08);width:70px;text-align:center;flex-shrink:0;border:1px solid var(--line);">' +
               '<div style="background:linear-gradient(135deg, #E2445C, #E2445C);color:#FFF;font-size:11px;font-weight:900;text-transform:uppercase;padding:6px 0;letter-spacing:1px;">' + (post.metadata.month||'MOIS') + '</div>' +
-              '<div style="font-size:28px;font-weight:900;color:#000;padding:8px 0;">' + (post.metadata.day||'00') + '</div>' +
+              '<div style="font-size:28px;font-weight:900;color:var(--ink);padding:8px 0;">' + (post.metadata.day||'00') + '</div>' +
             '</div>' +
             '<div style="flex:1;">' +
-              '<h3 style="margin:0 0 8px;font-size:19px;font-weight:900;color:#0B0D12;line-height:1.2;letter-spacing:-0.3px;">' + safeHtml(post.metadata.title||'') + '</h3>' +
+              '<h3 style="margin:0 0 8px;font-size:19px;font-weight:900;color:var(--ink);line-height:1.2;letter-spacing:-0.3px;">' + safeHtml(post.metadata.title||'') + '</h3>' +
               '<div style="display:flex;flex-wrap:wrap;gap:10px;">' +
                 '<div style="font-size:13px;color:#0B63F6;display:flex;align-items:center;gap:4px;font-weight:600;background:rgba(88,86,214,0.08);padding:4px 8px;border-radius:6px;"><span style="font-size:14px;">🕒</span> ' + safeHtml(post.metadata.time||'') + '</div>' +
-                '<div style="font-size:13px;color:#8A93A0;display:flex;align-items:center;gap:4px;font-weight:600;background:#F6F7F9;padding:4px 8px;border-radius:6px;"><span style="font-size:14px;">📍</span> ' + safeHtml(post.metadata.location||'') + '</div>' +
+                '<div style="font-size:13px;color:var(--faint);display:flex;align-items:center;gap:4px;font-weight:600;background:var(--tile);padding:4px 8px;border-radius:6px;"><span style="font-size:14px;">📍</span> ' + safeHtml(post.metadata.location||'') + '</div>' +
               '</div>' +
             '</div>' +
           '</div>' +
           
-          (post.caption ? '<p style="font-size:14px;color:#25303F;margin:0 0 16px;line-height:1.5;">' + safeHtml(post.caption) + '</p>' : '') +
+          (post.caption ? '<p style="font-size:14px;color:var(--ink2);margin:0 0 16px;line-height:1.5;">' + safeHtml(post.caption) + '</p>' : '') +
           
-          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-top:12px;border-top:1px dashed #E4E7EC;">' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-top:12px;border-top:1px dashed var(--line);">' +
             '<div style="display:flex;align-items:center;">' +
-              '<span style="font-size:12px;color:#8A93A0;font-weight:600;">' + participants.length + ' Confirmé(s)</span>' +
+              '<span style="font-size:12px;color:var(--faint);font-weight:600;">' + participants.length + ' Confirmé(s)</span>' +
               partAvatars +
             '</div>' +
           '</div>' +
@@ -1097,7 +1097,7 @@
             '</div>' +
           '</div>' +
         '</div>' +
-        '<button onclick="App.openOptions(\'' + post.id + '\')" style="background:#F6F7F9;border:none;width:32px;height:32px;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' + SVG.dots + '</button>' +
+        '<button onclick="App.openOptions(\'' + post.id + '\')" style="background:var(--tile);border:none;width:32px;height:32px;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' + SVG.dots + '</button>' +
       '</div>' +
       (function(){
         if (!post.aboutEventId) return '';
@@ -1109,7 +1109,7 @@
           '<span style="font-size:18px;">🗓️</span>' +
           '<div style="flex:1;min-width:0;">' +
             '<div style="font-size:10px;font-weight:800;color:#0B63F6;text-transform:uppercase;letter-spacing:0.5px;">À propos de cet événement</div>' +
-            '<div style="font-size:13px;font-weight:800;color:#0B0D12;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(aboutEv.eventTitle||'') + (aEvDateStr ? ' · ' + aEvDateStr : '') + (aboutEv.eventStart ? ' à ' + aboutEv.eventStart : '') + '</div>' +
+            '<div style="font-size:13px;font-weight:800;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(aboutEv.eventTitle||'') + (aEvDateStr ? ' · ' + aEvDateStr : '') + (aboutEv.eventStart ? ' à ' + aboutEv.eventStart : '') + '</div>' +
           '</div>' +
           '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0B63F6" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>' +
         '</div>';
@@ -1159,10 +1159,10 @@
     var tousMembres = db(SK.USERS, []);
     var itemsHtml = '';
     if (notifs.length === 0) {
-      itemsHtml = '<div style="padding:50px 20px;text-align:center;color:#8A93A0;">' +
+      itemsHtml = '<div style="padding:50px 20px;text-align:center;color:var(--faint);">' +
         '<div style="margin-bottom:10px;">' + ico('inbox', 40, UI.line2, 1.4) + '</div>' +
-        '<div style="font-size:16px;font-weight:800;color:#0B0D12;margin-bottom:6px;">Aucune notification</div>' +
-        '<div style="font-size:13px;color:#8A93A0;">Vous êtes à jour ! Aucune nouvelle activité.</div>' +
+        '<div style="font-size:16px;font-weight:800;color:var(--ink);margin-bottom:6px;">Aucune notification</div>' +
+        '<div style="font-size:13px;color:var(--faint);">Vous êtes à jour ! Aucune nouvelle activité.</div>' +
       '</div>';
     } else {
       itemsHtml = notifs.map(function(n) {
@@ -1189,16 +1189,16 @@
           ? '<img src="' + photo + '" style="width:44px;height:44px;border-radius:22px;object-fit:cover;flex-shrink:0;" />'
           : '<div style="width:44px;height:44px;border-radius:22px;background:' + teinte + ';color:#FFF;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + (n.senderName||'S').charAt(0).toUpperCase() + '</div>';
 
-        return '<div onclick="App.clickNotification(\'' + n.id + '\', \'' + (n.targetId||'') + '\')" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:0.5px solid #F6F7F9;background:' + (isUnread ? '#E8EEFB' : '#FFF') + ';cursor:pointer;transition:background 0.2s;position:relative;">' +
+        return '<div onclick="App.clickNotification(\'' + n.id + '\', \'' + (n.targetId||'') + '\')" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:0.5px solid var(--tile);background:' + (isUnread ? '#E8EEFB' : '#FFF') + ';cursor:pointer;transition:background 0.2s;position:relative;">' +
           '<div style="position:relative;flex-shrink:0;">' +
             avatarHtml +
             '<div style="position:absolute;bottom:-2px;right:-2px;width:19px;height:19px;border-radius:' + UI.pill + ';background:' + bgIcon + ';display:flex;align-items:center;justify-content:center;border:1.5px solid ' + UI.card + ';">' + icon + '</div>' +
           '</div>' +
           '<div style="flex:1;min-width:0;">' +
-            '<div style="font-size:13.5px;color:#0B0D12;line-height:1.35;word-break:break-word;">' +
+            '<div style="font-size:13.5px;color:var(--ink);line-height:1.35;word-break:break-word;">' +
               '<strong>' + safeHtml(n.senderName || 'Membre') + '</strong> ' + safeHtml(n.text || '') +
             '</div>' +
-            '<div style="font-size:11px;color:#8A93A0;margin-top:3px;">' + timeAgoStr + '</div>' +
+            '<div style="font-size:11px;color:var(--faint);margin-top:3px;">' + timeAgoStr + '</div>' +
           '</div>' +
           (isUnread ? '<div style="width:8px;height:8px;border-radius:4px;background:#0B63F6;flex-shrink:0;"></div>' : '') +
         '</div>';
@@ -1206,13 +1206,13 @@
     }
 
     return '<div onclick="App.closeNotifications()" style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:10000;display:flex;justify-content:center;align-items:flex-end;">' +
-      '<div onclick="event.stopPropagation()" style="width:100%;max-width:460px;background:#FFF;border-top-left-radius:28px;border-top-right-radius:28px;max-height:85vh;display:flex;flex-direction:column;animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
+      '<div onclick="event.stopPropagation()" style="width:100%;max-width:460px;background:var(--card);border-top-left-radius:28px;border-top-right-radius:28px;max-height:85vh;display:flex;flex-direction:column;animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
         '<div style="display:flex;justify-content:center;padding:10px 0 0;cursor:pointer;" onclick="App.closeNotifications()">' +
-          '<div style="width:40px;height:4px;background:#E4E7EC;border-radius:2px;"></div>' +
+          '<div style="width:40px;height:4px;background:var(--line);border-radius:2px;"></div>' +
         '</div>' +
-        '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 8px 12px 18px;border-bottom:0.5px solid #E4E7EC;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 8px 12px 18px;border-bottom:0.5px solid var(--line);">' +
           '<div style="display:flex;align-items:center;gap:8px;">' +
-            '<h2 style="font-size:19px;font-weight:900;color:#000;margin:0;">Notifications</h2>' +
+            '<h2 style="font-size:19px;font-weight:900;color:var(--ink);margin:0;">Notifications</h2>' +
             (unreadCount > 0 ? '<span style="background:#E2445C;color:#FFF;font-size:11px;font-weight:900;padding:2px 8px;border-radius:10px;">' + unreadCount + '</span>' : '') +
           '</div>' +
           '<div style="display:flex;align-items:center;gap:2px;flex-shrink:0;">' +
@@ -1221,7 +1221,7 @@
             // au-dessus de la feuille ou la petite poignée — difficile à atteindre à
             // une main sur un écran presque entièrement occupé par la liste. Un bouton
             // explicite, à taille de cible tactile normale, referme la feuille sans ambiguïté.
-            '<button onclick="App.closeNotifications()" aria-label="Fermer" style="background:none;border:none;width:44px;height:44px;border-radius:' + UI.pill + ';color:#000;font-size:20px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;touch-action:manipulation;">×</button>' +
+            '<button onclick="App.closeNotifications()" aria-label="Fermer" style="background:none;border:none;width:44px;height:44px;border-radius:' + UI.pill + ';color:var(--ink);font-size:20px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;touch-action:manipulation;">×</button>' +
           '</div>' +
         '</div>' +
         '<div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;">' +
@@ -1285,13 +1285,13 @@
   function renderEventSaveChoice() {
     if (!S.eventSaveChoiceOpen) return '';
     return '<div onclick="App.cancelEventSaveChoice()" style="position:fixed;inset:0;background:rgba(15,15,20,0.6);z-index:10002;display:flex;justify-content:center;align-items:center;padding:24px;">' +
-      '<div onclick="event.stopPropagation()" style="width:100%;max-width:360px;background:#FFF;border-radius:24px;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
-        '<h3 style="font-size:17px;font-weight:900;color:#000;margin:0 0 6px;text-align:center;">Enregistrer les modifications</h3>' +
-        '<p style="font-size:12.5px;color:#5A6472;line-height:1.5;margin:0 0 18px;text-align:center;">Voulez-vous remplacer cet événement, ou en créer un nouveau en gardant l\'ancien ?</p>' +
+      '<div onclick="event.stopPropagation()" style="width:100%;max-width:360px;background:var(--card);border-radius:24px;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
+        '<h3 style="font-size:17px;font-weight:900;color:var(--ink);margin:0 0 6px;text-align:center;">Enregistrer les modifications</h3>' +
+        '<p style="font-size:12.5px;color:var(--muted);line-height:1.5;margin:0 0 18px;text-align:center;">Voulez-vous remplacer cet événement, ou en créer un nouveau en gardant l\'ancien ?</p>' +
 
-        '<button type="button" onclick="App.chooseEventSaveMode(\'overwrite\')" style="width:100%;background:#F6F7F9;border:none;border-radius:16px;padding:14px;margin-bottom:10px;cursor:pointer;text-align:left;">' +
-          '<div style="font-size:14.5px;font-weight:800;color:#000;margin-bottom:2px;">Mettre à jour cet événement</div>' +
-          '<div style="font-size:11.5px;color:#8A93A0;line-height:1.4;">L\'événement d\'origine est remplacé. Ses assignations et son historique sont conservés.</div>' +
+        '<button type="button" onclick="App.chooseEventSaveMode(\'overwrite\')" style="width:100%;background:var(--tile);border:none;border-radius:16px;padding:14px;margin-bottom:10px;cursor:pointer;text-align:left;">' +
+          '<div style="font-size:14.5px;font-weight:800;color:var(--ink);margin-bottom:2px;">Mettre à jour cet événement</div>' +
+          '<div style="font-size:11.5px;color:var(--faint);line-height:1.4;">L\'événement d\'origine est remplacé. Ses assignations et son historique sont conservés.</div>' +
         '</button>' +
 
         '<button type="button" onclick="App.chooseEventSaveMode(\'duplicate\')" style="width:100%;background:#EEF5FF;border:1px solid #CCDEFF;border-radius:16px;padding:14px;margin-bottom:14px;cursor:pointer;text-align:left;">' +
@@ -1299,7 +1299,7 @@
           '<div style="font-size:11.5px;color:#5A7BAA;line-height:1.4;">L\'ancien reste intact. Idéal pour répéter un événement : changez la date et dupliquez.</div>' +
         '</button>' +
 
-        '<button type="button" onclick="App.cancelEventSaveChoice()" style="width:100%;background:none;border:none;padding:8px;font-size:13.5px;font-weight:700;color:#8A93A0;cursor:pointer;">Annuler</button>' +
+        '<button type="button" onclick="App.cancelEventSaveChoice()" style="width:100%;background:none;border:none;padding:8px;font-size:13.5px;font-weight:700;color:var(--faint);cursor:pointer;">Annuler</button>' +
       '</div>' +
     '</div>';
   }
@@ -1317,12 +1317,12 @@
     var pinnedVal = !!cData.pinned;
 
     // Bloc image (une seule image par événement)
-    var imageBlock = '<div style="background:#FFF;border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px;">' +
-      '<label style="font-size:14px;font-weight:700;color:#000;display:block;margin-bottom:12px;">Image de l\'événement <span style="font-weight:500;color:#8A93A0;">(optionnelle)</span></label>' +
+    var imageBlock = '<div style="background:var(--card);border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px;">' +
+      '<label style="font-size:14px;font-weight:700;color:var(--ink);display:block;margin-bottom:12px;">Image de l\'événement <span style="font-weight:500;color:var(--faint);">(optionnelle)</span></label>' +
       (S.eventImageProcessing
-        ? '<div style="display:flex;align-items:center;gap:10px;background:#F6F7F9;border-radius:12px;padding:14px;">' +
+        ? '<div style="display:flex;align-items:center;gap:10px;background:var(--tile);border-radius:12px;padding:14px;">' +
             '<div style="width:18px;height:18px;border:3px solid #E2E4E9;border-top-color:#0B63F6;border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0;"></div>' +
-            '<span style="font-size:12.5px;font-weight:700;color:#25303F;">Traitement de l\'image…</span>' +
+            '<span style="font-size:12.5px;font-weight:700;color:var(--ink2);">Traitement de l\'image…</span>' +
           '</div>'
         : (S.eventImage
           ? '<div style="position:relative;border-radius:14px;overflow:hidden;background:#000;">' +
@@ -1330,49 +1330,49 @@
               '<button type="button" onclick="App.editEventImage()" style="position:absolute;top:8px;left:8px;background:rgba(0,0,0,0.72);border:none;border-radius:10px;padding:6px 12px;color:#FFF;font-size:12.5px;font-weight:800;cursor:pointer;">Modifier</button>' +
               '<button type="button" onclick="App.removeEventImage()" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.72);border:none;border-radius:14px;width:32px;height:32px;color:#FFF;font-size:15px;font-weight:900;cursor:pointer;">×</button>' +
             '</div>'
-          : '<label style="display:flex;align-items:center;justify-content:center;gap:8px;border:1.5px dashed #E4E7EC;border-radius:14px;padding:22px;cursor:pointer;color:#0B63F6;font-size:14px;font-weight:700;">' +
+          : '<label style="display:flex;align-items:center;justify-content:center;gap:8px;border:1.5px dashed var(--line);border-radius:14px;padding:22px;cursor:pointer;color:#0B63F6;font-size:14px;font-weight:700;">' +
               'Ajouter une image' +
               '<input type="file" accept="image/*" onchange="App.addEventImage(event)" style="display:none;" />' +
             '</label>')) +
     '</div>';
 
-    return '<div class="safe-top" style="position:fixed;inset:0;background:#FFF;z-index:10000;display:flex;flex-direction:column;animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
-      '<header style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #E4E7EC;background:#FFF;z-index:2;">' +
-        '<button onclick="App.closeCreateEvent()" style="background:none;border:none;font-size:16px;color:#000;cursor:pointer;">Annuler</button>' +
+    return '<div class="safe-top" style="position:fixed;inset:0;background:var(--card);z-index:10000;display:flex;flex-direction:column;animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
+      '<header style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--line);background:var(--card);z-index:2;">' +
+        '<button onclick="App.closeCreateEvent()" style="background:none;border:none;font-size:16px;color:var(--ink);cursor:pointer;">Annuler</button>' +
         '<div style="font-weight:700;font-size:16px;">' + (isEdit ? 'Modifier l\'événement' : 'Nouvel Événement') + '</div>' +
         '<button onclick="App.saveEvent(this)" style="background:none;border:none;font-size:16px;font-weight:700;color:#0B63F6;cursor:pointer;">' + (isEdit ? 'Enregistrer' : 'Créer') + '</button>' +
       '</header>' +
-      '<div style="flex:1;overflow-y:auto;background:#F6F7F9;padding:16px;">' +
+      '<div style="flex:1;overflow-y:auto;background:var(--tile);padding:16px;">' +
         imageBlock +
 
-        '<div style="background:#FFF;border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px;">' +
+        '<div style="background:var(--card);border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px;">' +
           '<div style="display:flex;flex-direction:column;gap:16px;">' +
             '<div style="display:flex;flex-direction:column;gap:4px;">' +
-              '<label style="font-size:13px;color:#8A93A0;font-weight:600;">Titre de l\'événement</label>' +
-              '<input type="text" id="eventTitle" value="' + safeHtml(titleVal) + '" placeholder="Ex: Culte de Dimanche" style="border:none;border-bottom:1px solid #E4E7EC;font-size:16px;outline:none;padding-bottom:8px;border-radius:0;font-weight:600;" />' +
+              '<label style="font-size:13px;color:var(--faint);font-weight:600;">Titre de l\'événement</label>' +
+              '<input type="text" id="eventTitle" value="' + safeHtml(titleVal) + '" placeholder="Ex: Culte de Dimanche" style="border:none;border-bottom:1px solid var(--line);font-size:16px;outline:none;padding-bottom:8px;border-radius:0;font-weight:600;" />' +
             '</div>' +
             '<div style="display:flex;flex-direction:column;gap:4px;">' +
-              '<label style="font-size:13px;color:#8A93A0;font-weight:600;">Lieu / Salle</label>' +
-              '<input type="text" id="eventLocation" value="' + safeHtml(locVal) + '" placeholder="Ex: Salle Principale" style="border:none;border-bottom:1px solid #E4E7EC;font-size:16px;outline:none;padding-bottom:8px;border-radius:0;" />' +
+              '<label style="font-size:13px;color:var(--faint);font-weight:600;">Lieu / Salle</label>' +
+              '<input type="text" id="eventLocation" value="' + safeHtml(locVal) + '" placeholder="Ex: Salle Principale" style="border:none;border-bottom:1px solid var(--line);font-size:16px;outline:none;padding-bottom:8px;border-radius:0;" />' +
             '</div>' +
             // Position du lieu : recherchée par son nom/adresse. On ne relève jamais
             // la position du créateur — il prépare l'événement à l'avance, souvent
             // de chez lui, sa position n'a donc rien à voir avec le lieu.
             '<div style="display:flex;flex-direction:column;gap:8px;">' +
-              '<label style="font-size:13px;color:#8A93A0;font-weight:600;">Situer le lieu sur la carte <span style="font-weight:500;">(optionnel)</span></label>' +
+              '<label style="font-size:13px;color:var(--faint);font-weight:600;">Situer le lieu sur la carte <span style="font-weight:500;">(optionnel)</span></label>' +
               (typeof cData.lat === 'number'
                 ? '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;background:#ECFDF5;border:1px solid #A7F3D0;border-radius:12px;padding:10px 12px;">' +
                     '<div style="min-width:0;">' +
                       '<div style="font-size:12.5px;font-weight:800;color:#047857;">' + safeHtml(cData.placeName || 'Lieu situé') + '</div>' +
-                      '<div style="font-size:11px;color:#5A6472;line-height:1.35;">' + safeHtml(cData.placeLabel || (cData.lat.toFixed(5) + ', ' + cData.lng.toFixed(5))) + '</div>' +
+                      '<div style="font-size:11px;color:var(--muted);line-height:1.35;">' + safeHtml(cData.placeLabel || (cData.lat.toFixed(5) + ', ' + cData.lng.toFixed(5))) + '</div>' +
                     '</div>' +
                     '<button type="button" onclick="App.clearEventPosition()" style="background:none;border:none;color:#E2445C;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">Changer</button>' +
                   '</div>'
                 : '<div>' +
-                    '<div style="display:flex;align-items:center;gap:8px;background:#F6F7F9;border-radius:12px;padding:0 12px;height:44px;">' +
+                    '<div style="display:flex;align-items:center;gap:8px;background:var(--tile);border-radius:12px;padding:0 12px;height:44px;">' +
                       '<span style="font-size:15px;">🔎</span>' +
-                      '<input type="text" id="eventPlaceInput" value="' + safeHtml(S.eventPlaceQuery || '') + '" oninput="App.onEventPlaceInput(this.value)" placeholder="Ex : Église Vase d\'Honneur, Cocody" style="flex:1;border:none;background:transparent;font-size:14px;color:#000;outline:none;min-width:0;" />' +
-                      '<span style="font-size:10px;font-weight:800;color:#8A93A0;background:#EAECF0;padding:2px 7px;border-radius:6px;flex-shrink:0;">🇨🇮 CI</span>' +
+                      '<input type="text" id="eventPlaceInput" value="' + safeHtml(S.eventPlaceQuery || '') + '" oninput="App.onEventPlaceInput(this.value)" placeholder="Ex : Église Vase d\'Honneur, Cocody" style="flex:1;border:none;background:transparent;font-size:14px;color:var(--ink);outline:none;min-width:0;" />' +
+                      '<span style="font-size:10px;font-weight:800;color:var(--faint);background:var(--line);padding:2px 7px;border-radius:6px;flex-shrink:0;">🇨🇮 CI</span>' +
                       (S.eventPlaceSearching
                         ? '<div style="width:15px;height:15px;border:2.5px solid #E2E4E9;border-top-color:#0B63F6;border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0;"></div>'
                         : '') +
@@ -1382,26 +1382,26 @@
                       : '') +
                     '<div id="eventPlaceResults" style="margin-top:' + ((S.eventPlaceResults||[]).length ? '6px' : '0') + ';">' +
                       (S.eventPlaceResults||[]).map(function(r, i) {
-                        return '<button type="button" onclick="App.selectEventPlace(' + i + ')" style="width:100%;text-align:left;background:#FFF;border:1px solid #EFEFEF;border-radius:12px;padding:9px 11px;margin-bottom:5px;cursor:pointer;display:block;">' +
-                          '<div style="font-size:13px;font-weight:800;color:#0B0D12;">' + safeHtml(r.shortLabel) + '</div>' +
-                          '<div style="font-size:11px;color:#8A93A0;line-height:1.35;">' + safeHtml(r.label) + '</div>' +
+                        return '<button type="button" onclick="App.selectEventPlace(' + i + ')" style="width:100%;text-align:left;background:var(--card);border:1px solid #EFEFEF;border-radius:12px;padding:9px 11px;margin-bottom:5px;cursor:pointer;display:block;">' +
+                          '<div style="font-size:13px;font-weight:800;color:var(--ink);">' + safeHtml(r.shortLabel) + '</div>' +
+                          '<div style="font-size:11px;color:var(--faint);line-height:1.35;">' + safeHtml(r.label) + '</div>' +
                         '</button>';
                       }).join('') +
                     '</div>' +
                   '</div>') +
-              '<div style="font-size:11px;color:#8A93A0;line-height:1.4;">Un membre est considéré « sur place » s\'il enregistre son arrivée à moins de ' + formatDistance(ON_SITE_RADIUS_M) + ' de ce point. La distance de chacun sera visible de tous.</div>' +
+              '<div style="font-size:11px;color:var(--faint);line-height:1.4;">Un membre est considéré « sur place » s\'il enregistre son arrivée à moins de ' + formatDistance(ON_SITE_RADIUS_M) + ' de ce point. La distance de chacun sera visible de tous.</div>' +
             '</div>' +
           '</div>' +
         '</div>' +
         
-        '<div style="background:#FFF;border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px;">' +
+        '<div style="background:var(--card);border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px;">' +
           '<div style="display:flex;flex-direction:column;gap:16px;">' +
-            '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid #E4E7EC;padding-bottom:12px;">' +
-              '<label style="font-size:15px;color:#000;font-weight:600;white-space:nowrap;">Date</label>' +
+            '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding-bottom:12px;">' +
+              '<label style="font-size:15px;color:var(--ink);font-weight:600;white-space:nowrap;">Date</label>' +
               '<input type="date" id="eventDate" value="' + dateVal + '" style="border:none;font-size:16px;outline:none;background:transparent;color:#0B63F6;font-weight:600;text-align:right;" />' +
             '</div>' +
-            '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid #E4E7EC;padding-bottom:12px;">' +
-              '<label style="font-size:15px;color:#000;font-weight:600;white-space:nowrap;">Heure de début</label>' +
+            '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding-bottom:12px;">' +
+              '<label style="font-size:15px;color:var(--ink);font-weight:600;white-space:nowrap;">Heure de début</label>' +
               '<input type="time" id="eventStart" value="' + startVal + '" oninput="App.onEventTimeChange()" style="border:none;font-size:16px;outline:none;background:transparent;color:#0B63F6;font-weight:600;text-align:right;" />' +
             '</div>' +
             // Le message occupe sa PROPRE ligne sous le champ : placé dans la même
@@ -1409,7 +1409,7 @@
             // libellé « Heure de fin » à passer sur deux lignes.
             '<div>' +
               '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">' +
-                '<label style="font-size:15px;color:#000;font-weight:600;white-space:nowrap;">Heure de fin</label>' +
+                '<label style="font-size:15px;color:var(--ink);font-weight:600;white-space:nowrap;">Heure de fin</label>' +
                 '<input type="time" id="eventEnd" value="' + endVal + '" oninput="App.onEventTimeChange()" style="border:none;font-size:16px;outline:none;background:transparent;color:#0B63F6;font-weight:600;text-align:right;" />' +
               '</div>' +
               // État initial calculé au rendu : à la réouverture d'une veillée
@@ -1427,45 +1427,45 @@
           '</div>' +
         '</div>' +
         
-        '<div style="background:#FFF;border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px;">' +
-          '<label style="font-size:14px;font-weight:700;color:#000;display:block;margin-bottom:12px;">Pôles concernés</label>' +
+        '<div style="background:var(--card);border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px;">' +
+          '<label style="font-size:14px;font-weight:700;color:var(--ink);display:block;margin-bottom:12px;">Pôles concernés</label>' +
           '<div id="eventSectionBadgesContainer">' + App.renderSectionBadges(S.eventSections, 'toggleEventSection') + '</div>' + 
         '</div>' +
         
-        '<div style="background:#FFF;border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px;">' +
-          '<label style="font-size:13px;color:#8A93A0;font-weight:600;display:block;margin-bottom:8px;">Description / Notes</label>' +
-          '<textarea id="eventDesc" placeholder="Ajoutez un briefing ou des notes pour les équipes..." style="width:100%;border:none;font-size:15px;outline:none;resize:none;font-family:inherit;min-height:80px;background:#F6F7F9;padding:12px;border-radius:12px;box-sizing:border-box;">' + safeHtml(descVal) + '</textarea>' +
+        '<div style="background:var(--card);border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px;">' +
+          '<label style="font-size:13px;color:var(--faint);font-weight:600;display:block;margin-bottom:8px;">Description / Notes</label>' +
+          '<textarea id="eventDesc" placeholder="Ajoutez un briefing ou des notes pour les équipes..." style="width:100%;border:none;font-size:15px;outline:none;resize:none;font-family:inherit;min-height:80px;background:var(--tile);padding:12px;border-radius:12px;box-sizing:border-box;">' + safeHtml(descVal) + '</textarea>' +
         '</div>' +
         
         (canAssign(S.user) ?
-        '<div style="background:#FFF;border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px;">' +
-          '<label style="font-size:14px;font-weight:700;color:#000;display:block;margin-bottom:4px;">Assignations (Équipe)</label>' +
-          '<div style="font-size:11.5px;color:#8A93A0;margin-bottom:12px;line-height:1.4;">' +
+        '<div style="background:var(--card);border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px;">' +
+          '<label style="font-size:14px;font-weight:700;color:var(--ink);display:block;margin-bottom:4px;">Assignations (Équipe)</label>' +
+          '<div style="font-size:11.5px;color:var(--faint);margin-bottom:12px;line-height:1.4;">' +
             (isGrandResponsable(S.user)
               ? 'Vous pouvez confier une tâche à un membre précis ou à un pôle entier — son responsable la répartira ensuite.'
               : 'Vous assignez les membres de votre pôle. Les autres responsables complètent pour le leur.') +
           '</div>' +
           '<div id="eventAssignmentsList">' + App.renderAssignmentsList() + '</div>' +
-          '<div style="display:flex;flex-direction:column;gap:8px;border-top:1px solid #E4E7EC;padding-top:12px;">' +
-            '<select id="assignUserSelect" style="width:100%;padding:10px;border-radius:8px;border:1px solid #E4E7EC;font-size:14px;outline:none;background:#F6F7F9;">' +
+          '<div style="display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);padding-top:12px;">' +
+            '<select id="assignUserSelect" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--line);font-size:14px;outline:none;background:var(--tile);">' +
               '<option value="">Sélectionner un membre…</option>' +
               renderAssignSelectOptions(S.user) +
             '</select>' +
             '<div style="display:flex;gap:8px;">' +
-              '<input type="text" id="assignTaskInput" placeholder="Tâche..." style="flex:1;padding:10px;border-radius:8px;border:1px solid #E4E7EC;font-size:14px;outline:none;background:#F6F7F9;" />' +
+              '<input type="text" id="assignTaskInput" placeholder="Tâche..." style="flex:1;padding:10px;border-radius:8px;border:1px solid var(--line);font-size:14px;outline:none;background:var(--tile);" />' +
               '<button onclick="App.addAssignment()" style="background:#0B63F6;color:#FFF;border:none;border-radius:8px;padding:0 16px;font-weight:700;cursor:pointer;">Ajouter</button>' +
             '</div>' +
           '</div>' +
         '</div>' : '') +
         
-        '<div style="background:#FFF;border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);display:flex;align-items:center;justify-content:space-between;">' +
+        '<div style="background:var(--card);border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);display:flex;align-items:center;justify-content:space-between;">' +
           '<div>' +
-            '<div style="font-size:15px;font-weight:600;color:#000;">Épingler en haut du Feed</div>' +
-            '<div style="font-size:12px;color:#8A93A0;margin-top:2px;">Rend l\'événement très visible</div>' +
+            '<div style="font-size:15px;font-weight:600;color:var(--ink);">Épingler en haut du Feed</div>' +
+            '<div style="font-size:12px;color:var(--faint);margin-top:2px;">Rend l\'événement très visible</div>' +
           '</div>' +
           '<label style="position:relative;display:inline-block;width:50px;height:30px;">' +
-            '<input type="checkbox" id="eventPinned"' + (pinnedVal ? ' checked' : '') + ' style="opacity:0;width:0;height:0;" onchange="this.nextElementSibling.style.background=this.checked?\'#0E9F6E\':\'#E4E7EC\'; this.nextElementSibling.children[0].style.transform=this.checked?\'translateX(20px)\':\'translateX(0)\';">' +
-            '<span style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:' + (pinnedVal ? '#0E9F6E' : '#E4E7EC') + ';transition:.3s;border-radius:30px;">' +
+            '<input type="checkbox" id="eventPinned"' + (pinnedVal ? ' checked' : '') + ' style="opacity:0;width:0;height:0;" onchange="this.nextElementSibling.style.background=this.checked?\'#0E9F6E\':\'var(--line)\'; this.nextElementSibling.children[0].style.transform=this.checked?\'translateX(20px)\':\'translateX(0)\';">' +
+            '<span style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:' + (pinnedVal ? '#0E9F6E' : 'var(--line)') + ';transition:.3s;border-radius:30px;">' +
               '<span style="position:absolute;content:\'\';height:26px;width:26px;left:2px;bottom:2px;background-color:white;transition:.3s;border-radius:50%;box-shadow:0 2px 4px rgba(0,0,0,0.2);transform:' + (pinnedVal ? 'translateX(20px)' : 'translateX(0)') + ';"></span>' +
             '</span>' +
           '</label>' +
@@ -1499,15 +1499,15 @@
     '</div>';
 
     return '<div onclick="App.closeEditPost()" style="position:fixed;inset:0;background:rgba(15,15,20,0.55);backdrop-filter:blur(2px);z-index:10000;display:flex;justify-content:center;align-items:flex-end;">' +
-      '<div onclick="event.stopPropagation()" style="width:100%;max-width:460px;background:#FFF;border-top-left-radius:32px;border-top-right-radius:32px;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 -8px 40px rgba(0,0,0,0.18);animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
+      '<div onclick="event.stopPropagation()" style="width:100%;max-width:460px;background:var(--card);border-top-left-radius:32px;border-top-right-radius:32px;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 -8px 40px rgba(0,0,0,0.18);animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
 
         '<div style="display:flex;justify-content:center;padding:10px 0 0;cursor:pointer;" onclick="App.closeEditPost()">' +
           '<div style="width:38px;height:5px;background:#E2E4E9;border-radius:3px;"></div>' +
         '</div>' +
 
         '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px 12px;">' +
-          '<span onclick="App.closeEditPost()" style="font-size:14.5px;color:#5A6472;cursor:pointer;font-weight:700;padding:8px 4px;">Annuler</span>' +
-          '<h3 style="font-size:16px;font-weight:800;margin:0;color:#0B0D12;letter-spacing:-0.2px;">Modifier la publication</h3>' +
+          '<span onclick="App.closeEditPost()" style="font-size:14.5px;color:var(--muted);cursor:pointer;font-weight:700;padding:8px 4px;">Annuler</span>' +
+          '<h3 style="font-size:16px;font-weight:800;margin:0;color:var(--ink);letter-spacing:-0.2px;">Modifier la publication</h3>' +
           '<button type="button" onclick="App.saveEditPost(\'' + post.id + '\')" style="font-size:14px;color:#FFF;font-weight:800;background:#0B63F6;border:none;border-radius:20px;padding:8px 18px;cursor:pointer;box-shadow:0 4px 12px rgba(0,122,255,0.28);">Enregistrer</button>' +
         '</div>' +
 
@@ -1521,61 +1521,61 @@
                 (S.postBg && !S.postBg.includes('linear-gradient') && !S.postBg.includes('url') ? '<div style="position:absolute;inset:0;background:rgba(0,0,0,0.18);border-radius:22px;"></div>' : '') +
                 '<textarea id="editPostText" oninput="App.onPostInput(this.value)" placeholder="Modifiez votre texte..." style="width:100%;min-height:180px;border:none;background:transparent;font-size:24px;font-weight:900;line-height:1.4;color:#FFF;resize:none;outline:none;box-sizing:border-box;font-family:inherit;text-align:center;padding:24px 20px;text-shadow:0 2px 12px rgba(0,0,0,0.3);position:relative;z-index:1;">' + safeHtml(S.postText||'') + '</textarea>' +
               '</div>'
-            : '<textarea id="editPostText" oninput="App.onPostInput(this.value)" placeholder="Modifiez votre texte... Tapez @ pour mentionner un membre..." style="width:100%;min-height:120px;border:none;background:#F6F7F9;border-radius:18px;padding:14px;font-size:15.5px;line-height:1.55;color:#0B0D12;resize:none;outline:none;box-sizing:border-box;font-family:inherit;margin-bottom:14px;">' + safeHtml(S.postText||'') + '</textarea>'
+            : '<textarea id="editPostText" oninput="App.onPostInput(this.value)" placeholder="Modifiez votre texte... Tapez @ pour mentionner un membre..." style="width:100%;min-height:120px;border:none;background:var(--tile);border-radius:18px;padding:14px;font-size:15.5px;line-height:1.55;color:var(--ink);resize:none;outline:none;box-sizing:border-box;font-family:inherit;margin-bottom:14px;">' + safeHtml(S.postText||'') + '</textarea>'
           ) +
 
           '<!-- Confidentialité -->' +
-          '<div style="background:#F6F7F9;border-radius:20px;padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
-            '<span style="font-size:13px;font-weight:800;color:#0B0D12;display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="width:26px;height:26px;border-radius:13px;background:#E8EEFB;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">🔒</span>Qui peut voir cette publication ?</span>' +
+          '<div style="background:var(--tile);border-radius:20px;padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
+            '<span style="font-size:13px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="width:26px;height:26px;border-radius:13px;background:#E8EEFB;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">🔒</span>Qui peut voir cette publication ?</span>' +
             '<div style="display:flex;gap:4px;background:#EAEBEF;border-radius:16px;padding:3px;">' +
-              '<button type="button" onclick="App.setPostVisibility(\'all\')" style="flex:1;padding:8px 6px;border-radius:13px;font-size:11.5px;font-weight:800;border:none;cursor:pointer;transition:all 0.2s;background:' + (vis==='all'?'#FFFFFF':'transparent') + ';color:' + (vis==='all'?'#0B63F6':'#5A6472') + ';box-shadow:' + (vis==='all'?'0 2px 6px rgba(0,0,0,0.08)':'none') + ';">🌍 Tout le monde</button>' +
-              '<button type="button" onclick="App.setPostVisibility(\'sections\')" style="flex:1;padding:8px 6px;border-radius:13px;font-size:11.5px;font-weight:800;border:none;cursor:pointer;transition:all 0.2s;background:' + (vis==='sections'?'#FFFFFF':'transparent') + ';color:' + (vis==='sections'?'#0B63F6':'#5A6472') + ';box-shadow:' + (vis==='sections'?'0 2px 6px rgba(0,0,0,0.08)':'none') + ';">Sections ciblées</button>' +
+              '<button type="button" onclick="App.setPostVisibility(\'all\')" style="flex:1;padding:8px 6px;border-radius:13px;font-size:11.5px;font-weight:800;border:none;cursor:pointer;transition:all 0.2s;background:' + (vis==='all'?'#FFFFFF':'transparent') + ';color:' + (vis==='all'?'#0B63F6':'var(--muted)') + ';box-shadow:' + (vis==='all'?'0 2px 6px rgba(0,0,0,0.08)':'none') + ';">🌍 Tout le monde</button>' +
+              '<button type="button" onclick="App.setPostVisibility(\'sections\')" style="flex:1;padding:8px 6px;border-radius:13px;font-size:11.5px;font-weight:800;border:none;cursor:pointer;transition:all 0.2s;background:' + (vis==='sections'?'#FFFFFF':'transparent') + ';color:' + (vis==='sections'?'#0B63F6':'var(--muted)') + ';box-shadow:' + (vis==='sections'?'0 2px 6px rgba(0,0,0,0.08)':'none') + ';">Sections ciblées</button>' +
             '</div>' +
             (vis === 'sections'
               ? '<div style="margin-top:10px;">' +
-                  '<label style="font-size:12px;color:#8A93A0;font-weight:600;display:block;margin-bottom:6px;">Cliquer sur les sections autorisées :</label>' +
+                  '<label style="font-size:12px;color:var(--faint);font-weight:600;display:block;margin-bottom:6px;">Cliquer sur les sections autorisées :</label>' +
                   '<div id="targetSectionBadgesContainer">' + App.renderSectionBadges(S.postTargetSections||[], 'toggleTargetSection') + '</div>' +
                 '</div>'
               : '') +
           '</div>' +
 
           '<!-- Programmation -->' +
-          '<div style="background:#F6F7F9;border-radius:20px;padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
-            '<span style="font-size:13px;font-weight:800;color:#0B0D12;display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="width:26px;height:26px;border-radius:13px;background:#FFF3E5;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">⏰</span>Programmer la publication</span>' +
+          '<div style="background:var(--tile);border-radius:20px;padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
+            '<span style="font-size:13px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="width:26px;height:26px;border-radius:13px;background:#FFF3E5;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">⏰</span>Programmer la publication</span>' +
             '<div style="display:flex;gap:8px;">' +
-              '<input type="date" id="editPostScheduleDate" value="' + schedDateVal + '" style="flex:1;height:40px;border-radius:12px;border:none;background:#FFF;padding:0 10px;font-size:12.5px;outline:none;box-shadow:0 1px 2px rgba(16,24,40,0.06);" />' +
-              '<input type="time" id="editPostScheduleTime" value="' + schedTimeVal + '" style="flex:1;height:40px;border-radius:12px;border:none;background:#FFF;padding:0 10px;font-size:12.5px;outline:none;box-shadow:0 1px 2px rgba(16,24,40,0.06);" />' +
+              '<input type="date" id="editPostScheduleDate" value="' + schedDateVal + '" style="flex:1;height:40px;border-radius:12px;border:none;background:var(--card);padding:0 10px;font-size:12.5px;outline:none;box-shadow:0 1px 2px rgba(16,24,40,0.06);" />' +
+              '<input type="time" id="editPostScheduleTime" value="' + schedTimeVal + '" style="flex:1;height:40px;border-radius:12px;border:none;background:var(--card);padding:0 10px;font-size:12.5px;outline:none;box-shadow:0 1px 2px rgba(16,24,40,0.06);" />' +
             '</div>' +
           '</div>' +
 
           '<!-- À propos -->' +
-          '<div style="background:#F6F7F9;border-radius:20px;padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
+          '<div style="background:var(--tile);border-radius:20px;padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
             '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:' + (S.postAboutEventId?'10px':'0') + ';">' +
-              '<span style="font-size:13px;font-weight:800;color:#0B0D12;display:flex;align-items:center;gap:8px;"><span style="width:26px;height:26px;border-radius:13px;background:#E8EEFB;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">🗓️</span>À propos <span style="font-weight:600;color:#8A93A0;font-size:11px;">(optionnel)</span></span>' +
+              '<span style="font-size:13px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:8px;"><span style="width:26px;height:26px;border-radius:13px;background:#E8EEFB;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">🗓️</span>À propos <span style="font-weight:600;color:var(--faint);font-size:11px;">(optionnel)</span></span>' +
               (S.postAboutEventId ? '<span onclick="App.clearAboutEvent()" style="color:#E2445C;font-size:12px;font-weight:700;cursor:pointer;">Retirer</span>' : '') +
             '</div>' +
             (function(){
               if (!S.postAboutEventId) {
-                return '<button type="button" onclick="App.openAboutEventPicker()" style="width:100%;background:#FFF;border:1px dashed #E4E7EC;border-radius:12px;padding:10px;font-size:12.5px;font-weight:700;color:#0B63F6;cursor:pointer;">+ Lier à un événement (ex : culte de dimanche)</button>';
+                return '<button type="button" onclick="App.openAboutEventPicker()" style="width:100%;background:var(--card);border:1px dashed var(--line);border-radius:12px;padding:10px;font-size:12.5px;font-weight:700;color:#0B63F6;cursor:pointer;">+ Lier à un événement (ex : culte de dimanche)</button>';
               }
               var evAbout2 = db(SK.POSTS, []).find(function(p){ return p.id === S.postAboutEventId; });
               if (!evAbout2) return '';
               var evAbout2D = evAbout2.eventDate ? new Date(evAbout2.eventDate+'T00:00:00').toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'}) : '';
-              return '<button type="button" onclick="App.openAboutEventPicker()" style="width:100%;display:flex;align-items:center;gap:8px;background:#FFF;border-radius:12px;padding:10px;text-align:left;border:none;cursor:pointer;">' +
+              return '<button type="button" onclick="App.openAboutEventPicker()" style="width:100%;display:flex;align-items:center;gap:8px;background:var(--card);border-radius:12px;padding:10px;text-align:left;border:none;cursor:pointer;">' +
                 '<span style="font-size:16px;">🗓️</span>' +
-                '<span style="flex:1;min-width:0;font-size:12.5px;font-weight:700;color:#0B0D12;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(evAbout2.eventTitle||'') + (evAbout2D?' · '+evAbout2D:'') + (evAbout2.eventStart?' à '+evAbout2.eventStart:'') + '</span>' +
+                '<span style="flex:1;min-width:0;font-size:12.5px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(evAbout2.eventTitle||'') + (evAbout2D?' · '+evAbout2D:'') + (evAbout2.eventStart?' à '+evAbout2.eventStart:'') + '</span>' +
               '</button>';
             })() +
           '</div>' +
 
           '<!-- Éphémère -->' +
-          '<div style="background:#F6F7F9;border-radius:20px;padding:14px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
+          '<div style="background:var(--tile);border-radius:20px;padding:14px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
             '<div style="display:flex;align-items:center;justify-content:space-between;">' +
               '<div style="display:flex;align-items:center;gap:10px;">' +
                 '<span style="width:26px;height:26px;border-radius:13px;background:#FFEDE0;display:inline-flex;align-items:center;justify-content:center;font-size:14px;">🕐</span>' +
                 '<div>' +
-                  '<div style="font-size:13px;font-weight:800;color:#0B0D12;">Publication éphémère</div>' +
-                  '<div style="font-size:11px;color:#8A93A0;">Disparaît automatiquement après 24h</div>' +
+                  '<div style="font-size:13px;font-weight:800;color:var(--ink);">Publication éphémère</div>' +
+                  '<div style="font-size:11px;color:var(--faint);">Disparaît automatiquement après 24h</div>' +
                 '</div>' +
               '</div>' +
               '<label style="position:relative;display:inline-block;width:48px;height:28px;flex-shrink:0;">' +
@@ -1592,8 +1592,8 @@
         '<div style="padding:4px 16px 14px;">' +
           (S.pendingMedia.length === 0
             ? '<div style="display:flex;gap:8px;align-items:center;overflow-x:auto;padding:2px 0 10px;scrollbar-width:none;">' +
-                '<span style="font-size:11px;font-weight:700;color:#8A93A0;flex-shrink:0;">Fond</span>' +
-                '<div onclick="App.setPostBg(null)" style="width:30px;height:30px;border-radius:15px;background:#FFF;border:2px solid ' + (S.postBg===null?'#0B63F6':'#E4E7EC') + ';cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;font-weight:700;color:#25303F;">Aa</div>' +
+                '<span style="font-size:11px;font-weight:700;color:var(--faint);flex-shrink:0;">Fond</span>' +
+                '<div onclick="App.setPostBg(null)" style="width:30px;height:30px;border-radius:15px;background:var(--card);border:2px solid ' + (S.postBg===null?'#0B63F6':'var(--line)') + ';cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;font-weight:700;color:var(--ink2);">Aa</div>' +
                 [
                   'linear-gradient(135deg,#1A1A2E,#16213E)',
                   'linear-gradient(135deg,#FF6B6B,#FF8E53)',
@@ -1620,9 +1620,9 @@
               'Photo / Vidéo' +
               '<input type="file" accept="image/*,video/*" multiple onchange="App.addMedia(event)" style="display:none;">' +
             '</label>' +
-            '<span style="font-size:11.5px;color:#8A93A0;font-weight:600;">' + (S.pendingMedia.some(function(m){return isVideoUrl(m);}) ? '1 vidéo' : S.pendingMedia.length + '/10 photos') + '</span>' +
+            '<span style="font-size:11.5px;color:var(--faint);font-weight:600;">' + (S.pendingMedia.some(function(m){return isVideoUrl(m);}) ? '1 vidéo' : S.pendingMedia.length + '/10 photos') + '</span>' +
           '</div>' +
-          '<label style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer;font-size:12px;color:#5A6472;font-weight:600;line-height:1.4;background:#F6F7F9;padding:10px 12px;border-radius:14px;"><input type="checkbox" ' + (S.reduceVideoQuality?'checked':'') + ' onchange="App.toggleReduceVideoQuality()" style="width:17px;height:17px;flex-shrink:0;accent-color:#0B63F6;"> 🎥 Nous réduisons la qualité vidéo en HD pour une expérience plus fluide</label>' +
+          '<label style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer;font-size:12px;color:var(--muted);font-weight:600;line-height:1.4;background:var(--tile);padding:10px 12px;border-radius:14px;"><input type="checkbox" ' + (S.reduceVideoQuality?'checked':'') + ' onchange="App.toggleReduceVideoQuality()" style="width:17px;height:17px;flex-shrink:0;accent-color:#0B63F6;"> 🎥 Nous réduisons la qualité vidéo en HD pour une expérience plus fluide</label>' +
         '</div>' +
 
       '</div>' +
@@ -1646,26 +1646,26 @@
     '</div>';
 
     return '<div onclick="App.closeRepostModal()" style="position:fixed;inset:0;background:rgba(15,15,20,0.55);backdrop-filter:blur(2px);z-index:10000;display:flex;justify-content:center;align-items:flex-end;">' +
-      '<div onclick="event.stopPropagation()" style="width:100%;max-width:460px;background:#FFF;border-top-left-radius:32px;border-top-right-radius:32px;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 -8px 40px rgba(0,0,0,0.18);animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
+      '<div onclick="event.stopPropagation()" style="width:100%;max-width:460px;background:var(--card);border-top-left-radius:32px;border-top-right-radius:32px;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 -8px 40px rgba(0,0,0,0.18);animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
 
         '<div style="display:flex;justify-content:center;padding:10px 0 0;cursor:pointer;" onclick="App.closeRepostModal()">' +
           '<div style="width:38px;height:5px;background:#E2E4E9;border-radius:3px;"></div>' +
         '</div>' +
 
         '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px 12px;">' +
-          '<span onclick="App.closeRepostModal()" style="font-size:14.5px;color:#5A6472;cursor:pointer;font-weight:700;padding:8px 4px;">Annuler</span>' +
-          '<h3 style="font-size:16px;font-weight:800;margin:0;color:#0B0D12;letter-spacing:-0.2px;">Partager</h3>' +
+          '<span onclick="App.closeRepostModal()" style="font-size:14.5px;color:var(--muted);cursor:pointer;font-weight:700;padding:8px 4px;">Annuler</span>' +
+          '<h3 style="font-size:16px;font-weight:800;margin:0;color:var(--ink);letter-spacing:-0.2px;">Partager</h3>' +
           '<button type="button" onclick="App.confirmRepost()" style="font-size:14px;color:#FFF;font-weight:800;background:#0B63F6;border:none;border-radius:20px;padding:8px 18px;cursor:pointer;box-shadow:0 4px 12px rgba(0,122,255,0.28);">Partager</button>' +
         '</div>' +
 
         '<div style="overflow-y:auto;flex:1;padding:4px 16px 16px;">' +
           hashHtml +
           '<div id="mentionSugg" style="display:none;flex-wrap:wrap;gap:6px;background:#E8EEFB;border:1px solid #CCDEFF;border-radius:14px;padding:10px;margin-bottom:12px;"></div>' +
-          '<textarea id="repostText" oninput="App.onPostInput(this.value)" placeholder="Ajoutez un commentaire... Tapez # pour un hashtag ou @ pour mentionner un membre..." style="width:100%;min-height:90px;border:none;background:#F6F7F9;border-radius:18px;padding:14px;font-size:15.5px;line-height:1.55;color:#0B0D12;resize:none;outline:none;box-sizing:border-box;font-family:inherit;margin-bottom:14px;">' + safeHtml(S.postText||'') + '</textarea>' +
+          '<textarea id="repostText" oninput="App.onPostInput(this.value)" placeholder="Ajoutez un commentaire... Tapez # pour un hashtag ou @ pour mentionner un membre..." style="width:100%;min-height:90px;border:none;background:var(--tile);border-radius:18px;padding:14px;font-size:15.5px;line-height:1.55;color:var(--ink);resize:none;outline:none;box-sizing:border-box;font-family:inherit;margin-bottom:14px;">' + safeHtml(S.postText||'') + '</textarea>' +
 
-          '<div style="background:#F6F7F9;border-radius:18px;overflow:hidden;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
+          '<div style="background:var(--tile);border-radius:18px;overflow:hidden;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
             '<div style="padding:10px 12px;">' +
-              '<strong style="font-size:13px;color:#0B0D12;">' + safeHtml(post.author||'Membre') + '</strong>' +
+              '<strong style="font-size:13px;color:var(--ink);">' + safeHtml(post.author||'Membre') + '</strong>' +
             '</div>' +
             (previewMedia
               ? (isVideoUrl(previewMedia)
@@ -1673,7 +1673,7 @@
                   : '<img src="'+previewMedia+'" style="width:100%;max-height:220px;object-fit:cover;display:block;">')
               : (post.postBg
                   ? '<div style="min-height:100px;display:flex;align-items:center;justify-content:center;padding:20px;background:' + post.postBg + ';"><p style="color:#FFF;font-size:15px;font-weight:800;text-align:center;margin:0;">' + safeHtml(previewCaption.slice(0,140)) + '</p></div>'
-                  : '<p style="font-size:13.5px;color:#25303F;margin:0;padding:12px;line-height:1.4;">' + safeHtml(previewCaption.slice(0,200)) + '</p>')
+                  : '<p style="font-size:13.5px;color:var(--ink2);margin:0;padding:12px;line-height:1.4;">' + safeHtml(previewCaption.slice(0,200)) + '</p>')
             ) +
           '</div>' +
         '</div>' +
@@ -1691,13 +1691,13 @@
     var evDay = evDate ? evDate.getDate() : '';
     var isSel = S.postAboutEventId === ev.id;
     return '<button type="button" onclick="App.selectAboutEvent(\''+ev.id+'\')" style="width:100%;display:flex;align-items:center;gap:12px;background:' + (isSel?'#E8EEFB':'#F8F8FA') + ';border:1.5px solid ' + (isSel?'#0B63F6':'transparent') + ';border-radius:16px;padding:12px;margin-bottom:10px;cursor:pointer;text-align:left;">' +
-      '<div style="background:#FFF;border-radius:10px;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,0.06);width:44px;text-align:center;flex-shrink:0;">' +
+      '<div style="background:var(--card);border-radius:10px;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,0.06);width:44px;text-align:center;flex-shrink:0;">' +
         '<div style="background:#0B63F6;color:#FFF;font-size:8.5px;font-weight:900;text-transform:uppercase;padding:3px 0;letter-spacing:0.5px;">' + evMonth + '</div>' +
-        '<div style="font-size:18px;font-weight:900;color:#000;padding:3px 0;">' + evDay + '</div>' +
+        '<div style="font-size:18px;font-weight:900;color:var(--ink);padding:3px 0;">' + evDay + '</div>' +
       '</div>' +
       '<div style="flex:1;min-width:0;">' +
-        '<div style="font-size:14px;font-weight:800;color:#0B0D12;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(ev.eventTitle) + '</div>' +
-        '<div style="font-size:12px;color:#8A93A0;margin-top:2px;">' + (ev.eventStart ? '' + ev.eventStart + (ev.eventEnd ? ' — ' + ev.eventEnd : '') : '') + '</div>' +
+        '<div style="font-size:14px;font-weight:800;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(ev.eventTitle) + '</div>' +
+        '<div style="font-size:12px;color:var(--faint);margin-top:2px;">' + (ev.eventStart ? '' + ev.eventStart + (ev.eventEnd ? ' — ' + ev.eventEnd : '') : '') + '</div>' +
       '</div>' +
       (isSel ? '<span style="color:#0B63F6;font-size:18px;">✓</span>' : '') +
     '</button>';
@@ -1724,20 +1724,20 @@
     });
 
     if (upcoming.length === 0 && past.length === 0) {
-      return '<div style="text-align:center;padding:36px 20px;color:#8A93A0;">' +
+      return '<div style="text-align:center;padding:36px 20px;color:var(--faint);">' +
         '<div style="font-size:38px;margin-bottom:10px;">🗓️</div>' +
-        '<div style="font-size:15px;font-weight:800;color:#000;">' + (q ? 'Aucun résultat' : 'Aucun événement') + '</div>' +
+        '<div style="font-size:15px;font-weight:800;color:var(--ink);">' + (q ? 'Aucun résultat' : 'Aucun événement') + '</div>' +
         '<div style="font-size:13px;margin-top:4px;">' + (q ? 'Essayez un autre mot-clé.' : 'Créez un événement dans Planning & Cultes pour pouvoir le lier ici.') + '</div>' +
       '</div>';
     }
 
     var html = '';
     if (upcoming.length > 0) {
-      html += '<div style="font-size:11px;font-weight:800;color:#8A93A0;text-transform:uppercase;letter-spacing:0.5px;margin:4px 0 8px;">🔜 À venir</div>' +
+      html += '<div style="font-size:11px;font-weight:800;color:var(--faint);text-transform:uppercase;letter-spacing:0.5px;margin:4px 0 8px;">🔜 À venir</div>' +
         upcoming.map(renderAboutEventItemBtn).join('');
     }
     if (past.length > 0) {
-      html += '<div style="font-size:11px;font-weight:800;color:#8A93A0;text-transform:uppercase;letter-spacing:0.5px;margin:' + (upcoming.length>0?'14px':'4px') + ' 0 8px;">Passés · pour un récap</div>' +
+      html += '<div style="font-size:11px;font-weight:800;color:var(--faint);text-transform:uppercase;letter-spacing:0.5px;margin:' + (upcoming.length>0?'14px':'4px') + ' 0 8px;">Passés · pour un récap</div>' +
         past.map(renderAboutEventItemBtn).join('');
     }
     return html;
@@ -1745,19 +1745,19 @@
 
   function renderAboutEventPickerModal() {
     return '<div onclick="App.closeAboutEventPicker()" style="position:fixed;inset:0;background:rgba(15,15,20,0.55);backdrop-filter:blur(2px);z-index:10001;display:flex;justify-content:center;align-items:flex-end;">' +
-      '<div onclick="event.stopPropagation()" style="width:100%;max-width:460px;background:#FFF;border-top-left-radius:28px;border-top-right-radius:28px;max-height:82vh;display:flex;flex-direction:column;box-shadow:0 -8px 40px rgba(0,0,0,0.18);animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
+      '<div onclick="event.stopPropagation()" style="width:100%;max-width:460px;background:var(--card);border-top-left-radius:28px;border-top-right-radius:28px;max-height:82vh;display:flex;flex-direction:column;box-shadow:0 -8px 40px rgba(0,0,0,0.18);animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
         '<div style="display:flex;justify-content:center;padding:10px 0 0;cursor:pointer;" onclick="App.closeAboutEventPicker()">' +
           '<div style="width:38px;height:5px;background:#E2E4E9;border-radius:3px;"></div>' +
         '</div>' +
         '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px 12px;">' +
-          '<span onclick="App.closeAboutEventPicker()" style="font-size:14.5px;color:#5A6472;cursor:pointer;font-weight:700;padding:8px 4px;">Annuler</span>' +
-          '<h3 style="font-size:16px;font-weight:800;margin:0;color:#0B0D12;">À propos de quel événement ?</h3>' +
+          '<span onclick="App.closeAboutEventPicker()" style="font-size:14.5px;color:var(--muted);cursor:pointer;font-weight:700;padding:8px 4px;">Annuler</span>' +
+          '<h3 style="font-size:16px;font-weight:800;margin:0;color:var(--ink);">À propos de quel événement ?</h3>' +
           '<span style="width:52px;"></span>' +
         '</div>' +
         '<div style="padding:0 16px 10px;">' +
-          '<div style="display:flex;align-items:center;gap:8px;background:#F6F7F9;border-radius:12px;height:38px;padding:0 12px;">' +
+          '<div style="display:flex;align-items:center;gap:8px;background:var(--tile);border-radius:12px;height:38px;padding:0 12px;">' +
             SVG.search +
-            '<input id="aboutEventSearchInput" type="search" value="' + safeHtml(S.aboutEventSearch||'') + '" oninput="App.searchAboutEvents(this.value)" placeholder="Rechercher un événement (à venir ou passé)..." style="flex:1;border:none;background:transparent;font-size:13.5px;color:#000;outline:none;">' +
+            '<input id="aboutEventSearchInput" type="search" value="' + safeHtml(S.aboutEventSearch||'') + '" oninput="App.searchAboutEvents(this.value)" placeholder="Rechercher un événement (à venir ou passé)..." style="flex:1;border:none;background:transparent;font-size:13.5px;color:var(--ink);outline:none;">' +
           '</div>' +
         '</div>' +
         '<div id="aboutEventListContainer" style="overflow-y:auto;flex:1;padding:4px 16px 20px;">' + renderAboutEventListHtml() + '</div>' +
@@ -1788,9 +1788,9 @@
           '</div>' +
         '</div>';
       }
-      return '<div style="display:flex;align-items:center;gap:10px;background:#F6F7F9;border-radius:16px;padding:14px;margin-bottom:12px;">' +
+      return '<div style="display:flex;align-items:center;gap:10px;background:var(--tile);border-radius:16px;padding:14px;margin-bottom:12px;">' +
         '<div style="width:20px;height:20px;border:3px solid #E2E4E9;border-top-color:#0B63F6;border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0;"></div>' +
-        '<span style="font-size:12.5px;font-weight:700;color:#25303F;">' + (S.reduceVideoQuality ? 'Traitement de la vidéo (HD)…' : 'Traitement de la vidéo…') + '</span>' +
+        '<span style="font-size:12.5px;font-weight:700;color:var(--ink2);">' + (S.reduceVideoQuality ? 'Traitement de la vidéo (HD)…' : 'Traitement de la vidéo…') + '</span>' +
       '</div>';
     }
     if (S.pendingMedia.length === 0) return '';
@@ -1846,31 +1846,31 @@
           '<span style="font-size:12.5px;font-weight:800;color:#047857;min-width:0;overflow-wrap:anywhere;">Arrivée : ' + safeHtml(selectedEv.eventTitle || 'Événement') + '</span>' +
           '<button type="button" onclick="App.clearCheckInEvent()" style="background:none;border:none;color:#E2445C;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">Retirer</button>' +
         '</div>' +
-        '<div style="font-size:11.5px;color:#5A6472;line-height:1.45;">' +
+        '<div style="font-size:11.5px;color:var(--muted);line-height:1.45;">' +
           'En publiant maintenant : <b style="color:' + col + ';">' + (stars>0?'+':'') + stars + '★</b> de ponctualité' +
           (delay > 0 ? ' (retard de ' + delay + ' min)' : ' (à l\'heure)') + '.' +
         '</div>' +
-        '<div style="font-size:10.5px;color:#8A93A0;line-height:1.4;margin-top:6px;">Votre position sera relevée et visible de tous. Elle ne pourra plus être retirée.</div>' +
+        '<div style="font-size:10.5px;color:var(--faint);line-height:1.4;margin-top:6px;">Votre position sera relevée et visible de tous. Elle ne pourra plus être retirée.</div>' +
       '</div>';
     }
 
     return '<div style="background:#FFF7E6;border:1px solid #FFE0A3;border-radius:16px;padding:12px 14px;margin-bottom:10px;">' +
       '<div style="font-size:12.5px;font-weight:800;color:#8A5A00;margin-bottom:6px;">Enregistrer mon arrivée</div>' +
-      '<div style="font-size:11.5px;color:#5A6472;line-height:1.45;margin-bottom:8px;">Vous êtes de service ' + (candidates.length > 1 ? 'sur ces événements' : 'sur cet événement') + '. Pointez pour valider votre ponctualité.</div>' +
+      '<div style="font-size:11.5px;color:var(--muted);line-height:1.45;margin-bottom:8px;">Vous êtes de service ' + (candidates.length > 1 ? 'sur ces événements' : 'sur cet événement') + '. Pointez pour valider votre ponctualité.</div>' +
       candidates.map(function(ev) {
         var st = eventStartTimestamp(ev);
         var dl = st ? Math.round((now - st) / 60000) : 0;
         var sc = starsForDelay(dl);
         var c = sc >= 4 ? '#0E9F6E' : sc >= 2 ? '#D98A0B' : '#E2445C';
-        return '<button type="button" onclick="App.setCheckInEvent(\'' + ev.id + '\')" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;background:#FFF;border:1px solid #F0E0BC;border-radius:12px;padding:10px 12px;margin-bottom:6px;cursor:pointer;text-align:left;">' +
+        return '<button type="button" onclick="App.setCheckInEvent(\'' + ev.id + '\')" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--card);border:1px solid #F0E0BC;border-radius:12px;padding:10px 12px;margin-bottom:6px;cursor:pointer;text-align:left;">' +
           '<span style="min-width:0;">' +
-            '<span style="display:block;font-size:13px;font-weight:800;color:#0B0D12;overflow-wrap:anywhere;">' + safeHtml(ev.eventTitle || 'Événement') + '</span>' +
-            '<span style="display:block;font-size:11px;color:#8A93A0;">' + safeHtml(ev.eventStart || '') + (dl > 0 ? ' · retard de ' + dl + ' min' : ' · à l\'heure') + '</span>' +
+            '<span style="display:block;font-size:13px;font-weight:800;color:var(--ink);overflow-wrap:anywhere;">' + safeHtml(ev.eventTitle || 'Événement') + '</span>' +
+            '<span style="display:block;font-size:11px;color:var(--faint);">' + safeHtml(ev.eventStart || '') + (dl > 0 ? ' · retard de ' + dl + ' min' : ' · à l\'heure') + '</span>' +
           '</span>' +
           '<span style="font-size:13px;font-weight:900;color:' + c + ';white-space:nowrap;">' + (sc>0?'+':'') + sc + '★</span>' +
         '</button>';
       }).join('') +
-      '<div style="font-size:10.5px;color:#8A93A0;line-height:1.4;">Le pointage relève votre position, visible de tous et non retirable.</div>' +
+      '<div style="font-size:10.5px;color:var(--faint);line-height:1.4;">Le pointage relève votre position, visible de tous et non retirable.</div>' +
     '</div>';
   }
 
@@ -1885,15 +1885,15 @@
     '</div>';
 
     return '<div onclick="App.closeCreate()" style="position:fixed;inset:0;background:rgba(15,15,20,0.55);backdrop-filter:blur(2px);z-index:10000;display:flex;justify-content:center;align-items:flex-end;">' +
-      '<div onclick="event.stopPropagation()" style="width:100%;max-width:460px;background:#FFF;border-top-left-radius:32px;border-top-right-radius:32px;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 -8px 40px rgba(0,0,0,0.18);animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
+      '<div onclick="event.stopPropagation()" style="width:100%;max-width:460px;background:var(--card);border-top-left-radius:32px;border-top-right-radius:32px;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 -8px 40px rgba(0,0,0,0.18);animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
 
         '<div style="display:flex;justify-content:center;padding:10px 0 0;cursor:pointer;" onclick="App.closeCreate()">' +
           '<div style="width:38px;height:5px;background:#E2E4E9;border-radius:3px;"></div>' +
         '</div>' +
 
         '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px 12px;">' +
-          '<span onclick="App.closeCreate()" style="font-size:14.5px;color:#5A6472;cursor:pointer;font-weight:700;padding:8px 4px;">Annuler</span>' +
-          '<h3 style="font-size:16px;font-weight:800;margin:0;color:#0B0D12;letter-spacing:-0.2px;">Nouvelle publication</h3>' +
+          '<span onclick="App.closeCreate()" style="font-size:14.5px;color:var(--muted);cursor:pointer;font-weight:700;padding:8px 4px;">Annuler</span>' +
+          '<h3 style="font-size:16px;font-weight:800;margin:0;color:var(--ink);letter-spacing:-0.2px;">Nouvelle publication</h3>' +
           '<button type="submit" form="createPostForm" style="font-size:14px;color:#FFF;font-weight:800;background:#0B63F6;border:none;border-radius:20px;padding:8px 18px;cursor:pointer;box-shadow:0 4px 12px rgba(0,122,255,0.28);">Publier</button>' +
         '</div>' +
 
@@ -1903,7 +1903,7 @@
               ? '<img src="' + u.avatar_url + '" style="width:42px;height:42px;border-radius:21px;object-fit:cover;flex-shrink:0;box-shadow:0 3px 8px rgba(0,0,0,0.12);" />'
               : '<div style="width:42px;height:42px;border-radius:21px;background:linear-gradient(135deg,' + ((u||{}).avatar_color||'#0B63F6') + ',#0B63F6);color:#FFF;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 3px 8px rgba(0,0,0,0.12);">' + ((u&&u.prenom||'M').charAt(0)) + '</div>') +
             '<div>' +
-              '<div style="font-size:14.5px;font-weight:800;color:#0B0D12;">' + safeHtml((u&&u.prenom||'') + ' ' + (u&&u.nom||'')) + '</div>' +
+              '<div style="font-size:14.5px;font-weight:800;color:var(--ink);">' + safeHtml((u&&u.prenom||'') + ' ' + (u&&u.nom||'')) + '</div>' +
               '<div style="font-size:11.5px;color:#0B63F6;font-weight:700;background:#EEF5FF;display:inline-block;padding:2px 8px;border-radius:8px;margin-top:2px;">' + secNom((u&&u.section_id)||'cadrage') + ' · Tapez # pour les hashtags</div>' +
             '</div>' +
           '</div>' +
@@ -1924,7 +1924,7 @@
                 '<textarea id="newPostText" oninput="App.onPostInput(this.value)" placeholder="Quoi de neuf ?" style="width:100%;min-height:180px;border:none;background:transparent;font-size:24px;font-weight:900;line-height:1.4;color:#FFF;resize:none;outline:none;box-sizing:border-box;font-family:inherit;text-align:center;padding:24px 20px;text-shadow:0 2px 12px rgba(0,0,0,0.3);position:relative;z-index:1;">' + safeHtml(S.postText||'') + '</textarea>' +
               '</div>'
             : '<form id="createPostForm" onsubmit="App.submitPost(event)">' +
-                '<textarea id="newPostText" oninput="App.onPostInput(this.value)" placeholder="Quoi de neuf ? Tapez # pour ajouter un hashtag de section..." style="width:100%;min-height:140px;border:none;background:transparent;font-size:15.5px;line-height:1.55;color:#0B0D12;resize:none;outline:none;box-sizing:border-box;font-family:inherit;">' + safeHtml(S.postText||'') + '</textarea>' +
+                '<textarea id="newPostText" oninput="App.onPostInput(this.value)" placeholder="Quoi de neuf ? Tapez # pour ajouter un hashtag de section..." style="width:100%;min-height:140px;border:none;background:transparent;font-size:15.5px;line-height:1.55;color:var(--ink);resize:none;outline:none;box-sizing:border-box;font-family:inherit;">' + safeHtml(S.postText||'') + '</textarea>' +
               '</form>'
           ) +
           (S.postBg ? '<form id="createPostForm" onsubmit="App.submitPost(event)" style="display:none;"></form>' : '') +
@@ -1943,13 +1943,13 @@
                 : '')) +
 
           // Qui peut voir
-          '<div style="background:#F6F7F9;border-radius:20px;padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
+          '<div style="background:var(--tile);border-radius:20px;padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
             '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">' +
-              '<span style="font-size:13px;font-weight:800;color:#0B0D12;display:flex;align-items:center;gap:8px;"><span style="width:26px;height:26px;border-radius:13px;background:#E8EEFB;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">🔒</span>Qui peut voir ?</span>' +
+              '<span style="font-size:13px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:8px;"><span style="width:26px;height:26px;border-radius:13px;background:#E8EEFB;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">🔒</span>Qui peut voir ?</span>' +
             '</div>' +
             '<div style="display:flex;gap:4px;background:#EAEBEF;border-radius:16px;padding:3px;">' +
-              '<button type="button" onclick="App.setPostVisibility(\'all\')" style="flex:1;padding:8px 6px;border-radius:13px;font-size:11.5px;font-weight:800;border:none;cursor:pointer;transition:all 0.2s;background:' + ((S.postVisibility||'all')==='all'?'#FFFFFF':'transparent') + ';color:' + ((S.postVisibility||'all')==='all'?'#0B63F6':'#5A6472') + ';box-shadow:' + ((S.postVisibility||'all')==='all'?'0 2px 6px rgba(0,0,0,0.08)':'none') + ';">🌍 Tout le monde</button>' +
-              '<button type="button" onclick="App.setPostVisibility(\'sections\')" style="flex:1;padding:8px 6px;border-radius:13px;font-size:11.5px;font-weight:800;border:none;cursor:pointer;transition:all 0.2s;background:' + ((S.postVisibility||'all')==='sections'?'#FFFFFF':'transparent') + ';color:' + ((S.postVisibility||'all')==='sections'?'#0B63F6':'#5A6472') + ';box-shadow:' + ((S.postVisibility||'all')==='sections'?'0 2px 6px rgba(0,0,0,0.08)':'none') + ';">Sections ciblées</button>' +
+              '<button type="button" onclick="App.setPostVisibility(\'all\')" style="flex:1;padding:8px 6px;border-radius:13px;font-size:11.5px;font-weight:800;border:none;cursor:pointer;transition:all 0.2s;background:' + ((S.postVisibility||'all')==='all'?'#FFFFFF':'transparent') + ';color:' + ((S.postVisibility||'all')==='all'?'#0B63F6':'var(--muted)') + ';box-shadow:' + ((S.postVisibility||'all')==='all'?'0 2px 6px rgba(0,0,0,0.08)':'none') + ';">🌍 Tout le monde</button>' +
+              '<button type="button" onclick="App.setPostVisibility(\'sections\')" style="flex:1;padding:8px 6px;border-radius:13px;font-size:11.5px;font-weight:800;border:none;cursor:pointer;transition:all 0.2s;background:' + ((S.postVisibility||'all')==='sections'?'#FFFFFF':'transparent') + ';color:' + ((S.postVisibility||'all')==='sections'?'#0B63F6':'var(--muted)') + ';box-shadow:' + ((S.postVisibility||'all')==='sections'?'0 2px 6px rgba(0,0,0,0.08)':'none') + ';">Sections ciblées</button>' +
             '</div>' +
             (S.postVisibility === 'sections'
               ? '<div style="margin-top:10px;"><div id="targetSectionBadgesContainer">' + App.renderSectionBadges(S.postTargetSections||[], 'toggleTargetSection') + '</div></div>'
@@ -1957,66 +1957,66 @@
           '</div>' +
 
           // Programmer
-          '<div style="background:#F6F7F9;border-radius:20px;padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
-            '<span style="font-size:13px;font-weight:800;color:#0B0D12;display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="width:26px;height:26px;border-radius:13px;background:#FFF3E5;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">⏰</span>Programmer <span style="font-weight:600;color:#8A93A0;font-size:11px;">(optionnel)</span></span>' +
+          '<div style="background:var(--tile);border-radius:20px;padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
+            '<span style="font-size:13px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="width:26px;height:26px;border-radius:13px;background:#FFF3E5;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">⏰</span>Programmer <span style="font-weight:600;color:var(--faint);font-size:11px;">(optionnel)</span></span>' +
             '<div style="display:flex;gap:8px;">' +
-              '<input type="date" id="postScheduleDate" style="flex:1;height:40px;border-radius:12px;border:none;background:#FFF;padding:0 10px;font-size:12.5px;outline:none;box-shadow:0 1px 2px rgba(16,24,40,0.06);" />' +
-              '<input type="time" id="postScheduleTime" style="flex:1;height:40px;border-radius:12px;border:none;background:#FFF;padding:0 10px;font-size:12.5px;outline:none;box-shadow:0 1px 2px rgba(16,24,40,0.06);" />' +
+              '<input type="date" id="postScheduleDate" style="flex:1;height:40px;border-radius:12px;border:none;background:var(--card);padding:0 10px;font-size:12.5px;outline:none;box-shadow:0 1px 2px rgba(16,24,40,0.06);" />' +
+              '<input type="time" id="postScheduleTime" style="flex:1;height:40px;border-radius:12px;border:none;background:var(--card);padding:0 10px;font-size:12.5px;outline:none;box-shadow:0 1px 2px rgba(16,24,40,0.06);" />' +
             '</div>' +
           '</div>' +
 
           // À propos
-          '<div style="background:#F6F7F9;border-radius:20px;padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
+          '<div style="background:var(--tile);border-radius:20px;padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
             '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:' + (S.postAboutEventId?'10px':'0') + ';">' +
-              '<span style="font-size:13px;font-weight:800;color:#0B0D12;display:flex;align-items:center;gap:8px;"><span style="width:26px;height:26px;border-radius:13px;background:#E8EEFB;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">🗓️</span>À propos <span style="font-weight:600;color:#8A93A0;font-size:11px;">(optionnel)</span></span>' +
+              '<span style="font-size:13px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:8px;"><span style="width:26px;height:26px;border-radius:13px;background:#E8EEFB;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">🗓️</span>À propos <span style="font-weight:600;color:var(--faint);font-size:11px;">(optionnel)</span></span>' +
               (S.postAboutEventId ? '<span onclick="App.clearAboutEvent()" style="color:#E2445C;font-size:12px;font-weight:700;cursor:pointer;">Retirer</span>' : '') +
             '</div>' +
             (function(){
               if (!S.postAboutEventId) {
-                return '<button type="button" onclick="App.openAboutEventPicker()" style="width:100%;background:#FFF;border:1px dashed #E4E7EC;border-radius:12px;padding:10px;font-size:12.5px;font-weight:700;color:#0B63F6;cursor:pointer;">+ Lier à un événement (ex : culte de dimanche)</button>';
+                return '<button type="button" onclick="App.openAboutEventPicker()" style="width:100%;background:var(--card);border:1px dashed var(--line);border-radius:12px;padding:10px;font-size:12.5px;font-weight:700;color:#0B63F6;cursor:pointer;">+ Lier à un événement (ex : culte de dimanche)</button>';
               }
               var evAbout = db(SK.POSTS, []).find(function(p){ return p.id === S.postAboutEventId; });
               if (!evAbout) return '';
               var evAboutD = evAbout.eventDate ? new Date(evAbout.eventDate+'T00:00:00').toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'}) : '';
-              return '<button type="button" onclick="App.openAboutEventPicker()" style="width:100%;display:flex;align-items:center;gap:8px;background:#FFF;border-radius:12px;padding:10px;text-align:left;border:none;cursor:pointer;">' +
+              return '<button type="button" onclick="App.openAboutEventPicker()" style="width:100%;display:flex;align-items:center;gap:8px;background:var(--card);border-radius:12px;padding:10px;text-align:left;border:none;cursor:pointer;">' +
                 '<span style="font-size:16px;">🗓️</span>' +
-                '<span style="flex:1;min-width:0;font-size:12.5px;font-weight:700;color:#0B0D12;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(evAbout.eventTitle||'') + (evAboutD?' · '+evAboutD:'') + (evAbout.eventStart?' à '+evAbout.eventStart:'') + '</span>' +
+                '<span style="flex:1;min-width:0;font-size:12.5px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(evAbout.eventTitle||'') + (evAboutD?' · '+evAboutD:'') + (evAbout.eventStart?' à '+evAbout.eventStart:'') + '</span>' +
               '</button>';
             })() +
           '</div>' +
 
           // Sondage
-          '<div style="background:#F6F7F9;border-radius:20px;padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
+          '<div style="background:var(--tile);border-radius:20px;padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
             '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:' + (S.pollOpen?'10px':'0') + ';">' +
-              '<span style="font-size:13px;font-weight:800;color:#0B0D12;display:flex;align-items:center;gap:8px;"><span style="width:26px;height:26px;border-radius:13px;background:#E6F9F0;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">📊</span>Sondage <span style="font-weight:600;color:#8A93A0;font-size:11px;">(optionnel)</span></span>' +
+              '<span style="font-size:13px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:8px;"><span style="width:26px;height:26px;border-radius:13px;background:#E6F9F0;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">📊</span>Sondage <span style="font-weight:600;color:var(--faint);font-size:11px;">(optionnel)</span></span>' +
               (S.pollOpen ? '<span onclick="App.togglePoll()" style="color:#E2445C;font-size:12px;font-weight:700;cursor:pointer;">Retirer</span>' : '') +
             '</div>' +
             (S.pollOpen
               ? (
-                  '<input type="text" value="' + safeHtml(S.pollQuestion||'') + '" oninput="App.setPollQuestion(this.value)" placeholder="Posez votre question…" maxlength="140" style="width:100%;height:40px;border-radius:12px;border:none;background:#FFF;padding:0 12px;font-size:13px;outline:none;box-shadow:0 1px 2px rgba(16,24,40,0.06);margin-bottom:8px;box-sizing:border-box;" />' +
+                  '<input type="text" value="' + safeHtml(S.pollQuestion||'') + '" oninput="App.setPollQuestion(this.value)" placeholder="Posez votre question…" maxlength="140" style="width:100%;height:40px;border-radius:12px;border:none;background:var(--card);padding:0 12px;font-size:13px;outline:none;box-shadow:0 1px 2px rgba(16,24,40,0.06);margin-bottom:8px;box-sizing:border-box;" />' +
                   (S.pollOptions||[]).map(function(opt, idx) {
                     return '<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">' +
-                      '<input type="text" value="' + safeHtml(opt||'') + '" oninput="App.setPollOption(' + idx + ', this.value)" placeholder="Option ' + (idx+1) + '" maxlength="60" style="flex:1;height:38px;border-radius:11px;border:none;background:#FFF;padding:0 12px;font-size:12.5px;outline:none;box-shadow:0 1px 2px rgba(16,24,40,0.06);box-sizing:border-box;" />' +
+                      '<input type="text" value="' + safeHtml(opt||'') + '" oninput="App.setPollOption(' + idx + ', this.value)" placeholder="Option ' + (idx+1) + '" maxlength="60" style="flex:1;height:38px;border-radius:11px;border:none;background:var(--card);padding:0 12px;font-size:12.5px;outline:none;box-shadow:0 1px 2px rgba(16,24,40,0.06);box-sizing:border-box;" />' +
                       (S.pollOptions.length > 2 ? '<button type="button" onclick="App.removePollOption(' + idx + ')" style="width:32px;height:32px;flex-shrink:0;border-radius:10px;border:none;background:#FFF0EF;color:#E2445C;font-size:16px;font-weight:800;cursor:pointer;">×</button>' : '') +
                     '</div>';
                   }).join('') +
                   (S.pollOptions.length < 5
-                    ? '<button type="button" onclick="App.addPollOption()" style="background:#FFF;border:1px dashed #E4E7EC;border-radius:12px;padding:8px 12px;font-size:12px;font-weight:700;color:#0B63F6;cursor:pointer;width:100%;margin-top:2px;">+ Ajouter une option</button>'
+                    ? '<button type="button" onclick="App.addPollOption()" style="background:var(--card);border:1px dashed var(--line);border-radius:12px;padding:8px 12px;font-size:12px;font-weight:700;color:#0B63F6;cursor:pointer;width:100%;margin-top:2px;">+ Ajouter une option</button>'
                     : '') +
-                  '<div style="font-size:10.5px;color:#8A93A0;line-height:1.4;margin-top:6px;">Une seule réponse par membre. Question et au moins 2 options requises.</div>'
+                  '<div style="font-size:10.5px;color:var(--faint);line-height:1.4;margin-top:6px;">Une seule réponse par membre. Question et au moins 2 options requises.</div>'
                 )
-              : '<button type="button" onclick="App.togglePoll()" style="width:100%;background:#FFF;border:1px dashed #E4E7EC;border-radius:12px;padding:10px;font-size:12.5px;font-weight:700;color:#0EA65C;cursor:pointer;">+ Ajouter un sondage</button>'
+              : '<button type="button" onclick="App.togglePoll()" style="width:100%;background:var(--card);border:1px dashed var(--line);border-radius:12px;padding:10px;font-size:12.5px;font-weight:700;color:#0EA65C;cursor:pointer;">+ Ajouter un sondage</button>'
             ) +
           '</div>' +
 
           // Éphémère
-          '<div style="background:#F6F7F9;border-radius:20px;padding:14px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
+          '<div style="background:var(--tile);border-radius:20px;padding:14px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
             '<div style="display:flex;align-items:center;justify-content:space-between;">' +
               '<div style="display:flex;align-items:center;gap:10px;">' +
                 '<span style="width:26px;height:26px;border-radius:13px;background:#FFEDE0;display:inline-flex;align-items:center;justify-content:center;font-size:14px;">🕐</span>' +
                 '<div>' +
-                  '<div style="font-size:13px;font-weight:800;color:#0B0D12;">Publication éphémère</div>' +
-                  '<div style="font-size:11px;color:#8A93A0;">Disparaît automatiquement après 24h</div>' +
+                  '<div style="font-size:13px;font-weight:800;color:var(--ink);">Publication éphémère</div>' +
+                  '<div style="font-size:11px;color:var(--faint);">Disparaît automatiquement après 24h</div>' +
                 '</div>' +
               '</div>' +
               '<label style="position:relative;display:inline-block;width:48px;height:28px;flex-shrink:0;">' +
@@ -2029,13 +2029,13 @@
           '</div>' +
         '</div>' +
 
-        '<div style="padding:10px 16px 14px;border-top:0.5px solid #F6F7F9;flex-shrink:0;">' +
+        '<div style="padding:10px 16px 14px;border-top:0.5px solid var(--tile);flex-shrink:0;">' +
           // Color palette row
           (S.pendingMedia.length === 0
             ? '<div style="display:flex;gap:8px;align-items:center;overflow-x:auto;padding:2px 0 10px;scrollbar-width:none;">' +
-                '<span style="font-size:11px;font-weight:700;color:#8A93A0;flex-shrink:0;">Fond</span>' +
+                '<span style="font-size:11px;font-weight:700;color:var(--faint);flex-shrink:0;">Fond</span>' +
                 // "No color" option
-                '<div onclick="App.setPostBg(null)" style="width:30px;height:30px;border-radius:15px;background:#FFF;border:2px solid ' + (S.postBg===null?'#0B63F6':'#E4E7EC') + ';cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;font-weight:700;color:#25303F;">Aa</div>' +
+                '<div onclick="App.setPostBg(null)" style="width:30px;height:30px;border-radius:15px;background:var(--card);border:2px solid ' + (S.postBg===null?'#0B63F6':'var(--line)') + ';cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;font-weight:700;color:var(--ink2);">Aa</div>' +
                 // Color swatches
                 [
                   'linear-gradient(135deg,#1A1A2E,#16213E)',
@@ -2063,9 +2063,9 @@
               'Photo / Vidéo' +
               '<input type="file" accept="image/*,video/*" multiple onchange="App.addMedia(event)" style="display:none;">' +
             '</label>' +
-            '<span style="font-size:11.5px;color:#8A93A0;font-weight:600;">' + (S.pendingMedia.some(function(m){return isVideoUrl(m);}) ? '1 vidéo' : S.pendingMedia.length + '/10 photos') + '</span>' +
+            '<span style="font-size:11.5px;color:var(--faint);font-weight:600;">' + (S.pendingMedia.some(function(m){return isVideoUrl(m);}) ? '1 vidéo' : S.pendingMedia.length + '/10 photos') + '</span>' +
           '</div>' +
-          '<label style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer;font-size:12px;color:#5A6472;font-weight:600;line-height:1.4;background:#F6F7F9;padding:10px 12px;border-radius:14px;"><input type="checkbox" ' + (S.reduceVideoQuality?'checked':'') + ' onchange="App.toggleReduceVideoQuality()" style="width:17px;height:17px;flex-shrink:0;accent-color:#0B63F6;"> 🎥 Nous réduisons la qualité vidéo en HD pour une expérience plus fluide</label>' +
+          '<label style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer;font-size:12px;color:var(--muted);font-weight:600;line-height:1.4;background:var(--tile);padding:10px 12px;border-radius:14px;"><input type="checkbox" ' + (S.reduceVideoQuality?'checked':'') + ' onchange="App.toggleReduceVideoQuality()" style="width:17px;height:17px;flex-shrink:0;accent-color:#0B63F6;"> 🎥 Nous réduisons la qualité vidéo en HD pour une expérience plus fluide</label>' +
         '</div>' +
 
       '</div>' +
@@ -2084,9 +2084,9 @@
 
     var listHtml;
     if (ids.length === 0) {
-      listHtml = '<div style="text-align:center;padding:40px 20px;color:#8A93A0;">' +
+      listHtml = '<div style="text-align:center;padding:40px 20px;color:var(--faint);">' +
         '<div style="font-size:38px;margin-bottom:10px;">👀</div>' +
-        '<div style="font-size:15px;font-weight:800;color:#000;">Aucune vue pour l\'instant</div>' +
+        '<div style="font-size:15px;font-weight:800;color:var(--ink);">Aucune vue pour l\'instant</div>' +
         '<div style="font-size:13px;margin-top:4px;">Les membres qui verront cette publication apparaîtront ici.</div>' +
       '</div>';
     } else {
@@ -2103,21 +2103,21 @@
         return '<div onclick="App.closeViewers();App.openUserProfile(\'' + uid + '\')" style="display:flex;align-items:center;gap:12px;padding:10px 4px;cursor:pointer;">' +
           avatarNode +
           '<div style="flex:1;min-width:0;">' +
-            '<div style="font-size:14px;font-weight:700;color:#000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(nom) + '</div>' +
-            (secLabel ? '<div style="font-size:12px;color:#8A93A0;margin-top:1px;">' + safeHtml(secLabel) + '</div>' : '') +
+            '<div style="font-size:14px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(nom) + '</div>' +
+            (secLabel ? '<div style="font-size:12px;color:var(--faint);margin-top:1px;">' + safeHtml(secLabel) + '</div>' : '') +
           '</div>' +
         '</div>';
       }).join('');
     }
 
     return '<div onclick="App.closeViewers()" style="position:fixed;inset:0;background:rgba(15,15,20,0.55);backdrop-filter:blur(2px);z-index:10001;display:flex;justify-content:center;align-items:flex-end;">' +
-      '<div onclick="event.stopPropagation()" style="width:100%;max-width:460px;background:#FFF;border-top-left-radius:28px;border-top-right-radius:28px;max-height:78vh;display:flex;flex-direction:column;box-shadow:0 -8px 40px rgba(0,0,0,0.18);animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
+      '<div onclick="event.stopPropagation()" style="width:100%;max-width:460px;background:var(--card);border-top-left-radius:28px;border-top-right-radius:28px;max-height:78vh;display:flex;flex-direction:column;box-shadow:0 -8px 40px rgba(0,0,0,0.18);animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
         '<div style="display:flex;justify-content:center;padding:12px 0 8px;cursor:pointer;" onclick="App.closeViewers()">' +
           '<div style="width:38px;height:5px;background:#E2E4E9;border-radius:3px;"></div>' +
         '</div>' +
-        '<div style="text-align:center;padding-bottom:12px;border-bottom:0.5px solid #F6F7F9;">' +
-          '<h3 style="font-size:16px;font-weight:800;margin:0;color:#000;">Vues</h3>' +
-          '<p style="font-size:12px;color:#8A93A0;margin:2px 0 0;">' + ids.length + ' membre' + (ids.length>1?'s':'') + ' ' + (ids.length>1?'ont':'a') + ' vu cette publication</p>' +
+        '<div style="text-align:center;padding-bottom:12px;border-bottom:0.5px solid var(--tile);">' +
+          '<h3 style="font-size:16px;font-weight:800;margin:0;color:var(--ink);">Vues</h3>' +
+          '<p style="font-size:12px;color:var(--faint);margin:2px 0 0;">' + ids.length + ' membre' + (ids.length>1?'s':'') + ' ' + (ids.length>1?'ont':'a') + ' vu cette publication</p>' +
         '</div>' +
         '<div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:8px 16px 24px;">' + listHtml + '</div>' +
       '</div>' +

@@ -7,7 +7,7 @@
   window.App = {
     renderAssignmentsList: function() {
       if (!S.eventAssignments || S.eventAssignments.length === 0) {
-        return '<div style="font-size:13px;color:#8A93A0;margin-bottom:12px;">Aucune assignation.</div>';
+        return '<div style="font-size:13px;color:var(--faint);margin-bottom:12px;">Aucune assignation.</div>';
       }
       var me = S.user;
       var allU = db(SK.USERS, []);
@@ -17,14 +17,14 @@
           var label = a.isSection
             ? (a.sectionEmoji ? a.sectionEmoji + ' ' : '') + safeHtml(a.sectionName || '') + ' <span style="font-size:10px;font-weight:800;color:#0B63F6;background:#EEF0FF;padding:1px 6px;border-radius:6px;">PÔLE</span>'
             : safeHtml(a.userName || '');
-          return '<div style="display:flex;align-items:center;justify-content:space-between;background:' + (a.isSection ? '#F5F5FF' : '#F6F7F9') + ';padding:8px 12px;border-radius:8px;">' +
+          return '<div style="display:flex;align-items:center;justify-content:space-between;background:' + (a.isSection ? '#F5F5FF' : 'var(--tile)') + ';padding:8px 12px;border-radius:8px;">' +
             '<div style="display:flex;flex-direction:column;min-width:0;">' +
-              '<span style="font-size:13px;font-weight:700;color:#000;">' + label + '</span>' +
-              '<span style="font-size:12px;color:#8A93A0;">' + safeHtml(a.task || '') + '</span>' +
+              '<span style="font-size:13px;font-weight:700;color:var(--ink);">' + label + '</span>' +
+              '<span style="font-size:12px;color:var(--faint);">' + safeHtml(a.task || '') + '</span>' +
             '</div>' +
             (mine
               ? '<button type="button" onclick="App.removeAssignment(' + idx + ')" style="background:none;border:none;color:#E2445C;font-size:16px;cursor:pointer;">&times;</button>'
-              : '<span title="Relève d\'un autre pôle" style="font-size:11px;color:#E4E7EC;white-space:nowrap;">🔒</span>') +
+              : '<span title="Relève d\'un autre pôle" style="font-size:11px;color:var(--line);white-space:nowrap;">🔒</span>') +
           '</div>';
         }).join('') +
       '</div>';
@@ -597,7 +597,7 @@
       S.signupRole = role;
       // Mise à jour ciblée du style (pas de render() complet pour ne pas effacer les champs déjà saisis)
       var activeStyle = 'flex:1;height:44px;border-radius:12px;border:1.5px solid #0B63F6;background:#E8EEFB;color:#0B63F6;font-size:13.5px;font-weight:800;cursor:pointer;';
-      var inactiveStyle = 'flex:1;height:44px;border-radius:12px;border:1.5px solid #E4E7EC;background:#F6F7F9;color:#25303F;font-size:13.5px;font-weight:800;cursor:pointer;';
+      var inactiveStyle = 'flex:1;height:44px;border-radius:12px;border:1.5px solid var(--line);background:var(--tile);color:var(--ink2);font-size:13.5px;font-weight:800;cursor:pointer;';
       var mBtn = document.getElementById('signupRoleMembre');
       var rBtn = document.getElementById('signupRoleResp');
       if (mBtn) mBtn.style.cssText = (role === 'MEMBRE') ? activeStyle : inactiveStyle;
@@ -630,8 +630,8 @@
       var html = '<div style="display:flex;flex-wrap:wrap;gap:8px;">';
       sections.forEach(function(s) {
         var isSel = selected.indexOf(s.id) !== -1;
-        var bg = isSel ? '#0B63F6' : '#F6F7F9';
-        var color = isSel ? '#FFF' : '#25303F';
+        var bg = isSel ? '#0B63F6' : 'var(--tile)';
+        var color = isSel ? '#FFF' : 'var(--ink2)';
         html += '<div onclick="App.' + toggleFnName + '(\'' + s.id + '\')" style="background:' + bg + ';color:' + color + ';padding:6px 12px;border-radius:16px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:4px;transition:0.2s;">' + s.icon + ' ' + s.label + '</div>';
       });
       html += '</div>';
@@ -1471,12 +1471,23 @@ toggleParticipation: function(postId, status) {
         toast('Inscription impossible. Réessayez.', 'error');
       }
     },
-    logout: function() {
+    toggleTheme: function() {
+      S.darkMode = !S.darkMode;
+      try { localStorage.setItem('kc_dark', S.darkMode ? '1' : '0'); } catch(e){}
+      try { applyTheme(); } catch(e){}
+      render();
+    },
+    logout: async function() {
       if (S.user) {
         var users = db(SK.USERS, []); var idx = users.findIndex(function(u){ return u.id===S.user.id; });
         if (idx !== -1) { users[idx].is_online=false; users[idx].last_action='Déconnexion'; dbSet(SK.USERS, users); }
       }
-      localStorage.removeItem(SK.SESS); sessionStorage.removeItem(SK.SESS); S.user=null; S.auth='login'; S.tab='home'; render();
+      // Déconnexion RÉELLE : couper la session Supabase (sinon getSession() au
+      // rechargement reconnecte automatiquement). onAuthStateChange remettra
+      // l'écran de connexion.
+      try { if (supabase && supabase.auth) await supabase.auth.signOut(); } catch(e) { console.warn('signOut:', e); }
+      localStorage.removeItem(SK.SESS); sessionStorage.removeItem(SK.SESS);
+      S.user=null; S.jwtRole=null; S.auth='login'; S.tab='home'; render();
     },
 
     // ============================================================
@@ -2918,7 +2929,7 @@ toggleParticipation: function(postId, status) {
         if (prev) {
           prev.style.padding = '10px 14px 0';
           prev.innerHTML = '<div style="position:relative;display:inline-block;">' +
-            '<img src="'+dataUrl+'" style="width:64px;height:64px;object-fit:cover;border-radius:10px;border:1px solid #E4E7EC;">' +
+            '<img src="'+dataUrl+'" style="width:64px;height:64px;object-fit:cover;border-radius:10px;border:1px solid var(--line);">' +
             '<button type="button" onclick="App.removeCommentImage()" style="position:absolute;top:-6px;right:-6px;background:rgba(0,0,0,0.7);border:none;border-radius:8px;width:32px;height:32px;color:#FFF;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;">×</button>' +
           '</div>';
         } else {
@@ -3118,7 +3129,7 @@ toggleParticipation: function(postId, status) {
       var dots = document.getElementById('dots-'+postId);
       if (dots && post) {
         dots.innerHTML = post.mediaUrls.map(function(_,di){
-          var a=di===idx; return '<div style="width:'+(a?'18':'6')+'px;height:6px;border-radius:3px;background:'+(a?'#0B63F6':'#E4E7EC')+';transition:all 0.25s;"></div>';
+          var a=di===idx; return '<div style="width:'+(a?'18':'6')+'px;height:6px;border-radius:3px;background:'+(a?'#0B63F6':'var(--line)')+';transition:all 0.25s;"></div>';
         }).join('');
       }
     },
@@ -3138,7 +3149,7 @@ toggleParticipation: function(postId, status) {
         var html = '';
         for (var i = 0; i < total; i++) {
           var a = i === idx;
-          html += '<div style="width:' + (a?'18':'6') + 'px;height:6px;border-radius:3px;background:' + (a?'#0B63F6':'#E4E7EC') + ';transition:all 0.25s;"></div>';
+          html += '<div style="width:' + (a?'18':'6') + 'px;height:6px;border-radius:3px;background:' + (a?'#0B63F6':'var(--line)') + ';transition:all 0.25s;"></div>';
         }
         dots.innerHTML = html;
       }
@@ -3161,7 +3172,7 @@ toggleParticipation: function(postId, status) {
         var html = '';
         for (var i = 0; i < total; i++) {
           var a = i === idx;
-          html += '<div style="width:' + (a?'18':'6') + 'px;height:6px;border-radius:3px;background:' + (a?'#0B63F6':'#E4E7EC') + ';transition:all 0.25s;"></div>';
+          html += '<div style="width:' + (a?'18':'6') + 'px;height:6px;border-radius:3px;background:' + (a?'#0B63F6':'var(--line)') + ';transition:all 0.25s;"></div>';
         }
         dots.innerHTML = html;
       }
@@ -3232,7 +3243,7 @@ toggleParticipation: function(postId, status) {
       var starsEl = document.getElementById('critstars-' + secId + '-' + critId);
       if (starsEl) {
         starsEl.innerHTML = [1,2,3,4,5].map(function(s) {
-          return '<button type="button" onclick="App.rateCriterion(\'' + secId + '\',\'' + critId + '\',' + s + ')" style="font-size:26px;cursor:pointer;background:none;border:none;padding:0;line-height:1;color:' + (s<=score?'#FFD700':'#E4E7EC') + ';">★</button>';
+          return '<button type="button" onclick="App.rateCriterion(\'' + secId + '\',\'' + critId + '\',' + s + ')" style="font-size:26px;cursor:pointer;background:none;border:none;padding:0;line-height:1;color:' + (s<=score?'#FFD700':'var(--line)') + ';">★</button>';
         }).join('');
       }
       var valEl = document.getElementById('critval-' + secId + '-' + critId);
@@ -3247,7 +3258,7 @@ toggleParticipation: function(postId, status) {
       var avgEl = document.getElementById('evalavg-' + secId);
       if (avgEl) {
         avgEl.textContent = avg > 0 ? avg + '/5' : '—';
-        avgEl.style.color = avg >= 4 ? '#0E9F6E' : avg >= 2 ? '#D98A0B' : avg > 0 ? '#E2445C' : '#E4E7EC';
+        avgEl.style.color = avg >= 4 ? '#0E9F6E' : avg >= 2 ? '#D98A0B' : avg > 0 ? '#E2445C' : 'var(--line)';
       }
       var subEl = document.getElementById('evalsub-' + secId);
       if (subEl) {

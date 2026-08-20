@@ -141,7 +141,7 @@
       : allUsers;
 
     var listHtml = users.length === 0
-      ? '<div style="padding:60px 24px;text-align:center;color:#8A93A0;">' +
+      ? '<div style="padding:60px 24px;text-align:center;color:var(--faint);">' +
           '<div style="font-size:44px;margin-bottom:12px;">🔍</div>' +
           '<div style="font-size:14px;font-weight:700;">Aucun membre trouvé' + (q ? ' pour "' + safeHtml(S.membersSearch) + '"' : '') + '</div>' +
         '</div>'
@@ -155,27 +155,27 @@
           '</div>';
           var uRoleLabel = roleLabel(u.role);
           var secs = getUserSections(u).filter(function(s){ return SECTIONS.some(function(x){ return x.id === s; }); }).map(function(s){ return secNom(s); }).join(' · ');
-          return '<div onclick="App.closeMembersList();App.openUserProfile(\'' + u.id + '\');" style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:0.5px solid #F7F7F7;cursor:pointer;">' +
+          return '<div onclick="App.closeMembersList();App.openUserProfile(\'' + u.id + '\');" style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:0.5px solid var(--tile);cursor:pointer;">' +
             avatarNode +
             '<div style="flex:1;min-width:0;">' +
-              '<div style="font-size:14.5px;font-weight:800;color:#000;">' + safeHtml((u.prenom||'') + ' ' + (u.nom||'')) + '</div>' +
-              (secs ? '<div style="font-size:12px;color:#8A93A0;margin-top:2px;">' + safeHtml(secs) + '</div>' : '') +
+              '<div style="font-size:14.5px;font-weight:800;color:var(--ink);">' + safeHtml((u.prenom||'') + ' ' + (u.nom||'')) + '</div>' +
+              (secs ? '<div style="font-size:12px;color:var(--faint);margin-top:2px;">' + safeHtml(secs) + '</div>' : '') +
             '</div>' +
             (function(){ var t = roleTint(u.role); return '<span style="font-size:11px;font-weight:600;color:' + t.fg + ';background:' + t.bg + ';padding:4px 10px;border-radius:' + UI.pill + ';white-space:nowrap;flex-shrink:0;">' + uRoleLabel + '</span>'; })() +
           '</div>';
         }).join('');
 
-    return '<div class="safe-top" style="position:fixed;inset:0;z-index:9998;background:#FFF;display:flex;flex-direction:column;animation:fadeIn 0.2s ease-out;">' +
-      '<div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:0.5px solid #F6F7F9;">' +
-        '<button onclick="App.closeMembersList()" style="background:#F6F7F9;border:none;width:44px;height:44px;flex-shrink:0;touch-action:manipulation;border-radius:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' +
-          '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>' +
+    return '<div class="safe-top" style="position:fixed;inset:0;z-index:9998;background:var(--card);display:flex;flex-direction:column;animation:fadeIn 0.2s ease-out;">' +
+      '<div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:0.5px solid var(--tile);">' +
+        '<button onclick="App.closeMembersList()" style="background:var(--tile);border:none;width:44px;height:44px;flex-shrink:0;touch-action:manipulation;border-radius:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' +
+          '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>' +
         '</button>' +
-        '<div style="font-size:17px;font-weight:800;color:#000;">Tous les membres <span style="color:#8A93A0;font-weight:600;">(' + allUsers.length + ')</span></div>' +
+        '<div style="font-size:17px;font-weight:800;color:var(--ink);">Tous les membres <span style="color:var(--faint);font-weight:600;">(' + allUsers.length + ')</span></div>' +
       '</div>' +
-      '<div style="padding:10px 14px;border-bottom:0.5px solid #F6F7F9;">' +
-        '<div style="display:flex;align-items:center;gap:8px;background:#F6F7F9;border-radius:12px;height:38px;padding:0 12px;">' +
+      '<div style="padding:10px 14px;border-bottom:0.5px solid var(--tile);">' +
+        '<div style="display:flex;align-items:center;gap:8px;background:var(--tile);border-radius:12px;height:38px;padding:0 12px;">' +
           SVG.search +
-          '<input id="membersSearchInput" type="search" value="' + safeHtml(S.membersSearch||'') + '" oninput="App.searchMembers(this.value)" placeholder="Rechercher un membre..." style="flex:1;border:none;background:transparent;font-size:13.5px;color:#000;outline:none;">' +
+          '<input id="membersSearchInput" type="search" value="' + safeHtml(S.membersSearch||'') + '" oninput="App.searchMembers(this.value)" placeholder="Rechercher un membre..." style="flex:1;border:none;background:transparent;font-size:13.5px;color:var(--ink);outline:none;">' +
         '</div>' +
       '</div>' +
       '<div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;">' + listHtml + '</div>' +
@@ -183,7 +183,7 @@
   }
 
   function renderLogin() {
-    return '<div style="flex:1;min-height:0;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:28px 24px 40px;box-sizing:border-box;background:#FFFFFF;">' +
+    return '<div style="flex:1;min-height:0;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:28px 24px 40px;box-sizing:border-box;background:var(--card);">' +
     '<div style="width:100%;max-width:360px;">' +
 
       '<div style="text-align:center;margin-bottom:40px;">' +
@@ -191,8 +191,8 @@
           '<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' +
         '</div>' +
         '<h1 style="font-size:32px;font-weight:900;color:#0B63F6;margin:0 0 6px;letter-spacing:-1px;">Commit</h1>' +
-        '<div style="font-size:11px;font-weight:800;color:#000;text-transform:uppercase;letter-spacing:2px;margin-bottom:6px;">Église Vase d\'Honneur AEV</div>' +
-        '<p style="font-size:14px;color:#8A93A0;margin:6px 0 0;">Plateforme du département de la COM</p>' +
+        '<div style="font-size:11px;font-weight:800;color:var(--ink);text-transform:uppercase;letter-spacing:2px;margin-bottom:6px;">Église Vase d\'Honneur AEV</div>' +
+        '<p style="font-size:14px;color:var(--faint);margin:6px 0 0;">Plateforme du département de la COM</p>' +
       '</div>' +
 
       '<form onsubmit="event.preventDefault(); App.login(event);" style="display:flex;flex-direction:column;gap:14px;">' +
@@ -202,7 +202,7 @@
         '<button type="submit" id="loginSubmitBtn" style="' + btnStyle('#0B63F6') + '">Se connecter →</button>' +
       '</form>' +
 
-      '<p style="text-align:center;font-size:13.5px;color:#8A93A0;margin-top:22px;">' +
+      '<p style="text-align:center;font-size:13.5px;color:var(--faint);margin-top:22px;">' +
         'Pas encore de compte ? <span onclick="App.nav(\'signup\')" style="color:#0B63F6;font-weight:700;cursor:pointer;">S\'inscrire</span>' +
       '</p>' +
 
@@ -213,35 +213,35 @@
 
   function renderForgot() {
     if (!S.forgotUser) {
-      return '<div style="flex:1;min-height:0;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:28px 24px 40px;box-sizing:border-box;background:#FFFFFF;">' +
+      return '<div style="flex:1;min-height:0;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:28px 24px 40px;box-sizing:border-box;background:var(--card);">' +
         '<div style="width:100%;max-width:360px;">' +
           '<div style="display:flex;align-items:center;gap:12px;margin-bottom:28px;">' +
-            '<button onclick="App.nav(\'login\')" style="background:#F6F7F9;border:none;width:36px;height:36px;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
-              '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>' +
+            '<button onclick="App.nav(\'login\')" style="background:var(--tile);border:none;width:36px;height:36px;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
+              '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2.2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>' +
             '</button>' +
-            '<div><h1 style="font-size:22px;font-weight:900;color:#000;margin:0;">Mot de passe oublié</h1></div>' +
+            '<div><h1 style="font-size:22px;font-weight:900;color:var(--ink);margin:0;">Mot de passe oublié</h1></div>' +
           '</div>' +
-          '<p style="font-size:14px;color:#8A93A0;margin-bottom:24px;">Saisissez votre adresse e-mail : vous recevrez un lien pour définir un nouveau mot de passe.</p>' +
+          '<p style="font-size:14px;color:var(--faint);margin-bottom:24px;">Saisissez votre adresse e-mail : vous recevrez un lien pour définir un nouveau mot de passe.</p>' +
           '<form onsubmit="event.preventDefault(); App.checkForgotEmail(event);" style="display:flex;flex-direction:column;gap:14px;">' +
             renderField('forgotEmail', 'email', 'E-mail', 'jean.dupont@eglise.org', 'email') +
             '<button type="submit" style="' + btnStyle('#0B63F6') + '">Envoyer le lien de réinitialisation</button>' +
           '</form>' +
         '</div></div>';
     } else {
-      return '<div style="flex:1;min-height:0;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:28px 24px 40px;box-sizing:border-box;background:#FFFFFF;">' +
+      return '<div style="flex:1;min-height:0;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:28px 24px 40px;box-sizing:border-box;background:var(--card);">' +
         '<div style="width:100%;max-width:360px;">' +
           '<div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">' +
-            '<button onclick="S.forgotUser=null;render();" style="background:#F6F7F9;border:none;width:44px;height:44px;flex-shrink:0;touch-action:manipulation;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
-              '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>' +
+            '<button onclick="S.forgotUser=null;render();" style="background:var(--tile);border:none;width:44px;height:44px;flex-shrink:0;touch-action:manipulation;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
+              '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2.2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>' +
             '</button>' +
-            '<div><h1 style="font-size:22px;font-weight:900;color:#000;margin:0;">Réinitialisation</h1></div>' +
+            '<div><h1 style="font-size:22px;font-weight:900;color:var(--ink);margin:0;">Réinitialisation</h1></div>' +
           '</div>' +
-          '<p style="font-size:14px;color:#8A93A0;margin-bottom:20px;">Répondez aux deux questions de sécurité que vous avez définies lors de votre inscription.</p>' +
+          '<p style="font-size:14px;color:var(--faint);margin-bottom:20px;">Répondez aux deux questions de sécurité que vous avez définies lors de votre inscription.</p>' +
           '<form onsubmit="event.preventDefault(); App.resetPassword(event);" style="display:flex;flex-direction:column;gap:14px;">' +
-            '<div><label style="font-size:12px;font-weight:700;color:#25303F;display:block;margin-bottom:5px;">Q1: ' + (S.forgotUser.sec_q1||'Question 1') + '</label>' +
-            '<input id="forgotA1" type="text" placeholder="Votre réponse secrète" required style="width:100%;height:48px;border-radius:12px;border:1.5px solid #E4E7EC;background:#F6F7F9;padding:0 14px;font-size:14px;box-sizing:border-box;outline:none;" /></div>' +
-            '<div><label style="font-size:12px;font-weight:700;color:#25303F;display:block;margin-bottom:5px;">Q2: ' + (S.forgotUser.sec_q2||'Question 2') + '</label>' +
-            '<input id="forgotA2" type="text" placeholder="Votre réponse secrète" required style="width:100%;height:48px;border-radius:12px;border:1.5px solid #E4E7EC;background:#F6F7F9;padding:0 14px;font-size:14px;box-sizing:border-box;outline:none;" /></div>' +
+            '<div><label style="font-size:12px;font-weight:700;color:var(--ink2);display:block;margin-bottom:5px;">Q1: ' + (S.forgotUser.sec_q1||'Question 1') + '</label>' +
+            '<input id="forgotA1" type="text" placeholder="Votre réponse secrète" required style="width:100%;height:48px;border-radius:12px;border:1.5px solid var(--line);background:var(--tile);padding:0 14px;font-size:14px;box-sizing:border-box;outline:none;" /></div>' +
+            '<div><label style="font-size:12px;font-weight:700;color:var(--ink2);display:block;margin-bottom:5px;">Q2: ' + (S.forgotUser.sec_q2||'Question 2') + '</label>' +
+            '<input id="forgotA2" type="text" placeholder="Votre réponse secrète" required style="width:100%;height:48px;border-radius:12px;border:1.5px solid var(--line);background:var(--tile);padding:0 14px;font-size:14px;box-sizing:border-box;outline:none;" /></div>' +
             '<div style="margin-top:10px;">' + renderField('forgotPwd', 'password', 'Nouveau mot de passe', '8 caractères minimum', 'new-password') + '</div>' +
             '<button type="submit" style="' + btnStyle('#0B63F6') + 'margin-top:6px;">Réinitialiser le mot de passe</button>' +
           '</form>' +
@@ -250,15 +250,15 @@
   }
 
   function renderSignup() {
-    return '<div style="flex:1;min-height:0;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;align-items:center;padding:28px 24px 40px;box-sizing:border-box;background:#FFF;">' +
+    return '<div style="flex:1;min-height:0;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;align-items:center;padding:28px 24px 40px;box-sizing:border-box;background:var(--card);">' +
     '<div style="width:100%;max-width:360px;">' +
 
       '<div style="display:flex;align-items:center;gap:12px;margin-bottom:28px;">' +
-        '<button onclick="App.nav(\'login\')" style="background:#F6F7F9;border:none;width:36px;height:36px;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
-          '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>' +
+        '<button onclick="App.nav(\'login\')" style="background:var(--tile);border:none;width:36px;height:36px;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
+          '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2.2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>' +
         '</button>' +
         '<div><p style="font-size:11px;font-weight:800;color:#0B63F6;text-transform:uppercase;letter-spacing:1.5px;margin:0;">Créer un compte</p>' +
-        '<h1 style="font-size:22px;font-weight:900;color:#000;margin:0;">Rejoindre Commit</h1></div>' +
+        '<h1 style="font-size:22px;font-weight:900;color:var(--ink);margin:0;">Rejoindre Commit</h1></div>' +
       '</div>' +
 
       '<form onsubmit="event.preventDefault(); App.signup(event);" style="display:flex;flex-direction:column;gap:12px;">' +
@@ -267,7 +267,7 @@
           renderField('signupNom', 'text', 'Nom', 'Dupont', 'family-name') +
         '</div>' +
         renderField('signupEmail', 'email', 'E-mail', 'jean.dupont@eglise.org', 'email') +
-        '<div><label style="font-size:12px;font-weight:700;color:#25303F;display:block;margin-bottom:8px;">Sections / Pôles (1 à 2 max) <span style="color:#E2445C;">*</span></label>' +
+        '<div><label style="font-size:12px;font-weight:700;color:var(--ink2);display:block;margin-bottom:8px;">Sections / Pôles (1 à 2 max) <span style="color:#E2445C;">*</span></label>' +
           '<div id="signupSectionBadgesContainer">' +
             App.renderSectionBadges(S.signupSections, 'toggleSignupSection') +
           '</div>' +
@@ -276,7 +276,7 @@
         '<button type="submit" style="' + btnStyle('#0B63F6') + 'margin-top:6px;">Créer mon compte</button>' +
       '</form>' +
 
-      '<p style="text-align:center;font-size:13.5px;color:#8A93A0;margin-top:20px;">' +
+      '<p style="text-align:center;font-size:13.5px;color:var(--faint);margin-top:20px;">' +
         'Déjà inscrit ? <span onclick="App.nav(\'login\')" style="color:#0B63F6;font-weight:700;cursor:pointer;">Se connecter</span>' +
       '</p>' +
     '</div></div>';
@@ -291,10 +291,10 @@
   function renderField(id, type, label, placeholder, autocomplete) {
     var valeur = (S.champsAuth && S.champsAuth[id]) ? S.champsAuth[id] : '';
     return '<div style="flex:1;">' +
-      '<label style="font-size:12px;font-weight:700;color:#25303F;display:block;margin-bottom:5px;">' + label + '</label>' +
+      '<label style="font-size:12px;font-weight:700;color:var(--ink2);display:block;margin-bottom:5px;">' + label + '</label>' +
       '<input id="' + id + '" type="' + type + '" value="' + safeHtml(valeur) + '" oninput="App.saisieAuth(\'' + id + '\', this.value)"' + ' placeholder="' + placeholder + '" autocomplete="' + (autocomplete||'off') + '" required ' +
-      'style="width:100%;height:50px;border-radius:14px;border:1.5px solid #E4E7EC;background:#F6F7F9;padding:0 16px;font-size:14.5px;color:#000;box-sizing:border-box;outline:none;transition:border-color 0.2s;" ' +
-      'onfocus="this.style.borderColor=\'#0B63F6\'" onblur="this.style.borderColor=\'#E4E7EC\'">' +
+      'style="width:100%;height:50px;border-radius:14px;border:1.5px solid var(--line);background:var(--tile);padding:0 16px;font-size:14.5px;color:var(--ink);box-sizing:border-box;outline:none;transition:border-color 0.2s;" ' +
+      'onfocus="this.style.borderColor=\'#0B63F6\'" onblur="this.style.borderColor=\'var(--line)\'">' +
     '</div>';
   }
 

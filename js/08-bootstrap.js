@@ -7,7 +7,10 @@
   function injectCSS() {
     var style = document.createElement('style');
     style.textContent = [
-      'html,body{height:100%;overflow:hidden;}',
+      // Palette en variables CSS : bascule clair/sombre sans re-rendre l'app.
+      ':root{--page:#E8ECF2;--card:#FFFFFF;--tile:#F2F5F9;--line:#E2E7EF;--line2:#DCE2EB;--ink:#0B0D12;--ink2:#25303F;--muted:#5A6472;--faint:#8A93A0;--accent-soft:#E8EEFB;--accent-ink:#0B4FC4;--sh:0 1px 2px rgba(16,24,40,0.04);--sh2:0 4px 16px rgba(23,43,77,0.07);--nav-bg:rgba(255,255,255,0.96);--nav-line:rgba(0,0,0,0.12);--overlay:rgba(255,255,255,0.92);}',
+      ':root[data-theme="dark"]{--page:#000000;--card:#1C1C1E;--tile:#2C2C2E;--line:#343438;--line2:#48484A;--ink:#F2F2F7;--ink2:#D6D6DB;--muted:#9A9AA0;--faint:#8A8A8E;--accent-soft:#17233B;--accent-ink:#6FB0FF;--sh:none;--sh2:0 6px 18px rgba(0,0,0,0.5);--nav-bg:rgba(24,24,26,0.92);--nav-line:rgba(255,255,255,0.12);--overlay:rgba(30,30,32,0.92);}',
+      'html,body{height:100%;overflow:hidden;background:var(--page);}',
       '#root{height:100%;display:flex;flex-direction:column;overflow:hidden;}',
       '#mainContent{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;}',
       '::-webkit-scrollbar{display:none;}',
@@ -39,7 +42,7 @@
   // comporte de façon inexplicable. On vérifie donc que les briques essentielles
   // sont bien là avant de démarrer, et on recharge UNE fois en contournant le
   // cache si ce n'est pas le cas.
-  var APP_VERSION = 'v117';
+  var APP_VERSION = 'v118';
   // Nom du cache tenu par le service worker pour CETTE version. Doit rester
   // aligné sur CACHE_NAME dans sw.js.
   var CACHE_COURANT = 'kun-com-pwa-' + APP_VERSION;
