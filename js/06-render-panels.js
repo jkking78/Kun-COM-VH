@@ -343,9 +343,9 @@
   function renderDmBubble(m) {
     var mine = S.user && m.fromId === S.user.id;
     return '<div style="display:flex;justify-content:' + (mine ? 'flex-end' : 'flex-start') + ';margin-bottom:8px;">' +
-      '<div style="max-width:72%;background:' + (mine ? '#0B63F6' : 'var(--tile)') + ';color:' + (mine ? '#FFF' : '#000') + ';padding:9px 13px;border-radius:16px;' + (mine ? 'border-bottom-right-radius:4px;' : 'border-bottom-left-radius:4px;') + 'font-size:14.5px;line-height:1.4;word-break:break-word;">' +
+      '<div style="max-width:72%;background:' + (mine ? '#0B63F6' : 'var(--tile)') + ';color:' + (mine ? '#FFF' : 'var(--ink)') + ';padding:9px 13px;border-radius:16px;' + (mine ? 'border-bottom-right-radius:4px;' : 'border-bottom-left-radius:4px;') + 'font-size:14.5px;line-height:1.4;word-break:break-word;">' +
         safeHtml(m.text) +
-        '<div style="font-size:10px;margin-top:3px;opacity:0.7;text-align:right;">' + timeAgo(m.timestamp) + '</div>' +
+        '<div style="font-family:' + UI.fontMono + ';font-size:10px;margin-top:3px;opacity:0.7;text-align:right;">' + timeAgo(m.timestamp) + '</div>' +
       '</div>' +
     '</div>';
   }
@@ -375,7 +375,7 @@
             '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2.3"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>' +
           '</div>' +
           otherAvatar +
-          '<strong style="font-size:15px;color:var(--ink);">' + safeHtml(otherName) + '</strong>' +
+          '<strong style="font-family:' + UI.fontDisplay + ';font-size:16px;font-weight:700;letter-spacing:-0.2px;color:var(--ink);">' + safeHtml(otherName) + '</strong>' +
         '</div>' +
         '<div id="dmMessagesList" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px;">' +
           messagesHtml +
@@ -767,7 +767,7 @@
         '</div>' +
         '<div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">' +
           trendHtml +
-          '<div style="font-size:20px;font-weight:900;color:' + col + ';">' + (has ? board.average + '/5' : '—') + '</div>' +
+          '<div style="font-family:' + UI.fontMono + ';font-size:20px;font-weight:700;color:' + col + ';">' + (has ? board.average + '/5' : '—') + '</div>' +
           '<span style="font-size:13px;color:var(--line);transform:rotate(' + (open?'90':'0') + 'deg);transition:transform 0.2s;">›</span>' +
         '</div>' +
       '</div>' +
@@ -1114,7 +1114,7 @@
           '<span id="evalsub-' + sec.id + '" style="font-size:11.5px;color:var(--faint);">' + (ratedCount > 0 ? ratedCount + '/' + EVAL_CRITERIA.length + ' critères notés' : 'Appuyez pour noter les critères') + '</span></div>' +
         '</div>' +
         '<div style="display:flex;align-items:center;gap:8px;">' +
-          '<div id="evalavg-' + sec.id + '" style="font-size:20px;font-weight:900;color:' + scoreColor + ';">' + (avg > 0 ? avg+'/5' : '—') + '</div>' +
+          '<div id="evalavg-' + sec.id + '" style="font-family:' + UI.fontMono + ';font-size:20px;font-weight:700;color:' + scoreColor + ';">' + (avg > 0 ? avg+'/5' : '—') + '</div>' +
           '<span style="font-size:13px;color:var(--line);transform:rotate(' + (expanded?'90':'0') + 'deg);transition:transform 0.2s;">›</span>' +
         '</div>' +
       '</div>' +

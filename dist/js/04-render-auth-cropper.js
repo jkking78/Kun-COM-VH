@@ -158,7 +158,7 @@
       var d = ev.eventDate ? new Date(ev.eventDate + 'T00:00:00') : null;
       return '<div onclick="App.closeMembersList();App.goToEvent(\'' + ev.id + '\');" style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:0.5px solid var(--tile);cursor:pointer;">' +
         '<div style="width:46px;height:46px;border-radius:12px;background:var(--tile);display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;">' +
-          (d ? '<div style="font-size:8px;color:var(--faint);letter-spacing:0.5px;">' + d.toLocaleDateString('fr-FR',{month:'short'}).toUpperCase() + '</div><div style="font-size:16px;font-weight:800;color:var(--ink);line-height:1;">' + d.getDate() + '</div>' : ico('calendar',18,'var(--faint)')) +
+          (d ? '<div style="font-family:' + UI.fontMono + ';font-size:8px;color:var(--faint);letter-spacing:0.5px;">' + d.toLocaleDateString('fr-FR',{month:'short'}).toUpperCase() + '</div><div style="font-family:' + UI.fontMono + ';font-size:16px;font-weight:700;color:var(--ink);line-height:1;">' + d.getDate() + '</div>' : ico('calendar',18,'var(--faint)')) +
         '</div>' +
         '<div style="flex:1;min-width:0;">' +
           '<div style="font-size:14.5px;font-weight:800;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + safeHtml(ev.eventTitle || 'Événement') + '</div>' +

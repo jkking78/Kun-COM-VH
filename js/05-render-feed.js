@@ -1907,7 +1907,7 @@
 
         '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px 12px;">' +
           '<span onclick="App.closeCreate()" style="font-size:14.5px;color:var(--muted);cursor:pointer;font-weight:700;padding:8px 4px;">Annuler</span>' +
-          '<h3 style="font-size:16px;font-weight:800;margin:0;color:var(--ink);letter-spacing:-0.2px;">Nouvelle publication</h3>' +
+          '<h3 style="font-family:' + UI.fontDisplay + ';font-size:18px;font-weight:800;margin:0;color:var(--ink);letter-spacing:-0.3px;">Nouvelle publication</h3>' +
           '<button type="submit" form="createPostForm" style="font-size:14px;color:#FFF;font-weight:800;background:#0B63F6;border:none;border-radius:20px;padding:8px 18px;cursor:pointer;box-shadow:0 4px 12px rgba(0,122,255,0.28);">Publier</button>' +
         '</div>' +
 
