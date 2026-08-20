@@ -875,7 +875,7 @@
       '</svg>' +
       '<div style="position:absolute;left:0;right:0;top:26px;display:flex;flex-direction:column;align-items:center;">' +
         ico('star', 15, col) +
-        '<div style="font-size:30px;font-weight:800;color:' + UI.ink + ';line-height:1;margin-top:2px;">' + String(avg).replace('.', ',') + '</div>' +
+        '<div style="font-family:' + UI.fontMono + ';font-size:30px;font-weight:700;color:' + UI.ink + ';line-height:1;margin-top:2px;">' + String(avg).replace('.', ',') + '</div>' +
         '<div style="font-size:10px;color:' + UI.faint + ';margin-top:2px;">sur 5</div>' +
       '</div>' +
     '</div>';
@@ -939,7 +939,7 @@
         '<circle cx="70" cy="70" r="52" fill="none" stroke="' + UI.line + '" stroke-width="15"/>' + ring +
       '</svg>' +
       '<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">' +
-        '<div style="font-size:28px;font-weight:800;color:' + UI.ink + ';line-height:1;">' + (h.count ? onTimePct + '%' : '—') + '</div>' +
+        '<div style="font-family:' + UI.fontMono + ';font-size:28px;font-weight:700;color:' + UI.ink + ';line-height:1;">' + (h.count ? onTimePct + '%' : '—') + '</div>' +
         '<div style="font-size:10px;color:' + UI.faint + ';margin-top:3px;">à l\'heure</div>' +
       '</div>' +
     '</div>';
@@ -988,9 +988,9 @@
           '</svg>' +
         '</div>' +
         '<div style="display:flex;justify-content:space-around;text-align:center;margin-top:12px;border-top:0.5px solid ' + UI.line + ';padding-top:12px;">' +
-          '<div><div style="font-size:17px;font-weight:800;color:' + UI.ink + ';">' + h.count + '</div><div style="font-size:10px;color:' + UI.faint + ';">Services</div></div>' +
-          '<div><div style="font-size:17px;font-weight:800;color:' + UI.ok + ';">' + h.onTimeCount + '</div><div style="font-size:10px;color:' + UI.faint + ';">À l\'heure</div></div>' +
-          '<div><div style="font-size:17px;font-weight:800;color:' + col + ';">' + String(avg).replace('.', ',') + '</div><div style="font-size:10px;color:' + UI.faint + ';">Moyenne</div></div>' +
+          '<div><div style="font-family:' + UI.fontMono + ';font-size:18px;font-weight:700;color:' + UI.ink + ';">' + h.count + '</div><div style="font-size:10px;color:' + UI.faint + ';">Services</div></div>' +
+          '<div><div style="font-family:' + UI.fontMono + ';font-size:18px;font-weight:700;color:' + UI.ok + ';">' + h.onTimeCount + '</div><div style="font-size:10px;color:' + UI.faint + ';">À l\'heure</div></div>' +
+          '<div><div style="font-family:' + UI.fontMono + ';font-size:18px;font-weight:700;color:' + col + ';">' + String(avg).replace('.', ',') + '</div><div style="font-size:10px;color:' + UI.faint + ';">Moyenne</div></div>' +
         '</div>';
     } else {
       servicesChart = empty('Aucun service sur ce cycle.<br>Vos services assurés s\'afficheront ici, notés étoile par étoile.');
@@ -1001,7 +1001,7 @@
     return '<div style="margin:16px 0 14px;">' +
       '<div style="background:' + UI.tile + ';border-radius:' + UI.r3 + ';padding:16px 14px 16px;">' +
         '<div style="text-align:center;margin-bottom:14px;">' +
-          '<div style="font-size:14px;font-weight:700;color:' + UI.ink + ';">Mes engagements</div>' +
+          '<div style="font-family:' + UI.fontDisplay + ';font-size:16px;font-weight:700;color:' + UI.ink + ';letter-spacing:-0.3px;">Mes engagements</div>' +
           '<div style="font-size:11px;color:' + UI.faint + ';margin-top:1px;">Cycle ' + cycleStr + ' · ' + label + '</div>' +
         '</div>' +
         switcher +
@@ -1309,14 +1309,14 @@
     var roleLbl = ROLE_LABELS[freshU.role] || 'Membre';
     var elevated = freshU.role && freshU.role !== 'MEMBRE';
     var statInline = function(v, l){
-      return '<div><span style="font-size:16px;font-weight:800;color:' + UI.ink + ';">' + v + '</span> <span style="font-size:13px;color:' + UI.faint + ';">' + l + '</span></div>';
+      return '<div><span style="font-family:' + UI.fontMono + ';font-size:16px;font-weight:700;color:' + UI.ink + ';">' + v + '</span> <span style="font-size:13px;color:' + UI.faint + ';">' + l + '</span></div>';
     };
 
     var hero = '<div style="background:' + UI.card + ';padding:18px 18px 18px;">' +
       '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;">' +
         '<div style="flex:1;min-width:0;">' +
           '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
-            '<span style="font-size:23px;font-weight:800;letter-spacing:-0.4px;color:' + UI.ink + ';line-height:1.15;">' + safeHtml(freshU.prenom + ' ' + freshU.nom) + '</span>' +
+            '<span style="font-family:' + UI.fontDisplay + ';font-size:25px;font-weight:800;letter-spacing:-0.6px;color:' + UI.ink + ';line-height:1.1;">' + safeHtml(freshU.prenom + ' ' + freshU.nom) + '</span>' +
             (elevated ? '<span style="background:' + theme.badgeBg + ';color:' + theme.badgeText + ';font-size:11px;font-weight:800;padding:3px 9px;border-radius:999px;">' + roleLbl + '</span>' : '') +
           '</div>' +
           (uSecs.length ? '<div style="font-size:13.5px;color:' + UI.muted + ';margin-top:4px;">' + uSecs.map(function(s){ return secNom(s); }).join(' · ') + '</div>' : '') +

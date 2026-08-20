@@ -453,16 +453,16 @@
       evImage +
       '<div style="display:flex;gap:13px;align-items:flex-start;">' +
         (evDate ? '<div style="width:48px;flex-shrink:0;background:' + UI.evGoldSoft + ';border:0.5px solid ' + UI.evGoldLine + ';border-radius:' + UI.r1 + ';text-align:center;padding:6px 0;">' +
-          '<div style="font-size:9.5px;color:' + UI.evGold + ';letter-spacing:0.8px;">' + evMonth + '</div>' +
-          '<div style="font-size:20px;font-weight:600;color:' + UI.evInk + ';line-height:1.15;">' + evDay + '</div>' +
+          '<div style="font-family:' + UI.fontMono + ';font-size:9.5px;color:' + UI.evGold + ';letter-spacing:0.8px;">' + evMonth + '</div>' +
+          '<div style="font-family:' + UI.fontMono + ';font-size:20px;font-weight:700;color:' + UI.evInk + ';line-height:1.15;">' + evDay + '</div>' +
         '</div>' : '') +
         '<div style="flex:1;min-width:0;">' +
           '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:5px;">' +
-            '<h3 style="font-size:15px;font-weight:600;color:' + UI.evInk + ';margin:0;flex:1;min-width:0;">' + safeHtml(post.eventTitle) + '</h3>' +
+            '<h3 style="font-family:' + UI.fontDisplay + ';font-size:16px;font-weight:700;letter-spacing:-0.3px;color:' + UI.evInk + ';margin:0;flex:1;min-width:0;">' + safeHtml(post.eventTitle) + '</h3>' +
             evStatus +
           '</div>' +
           '<div style="font-size:12px;color:' + UI.evMuted + ';display:flex;flex-wrap:wrap;gap:12px;margin-bottom:' + (evSections ? '11px' : '0') + ';">' +
-            (post.eventStart ? '<span>' + ico('clock', 13, UI.evMuted) + ' ' + post.eventStart + (post.eventEnd ? ' – ' + post.eventEnd : '') + (crossesMidnight(post) ? ' +1 j' : '') + '</span>' : '') +
+            (post.eventStart ? '<span style="font-family:' + UI.fontMono + ';">' + ico('clock', 13, UI.evMuted) + ' ' + post.eventStart + (post.eventEnd ? ' – ' + post.eventEnd : '') + (crossesMidnight(post) ? ' +1 j' : '') + '</span>' : '') +
             (post.eventLocation ? '<span style="min-width:0;">' + ico('pin', 13, UI.evMuted) + ' ' + safeHtml(post.eventLocation) + '</span>' : '') +
           '</div>' +
           (evSections ? '<div style="display:flex;flex-wrap:wrap;gap:5px;">' + evSections + evMore + '</div>' : '') +
