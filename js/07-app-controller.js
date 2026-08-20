@@ -1975,6 +1975,7 @@ toggleParticipation: function(postId, status) {
     },
     openMembersList: function() { S.membersListOpen = true; S.membersSearch = ''; render(); },
     closeMembersList: function() { S.membersListOpen = false; render(); },
+    setPunctualityChart: function(which) { S.punctualityChart = which; render(); },
     searchMembers: function(q) { S.membersSearch = q; render(); var i=document.getElementById('membersSearchInput'); if(i){i.focus(); var l=i.value.length; try{i.setSelectionRange(l,l);}catch(e){}} },
     filterTag: function(tag) { S.q = decodeURIComponent(tag); S.tab='home'; render(); },
 

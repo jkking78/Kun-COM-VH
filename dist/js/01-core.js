@@ -1461,6 +1461,8 @@
     searchFocused: false,
     membersListOpen: false,
     membersSearch: '',
+    // Graphique actif de la carte ponctualité : 'note' | 'ontime' | 'services'
+    punctualityChart: 'note',
     // Modals
     createOpen: false,
     commentOpen: false,
