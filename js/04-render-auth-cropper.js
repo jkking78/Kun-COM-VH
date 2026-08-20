@@ -252,10 +252,10 @@
             '</button>' +
             '<div><h1 style="font-size:22px;font-weight:900;color:var(--ink);margin:0;">Mot de passe oublié</h1></div>' +
           '</div>' +
-          '<p style="font-size:14px;color:var(--faint);margin-bottom:24px;">Saisissez votre adresse e-mail : vous recevrez un lien pour définir un nouveau mot de passe.</p>' +
+          '<p style="font-size:14px;color:var(--faint);margin-bottom:24px;">Saisissez votre adresse e-mail : vos questions de sécurité s\'afficheront pour définir un nouveau mot de passe.</p>' +
           '<form onsubmit="event.preventDefault(); App.checkForgotEmail(event);" style="display:flex;flex-direction:column;gap:14px;">' +
             renderField('forgotEmail', 'email', 'E-mail', 'jean.dupont@eglise.org', 'email') +
-            '<button type="submit" style="' + btnStyle('#0B63F6') + '">Envoyer le lien de réinitialisation</button>' +
+            '<button type="submit" style="' + btnStyle('#0B63F6') + '">Continuer</button>' +
           '</form>' +
         '</div></div>';
     } else {
@@ -304,6 +304,11 @@
           '</div>' +
         '</div>' +
         renderField('signupPwd', 'password', 'Mot de passe', '8 caractères minimum', 'new-password') +
+        '<div style="border-top:1px solid var(--line);margin-top:6px;padding-top:14px;">' +
+          '<label style="font-size:12px;font-weight:800;color:var(--ink2);display:block;margin-bottom:4px;">Questions de sécurité</label>' +
+          '<p style="font-size:11.5px;color:var(--faint);margin:0 0 12px;line-height:1.4;">Elles servent à récupérer votre mot de passe sans e-mail. Notez bien vos réponses.</p>' +
+          renderSecurityQAFields('signup', '', '') +
+        '</div>' +
         '<button type="submit" style="' + btnStyle('#0B63F6') + 'margin-top:6px;">Créer mon compte</button>' +
       '</form>' +
 

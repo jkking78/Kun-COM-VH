@@ -649,24 +649,58 @@
       html += '</div>';
       return html;
     },
+    // Étape 1 : on récupère les questions de sécurité du compte (via l'Edge
+    // Function, seule habilitée à lire la table fermée des secrets).
     checkForgotEmail: async function(e) {
       e && e.preventDefault();
       var email = ((document.getElementById('forgotEmail')||{}).value||'').trim();
       if (!email) { toast('Veuillez saisir votre e-mail.', 'error'); return; }
-      if (!supabase || !supabase.auth) { toast('Service indisponible.', 'error'); return; }
+      if (!supabase || !supabase.functions) { toast('Service indisponible.', 'error'); return; }
       try {
-        await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin });
-      } catch(err) { console.warn('reset email:', err); }
-      // Message neutre : ne révèle pas si un compte existe pour cet e-mail.
-      toast('Si un compte existe pour cet e-mail, un lien de réinitialisation vient d\'être envoyé.', 'success');
-      S.forgotUser = null; S.auth = 'login'; render();
+        var res = await supabase.functions.invoke('password-recovery', { body: { action: 'questions', email: email } });
+        var data = res && res.data;
+        if (!data || !data.found) {
+          toast('Aucune question de sécurité pour ce compte. Demandez à un Admin de réinitialiser votre mot de passe.', 'error');
+          return;
+        }
+        if (data.locked) { toast('Trop de tentatives récentes. Réessayez dans quelques minutes.', 'error'); return; }
+        S.forgotUser = { email: email, sec_q1: data.q1, sec_q2: data.q2 };
+        render();
+      } catch(err) {
+        console.warn('forgot questions error:', err);
+        toast('Impossible de récupérer vos questions. Réessayez.', 'error');
+      }
     },
-    // La réinitialisation effective passe par l'e-mail Supabase : au retour via le
-    // lien, l'événement PASSWORD_RECOVERY (voir initAuthSession) demande le nouveau
-    // mot de passe. Ce point d'entrée reste seulement pour compatibilité.
+    // Étape 2 : on envoie les réponses + le nouveau mot de passe. L'Edge Function
+    // vérifie les réponses (hachées) et, si elles correspondent, change le mot de
+    // passe via l'API admin. Le navigateur ne voit jamais les hachés.
     resetPassword: async function(e) {
       e && e.preventDefault();
-      toast('Utilisez le lien reçu par e-mail pour définir un nouveau mot de passe.', 'success');
+      if (!S.forgotUser) { S.auth = 'login'; render(); return; }
+      var a1 = ((document.getElementById('forgotA1')||{}).value||'').trim();
+      var a2 = ((document.getElementById('forgotA2')||{}).value||'').trim();
+      var pwd = ((document.getElementById('forgotPwd')||{}).value||'').trim();
+      if (!a1 || !a2) { toast('Répondez aux deux questions.', 'error'); return; }
+      if (pwd.length < 8) { toast('Le mot de passe doit contenir au moins 8 caractères.', 'error'); return; }
+      if (!supabase || !supabase.functions) { toast('Service indisponible.', 'error'); return; }
+      try {
+        var res = await supabase.functions.invoke('password-recovery', {
+          body: { action: 'reset', email: S.forgotUser.email, a1: a1, a2: a2, newPassword: pwd }
+        });
+        // invoke() renvoie une erreur JS pour tout statut != 2xx : on lit le message.
+        if (res && res.error) {
+          var msg = 'Réponses incorrectes.';
+          try { msg = (await res.error.context.json()).error || msg; } catch(_) {}
+          toast(msg, 'error');
+          return;
+        }
+        if (!res || !res.data || !res.data.ok) { toast('Réponses incorrectes.', 'error'); return; }
+        toast('Mot de passe réinitialisé ! Connectez-vous avec le nouveau.', 'success');
+        S.forgotUser = null; S.auth = 'login'; render();
+      } catch(err) {
+        console.warn('reset password error:', err);
+        toast('Réinitialisation impossible. Vérifiez vos réponses.', 'error');
+      }
     },
 toggleParticipation: function(postId, status) {
       if (!S.user) return;
@@ -1205,6 +1239,21 @@ toggleParticipation: function(postId, status) {
         }
       }
 
+      // Questions de sécurité : (re)définies seulement si le bloc est rempli.
+      // Un bloc vide = « ne rien changer » ; un bloc partiel déclenche un toast et
+      // interrompt l'enregistrement (readSecurityQA renvoie null).
+      var editQA = readSecurityQA('edit', false);
+      if (editQA === null) { if (btn) { btn.innerHTML = 'Terminer'; btn.disabled = false; } return; }
+      if (editQA && !editQA.empty && supabase && supabase.functions) {
+        try {
+          var sqr = await supabase.functions.invoke('password-recovery', {
+            body: { action: 'set', q1: editQA.q1, q2: editQA.q2, a1: editQA.a1, a2: editQA.a2 }
+          });
+          if (sqr && sqr.error) authMsgs.push('Questions de sécurité : échec de l\'enregistrement.');
+          else authMsgs.push('Questions de sécurité mises à jour.');
+        } catch(e) { authMsgs.push('Questions de sécurité : échec de l\'enregistrement.'); }
+      }
+
       S.editProfileOpen = false;
       render();
       toast(authMsgs.length ? ('Profil mis à jour. ' + authMsgs.join(' ')) : 'Profil mis à jour !', 'success');
@@ -1421,6 +1470,9 @@ toggleParticipation: function(postId, status) {
       if (!prenom || !nom || !email || !pwd) { toast('Veuillez remplir tous les champs.', 'error'); return; }
       if (pwd.length < 8) { toast('Le mot de passe doit contenir au moins 8 caractères.', 'error'); return; }
       if (S.signupSections.length === 0) { toast('Veuillez choisir au moins 1 section.', 'error'); return; }
+      // Questions de sécurité obligatoires : c'est le seul moyen de récupération.
+      var secQA = readSecurityQA('signup', true);
+      if (!secQA) return;
       if (!supabase || !supabase.auth) { toast('Inscription indisponible.', 'error'); return; }
 
       var userSecs = S.signupSections.length > 0 ? S.signupSections.slice() : ['cadrage'];
@@ -1466,6 +1518,16 @@ toggleParticipation: function(postId, status) {
             .upsert({ id: newUser.id, content: newUser }, { onConflict: 'id' });
           if (syncRes.error) console.error('Supabase profile save error:', syncRes.error);
         } catch(err) { console.warn('Supabase signup sync exception:', err); }
+
+        // Enregistre les questions de sécurité (hachées côté serveur via l'Edge
+        // Function). Bloquant : sans elles, le membre n'aurait aucun moyen de
+        // récupération. On la connexion vient d'être établie -> JWT disponible.
+        try {
+          var secRes = await supabase.functions.invoke('password-recovery', {
+            body: { action: 'set', q1: secQA.q1, q2: secQA.q2, a1: secQA.a1, a2: secQA.a2 }
+          });
+          if (secRes && secRes.error) console.warn('set security questions error:', secRes.error);
+        } catch(err) { console.warn('set security questions exception:', err); }
 
         var users = db(SK.USERS, []);
         users.push(newUser); dbSet(SK.USERS, users);
@@ -1833,6 +1895,33 @@ toggleParticipation: function(postId, status) {
         }
       } catch(e) { toast('Échec de la mise à jour.', 'error'); }
       S.roleUpdatingId = null; render();
+    },
+    // Réinitialisation du mot de passe d'un membre par l'Admin (pour les comptes
+    // sans questions de sécurité). L'Edge Function génère un mot de passe
+    // provisoire via l'API admin ; on l'affiche à l'Admin pour qu'il le transmette.
+    adminResetPassword: async function(userId, name) {
+      if (!S.user || S.jwtRole !== 'GRAND_RESPONSABLE') { toast('Réservé à l\'Admin.', 'error'); return; }
+      if (!supabase || !supabase.functions) { toast('Service indisponible.', 'error'); return; }
+      if (!window.confirm('Générer un mot de passe provisoire pour ' + (name || 'ce membre') + ' ?')) return;
+      try {
+        var r = await supabase.functions.invoke('password-recovery', { body: { action: 'admin-reset', userId: userId } });
+        if (r && r.error) {
+          var msg = 'Échec de la réinitialisation.';
+          try { if (r.error.context && r.error.context.json) { var b = await r.error.context.json(); if (b && b.error) msg = b.error; } } catch(e){}
+          toast(msg, 'error'); return;
+        }
+        if (!r || !r.data || !r.data.ok) { toast('Échec de la réinitialisation.', 'error'); return; }
+        S.adminResetResult = { name: name || 'ce membre', password: r.data.password };
+        render();
+      } catch(e) { toast('Échec de la réinitialisation.', 'error'); }
+    },
+    closeAdminReset: function() { S.adminResetResult = null; render(); },
+    copyAdminResetPw: function() {
+      var r = S.adminResetResult; if (!r) return;
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(r.password);
+        toast('Mot de passe copié.', 'success');
+      } catch(e) { toast('Copie impossible — notez-le manuellement.', 'info'); }
     },
     // Additionne la taille de tous les fichiers du bucket post-media, page par page
     // (l'API Storage limite à 1000 résultats par appel).

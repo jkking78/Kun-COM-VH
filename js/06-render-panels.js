@@ -1613,6 +1613,8 @@
             roleBtn(m, 'RESP_SECTION', 'Responsable') +
             roleBtn(m, 'GRAND_RESPONSABLE', 'Admin') +
           '</div>' +
+          (isMe ? '' :
+            '<button onclick="App.adminResetPassword(\'' + m.id + '\',\'' + safeHtml(name).replace(/'/g,"\\'") + '\')" style="margin-top:8px;width:100%;background:none;border:1px solid var(--line);color:var(--muted);border-radius:10px;padding:7px;font-size:11.5px;font-weight:700;cursor:pointer;">🔑 Réinitialiser le mot de passe</button>') +
         '</div>';
       }).join('');
 
@@ -1625,6 +1627,25 @@
           '</div>' +
           '<p style="font-size:12px;color:var(--faint);padding:2px 20px 8px;margin:0;line-height:1.4;">Choisis un rôle pour chaque membre. La personne devra se <b>déconnecter puis reconnecter</b> pour que son nouveau rôle prenne effet.</p>' +
           '<div style="padding:0 20px 28px;">' + (rows || '<p style="text-align:center;color:var(--faint);padding:24px 0;">Aucun membre pour le moment.</p>') + '</div>' +
+        '</div>' +
+      '</div>';
+    }
+
+    // Mot de passe provisoire affiché à l'Admin après une réinitialisation, à
+    // communiquer au membre (qui le changera ensuite dans son profil).
+    function renderAdminResetPwModal() {
+      var r = S.adminResetResult;
+      if (!r) return '';
+      return '<div onclick="App.closeAdminReset()" style="position:fixed;inset:0;background:rgba(15,15,20,0.6);z-index:10006;display:flex;justify-content:center;align-items:center;padding:24px;">' +
+        '<div onclick="event.stopPropagation()" style="width:100%;max-width:380px;background:var(--card);border-radius:22px;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,0.3);text-align:center;">' +
+          '<div style="font-size:36px;margin-bottom:8px;">🔑</div>' +
+          '<h3 style="font-size:17px;font-weight:900;color:var(--ink);margin:0 0 6px;">Mot de passe provisoire</h3>' +
+          '<p style="font-size:13px;color:var(--muted);margin:0 0 16px;line-height:1.5;">Communiquez-le à <strong>' + safeHtml(r.name) + '</strong>. Il pourra le changer dans « Modifier le profil ».</p>' +
+          '<div style="display:flex;align-items:center;gap:8px;background:var(--tile);border-radius:12px;padding:14px;margin-bottom:16px;">' +
+            '<code style="flex:1;font-size:18px;font-weight:800;letter-spacing:1px;color:var(--ink);word-break:break-all;">' + safeHtml(r.password) + '</code>' +
+            '<button onclick="App.copyAdminResetPw()" style="background:' + UI.accent + ';color:#FFF;border:none;border-radius:9px;padding:8px 12px;font-size:12px;font-weight:800;cursor:pointer;flex-shrink:0;">Copier</button>' +
+          '</div>' +
+          '<button onclick="App.closeAdminReset()" style="width:100%;background:var(--tile);color:var(--ink);border:none;border-radius:12px;padding:12px;font-size:14px;font-weight:800;cursor:pointer;">Fermer</button>' +
         '</div>' +
       '</div>';
     }
@@ -1817,6 +1838,12 @@
                 '<span style="font-size:11.5px;color:var(--faint);margin-top:4px;">8 caractères minimum. Un changement d\'e-mail peut demander une confirmation par e-mail.</span>' +
               '</div>' +
             '</div>' +
+          '</div>' +
+
+          '<div style="background:var(--card);border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-top:16px;">' +
+            '<label style="font-size:14px;font-weight:700;color:var(--ink);display:block;margin-bottom:4px;">Questions de sécurité</label>' +
+            '<p style="font-size:11.5px;color:var(--faint);margin:0 0 14px;line-height:1.4;">Servent à récupérer votre mot de passe sans e-mail. Renseignez les deux pour les (re)définir ; laissez vide pour ne rien changer.</p>' +
+            renderSecurityQAFields('edit', '', '') +
           '</div>' +
         '</div>' +
 

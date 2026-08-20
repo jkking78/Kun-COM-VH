@@ -1463,6 +1463,8 @@
     membersSearch: '',
     // Graphique actif de la carte ponctualité : 'note' | 'ontime' | 'services'
     punctualityChart: 'note',
+    // Résultat d'une réinitialisation de mot de passe par l'Admin (mdp provisoire à afficher)
+    adminResetResult: null,
     // Modals
     createOpen: false,
     commentOpen: false,
@@ -2602,6 +2604,60 @@
         && p.userId === S.user.id
         && p.metadata && p.metadata.eventId === eventId;
     }) || null;
+  }
+
+  // ============================================================
+  // QUESTIONS DE SÉCURITÉ (récupération de mot de passe sans e-mail)
+  // ============================================================
+  // Liste proposée à l'inscription et dans le profil. Le TEXTE choisi est ce qui
+  // est stocké (et réaffiché lors de la récupération) — pas un identifiant.
+  var SECURITY_QUESTIONS = [
+    "Le prénom de votre meilleur(e) ami(e) d'enfance ?",
+    "Le nom de votre premier animal de compagnie ?",
+    "Votre ville de naissance ?",
+    "Le prénom de votre grand-mère maternelle ?",
+    "Le nom de votre école primaire ?",
+    "Le titre de votre chant préféré ?",
+    "Le prénom de votre parrain ou marraine ?",
+    "Votre plat préféré ?"
+  ];
+
+  // Deux blocs question (menu déroulant) + réponse, réutilisés à l'inscription et
+  // dans « Modifier le profil ». prefix distingue les identifiants (« signup » /
+  // « edit »). q1/q2 pré-sélectionnent une question déjà définie.
+  function renderSecurityQAFields(prefix, q1, q2) {
+    var opts = function(sel) {
+      return '<option value="">Choisir une question…</option>' +
+        SECURITY_QUESTIONS.map(function(q){
+          return '<option value="' + safeHtml(q) + '"' + (q === sel ? ' selected' : '') + '>' + safeHtml(q) + '</option>';
+        }).join('');
+    };
+    var selStyle = 'width:100%;height:44px;border-radius:10px;border:1.5px solid var(--line);background:var(--tile);padding:0 12px;font-size:13.5px;color:var(--ink);outline:none;box-sizing:border-box;';
+    var inpStyle = 'width:100%;height:44px;border-radius:10px;border:1.5px solid var(--line);background:var(--tile);padding:0 12px;font-size:14px;color:var(--ink);outline:none;box-sizing:border-box;margin-top:8px;';
+    return '<div style="display:flex;flex-direction:column;gap:16px;">' +
+      '<div>' +
+        '<select id="' + prefix + 'SecQ1" style="' + selStyle + '">' + opts(q1) + '</select>' +
+        '<input id="' + prefix + 'SecA1" type="text" placeholder="Votre réponse" autocomplete="off" style="' + inpStyle + '" />' +
+      '</div>' +
+      '<div>' +
+        '<select id="' + prefix + 'SecQ2" style="' + selStyle + '">' + opts(q2) + '</select>' +
+        '<input id="' + prefix + 'SecA2" type="text" placeholder="Votre réponse" autocomplete="off" style="' + inpStyle + '" />' +
+      '</div>' +
+    '</div>';
+  }
+
+  // Lit les 4 champs (2 questions + 2 réponses) d'un bloc. Renvoie null + toast si
+  // incomplet ou si les deux questions sont identiques.
+  function readSecurityQA(prefix, requireAnswers) {
+    var q1 = ((document.getElementById(prefix + 'SecQ1') || {}).value || '').trim();
+    var q2 = ((document.getElementById(prefix + 'SecQ2') || {}).value || '').trim();
+    var a1 = ((document.getElementById(prefix + 'SecA1') || {}).value || '').trim();
+    var a2 = ((document.getElementById(prefix + 'SecA2') || {}).value || '').trim();
+    // Bloc entièrement vide + réponses non obligatoires : on considère « non défini ».
+    if (!requireAnswers && !q1 && !q2 && !a1 && !a2) return { empty: true };
+    if (!q1 || !q2 || !a1 || !a2) { toast('Choisissez deux questions et donnez vos deux réponses.', 'error'); return null; }
+    if (q1 === q2) { toast('Choisissez deux questions différentes.', 'error'); return null; }
+    return { q1: q1, q2: q2, a1: a1, a2: a2 };
   }
 
   // Échéance d'une tâche, lisible (« 25 août 18:00 »). '' si non renseignée.
