@@ -126,59 +126,90 @@
   // ============================================================
   function renderMembersModal() {
     if (!S.membersListOpen) return '';
-    // Une seule fiche par personne : deux inscriptions du même e-mail (héritées de
-    // la période où le stockage saturé faisait échouer les connexions) affichaient
-    // le même membre deux fois dans l'annuaire.
+    var q = (S.membersSearch || '').toLowerCase().trim();
     var allUsers = profilsUniquesParEmail(db(SK.USERS, [])).slice().sort(function(a,b){
       return (a.prenom||'').localeCompare(b.prenom||'', 'fr', {sensitivity:'base'});
     });
-    var q = (S.membersSearch || '').toLowerCase().trim();
-    var users = q
-      ? allUsers.filter(function(u){
-          var full = ((u.prenom||'') + ' ' + (u.nom||'')).toLowerCase();
-          return full.indexOf(q) !== -1;
-        })
-      : allUsers;
+    var posts = db(SK.POSTS, []);
 
-    var listHtml = users.length === 0
-      ? '<div style="padding:60px 24px;text-align:center;color:var(--faint);">' +
-          '<div style="font-size:44px;margin-bottom:12px;">🔍</div>' +
-          '<div style="font-size:14px;font-weight:700;">Aucun membre trouvé' + (q ? ' pour "' + safeHtml(S.membersSearch) + '"' : '') + '</div>' +
-        '</div>'
-      : users.map(function(u){
-          var initial = (u.prenom||'M').charAt(0).toUpperCase();
-          var avatarImg = u.avatar_url
-            ? '<img src="' + u.avatar_url + '" style="width:48px;height:48px;border-radius:24px;object-fit:cover;" />'
-            : '<div style="width:48px;height:48px;border-radius:24px;background:' + (u.avatar_color||'#0B63F6') + ';color:#FFF;font-size:18px;font-weight:800;display:flex;align-items:center;justify-content:center;">' + initial + '</div>';
-          var avatarNode = '<div style="position:relative;flex-shrink:0;">' + avatarImg +
-            (u.is_online ? '<span style="position:absolute;bottom:1px;right:1px;width:12px;height:12px;border-radius:50%;background:#22C55E;border:2.5px solid #FFF;"></span>' : '') +
-          '</div>';
-          var uRoleLabel = roleLabel(u.role);
-          var secs = getUserSections(u).filter(function(s){ return SECTIONS.some(function(x){ return x.id === s; }); }).map(function(s){ return secNom(s); }).join(' · ');
-          return '<div onclick="App.closeMembersList();App.openUserProfile(\'' + u.id + '\');" style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:0.5px solid var(--tile);cursor:pointer;">' +
-            avatarNode +
-            '<div style="flex:1;min-width:0;">' +
-              '<div style="font-size:14.5px;font-weight:800;color:var(--ink);">' + safeHtml((u.prenom||'') + ' ' + (u.nom||'')) + '</div>' +
-              (secs ? '<div style="font-size:12px;color:var(--faint);margin-top:2px;">' + safeHtml(secs) + '</div>' : '') +
-            '</div>' +
-            (function(){ var t = roleTint(u.role); return '<span style="font-size:11px;font-weight:600;color:' + t.fg + ';background:' + t.bg + ';padding:4px 10px;border-radius:' + UI.pill + ';white-space:nowrap;flex-shrink:0;">' + uRoleLabel + '</span>'; })() +
-          '</div>';
-        }).join('');
+    var sectionLabel = function(txt, n){
+      return '<div style="padding:16px 16px 6px;font-size:11px;font-weight:800;letter-spacing:0.6px;text-transform:uppercase;color:var(--faint);">' + txt + (n ? ' (' + n + ')' : '') + '</div>';
+    };
+    var memberRow = function(u){
+      var initial = (u.prenom||'M').charAt(0).toUpperCase();
+      var avatarImg = u.avatar_url
+        ? '<img src="' + u.avatar_url + '" style="width:48px;height:48px;border-radius:24px;object-fit:cover;" />'
+        : '<div style="width:48px;height:48px;border-radius:24px;background:' + (u.avatar_color||'#0B63F6') + ';color:#FFF;font-size:18px;font-weight:800;display:flex;align-items:center;justify-content:center;">' + initial + '</div>';
+      var avatarNode = '<div style="position:relative;flex-shrink:0;">' + avatarImg +
+        (u.is_online ? '<span style="position:absolute;bottom:1px;right:1px;width:12px;height:12px;border-radius:50%;background:#22C55E;border:2.5px solid var(--card);"></span>' : '') +
+      '</div>';
+      var secs = getUserSections(u).filter(function(s){ return SECTIONS.some(function(x){ return x.id === s; }); }).map(function(s){ return secNom(s); }).join(' · ');
+      var t = roleTint(u.role);
+      return '<div onclick="App.closeMembersList();App.openUserProfile(\'' + u.id + '\');" style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:0.5px solid var(--tile);cursor:pointer;">' +
+        avatarNode +
+        '<div style="flex:1;min-width:0;">' +
+          '<div style="font-size:14.5px;font-weight:800;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + safeHtml((u.prenom||'') + ' ' + (u.nom||'')) + '</div>' +
+          (secs ? '<div style="font-size:12px;color:var(--faint);margin-top:2px;">' + safeHtml(secs) + '</div>' : '') +
+        '</div>' +
+        '<span style="font-size:11px;font-weight:600;color:' + t.fg + ';background:' + t.bg + ';padding:4px 10px;border-radius:' + UI.pill + ';white-space:nowrap;flex-shrink:0;">' + roleLabel(u.role) + '</span>' +
+      '</div>';
+    };
+    var eventRow = function(ev){
+      var d = ev.eventDate ? new Date(ev.eventDate + 'T00:00:00') : null;
+      return '<div onclick="App.closeMembersList();App.goToEvent(\'' + ev.id + '\');" style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:0.5px solid var(--tile);cursor:pointer;">' +
+        '<div style="width:46px;height:46px;border-radius:12px;background:var(--tile);display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;">' +
+          (d ? '<div style="font-size:8px;color:var(--faint);letter-spacing:0.5px;">' + d.toLocaleDateString('fr-FR',{month:'short'}).toUpperCase() + '</div><div style="font-size:16px;font-weight:800;color:var(--ink);line-height:1;">' + d.getDate() + '</div>' : ico('calendar',18,'var(--faint)')) +
+        '</div>' +
+        '<div style="flex:1;min-width:0;">' +
+          '<div style="font-size:14.5px;font-weight:800;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + safeHtml(ev.eventTitle || 'Événement') + '</div>' +
+          '<div style="font-size:12px;color:var(--faint);margin-top:2px;">' + safeHtml((ev.eventStart || '') + (ev.eventLocation ? ' · ' + ev.eventLocation : '')) + '</div>' +
+        '</div>' +
+        '<span style="font-size:11px;font-weight:700;color:var(--faint);flex-shrink:0;">Événement</span>' +
+      '</div>';
+    };
+    var postRow = function(p){
+      var snippet = (p.caption || '').replace(/\s+/g,' ').trim();
+      if (snippet.length > 80) snippet = snippet.slice(0,80) + '…';
+      return '<div onclick="App.closeMembersList();App.goToPost(\'' + p.id + '\');" style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:0.5px solid var(--tile);cursor:pointer;">' +
+        '<div style="width:46px;height:46px;border-radius:12px;background:var(--tile);display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + ico('message',18,'var(--faint)') + '</div>' +
+        '<div style="flex:1;min-width:0;">' +
+          '<div style="font-size:14px;font-weight:700;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (snippet ? safeHtml(snippet) : 'Publication') + '</div>' +
+          '<div style="font-size:12px;color:var(--faint);margin-top:2px;">' + safeHtml(p.author || '') + (p.timestamp ? ' · ' + timeAgo(p.timestamp) : '') + '</div>' +
+        '</div>' +
+        '<span style="font-size:11px;font-weight:700;color:var(--faint);flex-shrink:0;">Publication</span>' +
+      '</div>';
+    };
+    var emptyState = function(txt){
+      return '<div style="padding:60px 24px;text-align:center;color:var(--faint);"><div style="font-size:44px;margin-bottom:12px;">🔍</div><div style="font-size:14px;font-weight:700;">' + safeHtml(txt) + '</div></div>';
+    };
+
+    var body = '';
+    if (!q) {
+      body = allUsers.length ? (sectionLabel('Membres', allUsers.length) + allUsers.map(memberRow).join('')) : emptyState('Aucun membre pour le moment.');
+    } else {
+      var mM = allUsers.filter(function(u){ return ((u.prenom||'') + ' ' + (u.nom||'')).toLowerCase().indexOf(q) !== -1; });
+      var eM = posts.filter(function(p){ return isEventLike(p) && (((p.eventTitle||'') + ' ' + (p.eventLocation||'') + ' ' + (p.caption||'')).toLowerCase().indexOf(q) !== -1); });
+      var pM = posts.filter(function(p){ return !isEventLike(p) && p.type !== 'EVALUATION' && p.status !== 'deleted' && (((p.caption||'') + ' ' + (p.author||'')).toLowerCase().indexOf(q) !== -1); });
+      if (mM.length) body += sectionLabel('Membres', mM.length) + mM.map(memberRow).join('');
+      if (eM.length) body += sectionLabel('Événements', eM.length) + eM.map(eventRow).join('');
+      if (pM.length) body += sectionLabel('Publications', pM.length) + pM.map(postRow).join('');
+      if (!body) body = emptyState('Aucun résultat pour « ' + S.membersSearch + ' »');
+    }
 
     return '<div class="safe-top" style="position:fixed;inset:0;z-index:9998;background:var(--card);display:flex;flex-direction:column;animation:fadeIn 0.2s ease-out;">' +
       '<div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:0.5px solid var(--tile);">' +
-        '<button onclick="App.closeMembersList()" style="background:var(--tile);border:none;width:44px;height:44px;flex-shrink:0;touch-action:manipulation;border-radius:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' +
+        '<button onclick="App.closeMembersList()" style="background:var(--tile);border:none;width:44px;height:44px;flex-shrink:0;touch-action:manipulation;border-radius:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
           '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>' +
         '</button>' +
-        '<div style="font-size:17px;font-weight:800;color:var(--ink);">Tous les membres <span style="color:var(--faint);font-weight:600;">(' + allUsers.length + ')</span></div>' +
+        '<div style="font-size:17px;font-weight:800;color:var(--ink);">Rechercher</div>' +
       '</div>' +
       '<div style="padding:10px 14px;border-bottom:0.5px solid var(--tile);">' +
         '<div style="display:flex;align-items:center;gap:8px;background:var(--tile);border-radius:12px;height:38px;padding:0 12px;">' +
           SVG.search +
-          '<input id="membersSearchInput" type="search" value="' + safeHtml(S.membersSearch||'') + '" oninput="App.searchMembers(this.value)" placeholder="Rechercher un membre..." style="flex:1;border:none;background:transparent;font-size:13.5px;color:var(--ink);outline:none;">' +
+          '<input id="membersSearchInput" type="search" value="' + safeHtml(S.membersSearch||'') + '" oninput="App.searchMembers(this.value)" placeholder="Membres, publications, événements…" style="flex:1;border:none;background:transparent;font-size:13.5px;color:var(--ink);outline:none;">' +
         '</div>' +
       '</div>' +
-      '<div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;">' + listHtml + '</div>' +
+      '<div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:24px;">' + body + '</div>' +
     '</div>';
   }
 
