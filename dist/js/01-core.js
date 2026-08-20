@@ -745,8 +745,12 @@
   // mergePostsWithLocal : fusionne les publications distantes avec le cache local
   // de manière additive et non destructrice. Les anciennes publications conservées
   // localement ne sont JAMAIS effacées par omission (principe Local-First).
-  function mergePostsWithLocal(remoteData, purgeWindow) {
-    var localPosts = db(SK.POSTS, []);
+  // baseLocal (optionnel) : fusionner par-dessus une liste DÉJÀ EN MÉMOIRE plutôt
+  // que de relire le store persistant. Indispensable pour enchaîner deux fusions
+  // (posts récents, puis événements) sans perdre la première au passage — voir
+  // le bug corrigé dans syncSupabaseToLocal.
+  function mergePostsWithLocal(remoteData, purgeWindow, baseLocal) {
+    var localPosts = baseLocal || db(SK.POSTS, []);
     var map = {};
     (localPosts || []).forEach(function(raw) {
       var p = parsePostItem(raw);
@@ -1057,7 +1061,16 @@
         // Les événements sont ensuite ajoutés SANS purge (fusion purement additive),
         // pour qu'un nouveau compte voie tout le planning même ancien.
         if (resEvents && resEvents.data && resEvents.data.length) {
-          mergedPosts = mergePostsWithLocal(resEvents.data, false);
+          // BUG CORRIGÉ : cet appel relisait auparavant le store PERSISTANT
+          // (via db(SK.POSTS,[]) par défaut) au lieu de continuer depuis
+          // mergedPosts déjà calculé ci-dessus — donc ÉCRASAIT toute
+          // publication venant d'arriver dans res.data mais pas encore
+          // enregistrée localement (posts tout juste créés par soi ou par un
+          // autre membre). Elles disparaissaient de l'écran jusqu'au cycle de
+          // synchronisation silencieuse suivant, qui les retrouvait. On fusionne
+          // maintenant explicitement PAR-DESSUS mergedPosts, jamais par-dessus
+          // une version périmée du store.
+          mergedPosts = mergePostsWithLocal(resEvents.data, false, mergedPosts);
         }
         // Les profils arrivent dans le même lot (requêtes parallèles) : on connaît
         // donc ici, au même instant, qui existe encore. Les publications dont le
