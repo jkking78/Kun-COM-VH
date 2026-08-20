@@ -216,7 +216,7 @@
       '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px 10px;">' +
         '<h1 style="font-size:19px;font-weight:600;color:' + UI.ink + ';margin:0;letter-spacing:-0.3px;min-width:0;">Commit</h1>' +
         '<div style="display:flex;gap:2px;align-items:center;flex-shrink:0;margin-right:-8px;">' +
-          iconBtn('App.toggleSearch()', '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="' + (S.searchOpen ? UI.accent : UI.muted) + '" stroke-width="1.9" stroke-linecap="round"><circle cx="11" cy="11" r="7.5"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>', 0) +
+          iconBtn('App.openMembersList()', '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="' + UI.muted + '" stroke-width="1.9" stroke-linecap="round"><circle cx="11" cy="11" r="7.5"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>', 0) +
           iconBtn('App.openCreate()', '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="' + UI.muted + '" stroke-width="1.9" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>', 0) +
           '<button onclick="App.tab(\'profile\')" style="width:44px;height:44px;border-radius:' + UI.pill + ';background:none;border:none;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;flex-shrink:0;touch-action:manipulation;">' +
             (u.avatar_url
@@ -225,23 +225,6 @@
           '</button>' +
         '</div>' +
       '</div>' +
-      (S.searchOpen || S.q ? '<div style="padding:0 16px 12px;">' +
-        '<div style="display:flex;align-items:center;gap:8px;background:' + UI.tile + ';border-radius:' + UI.r1 + ';height:38px;padding:0 12px;">' +
-          ico('search', 16, UI.faint) +
-          '<input id="searchInput" type="search" value="' + safeHtml(S.q) + '" oninput="App.search(this.value)" onfocus="App.setSearchFocused(true)" onblur="App.setSearchFocused(false)" placeholder="Rechercher" style="flex:1;border:none;background:transparent;font-size:13.5px;color:' + UI.ink + ';outline:none;">' +
-          (S.q ? '<button onclick="App.search(\'\')" style="background:none;border:none;cursor:pointer;color:' + UI.faint + ';font-size:17px;line-height:1;padding:0;">×</button>' : '') +
-        '</div>' +
-        (S.searchFocused ? '<div style="padding-top:8px;">' +
-          '<div onmousedown="event.preventDefault();App.openMembersList();" style="display:flex;align-items:center;gap:10px;background:' + UI.accentSoft + ';border-radius:' + UI.r1 + ';padding:11px 12px;cursor:pointer;">' +
-            ico('users', 18, UI.accent) +
-            '<div style="flex:1;min-width:0;">' +
-              '<div style="font-size:13px;font-weight:600;color:' + UI.accentInk + ';">Voir tous les membres</div>' +
-              '<div style="font-size:11.5px;color:' + UI.muted + ';">' + profilsUniquesParEmail(db(SK.USERS, [])).length + ' membre(s) du département</div>' +
-            '</div>' +
-            '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="' + UI.accent + '" stroke-width="2.2"><path d="M9 18l6-6-6-6"/></svg>' +
-          '</div>' +
-        '</div>' : '') +
-      '</div>' : '') +
     '</header>';
 
     // Tendances

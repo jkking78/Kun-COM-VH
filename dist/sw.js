@@ -1,11 +1,11 @@
 // ============================================================
-// SERVICE WORKER — Kun COM VH PWA (v119)
+// SERVICE WORKER — Kun COM VH PWA (v120)
 // Stratégie : Network-First pour JS/HTML (Garantie de mise à jour instantanée)
 // app.js a été découpé en modules (voir dossier js/) pour la maintenabilité —
 // même stratégie de cache, juste plus de fichiers listés ci-dessous.
 // ============================================================
 
-const CACHE_NAME = 'kun-com-pwa-v119';
+const CACHE_NAME = 'kun-com-pwa-v120';
 // Numéro de version seul ('102'), tel qu'il apparaît dans les ?v=… de index.html.
 const NUM_V = CACHE_NAME.split('-v')[1];
 const JS_FILES = [
