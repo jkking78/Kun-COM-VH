@@ -189,7 +189,7 @@
     } else {
       var mM = allUsers.filter(function(u){ return ((u.prenom||'') + ' ' + (u.nom||'')).toLowerCase().indexOf(q) !== -1; });
       var eM = posts.filter(function(p){ return isEventLike(p) && (((p.eventTitle||'') + ' ' + (p.eventLocation||'') + ' ' + (p.caption||'')).toLowerCase().indexOf(q) !== -1); });
-      var pM = posts.filter(function(p){ return !isEventLike(p) && p.type !== 'EVALUATION' && p.status !== 'deleted' && (((p.caption||'') + ' ' + (p.author||'')).toLowerCase().indexOf(q) !== -1); });
+      var pM = posts.filter(function(p){ return !isEventLike(p) && p.type !== 'EVALUATION' && p.type !== 'TASK_DONE' && p.status !== 'deleted' && (((p.caption||'') + ' ' + (p.author||'')).toLowerCase().indexOf(q) !== -1); });
       if (mM.length) body += sectionLabel('Membres', mM.length) + mM.map(memberRow).join('');
       if (eM.length) body += sectionLabel('Événements', eM.length) + eM.map(eventRow).join('');
       if (pM.length) body += sectionLabel('Publications', pM.length) + pM.map(postRow).join('');

@@ -324,10 +324,12 @@
               '<option value="">Sélectionner un membre…</option>' +
               renderAssignSelectOptions(u) +
             '</select>' +
+            '<input type="text" id="assignTaskInput" placeholder="Tâche / travail à faire..." style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--line);font-size:14px;outline:none;background:var(--tile);box-sizing:border-box;" />' +
             '<div style="display:flex;gap:8px;">' +
-              '<input type="text" id="assignTaskInput" placeholder="Tâche..." style="flex:1;padding:10px;border-radius:8px;border:1px solid var(--line);font-size:14px;outline:none;background:var(--tile);" />' +
-              '<button onclick="App.addAssignment()" style="background:#0B63F6;color:#FFF;border:none;border-radius:8px;padding:0 16px;font-weight:700;cursor:pointer;">Ajouter</button>' +
+              '<input type="datetime-local" id="assignDeadlineInput" style="flex:1;min-width:0;padding:10px;border-radius:8px;border:1px solid var(--line);font-size:14px;outline:none;background:var(--tile);" />' +
+              '<button onclick="App.addAssignment()" style="background:#0B63F6;color:#FFF;border:none;border-radius:8px;padding:0 16px;font-weight:700;cursor:pointer;white-space:nowrap;">Ajouter</button>' +
             '</div>' +
+            '<div style="font-size:10.5px;color:var(--faint);line-height:1.4;">Avec une échéance, l\'assignation devient une <strong>tâche à livrer</strong> comptée dans les services du membre (à temps +5, en retard +2, non livrée −4).</div>' +
           '</div>' +
         '</div>' +
         '<div style="height:40px;"></div>' +
@@ -838,7 +840,7 @@
     // (barres). L'onglet actif est mémorisé dans S.punctualityChart.
     var chart = S.punctualityChart || 'note';
     var chrono = h.entries.slice().reverse();          // du plus ancien au plus récent
-    var lateCount = h.entries.filter(function(e){ return !e.absent && e.delayMinutes > 0; }).length;
+    var lateCount = h.lateCount;
     var starColor = function(s){ return s >= 4 ? UI.ok : s >= 2 ? UI.warn : UI.bad; };
     var shortDate = function(e){
       if (e.startTs) { var d = new Date(e.startTs); return d.getDate() + '/' + (d.getMonth() + 1); }
@@ -1232,7 +1234,7 @@
     var theme = ROLE_THEMES[freshU.role] || ROLE_THEMES['MEMBRE'];
 
     // ---- Stats ----
-    var myPosts = posts.filter(function(p){ return p.userId === freshU.id; }).sort(function(a,b){return (b.timestamp||0)-(a.timestamp||0)});
+    var myPosts = posts.filter(function(p){ return p.userId === freshU.id && p.type !== 'TASK_DONE'; }).sort(function(a,b){return (b.timestamp||0)-(a.timestamp||0)});
     var photosPosts = myPosts.filter(function(p){ return p.mediaUrls && p.mediaUrls.length > 0; });
     var eventPosts = myPosts.filter(function(p){ return p.type === 'EVENT'; });
     var myLikesCount = posts.filter(function(p){ return Array.isArray(p.likedBy) && p.likedBy.indexOf(freshU.id) !== -1; }).length;

@@ -1826,6 +1826,14 @@
   // traité qu'une absence honnête, ce qui viderait l'anti-triche de son sens.
   var PUNCTUALITY_OFFSITE_STARS = -4;
 
+  // Étoiles d'une TÂCHE À LIVRER (assignation portant une deadline, par
+  // opposition à une simple présence). Le membre coche lui-même « fait » ; le
+  // barème est calculé automatiquement d'après la deadline :
+  //   livrée à temps → +5, livrée en retard → +2, jamais livrée → -4.
+  var TASK_ON_TIME_STARS = 5;
+  var TASK_LATE_STARS = 2;
+  var TASK_MISSED_STARS = -4;
+
   // ============================================================
   // GÉOLOCALISATION DES ARRIVÉES (transparence anti-triche)
   // ============================================================
@@ -2249,10 +2257,51 @@
       // coup mais archivé (voir App.deletePost) doit continuer à compter dans
       // l'historique du membre — ses étoiles ne disparaissent pas avec lui.
       if (!isEventLike(ev)) return;
-      var assigned = (ev.assignments || []).some(function(a){ return a && a.userId === userId; });
-      if (!assigned) return;
+      // Assignation DIRECTE du membre (les assignations de pôle ne portent pas
+      // sur un membre précis, donc ni présence ni tâche individuelle).
+      var mine = (ev.assignments || []).find(function(a){ return a && a.userId === userId; });
+      if (!mine) return;
       var startTs = eventStartTimestamp(ev);
       if (!startTs) return;
+
+      // Deux natures d'assignation, exclusives :
+      //  - avec deadline  → TÂCHE À LIVRER : notée quand le membre coche « fait »
+      //                     (à temps / en retard) ou quand la deadline est passée
+      //                     sans livraison. La présence physique n'entre pas en jeu.
+      //  - sans deadline  → PRÉSENCE : ponctualité fondée sur l'heure de pointage.
+      if (mine.deadline) {
+        var dlTs = new Date(mine.deadline).getTime();
+        if (isNaN(dlTs)) return;
+        var doneP = posts.find(function(p){
+          return p.type === 'TASK_DONE' && p.userId === userId && p.taskEventId === ev.id;
+        });
+        var doneAt = doneP ? (doneP.taskDoneAt || doneP.timestamp || 0) : 0;
+        // Tant qu'elle n'est ni livrée ni en retard, la tâche est « en attente »
+        // et ne compte pas encore (comme un événement de présence à venir).
+        if (!doneP && now <= dlTs) return;
+        // La borne de période s'appuie sur la deadline (moment où la tâche « pèse »).
+        if (sinceTs && dlTs < sinceTs) return;
+        var late = doneP ? (doneAt > dlTs) : false;
+        var stars = !doneP ? TASK_MISSED_STARS : (late ? TASK_LATE_STARS : TASK_ON_TIME_STARS);
+        var status = !doneP ? 'missed' : (late ? 'late' : 'ontime');
+        entries.push({
+          eventId: ev.id,
+          eventTitle: ev.eventTitle || 'Événement',
+          eventDate: ev.eventDate || '',
+          startTs: dlTs,
+          stars: stars,
+          delayMinutes: null,
+          label: !doneP ? 'Tâche non livrée' : (late ? 'Tâche livrée en retard' : 'Tâche livrée à temps'),
+          absent: !doneP,
+          kind: 'task',
+          status: status,
+          done: !!doneP,
+          task: mine.task || ''
+        });
+        return;
+      }
+
+      // --- PRÉSENCE ---
       // Un événement à venir ne compte pas encore… SAUF si le membre a déjà pointé
       // (arrivée en avance) : sans cette exception, ses étoiles n'apparaissaient
       // nulle part dans son profil avant l'heure de début.
@@ -2268,7 +2317,10 @@
         stars: p.stars,
         delayMinutes: p.delayMinutes,
         label: p.label,
-        absent: p.absent
+        absent: p.absent,
+        kind: 'presence',
+        status: p.absent ? 'missed' : (p.delayMinutes > 0 ? 'late' : 'ontime'),
+        task: mine.task || ''
       });
     });
     entries.sort(function(a,b){ return b.startTs - a.startTs; });
@@ -2281,11 +2333,13 @@
     var welcomeBonus = (_me && typeof _me.welcomeStars === 'number') ? _me.welcomeStars : 5;
     var total = sumEvents + welcomeBonus;
     var average = Math.round((total / (entries.length + 1)) * 10) / 10;
-    var lateEntries = entries.filter(function(e){ return !e.absent && e.delayMinutes > 0; });
+    // Statut unifié présence + tâche : à l'heure / en retard / manqué.
+    var lateEntries = entries.filter(function(e){ return e.status === 'late' && e.delayMinutes > 0; });
     var avgDelay = lateEntries.length
       ? Math.round(lateEntries.reduce(function(acc,e){ return acc + e.delayMinutes; }, 0) / lateEntries.length)
       : 0;
-    var onTimeCount = entries.filter(function(e){ return !e.absent && e.delayMinutes <= 0; }).length;
+    var onTimeCount = entries.filter(function(e){ return e.status === 'ontime'; }).length;
+    var lateCount = entries.filter(function(e){ return e.status === 'late'; }).length;
     // "Dette" à rattraper : somme des étoiles négatives accumulées.
     var debt = entries.filter(function(e){ return e.stars < 0; })
                       .reduce(function(acc,e){ return acc + e.stars; }, 0);
@@ -2296,7 +2350,9 @@
       average: average,
       avgDelay: avgDelay,
       onTimeCount: onTimeCount,
-      absentCount: entries.filter(function(e){ return e.absent; }).length,
+      lateCount: lateCount,
+      absentCount: entries.filter(function(e){ return e.status === 'missed'; }).length,
+      taskCount: entries.filter(function(e){ return e.kind === 'task'; }).length,
       debt: debt
     };
   }
@@ -2546,6 +2602,40 @@
         && p.userId === S.user.id
         && p.metadata && p.metadata.eventId === eventId;
     }) || null;
+  }
+
+  // Échéance d'une tâche, lisible (« 25 août 18:00 »). '' si non renseignée.
+  function formatDeadline(iso) {
+    if (!iso) return '';
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) +
+      ' ' + d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  // Statut de la tâche à livrer d'un membre sur un événement, pour l'affichage :
+  // { done, doneAt, late, overdue, deadlineTs }. null si l'assignation n'est pas
+  // une tâche (pas de deadline) ou si le membre n'y est pas assigné directement.
+  function taskStatusFor(userId, ev, allPosts) {
+    if (!ev || !userId) return null;
+    var mine = (ev.assignments || []).find(function(a){ return a && a.userId === userId; });
+    if (!mine || !mine.deadline) return null;
+    var dlTs = new Date(mine.deadline).getTime();
+    if (isNaN(dlTs)) return null;
+    var posts = allPosts || db(SK.POSTS, []);
+    var doneP = posts.find(function(p){
+      return p.type === 'TASK_DONE' && p.userId === userId && p.taskEventId === ev.id;
+    });
+    var doneAt = doneP ? (doneP.taskDoneAt || doneP.timestamp || 0) : 0;
+    return {
+      task: mine.task || '',
+      deadline: mine.deadline,
+      deadlineTs: dlTs,
+      done: !!doneP,
+      doneAt: doneAt,
+      late: doneP ? (doneAt > dlTs) : false,
+      overdue: !doneP && Date.now() > dlTs
+    };
   }
 
   // Moyenne des critères effectivement notés (0 si aucun).

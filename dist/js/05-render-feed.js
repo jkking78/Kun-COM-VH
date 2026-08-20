@@ -20,6 +20,10 @@
         // suppression normale — seuls les calculs de ponctualité le retrouvent.
         if (p.type === 'EVENT_ARCHIVED') return false;
 
+        // Enregistrement de tâche livrée : marqueur interne (voir toggleTaskDone),
+        // jamais une publication du fil.
+        if (p.type === 'TASK_DONE') return false;
+
         // Scheduled post filter
         if (p.status === 'scheduled' && p.scheduled_at && p.scheduled_at > Date.now()) {
           if (u.role !== 'GRAND_RESPONSABLE' && p.userId !== u.id) return false;
@@ -467,9 +471,31 @@
               '<div style="display:flex;flex-direction:column;gap:6px;">' +
               post.assignments.map(function(a) {
                 var isMeAssigned = S.user && S.user.id === a.userId;
+                // Tâche à livrer (assignation avec deadline) : statut + échéance,
+                // et pour le membre concerné un bouton pour la cocher « faite ».
+                var ts = a.userId ? taskStatusFor(a.userId, post) : null;
+                var taskBlock = '';
+                if (ts) {
+                  var chip, chipBg, chipFg;
+                  if (ts.done && !ts.late) { chip = 'Livrée à temps ✓'; chipBg = 'rgba(14,159,110,0.22)'; chipFg = '#8FE9C4'; }
+                  else if (ts.done && ts.late) { chip = 'Livrée en retard'; chipBg = 'rgba(217,138,11,0.22)'; chipFg = '#F3C77A'; }
+                  else if (ts.overdue) { chip = 'Non livrée · en retard'; chipBg = 'rgba(226,68,92,0.22)'; chipFg = '#F5A3AF'; }
+                  else { chip = 'À livrer'; chipBg = UI.evGoldSoft; chipFg = UI.evGold; }
+                  taskBlock =
+                    '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:6px;">' +
+                      '<span style="font-size:10px;font-weight:800;color:' + chipFg + ';background:' + chipBg + ';padding:2px 8px;border-radius:999px;">' + chip + '</span>' +
+                      '<span style="font-size:11px;color:' + UI.evMuted + ';">échéance ' + formatDeadline(a.deadline) + '</span>' +
+                    '</div>' +
+                    (isMeAssigned
+                      ? '<button onclick="event.stopPropagation();App.toggleTaskDone(\'' + post.id + '\')" style="margin-top:8px;width:100%;background:' + (ts.done ? 'rgba(255,255,255,0.10)' : UI.evGold) + ';color:' + (ts.done ? UI.evInk : '#20160A') + ';border:none;border-radius:' + UI.r1 + ';padding:9px;font-size:12.5px;font-weight:800;cursor:pointer;">' +
+                          (ts.done ? '↩︎ Remettre à faire' : '✓ Marquer comme fait') +
+                        '</button>'
+                      : '');
+                }
                 return '<div style="background:' + (isMeAssigned ? UI.evGoldSoft : 'rgba(255,255,255,0.05)') + ';border:0.5px solid ' + (isMeAssigned ? UI.evGoldLine : 'transparent') + ';border-radius:' + UI.r1 + ';padding:8px 11px;">' +
                   '<div style="font-size:12.5px;font-weight:600;color:' + (isMeAssigned ? UI.evGold : UI.evInk) + ';">' + safeHtml(a.userName) + (isMeAssigned ? ' · vous' : '') + '</div>' +
                   '<div style="font-size:12px;color:' + UI.evMuted + ';margin-top:1px;">' + safeHtml(a.task) + '</div>' +
+                  taskBlock +
                 '</div>';
               }).join('') +
               '</div>' +
@@ -1436,10 +1462,12 @@
               '<option value="">Sélectionner un membre…</option>' +
               renderAssignSelectOptions(S.user) +
             '</select>' +
+            '<input type="text" id="assignTaskInput" placeholder="Tâche / travail à faire..." style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--line);font-size:14px;outline:none;background:var(--tile);box-sizing:border-box;" />' +
             '<div style="display:flex;gap:8px;">' +
-              '<input type="text" id="assignTaskInput" placeholder="Tâche..." style="flex:1;padding:10px;border-radius:8px;border:1px solid var(--line);font-size:14px;outline:none;background:var(--tile);" />' +
-              '<button onclick="App.addAssignment()" style="background:#0B63F6;color:#FFF;border:none;border-radius:8px;padding:0 16px;font-weight:700;cursor:pointer;">Ajouter</button>' +
+              '<input type="datetime-local" id="assignDeadlineInput" style="flex:1;min-width:0;padding:10px;border-radius:8px;border:1px solid var(--line);font-size:14px;outline:none;background:var(--tile);" />' +
+              '<button onclick="App.addAssignment()" style="background:#0B63F6;color:#FFF;border:none;border-radius:8px;padding:0 16px;font-weight:700;cursor:pointer;white-space:nowrap;">Ajouter</button>' +
             '</div>' +
+            '<div style="font-size:10.5px;color:var(--faint);line-height:1.4;">Avec une échéance, l\'assignation devient une <strong>tâche à livrer</strong> : le membre la coche « faite » et elle compte dans ses services (à temps +5, en retard +2, non livrée −4). Sans échéance, c\'est une simple présence.</div>' +
           '</div>' +
         '</div>' : '') +
         

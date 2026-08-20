@@ -17,10 +17,15 @@
           var label = a.isSection
             ? (a.sectionEmoji ? a.sectionEmoji + ' ' : '') + safeHtml(a.sectionName || '') + ' <span style="font-size:10px;font-weight:800;color:#0B63F6;background:#EEF0FF;padding:1px 6px;border-radius:6px;">PÔLE</span>'
             : safeHtml(a.userName || '');
+          var dl = a.deadline ? formatDeadline(a.deadline) : '';
           return '<div style="display:flex;align-items:center;justify-content:space-between;background:' + (a.isSection ? '#F5F5FF' : 'var(--tile)') + ';padding:8px 12px;border-radius:8px;">' +
             '<div style="display:flex;flex-direction:column;min-width:0;">' +
-              '<span style="font-size:13px;font-weight:700;color:var(--ink);">' + label + '</span>' +
-              '<span style="font-size:12px;color:var(--faint);">' + safeHtml(a.task || '') + '</span>' +
+              '<span style="font-size:13px;font-weight:700;color:var(--ink);">' + label +
+                (dl ? ' <span style="font-size:9.5px;font-weight:800;color:#B45309;background:#FEF3C7;padding:1px 6px;border-radius:6px;vertical-align:middle;">TÂCHE</span>' : '') +
+              '</span>' +
+              '<span style="font-size:12px;color:var(--faint);">' + safeHtml(a.task || '') +
+                (dl ? ' · à livrer le ' + dl : '') +
+              '</span>' +
             '</div>' +
             (mine
               ? '<button type="button" onclick="App.removeAssignment(' + idx + ')" style="background:none;border:none;color:#E2445C;font-size:16px;cursor:pointer;">&times;</button>'
@@ -37,6 +42,10 @@
         return;
       }
       var task = taskInput.value.trim();
+      // Deadline optionnelle : si renseignée, l'assignation devient une TÂCHE À
+      // LIVRER (notée quand le membre coche « fait ») plutôt qu'une simple présence.
+      var deadlineInput = document.getElementById('assignDeadlineInput');
+      var deadline = (deadlineInput && deadlineInput.value) ? deadlineInput.value : '';
       S.eventAssignments = S.eventAssignments || [];
 
       // Valeur "sec:<id>" = tâche confiée à un pôle entier (Admin).
@@ -53,7 +62,8 @@
           sectionId: sec.id,
           sectionName: sec.nom,
           sectionEmoji: sec.emoji,
-          task: task
+          task: task,
+          deadline: deadline
         });
       } else {
         var allU = db(SK.USERS, []);
@@ -71,11 +81,13 @@
           userId: u.id,
           userName: u.prenom + ' ' + u.nom,
           sectionId: owningSec,
-          task: task
+          task: task,
+          deadline: deadline
         });
       }
       select.value = '';
       taskInput.value = '';
+      if (deadlineInput) deadlineInput.value = '';
       var container = document.getElementById('eventAssignmentsList');
       if (container) container.innerHTML = App.renderAssignmentsList();
       else render();
@@ -1976,6 +1988,56 @@ toggleParticipation: function(postId, status) {
     openMembersList: function() { S.membersListOpen = true; S.membersSearch = ''; render(); },
     closeMembersList: function() { S.membersListOpen = false; render(); },
     setPunctualityChart: function(which) { S.punctualityChart = which; render(); },
+    // Le membre coche (ou décoche) SA tâche à livrer sur un événement. La note
+    // est ensuite recalculée automatiquement d'après la deadline (voir
+    // punctualityHistory / taskStatusFor). Enregistrement à part (type
+    // 'TASK_DONE', invisible dans le fil) que le membre possède — il peut donc
+    // l'écrire et le retirer lui-même sans toucher à l'événement.
+    toggleTaskDone: async function(eventId) {
+      if (!S.user) return;
+      var posts = db(SK.POSTS, []);
+      var ev = posts.find(function(p){ return p.id === eventId && isEventLike(p); });
+      if (!ev) { toast('Événement introuvable.', 'error'); return; }
+      var mine = (ev.assignments || []).find(function(a){ return a && a.userId === S.user.id; });
+      if (!mine || !mine.deadline) { toast('Aucune tâche à livrer pour vous ici.', 'error'); return; }
+
+      var existing = posts.find(function(p){
+        return p.type === 'TASK_DONE' && p.userId === S.user.id && p.taskEventId === eventId;
+      });
+
+      if (existing) {
+        // Annulation : on retire la validation.
+        var rest = posts.filter(function(p){ return p.id !== existing.id; });
+        dbSet(SK.POSTS, rest);
+        if (supabase) {
+          try { supabase.from('kun_com_posts').delete().eq('id', existing.id).then(function(){}, function(){}); }
+          catch(e) { console.warn('toggleTaskDone delete error:', e); }
+        }
+        render();
+        toast('Tâche remise à faire.', 'info');
+        return;
+      }
+
+      var now = Date.now();
+      var rec = {
+        id: 'td' + now,
+        type: 'TASK_DONE',
+        userId: S.user.id,
+        author: (S.user.prenom || '') + ' ' + (S.user.nom || ''),
+        taskEventId: eventId,
+        taskDoneAt: now,
+        timestamp: now
+      };
+      posts.unshift(rec);
+      dbSet(SK.POSTS, posts);
+      if (supabase) {
+        try { supabase.from('kun_com_posts').upsert({ id: rec.id, content: rec, created_at: new Date().toISOString() }, { onConflict: 'id' }).then(function(){}); }
+        catch(e) { console.warn('toggleTaskDone upsert error:', e); }
+      }
+      render();
+      var dlTs = new Date(mine.deadline).getTime();
+      toast(now <= dlTs ? 'Tâche livrée à temps ! +5 ★' : 'Tâche livrée (en retard) · +2 ★', 'success');
+    },
     searchMembers: function(q) { S.membersSearch = q; render(); var i=document.getElementById('membersSearchInput'); if(i){i.focus(); var l=i.value.length; try{i.setSelectionRange(l,l);}catch(e){}} },
     filterTag: function(tag) { S.q = decodeURIComponent(tag); S.tab='home'; render(); },
 
