@@ -1622,7 +1622,7 @@
         '<div onclick="event.stopPropagation()" style="width:100%;max-width:460px;background:var(--card);border-top-left-radius:28px;border-top-right-radius:28px;max-height:88vh;overflow-y:auto;box-shadow:0 -8px 40px rgba(0,0,0,0.18);animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
           '<div style="display:flex;justify-content:center;padding:10px 0 0;cursor:pointer;" onclick="App.closeRolesPanel()"><div style="width:38px;height:5px;background:#E2E4E9;border-radius:3px;"></div></div>' +
           '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px 4px;">' +
-            '<h3 style="font-size:16px;font-weight:900;margin:0;color:var(--ink);">👑 Gérer les rôles</h3>' +
+            '<h3 style="font-family:' + UI.fontDisplay + ';font-size:18px;font-weight:800;letter-spacing:-0.3px;margin:0;color:var(--ink);">👑 Gérer les rôles</h3>' +
             '<button onclick="App.closeRolesPanel()" style="background:var(--tile);border:none;border-radius:16px;width:44px;height:44px;flex-shrink:0;touch-action:manipulation;font-size:14px;cursor:pointer;">✕</button>' +
           '</div>' +
           '<p style="font-size:12px;color:var(--faint);padding:2px 20px 8px;margin:0;line-height:1.4;">Choisis un rôle pour chaque membre. La personne devra se <b>déconnecter puis reconnecter</b> pour que son nouveau rôle prenne effet.</p>' +

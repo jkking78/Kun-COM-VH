@@ -1098,14 +1098,14 @@
           return '<div onclick="App.openUserProfile(\'' + post.userId + '\')" style="display:flex;align-items:center;gap:10px;cursor:pointer;min-width:0;">' +
             avatarNode +
             '<div style="min-width:0;">' +
-              '<div style="font-size:13.5px;font-weight:600;color:' + UI.ink + ';">' + safeHtml(pName) + '</div>';
+              '<div style="font-size:14px;font-weight:700;letter-spacing:-0.1px;color:' + UI.ink + ';">' + safeHtml(pName) + '</div>';
         })() +
             '<div style="font-size:11.5px;color:' + UI.faint + ';display:flex;align-items:center;gap:4px;flex-wrap:wrap;">' +
               '<span>' + authorSecEmoji + ' ' + authorSecNom + '</span>' +
               // Le grade doit rester visible à côté du pôle : c'est lui qui dit
               // qui est responsable de quoi dans l'équipe.
               (postAuthorRoleLabel ? '<span>·</span><span>' + postAuthorRoleLabel + '</span>' : '') +
-              '<span>·</span><span>' + ago + '</span>' + (post.is_edited ? '<span style="font-style:italic;margin-left:2px;">modifié</span>' : '') +
+              '<span>·</span><span style="font-family:' + UI.fontMono + ';">' + ago + '</span>' + (post.is_edited ? '<span style="font-style:italic;margin-left:2px;">modifié</span>' : '') +
             '</div>' +
           '</div>' +
         '</div>' +
@@ -1134,7 +1134,7 @@
       // Actions row
       // Barre d'engagement : icône + compteur sur une seule ligne, séparée du
       // contenu par un filet. Le compteur de j'aime n'a plus sa propre ligne.
-      '<div style="display:flex;align-items:center;gap:18px;padding:11px 16px;border-top:0.5px solid ' + UI.line + ';color:' + UI.muted + ';font-size:12.5px;">' +
+      '<div style="display:flex;align-items:center;gap:18px;padding:11px 16px;border-top:0.5px solid ' + UI.line + ';color:' + UI.muted + ';font-size:12.5px;font-family:' + UI.fontMono + ';">' +
         '<button id="likeBtn-'+post.id+'" onclick="App.like(\''+post.id+'\')" style="background:none;border:none;padding:0;cursor:pointer;display:flex;align-items:center;gap:6px;color:inherit;font-size:inherit;transition:transform 0.1s;" onmousedown="this.style.transform=\'scale(0.9)\'" onmouseup="this.style.transform=\'scale(1)\'">' +
           '<svg width="18" height="18" viewBox="0 0 24 24" fill="' + (iLiked ? UI.bad : 'none') + '" stroke="' + (iLiked ? UI.bad : UI.muted) + '" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>' +
           '<span id="likeCount-'+post.id+'" style="color:' + (iLiked ? UI.bad : UI.muted) + ';">' + likeCount + '</span>' +
@@ -1224,7 +1224,7 @@
         '</div>' +
         '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 8px 12px 18px;border-bottom:0.5px solid var(--line);">' +
           '<div style="display:flex;align-items:center;gap:8px;">' +
-            '<h2 style="font-size:19px;font-weight:900;color:var(--ink);margin:0;">Notifications</h2>' +
+            '<h2 style="font-family:' + UI.fontDisplay + ';font-size:21px;font-weight:800;letter-spacing:-0.4px;color:var(--ink);margin:0;">Notifications</h2>' +
             (unreadCount > 0 ? '<span style="background:#E2445C;color:#FFF;font-size:11px;font-weight:900;padding:2px 8px;border-radius:10px;">' + unreadCount + '</span>' : '') +
           '</div>' +
           '<div style="display:flex;align-items:center;gap:2px;flex-shrink:0;">' +

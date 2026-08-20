@@ -201,7 +201,7 @@
         '<button onclick="App.closeMembersList()" style="background:var(--tile);border:none;width:44px;height:44px;flex-shrink:0;touch-action:manipulation;border-radius:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
           '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>' +
         '</button>' +
-        '<div style="font-size:17px;font-weight:800;color:var(--ink);">Rechercher</div>' +
+        '<div style="font-family:' + UI.fontDisplay + ';font-size:19px;font-weight:800;letter-spacing:-0.4px;color:var(--ink);">Rechercher</div>' +
       '</div>' +
       '<div style="padding:10px 14px;border-bottom:0.5px solid var(--tile);">' +
         '<div style="display:flex;align-items:center;gap:8px;background:var(--tile);border-radius:12px;height:38px;padding:0 12px;">' +
