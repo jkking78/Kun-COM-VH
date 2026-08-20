@@ -999,10 +999,10 @@
     var body = chart === 'ontime' ? onTimeChart : chart === 'services' ? servicesChart : noteChart;
 
     return '<div style="margin:16px 0 14px;">' +
-      '<div style="background:' + UI.tile + ';border-radius:' + UI.r3 + ';padding:16px 14px 16px;">' +
-        '<div style="text-align:center;margin-bottom:14px;">' +
-          '<div style="font-family:' + UI.fontDisplay + ';font-size:16px;font-weight:700;color:' + UI.ink + ';letter-spacing:-0.3px;">Mes engagements</div>' +
-          '<div style="font-size:11px;color:' + UI.faint + ';margin-top:1px;">Cycle ' + cycleStr + ' · ' + label + '</div>' +
+      '<div style="background:' + UI.tile + ';border-radius:' + UI.r3 + ';padding:18px 16px 16px;">' +
+        '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px;">' +
+          '<div style="font-family:' + UI.fontDisplay + ';font-size:24px;font-weight:800;color:' + UI.ink + ';letter-spacing:-0.6px;line-height:1.05;">Mes<br>engagements</div>' +
+          '<div style="font-family:' + UI.fontMono + ';font-size:12px;color:' + UI.faint + ';text-align:right;line-height:1.4;flex-shrink:0;">Cycle ' + cycleStr + '<br>' + label + '</div>' +
         '</div>' +
         switcher +
         '<div style="min-height:170px;">' + body + '</div>' +
@@ -1305,52 +1305,65 @@
     var online = !!freshU.is_online;
     var avatarInner = freshU.avatar_url
       ? '<img src="' + freshU.avatar_url + '" style="width:100%;height:100%;object-fit:cover;display:block;" />'
-      : '<div style="width:100%;height:100%;background:linear-gradient(135deg,' + theme.primary + ',#0B0D12);color:#FFF;font-size:30px;font-weight:800;display:flex;align-items:center;justify-content:center;">' + (freshU.prenom||'M').charAt(0).toUpperCase() + '</div>';
+      : '<div style="width:100%;height:100%;background:' + (freshU.avatar_color || '#0B63F6') + ';color:#FFF;font-family:' + UI.fontDisplay + ';font-size:30px;font-weight:800;display:flex;align-items:center;justify-content:center;">' + (freshU.prenom||'M').charAt(0).toUpperCase() + '</div>';
     var roleLbl = ROLE_LABELS[freshU.role] || 'Membre';
     var elevated = freshU.role && freshU.role !== 'MEMBRE';
-    var statInline = function(v, l){
-      return '<div><span style="font-family:' + UI.fontMono + ';font-size:16px;font-weight:700;color:' + UI.ink + ';">' + v + '</span> <span style="font-size:13px;color:' + UI.faint + ';">' + l + '</span></div>';
+    // Statistique empilée : grand chiffre en mono, libellé en petites capitales.
+    var statInline = function(v, l, accent){
+      return '<div style="min-width:0;">' +
+        '<div style="font-family:' + UI.fontMono + ';font-size:26px;font-weight:700;line-height:1;color:' + (accent ? UI.accent : UI.ink) + ';">' + v + '</div>' +
+        '<div style="font-size:10.5px;font-weight:600;letter-spacing:0.8px;text-transform:uppercase;color:' + UI.faint + ';margin-top:5px;">' + l + '</div>' +
+      '</div>';
     };
 
-    var hero = '<div style="background:' + UI.card + ';padding:18px 18px 18px;">' +
+    // Pastille de rôle : or doux pour l'Admin, bleu doux pour un Responsable.
+    var rolePill = elevated
+      ? '<div style="display:inline-flex;align-items:center;background:' + (freshU.role === 'GRAND_RESPONSABLE' ? 'rgba(203,163,92,0.16)' : UI.accentSoft) + ';color:' + (freshU.role === 'GRAND_RESPONSABLE' ? '#8B6928' : UI.accentInk) + ';font-size:12px;font-weight:700;padding:4px 12px;border-radius:999px;margin-top:10px;">' + roleLbl + '</div>'
+      : '';
+
+    var hero = '<div style="background:' + UI.card + ';padding:20px 18px 18px;">' +
+      // En-tête : nom géant à gauche, avatar circulaire à droite.
       '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;">' +
         '<div style="flex:1;min-width:0;">' +
-          '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
-            '<span style="font-family:' + UI.fontDisplay + ';font-size:25px;font-weight:800;letter-spacing:-0.6px;color:' + UI.ink + ';line-height:1.1;">' + safeHtml(freshU.prenom + ' ' + freshU.nom) + '</span>' +
-            (elevated ? '<span style="background:' + theme.badgeBg + ';color:' + theme.badgeText + ';font-size:11px;font-weight:800;padding:3px 9px;border-radius:999px;">' + roleLbl + '</span>' : '') +
-          '</div>' +
-          (uSecs.length ? '<div style="font-size:13.5px;color:' + UI.muted + ';margin-top:4px;">' + uSecs.map(function(s){ return secNom(s); }).join(' · ') + '</div>' : '') +
-          (freshU.joined_at ? '<div style="font-size:12.5px;color:' + UI.faint + ';margin-top:4px;display:flex;align-items:center;gap:5px;">' +
-            '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="' + UI.faint + '" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>' +
-            'Membre depuis ' + new Date(freshU.joined_at).toLocaleDateString('fr-FR', {month:'long', year:'numeric'}) + '</div>' : '') +
+          '<h1 style="font-family:' + UI.fontDisplay + ';font-size:32px;font-weight:800;letter-spacing:-1px;color:' + UI.ink + ';line-height:1.03;margin:0;overflow-wrap:anywhere;">' + safeHtml(freshU.prenom + ' ' + freshU.nom) + '</h1>' +
+          rolePill +
         '</div>' +
         '<div style="position:relative;flex-shrink:0;">' +
-          '<div style="width:76px;height:76px;border-radius:50%;overflow:hidden;background:' + UI.tile + ';box-shadow:0 2px 8px rgba(0,0,0,0.08);">' + avatarInner + '</div>' +
-          (online && !isMe ? '<span style="position:absolute;bottom:3px;right:3px;width:14px;height:14px;border-radius:50%;background:#22C55E;border:3px solid ' + UI.card + ';"></span>' : '') +
-          (isMe ? '<label style="position:absolute;bottom:-2px;right:-2px;background:' + UI.card + ';border:1px solid ' + UI.line2 + ';border-radius:50%;width:27px;height:27px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.12);">' +
-            '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="' + UI.ink + '" stroke-width="2.2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>' +
+          '<div style="width:68px;height:68px;border-radius:50%;overflow:hidden;background:' + UI.tile + ';box-shadow:0 2px 8px rgba(0,0,0,0.08);">' + avatarInner + '</div>' +
+          (online && !isMe ? '<span style="position:absolute;bottom:2px;right:2px;width:14px;height:14px;border-radius:50%;background:#22C55E;border:3px solid ' + UI.card + ';"></span>' : '') +
+          (isMe ? '<label style="position:absolute;bottom:-2px;right:-2px;background:' + UI.card + ';border:1px solid ' + UI.line2 + ';border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.12);">' +
+            '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="' + UI.ink + '" stroke-width="2.2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>' +
             '<input type="file" accept="image/*" onchange="App.handleAvatarSelect(event)" style="display:none;">' +
           '</label>' : '') +
         '</div>' +
       '</div>' +
 
-      (freshU.bio ? '<div style="font-size:14px;color:' + UI.muted + ';line-height:1.5;margin-top:12px;white-space:pre-wrap;">' + safeHtml(freshU.bio) + '</div>' : '') +
-      (freshU.skills ? '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:11px;">' +
+      // Pôle + « membre depuis » sur une ligne discrète.
+      ((uSecs.length || freshU.joined_at) ? '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:13px;color:' + UI.muted + ';margin-top:10px;">' +
+        (uSecs.length ? '<span>' + uSecs.map(function(s){ return secNom(s); }).join(' · ') + '</span>' : '') +
+        ((uSecs.length && freshU.joined_at) ? '<span style="color:' + UI.faint + ';">·</span>' : '') +
+        (freshU.joined_at ? '<span style="color:' + UI.faint + ';">Membre depuis ' + new Date(freshU.joined_at).toLocaleDateString('fr-FR', {month:'long', year:'numeric'}) + '</span>' : '') +
+      '</div>' : '') +
+
+      (freshU.bio ? '<div style="font-size:14.5px;color:' + UI.muted + ';line-height:1.55;margin-top:12px;white-space:pre-wrap;">' + safeHtml(freshU.bio) + '</div>' : '') +
+      (freshU.skills ? '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;">' +
         freshU.skills.split(',').map(function(s){ var t=(s||'').trim(); return t ? '<span style="background:' + UI.tile + ';color:' + UI.ink + ';font-size:12.5px;font-weight:600;padding:5px 12px;border-radius:999px;">' + safeHtml(t) + '</span>' : ''; }).join('') +
       '</div>' : '') +
 
-      '<div style="display:flex;gap:20px;margin-top:14px;">' +
+      // Statistiques empilées, façon tableau de bord.
+      '<div style="display:flex;gap:28px;margin-top:18px;">' +
         statInline(myPosts.length, 'Publications') +
         statInline(hStats.count, 'Services') +
-        statInline(String(hStats.average).replace('.', ',') + '★', 'Note') +
+        statInline(String(hStats.average).replace('.', ',') + '★', 'Note', true) +
       '</div>' +
 
-      '<div style="display:flex;gap:8px;margin-top:16px;">' +
+      // Actions : primaire bleu plein + secondaire tuile.
+      '<div style="display:flex;gap:10px;margin-top:18px;">' +
         (isMe
-          ? '<button onclick="App.openEditProfile()" style="flex:1;background:' + UI.tile + ';color:' + UI.ink + ';border:none;border-radius:10px;padding:10px;font-size:14px;font-weight:700;cursor:pointer;">Modifier le profil</button>' +
-            '<button onclick="App.tab(\'home\');App.openCreate();" style="flex:1;background:' + theme.primary + ';color:#FFF;border:none;border-radius:10px;padding:10px;font-size:14px;font-weight:700;cursor:pointer;">Publier</button>'
-          : '<button onclick="App.toggleFollow(\'' + freshU.id + '\')" style="flex:1;background:' + (isFollowing ? UI.tile : theme.primary) + ';color:' + (isFollowing ? UI.ink : '#FFF') + ';border:none;border-radius:10px;padding:10px;font-size:14px;font-weight:700;cursor:pointer;">' + (isFollowing ? 'Suivi' : 'Suivre') + '</button>' +
-            '<button onclick="App.openDirectMessage(\'' + freshU.id + '\')" style="flex:1;background:' + UI.tile + ';color:' + UI.ink + ';border:none;border-radius:10px;padding:10px;font-size:14px;font-weight:700;cursor:pointer;">Message</button>'
+          ? '<button onclick="App.openEditProfile()" style="flex:1;background:' + UI.accent + ';color:#FFF;border:none;border-radius:12px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;">Modifier le profil</button>' +
+            '<button onclick="App.tab(\'home\');App.openCreate();" style="flex:1;background:' + UI.tile + ';color:' + UI.ink + ';border:none;border-radius:12px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;">Publier</button>'
+          : '<button onclick="App.toggleFollow(\'' + freshU.id + '\')" style="flex:1;background:' + (isFollowing ? UI.tile : UI.accent) + ';color:' + (isFollowing ? UI.ink : '#FFF') + ';border:none;border-radius:12px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;">' + (isFollowing ? 'Suivi' : 'Suivre') + '</button>' +
+            '<button onclick="App.openDirectMessage(\'' + freshU.id + '\')" style="flex:1;background:' + UI.tile + ';color:' + UI.ink + ';border:none;border-radius:12px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;">Message</button>'
         ) +
       '</div>' +
     '</div>';
@@ -1445,7 +1458,7 @@
     var selectMode = isMe && S.profileSelectMode;
     var selectedIds = S.selectedProfilePostIds || [];
     feed += '<div style="background:var(--card);padding:14px 14px 8px;margin-bottom:1px;display:flex;align-items:center;justify-content:space-between;">' +
-      '<div style="font-size:15px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:6px;">📝 Publications <span style="font-size:12px;font-weight:600;color:var(--faint);">(' + myPosts.length + ')</span></div>' +
+      '<div style="font-family:' + UI.fontDisplay + ';font-size:21px;font-weight:800;letter-spacing:-0.5px;color:var(--ink);display:flex;align-items:center;gap:8px;">Publications <span style="font-family:' + UI.fontMono + ';font-size:13px;font-weight:600;color:var(--faint);">' + myPosts.length + '</span></div>' +
       (isMe && myPosts.length > 0
         ? '<span onclick="App.toggleProfileSelectMode()" style="font-size:12.5px;font-weight:800;color:#0B63F6;cursor:pointer;">' + (selectMode ? 'Annuler' : 'Sélectionner') + '</span>'
         : '') +
