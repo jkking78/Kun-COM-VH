@@ -329,7 +329,7 @@
               '<input type="datetime-local" id="assignDeadlineInput" style="flex:1;min-width:0;padding:10px;border-radius:8px;border:1px solid var(--line);font-size:14px;outline:none;background:var(--tile);" />' +
               '<button onclick="App.addAssignment()" style="background:#0B63F6;color:#FFF;border:none;border-radius:8px;padding:0 16px;font-weight:700;cursor:pointer;white-space:nowrap;">Ajouter</button>' +
             '</div>' +
-            '<div style="font-size:10.5px;color:var(--faint);line-height:1.4;">Avec une échéance, l\'assignation devient une <strong>tâche à livrer</strong> comptée dans les services du membre (à temps +5, en retard +2, non livrée −4).</div>' +
+            '<div style="font-size:10.5px;color:var(--faint);line-height:1.4;">Avec une échéance, l\'assignation devient une <strong>tâche à livrer</strong> comptée dans les services du membre (à temps +5, en retard +2, non livrée −2).</div>' +
           '</div>' +
         '</div>' +
         '<div style="height:40px;"></div>' +
@@ -740,8 +740,8 @@
     var critHtml = order.filter(function(k){ return board.criteriaAvg[k] !== undefined; }).map(function(k) {
       var v = board.criteriaAvg[k];
       // La ponctualité peut être négative : on ramène l'échelle -4..5 sur 0..100 %
-      // (le plancher correspond à une absence ou un pointage frauduleux, -4★).
-      var pct = Math.max(0, Math.min(100, ((v + 4) / 9) * 100));
+      // (le plancher correspond à une absence ou un pointage frauduleux, -2★).
+      var pct = Math.max(0, Math.min(100, ((v + 2) / 7) * 100));
       var cc = v >= 4 ? '#0E9F6E' : v >= 2 ? '#D98A0B' : '#E2445C';
       return '<div style="margin-bottom:10px;">' +
         '<div style="display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:4px;">' +
@@ -843,9 +843,18 @@
     // Le total depuis la création du compte est affiché séparément, en haut du
     // profil à côté de l'avatar.
     var h = punctualityHistory(freshU.id, currentCycleStartTs());
-    var avg = h.average;                    // de -4 à 5 (inclut le bonus de bienvenue +5★)
-    var col = avg >= 4 ? UI.ok : avg >= 2 ? UI.warn : UI.bad;
-    var label = !h.count ? 'Note de départ' : avg >= 4 ? 'Excellent' : avg >= 2 ? 'À améliorer' : avg >= 0 ? 'Critique' : 'Rattrapage requis';
+    // NOTE DU CYCLE : total de points ACCUMULÉS pendant le cycle, sur 30.
+    // Chaque service et chaque tâche ajoute (ou retire) ses points ; la jauge se
+    // remplit donc au fil du travail fourni, au lieu d'afficher une moyenne.
+    var NOTE_MAX = 30;
+    var score = Math.min(h.total, NOTE_MAX);
+    var avg = h.average;                    // conservée pour les autres graphiques
+    var col = score >= 24 ? UI.ok : score >= 15 ? UI.warn : UI.bad;
+    var label = !h.count ? 'Note de départ'
+      : score >= 24 ? 'Excellent'
+      : score >= 15 ? 'En bonne voie'
+      : score >= 0 ? 'À améliorer'
+      : 'Rattrapage requis';
 
     // Trois « éléments » de la ponctualité, chacun avec son propre graphique,
     // basculables via un sélecteur segmenté : la note (jauge + évolution), la
@@ -883,15 +892,15 @@
     // deux dégradés coniques superposés (fond + remplissage) dans un cadre au
     // rapport 2:1, masqués au centre par un disque de la couleur de la carte.
     // La rotation du remplissage porte la valeur : -90° = vide, +90° = plein.
-    var pctJauge = Math.max(0, Math.min(1, avg / 5));
+    var pctJauge = Math.max(0, Math.min(1, score / NOTE_MAX));
     var rotJauge = -90 + pctJauge * 180;
     var gauge = '<div style="position:relative;width:100%;max-width:240px;aspect-ratio:2/1;margin:16px auto 0;overflow:hidden;">' +
       '<div style="position:absolute;top:0;left:0;width:100%;height:200%;border-radius:50%;background:conic-gradient(' + UI.tile + ' 0deg 180deg, transparent 180deg 360deg);transform:rotate(-90deg);"></div>' +
       '<div style="position:absolute;top:0;left:0;width:100%;height:200%;border-radius:50%;background:conic-gradient(' + UI.accent + ' 0deg 140deg, transparent 140deg 360deg);transform:rotate(' + rotJauge.toFixed(1) + 'deg);transition:transform 1s ease-out;"></div>' +
       '<div style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:80%;height:160%;border-radius:50%;background:' + UI.card + ';"></div>' +
       '<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding-bottom:6px;">' +
-        '<div style="font-family:' + UI.fontDisplay + ';font-size:48px;font-weight:800;letter-spacing:-0.02em;color:' + UI.accent + ';line-height:1;">' + String(avg).replace('.', ',') + '</div>' +
-        '<div style="font-size:14px;font-weight:600;color:' + UI.faint + ';margin-top:6px;">/ 5,0</div>' +
+        '<div style="font-family:' + UI.fontDisplay + ';font-size:48px;font-weight:800;letter-spacing:-0.02em;color:' + UI.accent + ';line-height:1;">' + score + '</div>' +
+        '<div style="font-size:14px;font-weight:600;color:' + UI.faint + ';margin-top:6px;">/ ' + NOTE_MAX + '</div>' +
       '</div>' +
     '</div>';
 
@@ -906,7 +915,7 @@
       var W = 300, HH = 76, padX = 10, padY = 12;
       var innerW = W - padX * 2, innerH = HH - padY * 2;
       var xAt = function(i){ return padX + (series.length === 1 ? innerW / 2 : innerW * i / (series.length - 1)); };
-      var yAt = function(v){ return padY + innerH * (1 - (v + 4) / 9); };
+      var yAt = function(v){ return padY + innerH * (1 - (v + 2) / 7); };
       var zeroY = yAt(0);
       var pts = series.map(function(p, i){ return xAt(i) + ',' + yAt(p.v); });
       var areaPath = 'M' + xAt(0) + ',' + zeroY + ' L' + pts.join(' L') + ' L' + xAt(series.length - 1) + ',' + zeroY + ' Z';
@@ -928,11 +937,14 @@
       evolution = '';
     }
     // Phrase de synthèse sous la jauge (maquette).
+    // Phrase alignée sur le TOTAL de points du cycle (même seuils que l'étiquette).
     var verdict = !h.count
       ? 'Votre note de départ, en attendant votre premier service.'
-      : (avg >= 4 ? 'Performance exceptionnelle ce cycle.'
-        : avg >= 2 ? 'Des progrès à faire sur ce cycle.'
-        : 'Ponctualité critique : à redresser rapidement.');
+      : (score >= NOTE_MAX ? 'Cycle au maximum : rien à redire.'
+        : score >= 24 ? 'Performance exceptionnelle ce cycle.'
+        : score >= 15 ? 'Bon rythme : continuez à cumuler des points.'
+        : score >= 0 ? 'Encore ' + (15 - score) + ' points pour être en bonne voie.'
+        : 'Points négatifs : à redresser rapidement.');
     // La maquette ne montre que la jauge et la phrase de synthèse sur l'onglet
     // « Note » ; la courbe d'évolution n'y figure pas.
     var noteChart = gauge +
@@ -990,7 +1002,7 @@
     var servicesChart;
     if (chrono.length) {
       var step = 46, padTop = 18, padBot = 32, chartH = 92;
-      var yVal = function(v){ return padTop + chartH * (1 - (v + 4) / 9); };
+      var yVal = function(v){ return padTop + chartH * (1 - (v + 2) / 7); };
       var baseY = yVal(0);
       var dateY = padTop + chartH + 24;
       var svgW = Math.max(280, chrono.length * step);
@@ -1014,7 +1026,7 @@
         '<div style="display:flex;justify-content:space-around;text-align:center;margin-top:12px;border-top:0.5px solid ' + UI.line + ';padding-top:12px;">' +
           '<div><div style="font-family:' + UI.fontMono + ';font-size:18px;font-weight:700;color:' + UI.ink + ';">' + h.count + '</div><div style="font-size:10px;color:' + UI.faint + ';">Services</div></div>' +
           '<div><div style="font-family:' + UI.fontMono + ';font-size:18px;font-weight:700;color:' + UI.ok + ';">' + h.onTimeCount + '</div><div style="font-size:10px;color:' + UI.faint + ';">À l\'heure</div></div>' +
-          '<div><div style="font-family:' + UI.fontMono + ';font-size:18px;font-weight:700;color:' + col + ';">' + String(avg).replace('.', ',') + '</div><div style="font-size:10px;color:' + UI.faint + ';">Moyenne</div></div>' +
+          '<div><div style="font-family:' + UI.fontMono + ';font-size:18px;font-weight:700;color:' + col + ';">' + score + '</div><div style="font-size:10px;color:' + UI.faint + ';">Points</div></div>' +
         '</div>';
     } else {
       servicesChart = empty('Aucun service sur ce cycle.<br>Vos services assurés s\'afficheront ici, notés étoile par étoile.');
@@ -1328,6 +1340,9 @@
     // sur les références : la lecture part du visage, pas d'un coin de l'écran.
     // Sans borne de date : total des services depuis la création du compte.
     var hStats = punctualityHistory(freshU.id);
+    // « Note » du profil = total de points du CYCLE en cours, sur 30 (même
+    // valeur que la jauge de la carte « Mes engagements »).
+    var noteCycle = Math.min(punctualityHistory(freshU.id, currentCycleStartTs()).total, 30);
     var isFollowing = !!(S.user && S.user.following && S.user.following.indexOf(freshU.id) !== -1);
 
     // Barre de données façon "readout" caméra : chiffres en chasse fixe.
@@ -1393,7 +1408,7 @@
       '<div style="display:flex;gap:24px;margin-top:24px;">' +
         statInline(myPosts.length, 'Publications') +
         statInline(hStats.count, 'Services') +
-        statInline(String(hStats.average).replace('.', ','), 'Note', true) +
+        statInline(noteCycle + '<span style="font-size:13px;color:' + UI.faint + ';">/30</span>', 'Note', true) +
       '</div>' +
 
       // Actions en PILULES pleine largeur.

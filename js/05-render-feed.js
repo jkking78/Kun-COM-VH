@@ -1469,7 +1469,7 @@
               '<input type="datetime-local" id="assignDeadlineInput" style="flex:1;min-width:0;padding:10px;border-radius:8px;border:1px solid var(--line);font-size:14px;outline:none;background:var(--tile);" />' +
               '<button onclick="App.addAssignment()" style="background:#0B63F6;color:#FFF;border:none;border-radius:8px;padding:0 16px;font-weight:700;cursor:pointer;white-space:nowrap;">Ajouter</button>' +
             '</div>' +
-            '<div style="font-size:10.5px;color:var(--faint);line-height:1.4;">Avec une échéance, l\'assignation devient une <strong>tâche à livrer</strong> : le membre la coche « faite » et elle compte dans ses services (à temps +5, en retard +2, non livrée −4). Sans échéance, c\'est une simple présence.</div>' +
+            '<div style="font-size:10.5px;color:var(--faint);line-height:1.4;">Avec une échéance, l\'assignation devient une <strong>tâche à livrer</strong> : le membre la coche « faite » et elle compte dans ses services (à temps +5, en retard +2, non livrée −2). Sans échéance, c\'est une simple présence.</div>' +
           '</div>' +
         '</div>' : '') +
         

@@ -1828,13 +1828,13 @@
   ];
   // Absence : aucune publication d'arrivée pour un membre assigné. Sanction plus
   // lourde qu'un simple retard, car rien ne permet même de mesurer une tentative.
-  var PUNCTUALITY_ABSENT_STARS = -4;
+  var PUNCTUALITY_ABSENT_STARS = -2;
   // Pointer loin du lieu, ou sans partager sa position, ne vaut pas une arrivée :
   // c'est sanctionné AU MOINS aussi sévèrement qu'une absence (même valeur). Sans
   // cela, il suffisait de refuser la géolocalisation ou de pointer de chez soi pour
   // obtenir 5★ en toute impunité — et un pointage frauduleux serait alors mieux
   // traité qu'une absence honnête, ce qui viderait l'anti-triche de son sens.
-  var PUNCTUALITY_OFFSITE_STARS = -4;
+  var PUNCTUALITY_OFFSITE_STARS = -2;
 
   // Étoiles d'une TÂCHE À LIVRER (assignation portant une deadline, par
   // opposition à une simple présence). Le membre coche lui-même « fait » ; le
@@ -1842,7 +1842,7 @@
   //   livrée à temps → +5, livrée en retard → +2, jamais livrée → -4.
   var TASK_ON_TIME_STARS = 5;
   var TASK_LATE_STARS = 2;
-  var TASK_MISSED_STARS = -4;
+  var TASK_MISSED_STARS = -2;
 
   // ============================================================
   // GÉOLOCALISATION DES ARRIVÉES (transparence anti-triche)
@@ -2128,7 +2128,7 @@
     //  - 'no_venue'   : lieu de l'événement non renseigné        → rien à vérifier
     var presence = checkInPresence(checkIn, ev);
 
-    // Sanction (-4★) pour un HORS ZONE avéré (position loin du lieu) OU une
+    // Sanction (-2★) pour un HORS ZONE avéré (position loin du lieu) OU une
     // présence NON VÉRIFIÉE une fois la fenêtre de grâce (1 min / 3 essais)
     // écoulée. Pendant la grâce ('pending') : aucune pénalité, position en cours
     // de vérification. 'onsite'/'no_venue' : ponctualité fondée sur l'heure.
