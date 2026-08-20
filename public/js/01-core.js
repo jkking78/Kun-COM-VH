@@ -1736,7 +1736,12 @@
 
     r1: '12px', r2: '16px', r3: '20px', pill: '999px',
     sh:  'var(--sh)',
-    sh2: 'var(--sh2)'   // relief doux des cartes détachées (voir injectCSS)
+    sh2: 'var(--sh2)',   // relief doux des cartes détachées (voir injectCSS)
+
+    // Identité typographique de la refonte (voir index.html + injectCSS).
+    fontDisplay: 'var(--font-display)',  // titres — Bricolage Grotesque
+    fontBody:    'var(--font-body)',     // interface — Inter
+    fontMono:    'var(--font-mono)'      // données (heures, notes, compteurs) — JetBrains Mono
   };
 
   // Icônes au trait remplaçant les emoji d'interface. Les emoji des PÔLES

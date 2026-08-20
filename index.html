@@ -18,6 +18,12 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="dns-prefetch" href="https://yugkryhikrfsxbuyxacl.supabase.co">
   <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+  <!-- Refonte : identité typographique. Bricolage Grotesque (titres),
+       Inter (interface), JetBrains Mono (données : heures, notes, compteurs).
+       display=swap pour ne jamais bloquer l'affichage ; repli système sinon. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap">
   <!-- iOS ignore le manifest pour l'icône d'accueil : il lui faut son propre
        apple-touch-icon, en 180×180, opaque et à bords carrés (iOS applique
        lui-même le masque arrondi). Sans ce fichier, l'écran d'accueil affiche
@@ -259,14 +265,14 @@
   <!-- BUNDLE PRINCIPAL (PWA Vanilla JS) — anciennement un seul fichier app.js,
        désormais découpé en modules thématiques (même code, chargés dans l'ordre
        d'origine, aucun changement de comportement) pour faciliter la maintenance. -->
-  <script src="js/01-core.js?v=125"></script>
-  <script src="js/02-media.js?v=125"></script>
-  <script src="js/03-render-engine.js?v=125"></script>
-  <script src="js/04-render-auth-cropper.js?v=125"></script>
-  <script src="js/05-render-feed.js?v=125"></script>
-  <script src="js/06-render-panels.js?v=125"></script>
-  <script src="js/07-app-controller.js?v=125"></script>
-  <script src="js/08-bootstrap.js?v=125"></script>
+  <script src="js/01-core.js?v=126"></script>
+  <script src="js/02-media.js?v=126"></script>
+  <script src="js/03-render-engine.js?v=126"></script>
+  <script src="js/04-render-auth-cropper.js?v=126"></script>
+  <script src="js/05-render-feed.js?v=126"></script>
+  <script src="js/06-render-panels.js?v=126"></script>
+  <script src="js/07-app-controller.js?v=126"></script>
+  <script src="js/08-bootstrap.js?v=126"></script>
 
   <!-- DÉBLOCAGE ANTI-SPINNER (Garantie de déblocage 0ms / 400ms max) -->
   <script>

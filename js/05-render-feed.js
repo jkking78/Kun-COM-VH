@@ -219,7 +219,7 @@
 
     var header = '<header style="position:sticky;top:0;z-index:200;background:' + UI.card + ';border-bottom:0.5px solid ' + UI.line + ';">' +
       '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px 10px;">' +
-        '<h1 style="font-size:19px;font-weight:600;color:' + UI.ink + ';margin:0;letter-spacing:-0.3px;min-width:0;">Commit</h1>' +
+        '<h1 style="font-family:' + UI.fontDisplay + ';font-size:22px;font-weight:800;color:' + UI.ink + ';margin:0;letter-spacing:-0.6px;min-width:0;">Commit</h1>' +
         '<div style="display:flex;gap:2px;align-items:center;flex-shrink:0;margin-right:-8px;">' +
           iconBtn('App.openMembersList()', '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="' + UI.muted + '" stroke-width="1.9" stroke-linecap="round"><circle cx="11" cy="11" r="7.5"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>', 0) +
           iconBtn('App.openCreate()', '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="' + UI.muted + '" stroke-width="1.9" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>', 0) +
