@@ -497,22 +497,20 @@
     // carrousel s'ouvre donc toujours sur ce qui concerne l'utilisateur maintenant.
     var nowTs = Date.now();
     var dayEvents = allPosts.filter(function(p) {
-      if (p.type !== 'EVENT' || p.eventDate !== S.selectedDate) return false;
+      if (p.type !== 'EVENT' || !p.eventDate) return false;
       // « À venir » ne montre que ce qui reste à venir ou est en cours. Un
       // événement déjà terminé n'a rien à y faire — il n'appartient qu'à
       // l'Historique. Sans ce filtre, la vue affichait des fiches « Terminé »
       // dans l'onglet censé lister ce qui arrive.
       return !isEventPast(p, nowTs);
     }).sort(function(a,b) {
-      var aPast = isEventPast(a, nowTs) ? 1 : 0;
-      var bPast = isEventPast(b, nowTs) ? 1 : 0;
-      if (aPast !== bPast) return aPast - bPast;
-      var as = a.eventStart || '', bs = b.eventStart || '';
-      // À venir : du plus proche au plus lointain. Terminés : du plus récent d'abord.
-      return aPast ? bs.localeCompare(as) : as.localeCompare(bs);
+      // Groupé par JOUR (maquette) : on trie par date puis par heure de début.
+      var d = String(a.eventDate).localeCompare(String(b.eventDate));
+      if (d !== 0) return d;
+      return String(a.eventStart || '').localeCompare(String(b.eventStart || ''));
     });
 
-    var timeline = '<div style="padding:20px 16px;min-height:50vh;background:var(--tile);">';
+    var timeline = '<div style="padding:8px 20px 40px;min-height:50vh;background:' + UI.page + ';">';
     
     if (dayEvents.length === 0) {
       timeline += '<div style="text-align:center;padding:40px 20px;color:var(--faint);">' +
@@ -526,6 +524,7 @@
       // liste verticale habituelle s'il n'y en a qu'un, carrousel horizontal dès
       // que la journée en compte plusieurs (ordonnés par heure de début).
       var planBlocks = [];
+      var dernierJour = null;   // suit le jour courant pour insérer les en-têtes
 
       dayEvents.forEach(function(ev) {
         // Statut calculé sur des horodatages, pas sur une comparaison de chaînes :
@@ -556,16 +555,23 @@
         // min-width:0 est indispensable : sans lui, un élément flex refuse de
         // rétrécir sous la largeur de son contenu et la fiche déborde de l'écran
         // (pôles et bouton coupés à droite).
-        planBlocks.push('<div style="display:flex;margin-bottom:24px;max-width:100%;">' +
-          '<div style="width:60px;flex-shrink:0;text-align:right;padding-right:12px;padding-top:2px;">' +
-            '<div style="font-size:14px;font-weight:800;color:var(--ink);">' + (ev.eventStart||'--:--') + '</div>' +
-            '<div style="font-size:12px;font-weight:600;color:var(--faint);margin-top:2px;">' + (ev.eventEnd||'--:--') + '</div>' +
-            // Repère visuel pour les veillées qui se poursuivent après minuit.
-            (crossesMidnight(ev) ? '<div style="font-size:10px;font-weight:700;color:#0B63F6;margin-top:1px;">+1 j</div>' : '') +
-          '</div>' +
-          '<div style="position:relative;padding-left:16px;border-left:2px solid ' + (status==='active'?'#0E9F6E':(status==='closed'?'var(--line)':'#000')) + ';flex:1;min-width:0;">' +
-            '<div style="position:absolute;left:-6px;top:4px;width:10px;height:10px;border-radius:5px;background:' + (status==='active'?'#0E9F6E':(status==='closed'?'var(--line)':'#000')) + ';border:2px solid var(--tile);"></div>' +
-            '<div style="background:var(--card);border-radius:16px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,0.04);border:1px solid var(--tile);overflow:hidden;">' +
+        // En-tête de JOUR (maquette) : libellé en chasse fixe, majuscules
+        // espacées, précédé d'une pastille pleine pour le jour en cours.
+        if (ev.eventDate !== dernierJour) {
+          dernierJour = ev.eventDate;
+          var dObj = new Date(ev.eventDate + 'T00:00:00');
+          var estAujourdhui = ev.eventDate === todayIso;
+          planBlocks.push('<div style="display:flex;align-items:center;gap:8px;margin:' + (planBlocks.length ? '28px' : '0') + ' 0 14px;">' +
+            '<span style="width:8px;height:8px;border-radius:50%;flex-shrink:0;' + (estAujourdhui ? 'background:' + UI.accent + ';' : 'border:1.5px solid ' + UI.line2 + ';') + '"></span>' +
+            '<span style="font-family:' + UI.fontMono + ';font-size:13px;font-weight:500;letter-spacing:0.12em;text-transform:uppercase;color:' + UI.muted + ';">' +
+              safeHtml(dObj.toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long' })) +
+            '</span>' +
+          '</div>');
+        }
+
+        planBlocks.push('<div style="margin-bottom:14px;max-width:100%;">' +
+          '<div style="min-width:0;">' +
+            '<div style="background:var(--card);border-radius:12px;padding:20px;box-shadow:' + UI.sh2 + ';border:1px solid ' + UI.line + ';overflow:hidden;">' +
               statusHtml +
               '<h3 style="font-family:' + UI.fontDisplay + ';font-size:22px;font-weight:800;letter-spacing:-0.6px;color:var(--ink);margin:0 0 10px;line-height:1.1;overflow-wrap:anywhere;">' + safeHtml(ev.eventTitle) + '</h3>' +
               (secTags ? '<div style="display:flex;flex-wrap:wrap;align-items:center;margin-bottom:12px;">' + secTags + '</div>' : '') +
@@ -605,33 +611,14 @@
         '</div>');
       });
 
-      if (planBlocks.length === 1) {
-        timeline += planBlocks[0];
-      } else {
-        var planCarId = 'evgrpplan-' + String(S.selectedDate || '').replace(/-/g, '');
-        var planIdx = (S.eventGroupIdx && S.eventGroupIdx[S.selectedDate]) || 0;
-        if (planIdx >= planBlocks.length) planIdx = 0;
-        timeline += '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">' +
-            '<div style="font-size:13px;font-weight:800;color:var(--ink2);">' + planBlocks.length + ' événements ce jour · faites défiler</div>' +
-            '<div id="evgrpBadge-' + planCarId + '" style="background:#E8EEFB;color:#0B63F6;font-size:12px;font-weight:800;padding:4px 10px;border-radius:20px;">' + (planIdx + 1) + '/' + planBlocks.length + '</div>' +
-          '</div>' +
-          '<div id="' + planCarId + '" onscroll="App.eventGroupScroll(\'' + S.selectedDate + '\',\'' + planCarId + '\',this)" style="display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;">' +
-            planBlocks.map(function(b) {
-              return '<div style="flex:0 0 100%;min-width:0;scroll-snap-align:start;box-sizing:border-box;padding-right:4px;">' + b + '</div>';
-            }).join('') +
-          '</div>' +
-          '<div id="evgrpDots-' + planCarId + '" style="display:flex;justify-content:center;gap:5px;padding:4px 0 8px;">' +
-            planBlocks.map(function(_, di) {
-              var a = di === planIdx;
-              return '<div style="width:' + (a?'18':'6') + 'px;height:6px;border-radius:3px;background:' + (a?'#0B63F6':'var(--line)') + ';transition:all 0.25s;"></div>';
-            }).join('') +
-          '</div>';
-      }
+      // Liste verticale simple : les en-têtes de jour sont dans planBlocks,
+      // un carrousel horizontal les couperait.
+      timeline += planBlocks.join('');
     }
 
     timeline += '</div>';
 
-    return header + modeSwitch + slider + timeline;
+    return header + modeSwitch + timeline;
   }
   // ============================================================
   // DEBRIEF TAB
