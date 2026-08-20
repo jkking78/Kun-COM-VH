@@ -1471,6 +1471,12 @@ toggleParticipation: function(postId, status) {
         toast('Inscription impossible. Réessayez.', 'error');
       }
     },
+    toggleSearch: function() {
+      S.searchOpen = !S.searchOpen;
+      if (!S.searchOpen) { S.q = ''; S.searchFocused = false; }
+      render();
+      if (S.searchOpen) { setTimeout(function(){ var i = document.getElementById('searchInput'); if (i) i.focus(); }, 90); }
+    },
     toggleTheme: function() {
       S.darkMode = !S.darkMode;
       try { localStorage.setItem('kc_dark', S.darkMode ? '1' : '0'); } catch(e){}

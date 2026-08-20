@@ -115,22 +115,23 @@
     // visible pour tout le monde : un membre doit pouvoir consulter l'historique
     // des bilans déjà publiés (le Suivi), même s'ils ont disparu du fil.
     // App.tab bascule automatiquement les autres profils sur cette vue lecture seule.
+    // Onglet : icône seule, avec un surlignage arrondi sur l'onglet actif
+    // (façon barre flottante des apps récentes).
     function nb(id, iconFn, lbl) {
       var a = S.tab === id;
-      return '<button onclick="App.tab(\'' + id + '\')" style="flex:1;background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 2px 4px;-webkit-tap-highlight-color:transparent;color:' + (a ? UI.accent : '#98A1AC') + ';">' +
-        iconFn(a) +
-        '<span style="font-size:9.5px;font-weight:' + (a?'600':'400') + ';margin-top:3px;">' + lbl + '</span>' +
+      return '<button onclick="App.tab(\'' + id + '\')" aria-label="' + lbl + '" style="flex:1;background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;height:100%;padding:0;-webkit-tap-highlight-color:transparent;">' +
+        '<div style="min-width:48px;height:40px;border-radius:14px;display:flex;align-items:center;justify-content:center;background:' + (a ? 'var(--accent-soft)' : 'transparent') + ';color:' + (a ? UI.accent : 'var(--faint)') + ';transition:background 0.2s,color 0.2s;">' +
+          iconFn(a) +
+        '</div>' +
       '</button>';
     }
-    // « safe-area-inset-bottom » n'est pas une propriété CSS : la ligne d'origine
-    // ne faisait donc rien et la barre passait sous l'indicateur d'accueil iPhone.
-    // On agrandit la barre de la hauteur réservée et on décale son contenu vers
-    // le haut d'autant, pour que les onglets restent entièrement touchables.
-    return '<nav style="position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:460px;height:calc(62px + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);background:var(--nav-bg);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-top:0.5px solid var(--nav-line);display:flex;align-items:stretch;z-index:9000;">' +
+    // Barre FLOTTANTE : détachée des bords, arrondie et ombrée. Elle repose au-
+    // dessus du contenu (le fil réserve la place en bas), et respecte l'inset iPhone.
+    return '<nav style="position:fixed;bottom:calc(14px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);width:calc(100% - 26px);max-width:400px;height:62px;background:var(--card);border:0.5px solid var(--line);border-radius:34px;box-shadow:0 10px 30px rgba(0,0,0,0.16);display:flex;align-items:center;justify-content:space-around;padding:0 10px;z-index:9000;">' +
       nb('home', SVG.home, 'Accueil') +
       nb('planning', SVG.cal, 'Planning') +
-      '<button onclick="App.openCreate()" style="flex:1;background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent;">' +
-        '<div style="width:46px;height:46px;border-radius:23px;background:#0B63F6;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,122,255,0.4);margin-bottom:8px;">' + SVG.plus + '</div>' +
+      '<button onclick="App.openCreate()" aria-label="Publier" style="flex:1;background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;height:100%;-webkit-tap-highlight-color:transparent;">' +
+        '<div style="width:44px;height:44px;border-radius:22px;background:' + UI.accent + ';display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,122,255,0.4);">' + SVG.plus + '</div>' +
       '</button>' +
       nb('debrief', SVG.star, 'Notation') +
       nb('profile', SVG.person, 'Profil') +
@@ -160,7 +161,7 @@
     var secoue = S.notifShakeAt && (Date.now() - S.notifShakeAt) < 1500;
 
     return '<button id="notifFab" onclick="App.openNotifications()" aria-label="Notifications' + (nonLus ? ' (' + nonLus + ' non lues)' : '') + '" ' +
-      'style="position:fixed;right:16px;bottom:calc(76px + env(safe-area-inset-bottom));z-index:8999;' +
+      'style="position:fixed;right:18px;bottom:calc(92px + env(safe-area-inset-bottom));z-index:8999;' +
       'width:52px;height:52px;border-radius:' + UI.pill + ';border:none;cursor:pointer;padding:0;' +
       'background:' + UI.card + ';box-shadow:0 4px 16px rgba(23,43,77,0.18);' +
       'display:flex;align-items:center;justify-content:center;touch-action:manipulation;">' +
@@ -215,6 +216,7 @@
       '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px 10px;">' +
         '<h1 style="font-size:19px;font-weight:600;color:' + UI.ink + ';margin:0;letter-spacing:-0.3px;min-width:0;">Commit</h1>' +
         '<div style="display:flex;gap:2px;align-items:center;flex-shrink:0;margin-right:-8px;">' +
+          iconBtn('App.toggleSearch()', '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="' + (S.searchOpen ? UI.accent : UI.muted) + '" stroke-width="1.9" stroke-linecap="round"><circle cx="11" cy="11" r="7.5"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>', 0) +
           iconBtn('App.openCreate()', '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="' + UI.muted + '" stroke-width="1.9" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>', 0) +
           '<button onclick="App.tab(\'profile\')" style="width:44px;height:44px;border-radius:' + UI.pill + ';background:none;border:none;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;flex-shrink:0;touch-action:manipulation;">' +
             (u.avatar_url
@@ -223,7 +225,7 @@
           '</button>' +
         '</div>' +
       '</div>' +
-      '<div style="padding:0 16px 12px;">' +
+      (S.searchOpen || S.q ? '<div style="padding:0 16px 12px;">' +
         '<div style="display:flex;align-items:center;gap:8px;background:' + UI.tile + ';border-radius:' + UI.r1 + ';height:38px;padding:0 12px;">' +
           ico('search', 16, UI.faint) +
           '<input id="searchInput" type="search" value="' + safeHtml(S.q) + '" oninput="App.search(this.value)" onfocus="App.setSearchFocused(true)" onblur="App.setSearchFocused(false)" placeholder="Rechercher" style="flex:1;border:none;background:transparent;font-size:13.5px;color:' + UI.ink + ';outline:none;">' +
@@ -239,7 +241,7 @@
             '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="' + UI.accent + '" stroke-width="2.2"><path d="M9 18l6-6-6-6"/></svg>' +
           '</div>' +
         '</div>' : '') +
-      '</div>' +
+      '</div>' : '') +
     '</header>';
 
     // Tendances

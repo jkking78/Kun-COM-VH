@@ -1548,6 +1548,8 @@
     rolesPanelOpen: false,
     // Thème sombre (voir applyTheme / App.toggleTheme).
     darkMode: false,
+    // Barre de recherche repliée par défaut (ouverte via l'icône 🔍 de l'en-tête).
+    searchOpen: false,
     roleUpdatingId: null,
     // Rôle issu du JWT (app_metadata) : fait autorité pour l'utilisateur courant,
     // même si une fiche serveur porte encore un ancien rôle.
