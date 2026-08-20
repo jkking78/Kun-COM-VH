@@ -879,17 +879,19 @@
     // ============================================================
     // GRAPHIQUE 1 — NOTE : jauge demi-cercle + courbe d'évolution
     // ============================================================
-    // Jauge large façon maquette : demi-cercle + très grand chiffre au centre.
-    var R = 95, HALF = Math.PI * R, FULL = 2 * Math.PI * R;
-    var prog = HALF * Math.max(0, Math.min(1, ((avg + 4) / 9)));
-    var gauge = '<div style="position:relative;width:100%;max-width:220px;height:124px;margin:8px auto 0;">' +
-      '<svg width="100%" height="124" viewBox="0 0 220 124" preserveAspectRatio="xMidYMax meet">' +
-        '<circle cx="110" cy="112" r="' + R + '" fill="none" stroke="' + UI.line + '" stroke-width="14" stroke-linecap="round" stroke-dasharray="' + HALF + ' ' + (FULL * 2) + '" transform="rotate(180 110 112)"/>' +
-        '<circle cx="110" cy="112" r="' + R + '" fill="none" stroke="' + col + '" stroke-width="14" stroke-linecap="round" stroke-dasharray="' + prog + ' ' + (FULL * 2) + '" transform="rotate(180 110 112)" style="transition:stroke-dasharray 0.6s ease;"/>' +
-      '</svg>' +
-      '<div style="position:absolute;left:0;right:0;bottom:12px;display:flex;flex-direction:column;align-items:center;">' +
-        '<div style="font-family:' + UI.fontDisplay + ';font-size:48px;font-weight:800;letter-spacing:-1px;color:' + col + ';line-height:1;">' + String(avg).replace('.', ',') + '</div>' +
-        '<div style="font-size:14px;font-weight:600;color:' + UI.faint + ';margin-top:4px;">/ 5,0</div>' +
+    // JAUGE — reproduction exacte de la maquette (profil_commit/code.html) :
+    // deux dégradés coniques superposés (fond + remplissage) dans un cadre au
+    // rapport 2:1, masqués au centre par un disque de la couleur de la carte.
+    // La rotation du remplissage porte la valeur : -90° = vide, +90° = plein.
+    var pctJauge = Math.max(0, Math.min(1, avg / 5));
+    var rotJauge = -90 + pctJauge * 180;
+    var gauge = '<div style="position:relative;width:100%;max-width:240px;aspect-ratio:2/1;margin:16px auto 0;overflow:hidden;">' +
+      '<div style="position:absolute;top:0;left:0;width:100%;height:200%;border-radius:50%;background:conic-gradient(' + UI.tile + ' 0deg 180deg, transparent 180deg 360deg);transform:rotate(-90deg);"></div>' +
+      '<div style="position:absolute;top:0;left:0;width:100%;height:200%;border-radius:50%;background:conic-gradient(' + UI.accent + ' 0deg 140deg, transparent 140deg 360deg);transform:rotate(' + rotJauge.toFixed(1) + 'deg);transition:transform 1s ease-out;"></div>' +
+      '<div style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:80%;height:160%;border-radius:50%;background:' + UI.card + ';"></div>' +
+      '<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding-bottom:6px;">' +
+        '<div style="font-family:' + UI.fontDisplay + ';font-size:48px;font-weight:800;letter-spacing:-0.02em;color:' + UI.accent + ';line-height:1;">' + String(avg).replace('.', ',') + '</div>' +
+        '<div style="font-size:14px;font-weight:600;color:' + UI.faint + ';margin-top:6px;">/ 5,0</div>' +
       '</div>' +
     '</div>';
 
@@ -922,8 +924,8 @@
         '<div style="display:flex;justify-content:space-between;font-size:9.5px;color:' + UI.faint + ';margin-top:3px;"><span>Départ</span><span>Récent</span></div>' +
       '</div>';
     } else {
-      evolution = '<div style="font-size:11.5px;color:' + UI.faint + ';text-align:center;margin-top:12px;line-height:1.5;">' +
-        String(welcome).replace('.', ',') + '★ de bienvenue.<br>Votre première note sera calculée après votre 1ᵉʳ service.</div>';
+      // Sans service, la phrase de synthèse suffit : pas de doublon ici.
+      evolution = '';
     }
     // Phrase de synthèse sous la jauge (maquette).
     var verdict = !h.count
@@ -931,9 +933,10 @@
       : (avg >= 4 ? 'Performance exceptionnelle ce cycle.'
         : avg >= 2 ? 'Des progrès à faire sur ce cycle.'
         : 'Ponctualité critique : à redresser rapidement.');
+    // La maquette ne montre que la jauge et la phrase de synthèse sur l'onglet
+    // « Note » ; la courbe d'évolution n'y figure pas.
     var noteChart = gauge +
-      '<p style="text-align:center;font-size:15px;color:' + UI.muted + ';margin:10px 0 0;line-height:1.45;">' + verdict + '</p>' +
-      evolution;
+      '<p style="text-align:center;font-size:16px;color:' + UI.muted + ';margin:12px 0 0;line-height:1.5;">' + verdict + '</p>';
 
     // ============================================================
     // GRAPHIQUE 2 — À L'HEURE : anneau de répartition
@@ -1265,7 +1268,9 @@
     // ---- Avatar ----
         // ---- Dynamic RH Metrics (15-day cycle) ----
     var now = new Date();
-    var cycleStr = now.getDate() <= 15 ? "1er - 15 " + now.toLocaleDateString('fr-FR', {month:'short'}) : "16 - Fin " + now.toLocaleDateString('fr-FR', {month:'short'});
+    // Numéro de cycle court (maquette : « Cycle 16 »). Deux cycles par mois :
+    // 1–15 puis 16–fin. Le libellé long débordait sur trois lignes.
+    var cycleStr = String(now.getMonth() * 2 + (now.getDate() <= 15 ? 1 : 2));
     var currentCycleStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() <= 15 ? 1 : 16).getTime();
 
     // NOTE : l'ancien « indice de confiance » combinait présences et évaluations
@@ -1356,6 +1361,11 @@
           '<h1 style="font-family:' + UI.fontDisplay + ';font-size:32px;font-weight:700;letter-spacing:-1px;color:' + UI.ink + ';line-height:1.06;margin:0;overflow-wrap:anywhere;">' + safeHtml(freshU.prenom + ' ' + freshU.nom) + '</h1>' +
           rolePill +
         '</div>' +
+        // Accès aux Paramètres : engrenage discret à gauche de l'avatar, pour
+        // ne pas alourdir l'en-tête (tout le reste vit dans la page Paramètres).
+        (isMe ? '<button onclick="App.openSettings()" aria-label="Paramètres" style="background:none;border:none;width:40px;height:40px;flex-shrink:0;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;margin-top:10px;">' +
+          '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="' + UI.muted + '" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>' +
+        '</button>' : '') +
         '<div style="position:relative;flex-shrink:0;">' +
           '<div style="width:64px;height:64px;border-radius:50%;overflow:hidden;background:' + UI.tile + ';border:2px solid ' + UI.line + ';">' + avatarInner + '</div>' +
           (online && !isMe ? '<span style="position:absolute;bottom:1px;right:1px;width:14px;height:14px;border-radius:50%;background:#22C55E;border:3px solid ' + UI.page + ';"></span>' : '') +
@@ -1400,31 +1410,11 @@
     // ---- Info block ----
     // Le nom, le rôle, les pôles et la bio sont désormais dans le bandeau centré
     // ci-dessus : ce bloc ne garde que l'indice de confiance et les informations.
+    // Le profil ne porte plus que la carte « Mes engagements » (maquette).
+    // Informations, apparence, administration, compte et déconnexion vivent
+    // désormais dans la page Paramètres (voir renderSettingsModal).
     var infoBlock = '<div style="background:' + UI.page + ';padding:0 20px 16px;">' +
       renderPunctualityCard(freshU, cycleStr) +
-      '<div style="background:' + UI.card + ';border:1px solid ' + UI.line + ';border-radius:12px;box-shadow:' + UI.sh2 + ';padding:16px;margin-bottom:14px;">' +
-        '<div style="font-family:' + UI.fontDisplay + ';font-size:18px;font-weight:600;color:' + UI.ink + ';margin-bottom:10px;">Informations</div>' +
-        '<div style="display:flex;flex-direction:column;gap:8px;">' +
-          '<div style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--ink2);">' +
-            '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>' +
-            '<span>Église Vase d\'Honneur · Abidjan</span>' +
-          '</div>' +
-          (uSecs.length > 0 ? '<div style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--ink2);">' +
-            '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>' +
-            '<span>' + uSecs.map(function(s){ return secNom(s); }).join(' · ') + '</span>' +
-          '</div>' : '') +
-        '</div>' +
-      '</div>' +
-      // Action buttons
-      (isMe ? '<div>' +
-        '<div style="display:flex;justify-content:center;align-items:center;gap:8px;flex-wrap:wrap;">' +
-          ((freshU.role === 'GRAND_RESPONSABLE' || S.jwtRole === 'GRAND_RESPONSABLE') ? '<button onclick="App.openRolesPanel()" style="background:#EEF3FE;color:#0B63F6;border:none;border-radius:10px;padding:8px 14px;font-size:12.5px;font-weight:800;cursor:pointer;">👑 Gérer les rôles</button>' : '') +
-          ((freshU.role === 'GRAND_RESPONSABLE' || S.jwtRole === 'GRAND_RESPONSABLE') ? '<button onclick="App.revokeGrandResponsable()" style="background:none;color:var(--faint);border:none;padding:8px 6px;font-size:11.5px;font-weight:700;cursor:pointer;">🔻 Quitter Admin</button>' : '') +
-          '<button onclick="App.toggleTheme()" style="background:var(--tile);color:var(--ink);border:none;border-radius:10px;padding:8px 14px;font-size:12.5px;font-weight:800;cursor:pointer;">' + (S.darkMode ? '☀️ Mode clair' : '🌙 Mode sombre') + '</button>' +
-          '<button onclick="App.openDeleteAccount()" style="background:none;color:var(--faint);border:none;padding:8px 6px;font-size:11.5px;font-weight:700;cursor:pointer;">Supprimer mon compte</button>' +
-          '<button onclick="App.logout()" style="background:#FEE2E2;color:#E2445C;border:none;border-radius:10px;padding:8px 14px;font-size:12.5px;font-weight:800;cursor:pointer;">Se déconnecter 🚪</button>' +
-        '</div>' +
-      '</div>' : '') +
     '</div>';
 
     // ---- Continuous scroll (no tabs) ----
@@ -1486,10 +1476,10 @@
     // Section 3: All publications header
     var selectMode = isMe && S.profileSelectMode;
     var selectedIds = S.selectedProfilePostIds || [];
-    feed += '<div style="background:var(--card);padding:14px 14px 8px;margin-bottom:1px;display:flex;align-items:center;justify-content:space-between;">' +
-      '<div style="font-family:' + UI.fontDisplay + ';font-size:21px;font-weight:800;letter-spacing:-0.5px;color:var(--ink);display:flex;align-items:center;gap:8px;">Publications <span style="font-family:' + UI.fontMono + ';font-size:13px;font-weight:600;color:var(--faint);">' + myPosts.length + '</span></div>' +
+    feed += '<div style="background:' + UI.page + ';padding:4px 20px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px;">' +
+      '<h3 style="font-family:' + UI.fontDisplay + ';font-size:24px;font-weight:600;letter-spacing:-0.4px;color:var(--ink);margin:0;">Publications récentes</h3>' +
       (isMe && myPosts.length > 0
-        ? '<span onclick="App.toggleProfileSelectMode()" style="font-size:12.5px;font-weight:800;color:#0B63F6;cursor:pointer;">' + (selectMode ? 'Annuler' : 'Sélectionner') + '</span>'
+        ? '<span onclick="App.toggleProfileSelectMode()" style="font-size:12.5px;font-weight:700;color:' + UI.accent + ';cursor:pointer;flex-shrink:0;">' + (selectMode ? 'Annuler' : 'Sélectionner') + '</span>'
         : '') +
     '</div>';
 
@@ -1895,6 +1885,67 @@
       '</div>' +
     '</div>';
   }
+
+  // ============================================================
+  // PAGE PARAMÈTRES
+  // ============================================================
+  // Regroupe tout ce qui encombrait le profil : informations, apparence,
+  // administration, compte et déconnexion. Écran plein, sections en cartes.
+  function renderSettingsModal() {
+    if (!S.settingsOpen) return '';
+    var u = S.user || {};
+    var freshU = db(SK.USERS, []).find(function(x){ return x.id === u.id; }) || u;
+    var uSecs = getUserSections(freshU).filter(function(s){ return SECTIONS.some(function(x){ return x.id === s; }); });
+    var isAdmin = (freshU.role === 'GRAND_RESPONSABLE' || S.jwtRole === 'GRAND_RESPONSABLE');
+
+    var section = function(titre, contenu) {
+      return '<div style="margin-bottom:16px;">' +
+        '<div style="font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;color:' + UI.faint + ';margin:0 4px 8px;">' + titre + '</div>' +
+        '<div style="background:' + UI.card + ';border:1px solid ' + UI.line + ';border-radius:12px;box-shadow:' + UI.sh2 + ';overflow:hidden;">' + contenu + '</div>' +
+      '</div>';
+    };
+    // Ligne cliquable : libellé à gauche, valeur ou chevron à droite.
+    var ligne = function(icone, libelle, droite, action, danger) {
+      var col = danger ? UI.bad : UI.ink;
+      return '<div ' + (action ? 'onclick="' + action + '" ' : '') + 'style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid ' + UI.line + ';' + (action ? 'cursor:pointer;' : '') + '">' +
+        '<div style="width:32px;height:32px;border-radius:50%;background:' + UI.tile + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + icone + '</div>' +
+        '<div style="flex:1;min-width:0;font-size:15px;font-weight:500;color:' + col + ';">' + libelle + '</div>' +
+        (droite ? '<div style="font-size:14px;color:' + UI.faint + ';flex-shrink:0;text-align:right;">' + droite + '</div>' : '') +
+      '</div>';
+    };
+    var svg = function(d){ return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="' + UI.muted + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + d + '</svg>'; };
+
+    var infos = ligne(svg('<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>'), 'Église', 'Vase d\'Honneur · Abidjan') +
+      (uSecs.length ? ligne(svg('<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>'), 'Pôle', uSecs.map(function(s){ return secNom(s); }).join(' · ')) : '') +
+      (freshU.phone ? ligne(svg('<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/>'), 'Numéro', '<span style="font-family:' + UI.fontMono + ';">' + safeHtml(freshU.phone) + '</span>') : '');
+
+    var apparence = ligne(svg('<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>'), S.darkMode ? 'Mode sombre' : 'Mode clair', (S.darkMode ? 'Activé' : 'Désactivé') + ' ›', 'App.toggleTheme()');
+
+    var admin = isAdmin
+      ? ligne(svg('<path d="M3 6l4 3 5-6 5 6 4-3v12H3z"/>'), 'Gérer les rôles', '›', 'App.closeSettings();App.openRolesPanel()') +
+        ligne(svg('<path d="M12 5v14M5 12h14"/>'), 'Quitter le rôle Admin', '›', 'App.revokeGrandResponsable()')
+      : '';
+
+    var compte = ligne(svg('<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>'), 'Modifier le profil', '›', 'App.closeSettings();App.openEditProfile()') +
+      ligne('<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="' + UI.bad + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>', 'Supprimer mon compte', '', 'App.openDeleteAccount()', true);
+
+    return '<div class="safe-top" style="position:fixed;inset:0;z-index:10005;background:' + UI.page + ';display:flex;flex-direction:column;animation:fadeIn 0.2s ease-out;">' +
+      '<div style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:' + UI.card + ';border-bottom:1px solid ' + UI.line + ';">' +
+        '<button onclick="App.closeSettings()" aria-label="Retour" style="background:' + UI.tile + ';border:none;width:44px;height:44px;flex-shrink:0;border-radius:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
+          '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="' + UI.ink + '" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>' +
+        '</button>' +
+        '<h1 style="font-family:' + UI.fontDisplay + ';font-size:24px;font-weight:600;letter-spacing:-0.4px;color:' + UI.ink + ';margin:0;">Paramètres</h1>' +
+      '</div>' +
+      '<div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:20px 20px 40px;">' +
+        section('Informations', infos) +
+        section('Apparence', apparence) +
+        (admin ? section('Administration', admin) : '') +
+        section('Compte', compte) +
+        '<button onclick="App.logout()" style="width:100%;background:#FEE2E2;color:#E2445C;border:none;border-radius:999px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;margin-top:8px;">Se déconnecter</button>' +
+      '</div>' +
+    '</div>';
+  }
+
   function renderPostOptionsModal(post) {
     if (!post) return '';
     var isMine = S.user && S.user.id === post.userId;

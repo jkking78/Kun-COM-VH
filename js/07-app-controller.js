@@ -1916,6 +1916,8 @@ toggleParticipation: function(postId, status) {
       } catch(e) { toast('Échec de la réinitialisation.', 'error'); }
     },
     closeAdminReset: function() { S.adminResetResult = null; render(); },
+    openSettings: function() { S.settingsOpen = true; render(); },
+    closeSettings: function() { S.settingsOpen = false; render(); },
     copyAdminResetPw: function() {
       var r = S.adminResetResult; if (!r) return;
       try {

@@ -98,6 +98,7 @@
     if (S.adminGateOpen) modals += renderAdminGateModal();
     if (S.storageStatsOpen) modals += renderStorageStatsModal();
     if (S.rolesPanelOpen) modals += renderRolesModal();
+    if (S.settingsOpen) modals += renderSettingsModal();
     if (S.adminResetResult) modals += renderAdminResetPwModal();
     if (S.dmOpen) modals += renderDirectMessageModal();
     if (S.assignManagerId) modals += renderAssignManagerModal();

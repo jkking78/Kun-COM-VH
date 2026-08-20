@@ -1466,6 +1466,8 @@
     punctualityChart: 'note',
     // Résultat d'une réinitialisation de mot de passe par l'Admin (mdp provisoire à afficher)
     adminResetResult: null,
+    // Page Paramètres (informations, apparence, administration, compte)
+    settingsOpen: false,
     // Modals
     createOpen: false,
     commentOpen: false,
