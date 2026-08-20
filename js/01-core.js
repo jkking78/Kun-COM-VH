@@ -2734,6 +2734,57 @@
     return (Date.now() - vu) < ONLINE_WINDOW_MS;
   }
 
+
+  // Battement de présence : tant que l'application est au PREMIER PLAN et qu'une
+  // session est ouverte, on rafraîchit périodiquement last_seen_at. Sans lui, un
+  // membre qui lit le fil sans rien publier passait « hors ligne » au bout de
+  // cinq minutes (voir estEnLigne). Rien n'est redessiné : seule la donnée est
+  // mise à jour, la pastille des autres se rafraîchit au rendu suivant.
+  var BATTEMENT_MS = 2 * 60 * 1000;       // 2 minutes
+  var _battementTimer = null;
+  var _dernierBattement = 0;
+
+  function envoyerBattement(force) {
+    if (!S.user || S.auth !== 'app') return;
+    // Onglet masqué : on ne signale pas une présence qui n'en est pas une.
+    if (!force && typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
+    var maintenant = Date.now();
+    // Garde-fou : jamais deux écritures rapprochées (retour au premier plan
+    // répété), pour ne pas multiplier les requêtes ni le trafic sortant.
+    if (!force && (maintenant - _dernierBattement) < (BATTEMENT_MS - 5000)) return;
+    _dernierBattement = maintenant;
+
+    var iso = new Date(maintenant).toISOString();
+    try {
+      var users = db(SK.USERS, []);
+      var idx = users.findIndex(function(u){ return u && u.id === S.user.id; });
+      if (idx === -1) return;
+      users[idx].is_online = true;
+      users[idx].last_seen_at = iso;
+      S.user = users[idx];
+      dbSet(SK.USERS, users);
+      try { sauverSession(S.user); } catch(e){}
+    } catch(e) { return; }
+
+    try {
+      if (supabase) supabase.from('kun_com_profiles')
+        .upsert({ id: S.user.id, content: S.user }, { onConflict: 'id' })
+        .then(function(){}, function(){});
+    } catch(e){}
+  }
+
+  function demarrerBattementPresence() {
+    if (_battementTimer) return;
+    _battementTimer = setInterval(function(){ envoyerBattement(false); }, BATTEMENT_MS);
+    try {
+      document.addEventListener('visibilitychange', function(){
+        // Retour au premier plan : on se resignale tout de suite.
+        if (document.visibilityState === 'visible') envoyerBattement(false);
+      });
+    } catch(e){}
+    envoyerBattement(true);   // premier battement immédiat
+  }
+
   // Échéance d'une tâche, lisible (« 25 août 18:00 »). '' si non renseignée.
   function formatDeadline(iso) {
     if (!iso) return '';
