@@ -457,6 +457,17 @@
     if (me) {
       me.role = role;                     // le rôle du JWT fait toujours autorité
       me.email = me.email || authUser.email;
+      // Présence : la pastille verte des autres membres se calcule sur la
+      // fraîcheur de last_seen_at (voir estEnLigne). On la rafraîchit donc à
+      // l'ouverture de session, et on pousse la fiche pour que l'équipe le voie.
+      me.is_online = true;
+      me.last_seen_at = new Date().toISOString();
+      try { dbSet(SK.USERS, users); } catch(e){}
+      try {
+        if (supabase) supabase.from('kun_com_profiles')
+          .upsert({ id: me.id, content: me }, { onConflict: 'id' })
+          .then(function(){}, function(){});
+      } catch(e){}
       S.user = me;
     } else {
       // Profil pas encore dans le cache local : squelette minimal (complété par la
@@ -2703,6 +2714,24 @@
     var withZero = '0' + local;
     var groups = withZero.replace(/(\d{2})(?=\d)/g, '$1 ').trim();
     return '+225 ' + groups;
+  }
+
+  // ============================================================
+  // PRÉSENCE EN LIGNE
+  // ============================================================
+  // Le drapeau is_online ne retombe qu'à une déconnexion EXPLICITE : fermer
+  // l'onglet ou l'application le laissait à vrai, et la pastille verte restait
+  // allumée pour des membres absents. La présence se déduit donc de la
+  // FRAÎCHEUR de last_seen_at (rafraîchi à chaque action), avec le drapeau comme
+  // condition supplémentaire. L'utilisateur courant est toujours en ligne.
+  var ONLINE_WINDOW_MS = 5 * 60 * 1000;   // 5 minutes
+  function estEnLigne(u) {
+    if (!u) return false;
+    if (S.user && u.id === S.user.id) return true;
+    if (!u.is_online) return false;
+    var vu = Date.parse(u.last_seen_at || 0) || 0;
+    if (!vu) return false;
+    return (Date.now() - vu) < ONLINE_WINDOW_MS;
   }
 
   // Échéance d'une tâche, lisible (« 25 août 18:00 »). '' si non renseignée.

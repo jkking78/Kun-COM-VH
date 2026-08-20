@@ -1346,7 +1346,7 @@
     var isFollowing = !!(S.user && S.user.following && S.user.following.indexOf(freshU.id) !== -1);
 
     // Barre de données façon "readout" caméra : chiffres en chasse fixe.
-    var online = !!freshU.is_online;
+    var online = estEnLigne(freshU);
     var avatarInner = freshU.avatar_url
       ? '<img src="' + freshU.avatar_url + '" style="width:100%;height:100%;object-fit:cover;display:block;" />'
       : '<div style="width:100%;height:100%;background:' + (freshU.avatar_color || '#0B63F6') + ';color:#FFF;font-family:' + UI.fontDisplay + ';font-size:30px;font-weight:800;display:flex;align-items:center;justify-content:center;">' + (freshU.prenom||'M').charAt(0).toUpperCase() + '</div>';

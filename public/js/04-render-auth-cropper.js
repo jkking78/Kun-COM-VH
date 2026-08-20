@@ -141,7 +141,7 @@
         ? '<img src="' + u.avatar_url + '" style="width:48px;height:48px;border-radius:24px;object-fit:cover;" />'
         : '<div style="width:48px;height:48px;border-radius:24px;background:' + (u.avatar_color||'#0B63F6') + ';color:#FFF;font-size:18px;font-weight:800;display:flex;align-items:center;justify-content:center;">' + initial + '</div>';
       var avatarNode = '<div style="position:relative;flex-shrink:0;">' + avatarImg +
-        (u.is_online ? '<span style="position:absolute;bottom:1px;right:1px;width:12px;height:12px;border-radius:50%;background:#22C55E;border:2.5px solid var(--card);"></span>' : '') +
+        (estEnLigne(u) ? '<span style="position:absolute;bottom:1px;right:1px;width:12px;height:12px;border-radius:50%;background:#22C55E;border:2.5px solid var(--card);"></span>' : '') +
       '</div>';
       var secs = getUserSections(u).filter(function(s){ return SECTIONS.some(function(x){ return x.id === s; }); }).map(function(s){ return secNom(s); }).join(' · ');
       var t = roleTint(u.role);
