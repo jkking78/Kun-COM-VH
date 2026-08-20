@@ -1423,55 +1423,9 @@
     // ---- Feed: continuous scroll layout ----
     var feed = '<div style="background:var(--tile);min-height:50vh;padding-bottom:100px;">';
 
-    // Section 1: Photos/Vidéos grid (if any)
-    if (photosPosts.length > 0) {
-      feed += '<div style="background:var(--card);padding:14px;margin-bottom:8px;">' +
-        '<div style="font-size:15px;font-weight:800;color:var(--ink);margin-bottom:10px;display:flex;align-items:center;gap:6px;">📷 Médias <span style="font-size:12px;font-weight:600;color:var(--faint);">(' + photosPosts.length + ')</span></div>' +
-        '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:3px;border-radius:12px;overflow:hidden;">' +
-        photosPosts.slice(0, 9).map(function(p) {
-          var mediaUrl = p.mediaUrls[0];
-          var isVid = isVideoUrl(mediaUrl);
-          return '<div style="aspect-ratio:1;overflow:hidden;cursor:pointer;position:relative;background:#000;" onclick="App.viewPost(\'' + p.id + '\')">' +
-            (isVid
-              ? '<video src="' + mediaUrl + '"' + (p.videoPoster ? ' poster="'+p.videoPoster+'"' : '') + ' muted preload="metadata" style="width:100%;height:100%;object-fit:cover;"></video><div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;"><svg width="26" height="26" viewBox="0 0 24 24" fill="rgba(255,255,255,0.9)"><path d="M8 5v14l11-7z"/></svg></div>'
-              : '<img src="' + mediaUrl + '" style="width:100%;height:100%;object-fit:cover;" />') +
-          '</div>';
-        }).join('') +
-        '</div>' +
-        (photosPosts.length > 9 ? '<button onclick="S.showAllPhotos=true;render();" style="width:100%;margin-top:8px;background:var(--tile);border:none;border-radius:10px;padding:10px;font-size:13px;font-weight:700;color:#0B63F6;cursor:pointer;">Voir tous les médias (' + photosPosts.length + ')</button>' : '') +
-      '</div>';
-    }
-
-    // Section 2: Events (if any)
-    if (eventPosts.length > 0) {
-      feed += '<div style="background:var(--card);padding:14px;margin-bottom:8px;">' +
-        '<div style="font-size:15px;font-weight:800;color:var(--ink);margin-bottom:10px;display:flex;align-items:center;gap:6px;">Événements <span style="font-size:12px;font-weight:600;color:var(--faint);">(' + eventPosts.length + ')</span></div>' +
-        eventPosts.slice(0, 3).map(function(ev) {
-          var meta = ev.metadata || {};
-          return '<div style="background:var(--tile);border-radius:12px;padding:12px;margin-bottom:8px;border:1px solid var(--line);">' +
-            '<div style="font-size:14px;font-weight:700;color:var(--ink);">' + safeHtml(meta.title || ev.eventTitle || ev.caption || '') + '</div>' +
-            '<div style="font-size:12px;color:var(--faint);margin-top:4px;">' + safeHtml(meta.date || ev.eventDate || '') + (meta.time || ev.eventStart ? ' · ' + safeHtml(meta.time || ev.eventStart || '') : '') + '</div>' +
-          '</div>';
-        }).join('') +
-      '</div>';
-    }
-
-    // Section 2.5: Liens partagés (enregistrés automatiquement)
-    var sharedLinks = Array.isArray(freshU.sharedLinks) ? freshU.sharedLinks : [];
-    if (sharedLinks.length > 0) {
-      var showAllLinksNow = !!S.showAllLinks;
-      var linksToShow = showAllLinksNow ? sharedLinks : sharedLinks.slice(0, 5);
-      feed += '<div style="background:var(--card);padding:14px;margin-bottom:8px;">' +
-        '<div style="font-size:15px;font-weight:800;color:var(--ink);margin-bottom:10px;display:flex;align-items:center;gap:6px;">🔗 Liens partagés <span style="font-size:12px;font-weight:600;color:var(--faint);">(' + sharedLinks.length + ')</span></div>' +
-        linksToShow.map(function(l) {
-          return '<a href="' + l.url + '" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" style="display:block;background:var(--tile);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px;text-decoration:none;">' +
-            '<div style="font-size:13px;color:#0B63F6;font-weight:700;word-break:break-all;">' + safeHtml(l.url) + '</div>' +
-            '<div style="font-size:11px;color:var(--faint);margin-top:2px;">' + timeAgo(l.timestamp) + '</div>' +
-          '</a>';
-        }).join('') +
-        (sharedLinks.length > 5 && !showAllLinksNow ? '<button onclick="S.showAllLinks=true;render();" style="width:100%;background:var(--tile);border:none;border-radius:10px;padding:10px;font-size:13px;font-weight:700;color:#0B63F6;cursor:pointer;">Voir tous les liens (' + sharedLinks.length + ')</button>' : '') +
-      '</div>';
-    }
+    // Sections « Médias », « Événements » et « Liens partagés » retirées :
+    // la maquette ne garde qu'une grille « Publications récentes », et ces
+    // blocs reprenaient déjà les mêmes publications sous une autre forme.
 
     // Section 3: All publications header
     var selectMode = isMe && S.profileSelectMode;
@@ -1486,23 +1440,38 @@
     var filteredPosts = myPosts;
 
     if (filteredPosts.length === 0) {
-      feed += '<div style="padding:50px 20px;text-align:center;color:var(--faint);background:var(--card);margin-top:1px;">' +
-        '<div style="font-size:44px;margin-bottom:14px;">📝</div>' +
-        '<div style="font-size:17px;font-weight:700;color:var(--ink);margin-bottom:6px;">Aucune publication</div>' +
-        '<div style="font-size:13px;">Rien à afficher dans cet onglet pour le moment.</div>' +
+      feed += '<div style="padding:44px 20px;text-align:center;background:' + UI.page + ';">' +
+        '<div style="font-size:15px;font-weight:600;color:' + UI.ink + ';margin-bottom:4px;">Aucune publication</div>' +
+        '<div style="font-size:13.5px;color:' + UI.faint + ';">Vos publications apparaîtront ici.</div>' +
       '</div>';
     } else {
-      filteredPosts.forEach(function(p) {
-        if (!selectMode) { feed += renderPostCard(p); return; }
-        var isSel = selectedIds.indexOf(p.id) !== -1;
-        feed += '<div style="position:relative;">' +
-          '<div onclick="App.toggleSelectProfilePost(\'' + p.id + '\')" style="position:absolute;inset:0;z-index:5;cursor:pointer;background:' + (isSel ? 'rgba(0,122,255,0.08)' : 'transparent') + ';"></div>' +
-          '<div style="position:absolute;top:12px;left:12px;z-index:6;width:26px;height:26px;border-radius:13px;background:' + (isSel ? '#0B63F6' : 'rgba(255,255,255,0.92)') + ';border:2px solid ' + (isSel ? '#0B63F6' : 'var(--line)') + ';display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.12);pointer-events:none;">' +
-            (isSel ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>' : '') +
-          '</div>' +
-          renderPostCard(p) +
-        '</div>';
-      });
+      // GRILLE de vignettes carrées, 2 colonnes (maquette). Une publication sans
+      // média affiche un extrait de son texte sur une tuile.
+      feed += '<div style="background:' + UI.page + ';padding:0 20px 24px;display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
+        filteredPosts.map(function(p) {
+          var media = (p.mediaUrls && p.mediaUrls.length) ? p.mediaUrls[0] : null;
+          var isVid = media && isVideoUrl(media);
+          var inner = media
+            ? (isVid
+                ? '<video src="' + media + '"' + (p.videoPoster ? ' poster="' + p.videoPoster + '"' : '') + ' muted playsinline preload="metadata" style="width:100%;height:100%;object-fit:cover;display:block;"></video>' +
+                  '<div style="position:absolute;top:8px;right:8px;pointer-events:none;"><svg width="18" height="18" viewBox="0 0 24 24" fill="rgba(255,255,255,0.95)"><path d="M8 5v14l11-7z"/></svg></div>'
+                : '<img src="' + media + '" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;" />')
+            : '<div style="width:100%;height:100%;padding:14px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;text-align:center;font-size:13px;line-height:1.45;color:' + UI.muted + ';overflow:hidden;">' + safeHtml(String(p.caption || '').slice(0, 90)) + '</div>';
+          var isSel = selectedIds.indexOf(p.id) !== -1;
+          var action = selectMode
+            ? 'App.toggleSelectProfilePost(\'' + p.id + '\')'
+            : 'App.goToPost(\'' + p.id + '\')';
+          return '<div onclick="' + action + '" style="position:relative;aspect-ratio:1/1;border-radius:8px;overflow:hidden;background:' + UI.tile + ';cursor:pointer;">' +
+            inner +
+            (selectMode
+              ? '<div style="position:absolute;inset:0;background:' + (isSel ? 'rgba(11,99,246,0.18)' : 'transparent') + ';"></div>' +
+                '<div style="position:absolute;top:8px;left:8px;width:24px;height:24px;border-radius:12px;background:' + (isSel ? UI.accent : 'rgba(255,255,255,0.92)') + ';border:2px solid ' + (isSel ? UI.accent : UI.line) + ';display:flex;align-items:center;justify-content:center;">' +
+                  (isSel ? '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>' : '') +
+                '</div>'
+              : '') +
+          '</div>';
+        }).join('') +
+      '</div>';
     }
 
     feed += '</div>';
