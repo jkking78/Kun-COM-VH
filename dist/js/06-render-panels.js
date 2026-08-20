@@ -999,7 +999,7 @@
     return '<div style="margin:16px 0 14px;">' +
       '<div style="background:' + UI.tile + ';border-radius:' + UI.r3 + ';padding:16px 14px 16px;">' +
         '<div style="text-align:center;margin-bottom:14px;">' +
-          '<div style="font-size:14px;font-weight:700;color:' + UI.ink + ';">Ma ponctualité</div>' +
+          '<div style="font-size:14px;font-weight:700;color:' + UI.ink + ';">Mes engagements</div>' +
           '<div style="font-size:11px;color:' + UI.faint + ';margin-top:1px;">Cycle ' + cycleStr + ' · ' + label + '</div>' +
         '</div>' +
         switcher +
