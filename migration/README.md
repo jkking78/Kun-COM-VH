@@ -51,6 +51,28 @@ curl -s -X POST "$SUPA/rest/v1/kun_com_profiles" -H "apikey: $KEY" -H "Authoriza
      -H "Content-Type: application/json" -d '{"id":"x"}' -o /dev/null -w "%{http_code}\n"
 ```
 
+## Récupération par questions de sécurité (v125 — sans e-mail)
+
+Rétablit la récupération par question/réponse retirée en v106, mais **sans stocker
+les réponses en clair** : elles sont hachées + salées **côté serveur** dans une
+table fermée à tout client (`kun_com_secrets`, aucune policy RLS). Seule l'Edge
+Function `password-recovery` (service_role) y accède et change le mot de passe via
+l'API admin.
+
+Artefacts :
+- `03_security_questions.sql` — crée la table `kun_com_secrets` (RLS activée, sans policy). **✅ déployé** (SQL Editor → Run).
+- `functions/password-recovery/index.ts` — Edge Function (actions `set` / `questions` / `reset` / `admin-reset`). **✅ déployée** via Dashboard → Edge Functions → Deploy → Via Editor.
+  - **Important** : sa vérification JWT (« Verify JWT with legacy secret ») doit être **OFF**
+    (Settings de la fonction), car le « mot de passe oublié » l'appelle sans session.
+    L'authentification est faite dans le code, par action. **✅ réglé.**
+
+Vérifié bout-en-bout : inscription → `set` → `questions` → `reset` (mauvaises réponses
+rejetées, bonnes acceptées, normalisation casse/accents/espaces) → reconnexion.
+
+> Nettoyage en attente : un compte de test `e2e_…@example.com` (sans fiche profil,
+> invisible dans l'app) a servi à la validation. Le supprimer :
+> `delete from auth.users where email like 'e2e_%@example.com';`
+
 ## Limite connue (durcissement recommandé plus tard)
 Un membre **connecté** peut techniquement modifier la publication ou la fiche d'un
 autre, car « j'aime / commentaires / notifications » réécrivent l'objet entier.
