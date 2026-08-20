@@ -1605,7 +1605,7 @@
             '<div style="width:36px;height:36px;border-radius:18px;background:' + color + ';color:#FFF;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:14px;">' + initial + '</div>' +
             '<div style="min-width:0;flex:1;">' +
               '<div style="font-size:14px;font-weight:800;color:var(--ink);">' + name + (isMe ? ' <span style="font-size:10px;color:var(--faint);font-weight:700;">(vous)</span>' : '') + '</div>' +
-              '<div style="font-size:11.5px;color:var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(m.email || '') + '</div>' +
+              '<div style="font-family:' + UI.fontMono + ';font-size:11.5px;color:var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(m.phone || m.email || '') + '</div>' +
             '</div>' +
           '</div>' +
           '<div style="display:flex;gap:6px;">' +
@@ -1829,13 +1829,16 @@
             '<label style="font-size:14px;font-weight:700;color:var(--ink);display:block;margin-bottom:12px;">Connexion</label>' +
             '<div style="display:flex;flex-direction:column;gap:16px;">' +
               '<div style="display:flex;flex-direction:column;gap:4px;">' +
-                '<label style="font-size:13px;color:var(--faint);font-weight:600;">Adresse e-mail</label>' +
-                '<input type="email" id="editEmail" value="' + safeHtml(freshU.email||'') + '" autocomplete="email" style="border:none;border-bottom:1px solid var(--line);font-size:16px;outline:none;padding-bottom:8px;border-radius:0;background:none;" />' +
+                '<label style="font-size:13px;color:var(--faint);font-weight:600;">Numéro de téléphone</label>' +
+                '<div style="display:flex;align-items:center;gap:8px;padding-bottom:8px;border-bottom:1px solid var(--line);">' +
+                  '<span style="font-family:' + UI.fontMono + ';font-size:16px;color:var(--ink);">' + safeHtml(freshU.phone || '—') + '</span>' +
+                '</div>' +
+                '<span style="font-size:11.5px;color:var(--faint);margin-top:4px;">C\'est votre identifiant de connexion. Pour le changer, contactez un Admin.</span>' +
               '</div>' +
               '<div style="display:flex;flex-direction:column;gap:4px;">' +
                 '<label style="font-size:13px;color:var(--faint);font-weight:600;">Nouveau mot de passe</label>' +
                 '<input type="password" id="editNewPwd" placeholder="Laisser vide pour ne pas changer" autocomplete="new-password" style="border:none;border-bottom:1px solid var(--line);font-size:16px;outline:none;padding-bottom:8px;border-radius:0;background:none;" />' +
-                '<span style="font-size:11.5px;color:var(--faint);margin-top:4px;">8 caractères minimum. Un changement d\'e-mail peut demander une confirmation par e-mail.</span>' +
+                '<span style="font-size:11.5px;color:var(--faint);margin-top:4px;">8 caractères minimum.</span>' +
               '</div>' +
             '</div>' +
           '</div>' +

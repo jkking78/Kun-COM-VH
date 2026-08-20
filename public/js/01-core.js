@@ -470,6 +470,7 @@
           if (pj && pj.email && authUser.email && pj.email.toLowerCase() === authUser.email.toLowerCase()) pending = pj; }
       } catch(e){}
       S.user = { id: authUser.id, email: authUser.email, role: role,
+                 phone: meta.phone || (pending && pending.phone) || '',
                  prenom: (pending && pending.prenom) || meta.prenom || '',
                  nom: (pending && pending.nom) || meta.nom || '',
                  sections: (pending && pending.sections) || [],
@@ -2663,6 +2664,43 @@
     if (!q1 || !q2 || !a1 || !a2) { toast('Choisissez deux questions et donnez vos deux réponses.', 'error'); return null; }
     if (q1 === q2) { toast('Choisissez deux questions différentes.', 'error'); return null; }
     return { q1: q1, q2: q2, a1: a1, a2: a2 };
+  }
+
+  // ============================================================
+  // IDENTIFIANT PAR NUMÉRO DE TÉLÉPHONE (sans SMS)
+  // ============================================================
+  // La connexion se fait au NUMÉRO, jamais par e-mail ni SMS. Sous le capot, le
+  // numéro est transformé en identifiant interne « <chiffres>@commit.aev » que
+  // Supabase Auth accepte sans rien envoyer (confirmations désactivées). Le membre
+  // ne voit et ne saisit que son numéro.
+  //
+  // normalizePhone rend un même numéro IDENTIQUE quelle que soit sa saisie
+  // (avec/sans 0 initial, avec/sans +225, espaces, tirets). Par défaut Côte
+  // d'Ivoire (+225) : la partie significative est préfixée de « 225 ». Renvoie
+  // les chiffres canoniques (sans +) ou null si vide.
+  var PHONE_EMAIL_DOMAIN = 'commit.aev';
+  function normalizePhone(raw) {
+    var d = String(raw == null ? '' : raw).replace(/\D/g, '');
+    if (!d) return null;
+    if (d.indexOf('225') === 0) d = d.slice(3);   // retire l'indicatif s'il est déjà là
+    d = d.replace(/^0+/, '');                      // retire le 0 de tête (préfixe local)
+    if (!d) return null;
+    return '225' + d;                              // forme canonique : 225 + partie significative
+  }
+  // Identifiant interne Supabase à partir d'un numéro. null si numéro vide.
+  function phoneToEmail(raw) {
+    var d = normalizePhone(raw);
+    return d ? (d + '@' + PHONE_EMAIL_DOMAIN) : null;
+  }
+  // Affichage lisible d'un numéro canonique : « +225 07 07 07 07 07 ».
+  function formatPhoneDisplay(raw) {
+    var d = normalizePhone(raw);
+    if (!d) return String(raw || '');
+    var local = d.slice(3);                         // partie après 225
+    // Les numéros ivoiriens s'écrivent avec un 0 de tête, groupés par 2.
+    var withZero = '0' + local;
+    var groups = withZero.replace(/(\d{2})(?=\d)/g, '$1 ').trim();
+    return '+225 ' + groups;
   }
 
   // Échéance d'une tâche, lisible (« 25 août 18:00 »). '' si non renseignée.

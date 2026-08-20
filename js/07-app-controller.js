@@ -653,18 +653,19 @@
     // Function, seule habilitée à lire la table fermée des secrets).
     checkForgotEmail: async function(e) {
       e && e.preventDefault();
-      var email = ((document.getElementById('forgotEmail')||{}).value||'').trim();
-      if (!email) { toast('Veuillez saisir votre e-mail.', 'error'); return; }
+      // Récupération au NUMÉRO (clé de recherche = chiffres canoniques).
+      var phone = normalizePhone(((document.getElementById('forgotPhone')||{}).value||'').trim());
+      if (!phone) { toast('Veuillez saisir votre numéro de téléphone.', 'error'); return; }
       if (!supabase || !supabase.functions) { toast('Service indisponible.', 'error'); return; }
       try {
-        var res = await supabase.functions.invoke('password-recovery', { body: { action: 'questions', email: email } });
+        var res = await supabase.functions.invoke('password-recovery', { body: { action: 'questions', email: phone } });
         var data = res && res.data;
         if (!data || !data.found) {
-          toast('Aucune question de sécurité pour ce compte. Demandez à un Admin de réinitialiser votre mot de passe.', 'error');
+          toast('Aucune question de sécurité pour ce numéro. Demandez à un Admin de réinitialiser votre mot de passe.', 'error');
           return;
         }
         if (data.locked) { toast('Trop de tentatives récentes. Réessayez dans quelques minutes.', 'error'); return; }
-        S.forgotUser = { email: email, sec_q1: data.q1, sec_q2: data.q2 };
+        S.forgotUser = { phone: phone, sec_q1: data.q1, sec_q2: data.q2 };
         render();
       } catch(err) {
         console.warn('forgot questions error:', err);
@@ -685,7 +686,7 @@
       if (!supabase || !supabase.functions) { toast('Service indisponible.', 'error'); return; }
       try {
         var res = await supabase.functions.invoke('password-recovery', {
-          body: { action: 'reset', email: S.forgotUser.email, a1: a1, a2: a2, newPassword: pwd }
+          body: { action: 'reset', email: S.forgotUser.phone, a1: a1, a2: a2, newPassword: pwd }
         });
         // invoke() renvoie une erreur JS pour tout statut != 2xx : on lit le message.
         if (res && res.error) {
@@ -1101,7 +1102,6 @@ toggleParticipation: function(postId, status) {
       var nom = document.getElementById('editNom').value.trim();
       var bio = document.getElementById('editBio').value.trim();
       var skills = ((document.getElementById('editSavoirFaire')||{}).value || '').trim();
-      var newEmail = ((document.getElementById('editEmail')||{}).value || '').trim();
       var newPwd = ((document.getElementById('editNewPwd')||{}).value || '').trim();
 
       if (S.editSections.length === 0) {
@@ -1159,7 +1159,7 @@ toggleParticipation: function(postId, status) {
         nom: nom,
         bio: bio,
         skills: skills,
-        email: (newEmail || u.email),
+        phone: u.phone,
         sections: S.editSections.slice(),
         avatar_url: avatar_url,
         cover_url: cover_url
@@ -1217,16 +1217,10 @@ toggleParticipation: function(postId, status) {
         }
       }
       
-      // Identifiants de connexion (e-mail / mot de passe) via Supabase Auth.
+      // Mot de passe via Supabase Auth. Le NUMÉRO de connexion ne se change pas
+      // ici (il sert d'identifiant) — un Admin peut réinitialiser si besoin.
       var authMsgs = [];
       if (supabase && supabase.auth) {
-        if (newEmail && newEmail.toLowerCase() !== (u.email || '').toLowerCase()) {
-          try {
-            var er = await supabase.auth.updateUser({ email: newEmail });
-            if (er && er.error) authMsgs.push('E-mail : ' + er.error.message);
-            else authMsgs.push('Vérifiez votre boîte mail pour confirmer la nouvelle adresse.');
-          } catch(e) { authMsgs.push('Échec du changement d\'e-mail.'); }
-        }
         if (newPwd) {
           if (newPwd.length < 8) { authMsgs.push('Mot de passe : 8 caractères minimum.'); }
           else {
@@ -1247,7 +1241,7 @@ toggleParticipation: function(postId, status) {
       if (editQA && !editQA.empty && supabase && supabase.functions) {
         try {
           var sqr = await supabase.functions.invoke('password-recovery', {
-            body: { action: 'set', q1: editQA.q1, q2: editQA.q2, a1: editQA.a1, a2: editQA.a2 }
+            body: { action: 'set', phone: normalizePhone(u.phone), q1: editQA.q1, q2: editQA.q2, a1: editQA.a1, a2: editQA.a2 }
           });
           if (sqr && sqr.error) authMsgs.push('Questions de sécurité : échec de l\'enregistrement.');
           else authMsgs.push('Questions de sécurité mises à jour.');
@@ -1421,9 +1415,11 @@ toggleParticipation: function(postId, status) {
       // complets des profils EN PARALLÈLE, ce qui saturait encore plus la
       // connexion et allongeait l'attente au lieu de la raccourcir.
       if (App._loginEnCours) return;
-      var email = ((document.getElementById('loginEmail')||{}).value || '').trim();
+      // Connexion au NUMÉRO (transformé en identifiant interne, voir phoneToEmail).
+      var phoneRaw = ((document.getElementById('loginPhone')||{}).value || '').trim();
+      var email = phoneToEmail(phoneRaw);
       var pwd = ((document.getElementById('loginPwd')||{}).value || '').trim();
-      if (!email) { toast('Veuillez saisir votre e-mail.', 'error'); return; }
+      if (!email) { toast('Veuillez saisir votre numéro de téléphone.', 'error'); return; }
       if (!pwd) { toast('Veuillez saisir votre mot de passe.', 'error'); return; }
 
       App._loginEnCours = true;
@@ -1438,7 +1434,7 @@ toggleParticipation: function(postId, status) {
         if (!supabase || !supabase.auth) { toast('Connexion indisponible.', 'error'); return; }
         var resp = await supabase.auth.signInWithPassword({ email: email, password: pwd });
         if (!resp || resp.error || !resp.data || !resp.data.user) {
-          toast('E-mail ou mot de passe incorrect.', 'error');
+          toast('Numéro ou mot de passe incorrect.', 'error');
           return;
         }
         applyAuthUser(resp.data.user);   // définit S.user (rôle depuis le JWT) + S.auth='app'
@@ -1465,9 +1461,13 @@ toggleParticipation: function(postId, status) {
       e && e.preventDefault();
       var prenom = ((document.getElementById('signupPrenom')||{}).value||'').trim();
       var nom = ((document.getElementById('signupNom')||{}).value||'').trim();
-      var email = ((document.getElementById('signupEmail')||{}).value||'').trim();
+      // Inscription au NUMÉRO : identifiant interne dérivé, numéro lisible stocké.
+      var phoneRaw = ((document.getElementById('signupPhone')||{}).value||'').trim();
+      var email = phoneToEmail(phoneRaw);
+      var phoneDigits = normalizePhone(phoneRaw);
+      var phoneDisplay = formatPhoneDisplay(phoneRaw);
       var pwd = ((document.getElementById('signupPwd')||{}).value||'').trim();
-      if (!prenom || !nom || !email || !pwd) { toast('Veuillez remplir tous les champs.', 'error'); return; }
+      if (!prenom || !nom || !email || !pwd) { toast('Veuillez remplir tous les champs (numéro compris).', 'error'); return; }
       if (pwd.length < 8) { toast('Le mot de passe doit contenir au moins 8 caractères.', 'error'); return; }
       if (S.signupSections.length === 0) { toast('Veuillez choisir au moins 1 section.', 'error'); return; }
       // Questions de sécurité obligatoires : c'est le seul moyen de récupération.
@@ -1482,11 +1482,11 @@ toggleParticipation: function(postId, status) {
         // qu'ensuite, par un Admin via l'Edge Function protégée.
         var resp = await supabase.auth.signUp({
           email: email, password: pwd,
-          options: { data: { prenom: prenom, nom: nom } }
+          options: { data: { prenom: prenom, nom: nom, phone: phoneDisplay } }
         });
         if (resp.error) {
           var m = resp.error.message || '';
-          if (/registered|already|exists/i.test(m)) toast('Un compte existe déjà avec cet e-mail.', 'error');
+          if (/registered|already|exists/i.test(m)) toast('Un compte existe déjà avec ce numéro.', 'error');
           else toast('Inscription impossible : ' + m, 'error');
           return;
         }
@@ -1498,14 +1498,14 @@ toggleParticipation: function(postId, status) {
           // par la RLS faute de session) : la fiche sera créée à la 1re connexion
           // confirmée, via applyAuthUser. On mémorise les sections choisies pour
           // qu'elles soient conservées à ce moment-là.
-          try { localStorage.setItem('kc_pending_signup', JSON.stringify({ email: email, prenom: prenom, nom: nom, sections: userSecs, section_id: userSecs[0] })); } catch(e){}
-          toast('Compte créé ! Vérifiez votre e-mail pour confirmer, puis connectez-vous.', 'success');
+          try { localStorage.setItem('kc_pending_signup', JSON.stringify({ email: email, phone: phoneDisplay, prenom: prenom, nom: nom, sections: userSecs, section_id: userSecs[0] })); } catch(e){}
+          toast('Compte créé ! Connectez-vous avec votre numéro.', 'success');
           S.auth = 'login'; S.signupSections = []; S.signupRole = 'MEMBRE'; S.champsAuth = {};
           render();
           return;
         }
 
-        var newUser = { id: authUser.id, prenom: prenom, nom: nom, email: email,
+        var newUser = { id: authUser.id, prenom: prenom, nom: nom, phone: phoneDisplay,
           sections: userSecs, section_id: userSecs[0], role: 'MEMBRE', is_online: true,
           last_seen_at: new Date().toISOString(), last_action: 'Inscription',
           avatar_color: ['#0B63F6','#FF2D55','#0E9F6E','#D98A0B','#0B63F6','#AF52DE'][Math.floor(Math.random()*6)],
@@ -1524,7 +1524,7 @@ toggleParticipation: function(postId, status) {
         // récupération. On la connexion vient d'être établie -> JWT disponible.
         try {
           var secRes = await supabase.functions.invoke('password-recovery', {
-            body: { action: 'set', q1: secQA.q1, q2: secQA.q2, a1: secQA.a1, a2: secQA.a2 }
+            body: { action: 'set', phone: phoneDigits, q1: secQA.q1, q2: secQA.q2, a1: secQA.a1, a2: secQA.a2 }
           });
           if (secRes && secRes.error) console.warn('set security questions error:', secRes.error);
         } catch(err) { console.warn('set security questions exception:', err); }

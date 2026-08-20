@@ -72,22 +72,26 @@ Deno.serve(async (req) => {
       if (normalize(q1) === normalize(q2))
         return json({ error: "Choisissez deux questions différentes." }, 400);
 
+      // Clé de recherche = NUMÉRO de téléphone (le membre s'y connecte). Le champ
+      // « email » de la table sert d'identifiant générique : on y stocke le numéro
+      // (chiffres canoniques) transmis par le client, pas l'e-mail interne.
+      const identifier = String(body.phone || user.phone || user.email || "").trim();
       const salt = randHex(16);
       const [a1_hash, a2_hash] = await Promise.all([hashAnswer(a1, salt), hashAnswer(a2, salt)]);
       const up = await admin.from("kun_com_secrets").upsert({
-        user_id: user.id, email: user.email ?? "", q1, q2, a1_hash, a2_hash, salt,
+        user_id: user.id, email: identifier, q1, q2, a1_hash, a2_hash, salt,
         fail_count: 0, locked_until: null, updated_at: new Date().toISOString(),
       }, { onConflict: "user_id" });
       if (up.error) return json({ error: up.error.message }, 500);
       return json({ ok: true });
     }
 
-    // ---- QUESTIONS : récupérer les questions d'un compte par e-mail ----
+    // ---- QUESTIONS : récupérer les questions d'un compte par NUMÉRO ----
     if (action === "questions") {
-      const email = String(body.email || "").trim().toLowerCase();
-      if (!email) return json({ error: "E-mail requis." }, 400);
+      const id = String(body.email || body.phone || "").trim().toLowerCase();
+      if (!id) return json({ error: "Identifiant requis." }, 400);
       const row = await admin.from("kun_com_secrets")
-        .select("q1,q2,locked_until").ilike("email", email).maybeSingle();
+        .select("q1,q2,locked_until").ilike("email", id).maybeSingle();
       if (row.error || !row.data) return json({ found: false });
       if (row.data.locked_until && new Date(row.data.locked_until) > new Date())
         return json({ found: true, locked: true, q1: row.data.q1, q2: row.data.q2 });
@@ -96,15 +100,15 @@ Deno.serve(async (req) => {
 
     // ---- RESET : vérifier les réponses puis fixer un nouveau mot de passe ----
     if (action === "reset") {
-      const email = String(body.email || "").trim().toLowerCase();
+      const id = String(body.email || body.phone || "").trim().toLowerCase();
       const a1 = String(body.a1 || "");
       const a2 = String(body.a2 || "");
       const newPassword = String(body.newPassword || "");
-      if (!email) return json({ error: "E-mail requis." }, 400);
+      if (!id) return json({ error: "Identifiant requis." }, 400);
       if (newPassword.length < 8) return json({ error: "Mot de passe : 8 caractères minimum." }, 400);
 
       const row = await admin.from("kun_com_secrets")
-        .select("*").ilike("email", email).maybeSingle();
+        .select("*").ilike("email", id).maybeSingle();
       // Message neutre : ne révèle pas l'existence du compte.
       if (row.error || !row.data) return json({ error: "Réponses incorrectes." }, 403);
       const sec = row.data;

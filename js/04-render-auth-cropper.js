@@ -227,7 +227,7 @@
       '</div>' +
 
       '<form onsubmit="event.preventDefault(); App.login(event);" style="display:flex;flex-direction:column;gap:14px;">' +
-        renderField('loginEmail', 'email', 'Adresse e-mail', 'votre.email@eglise.org', 'email') +
+        renderPhoneField('loginPhone', 'Numéro de téléphone', 'tel') +
         renderField('loginPwd', 'password', 'Mot de passe', '••••••••', 'current-password') +
         '<div style="text-align:right;margin-top:-6px;"><span onclick="App.nav(\'forgot\')" style="color:#0B63F6;font-size:12.5px;font-weight:700;cursor:pointer;">Mot de passe oublié ?</span></div>' +
         '<button type="submit" id="loginSubmitBtn" style="' + btnStyle('#0B63F6') + '">Se connecter →</button>' +
@@ -252,9 +252,9 @@
             '</button>' +
             '<div><h1 style="font-size:22px;font-weight:900;color:var(--ink);margin:0;">Mot de passe oublié</h1></div>' +
           '</div>' +
-          '<p style="font-size:14px;color:var(--faint);margin-bottom:24px;">Saisissez votre adresse e-mail : vos questions de sécurité s\'afficheront pour définir un nouveau mot de passe.</p>' +
+          '<p style="font-size:14px;color:var(--faint);margin-bottom:24px;">Saisissez votre numéro : vos questions de sécurité s\'afficheront pour définir un nouveau mot de passe.</p>' +
           '<form onsubmit="event.preventDefault(); App.checkForgotEmail(event);" style="display:flex;flex-direction:column;gap:14px;">' +
-            renderField('forgotEmail', 'email', 'E-mail', 'jean.dupont@eglise.org', 'email') +
+            renderPhoneField('forgotPhone', 'Numéro de téléphone', 'tel') +
             '<button type="submit" style="' + btnStyle('#0B63F6') + '">Continuer</button>' +
           '</form>' +
         '</div></div>';
@@ -297,7 +297,7 @@
           renderField('signupPrenom', 'text', 'Prénom', 'Jean', 'given-name') +
           renderField('signupNom', 'text', 'Nom', 'Dupont', 'family-name') +
         '</div>' +
-        renderField('signupEmail', 'email', 'E-mail', 'jean.dupont@eglise.org', 'email') +
+        renderPhoneField('signupPhone', 'Numéro de téléphone', 'tel') +
         '<div><label style="font-size:12px;font-weight:700;color:var(--ink2);display:block;margin-bottom:8px;">Sections / Pôles (1 à 2 max) <span style="color:#E2445C;">*</span></label>' +
           '<div id="signupSectionBadgesContainer">' +
             App.renderSectionBadges(S.signupSections, 'toggleSignupSection') +
@@ -335,6 +335,23 @@
   }
 
   function btnStyle(bg) {
-    return 'width:100%;height:52px;background:linear-gradient(135deg,' + bg + ',#0B63F6);color:#FFF;border:none;border-radius:16px;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 6px 20px rgba(0,122,255,0.3);letter-spacing:0.2px;';
+    // Bouton primaire plein (refonte : plus de dégradé), relief doux.
+    return 'width:100%;height:54px;background:' + (bg || '#0B63F6') + ';color:#FFF;border:none;border-radius:14px;font-family:' + UI.fontBody + ';font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 8px 24px rgba(11,99,246,0.28);letter-spacing:0.1px;';
+  }
+
+  // Champ NUMÉRO DE TÉLÉPHONE (connexion sans e-mail ni SMS). Préfixe « +225 »
+  // fixe à gauche ; l'utilisateur ne tape que la partie locale. type=tel +
+  // inputmode numeric pour ouvrir le clavier numérique sur mobile.
+  function renderPhoneField(id, label, autocomplete) {
+    var valeur = (S.champsAuth && S.champsAuth[id]) ? S.champsAuth[id] : '';
+    return '<div style="flex:1;">' +
+      '<label style="font-size:12px;font-weight:700;color:var(--ink2);display:block;margin-bottom:5px;">' + label + '</label>' +
+      '<div style="display:flex;align-items:center;height:50px;border-radius:14px;border:1.5px solid var(--line);background:var(--tile);overflow:hidden;transition:border-color 0.2s;" id="' + id + 'Wrap">' +
+        '<span style="display:flex;align-items:center;gap:5px;padding:0 12px;height:100%;font-family:' + UI.fontMono + ';font-size:14px;font-weight:600;color:var(--muted);border-right:1.5px solid var(--line);background:var(--card);">🇨🇮 +225</span>' +
+        '<input id="' + id + '" type="tel" inputmode="numeric" value="' + safeHtml(valeur) + '" oninput="App.saisieAuth(\'' + id + '\', this.value)" placeholder="07 07 07 07 07" autocomplete="' + (autocomplete || 'tel') + '" required ' +
+        'style="flex:1;height:100%;border:none;background:transparent;padding:0 14px;font-family:' + UI.fontMono + ';font-size:15px;letter-spacing:0.5px;color:var(--ink);box-sizing:border-box;outline:none;" ' +
+        'onfocus="var w=document.getElementById(\'' + id + 'Wrap\');if(w)w.style.borderColor=\'#0B63F6\'" onblur="var w=document.getElementById(\'' + id + 'Wrap\');if(w)w.style.borderColor=\'var(--line)\'">' +
+      '</div>' +
+    '</div>';
   }
 
