@@ -112,9 +112,15 @@
     
     if (!Array.isArray(targetUser.notifications)) targetUser.notifications = [];
     
-    // Prevent duplicate
-    var exists = targetUser.notifications.find(function(n){ 
-      return n.targetId === notifData.targetId && n.type === notifData.type && n.senderId === (S.user ? S.user.id : 'system'); 
+    // Anti-doublon : évite deux notifications identiques pour le MÊME fait (ex.
+    // un like retiré puis remis tout de suite ne doit pas spammer). Mais quand un
+    // commentaire/réponse est fourni, il DOIT entrer dans la comparaison : sinon
+    // un 2e commentaire sur la même publication (même targetId+type+senderId,
+    // commentId différent) passait pour un doublon du premier et était
+    // silencieusement ignoré.
+    var exists = targetUser.notifications.find(function(n){
+      return n.targetId === notifData.targetId && n.type === notifData.type && n.senderId === (S.user ? S.user.id : 'system')
+        && (n.commentId || null) === (notifData.commentId || null);
     });
     if (exists) return;
     

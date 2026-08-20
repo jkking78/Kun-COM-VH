@@ -49,7 +49,7 @@
   // comporte de façon inexplicable. On vérifie donc que les briques essentielles
   // sont bien là avant de démarrer, et on recharge UNE fois en contournant le
   // cache si ce n'est pas le cas.
-  var APP_VERSION = 'v138';
+  var APP_VERSION = 'v139';
   // Nom du cache tenu par le service worker pour CETTE version. Doit rester
   // aligné sur CACHE_NAME dans sw.js.
   var CACHE_COURANT = 'kun-com-pwa-' + APP_VERSION;

@@ -961,11 +961,18 @@ toggleParticipation: function(postId, status) {
       if (supabase) {
         supabase.from('kun_com_dms').upsert({ id: newMsg.id, from_id: newMsg.fromId, to_id: newMsg.toId, content: newMsg, sent_at: new Date(newMsg.timestamp).toISOString() }, { onConflict: 'id' }).then(function(){}, function(e){ console.warn('Erreur envoi message:', e); });
       }
+      // targetId = l'ID du MESSAGE (unique), pas celui de l'expéditeur : le
+      // garde-fou anti-doublon de sendNotificationToUser compare type+targetId+
+      // senderId, et un targetId constant (l'expéditeur) pour toute la
+      // conversation faisait passer le 2e message et les suivants pour des
+      // doublons du premier — ils étaient donc silencieusement ignorés. Le clic
+      // sur une notif MESSAGE ouvre la conversation via notif.senderId, jamais
+      // via targetId : ce changement ne touche donc pas la navigation.
       sendNotificationToUser(S.dmWithUserId, {
         type: 'MESSAGE',
         title: 'Nouveau message',
         text: (S.user.prenom || 'Quelqu\'un') + ' : "' + txt.slice(0, 40) + (txt.length > 40 ? '…' : '') + '"',
-        targetId: S.user.id
+        targetId: newMsg.id
       });
       if (input) input.value = '';
       var list = document.getElementById('dmMessagesList');
