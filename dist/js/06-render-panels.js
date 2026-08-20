@@ -409,8 +409,17 @@
     if (!S.planningMode) S.planningMode = 'upcoming';
     
     var canCreate = S.user && (S.user.role === 'RESP_SECTION' || S.user.role === 'GRAND_RESPONSABLE');
-    var rightBtn = canCreate ? '<button onclick="App.openCreateEvent()" style="background:#0B63F6;color:#FFF;border:none;border-radius:17px;padding:6px 14px;font-size:12.5px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:5px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg> Événement</button>' : '';
-    var header = renderScreenHeader('Planning & Cultes', 'Département COM', rightBtn);
+    var rightBtn = canCreate ? '<button onclick="App.openCreateEvent()" aria-label="Nouvel événement" style="background:' + UI.accent + ';color:#FFF;border:none;border-radius:14px;width:44px;height:44px;flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(11,99,246,0.3);"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg></button>' : '';
+    // En-tête « écran plein » à grand titre (façon maquette).
+    var header = '<div style="background:' + UI.card + ';padding:22px 18px 16px;">' +
+      '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">' +
+        '<div style="min-width:0;">' +
+          '<h1 style="font-family:' + UI.fontDisplay + ';font-size:30px;font-weight:800;letter-spacing:-1px;color:' + UI.ink + ';margin:0;line-height:1.05;">Planning</h1>' +
+          '<p style="font-size:13.5px;color:' + UI.faint + ';margin:5px 0 0;">Gérez et suivez les événements du département.</p>' +
+        '</div>' +
+        rightBtn +
+      '</div>' +
+    '</div>';
 
     var modeSwitch = '<div style="background:' + UI.card + ';padding:10px 16px 12px;border-bottom:0.5px solid ' + UI.line + ';">' +
       renderSegmented([
@@ -558,11 +567,28 @@
             '<div style="position:absolute;left:-6px;top:4px;width:10px;height:10px;border-radius:5px;background:' + (status==='active'?'#0E9F6E':(status==='closed'?'var(--line)':'#000')) + ';border:2px solid var(--tile);"></div>' +
             '<div style="background:var(--card);border-radius:16px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,0.04);border:1px solid var(--tile);overflow:hidden;">' +
               statusHtml +
-              '<h3 style="font-size:17px;font-weight:800;color:var(--ink);margin:0 0 6px;overflow-wrap:anywhere;">' + safeHtml(ev.eventTitle) + '</h3>' +
-              (secTags ? '<div style="display:flex;flex-wrap:wrap;align-items:center;margin-bottom:8px;">' + secTags + '</div>' : '') +
-              '<div style="display:flex;align-items:flex-start;gap:6px;font-size:13px;color:var(--faint);margin-bottom:12px;font-weight:600;">' +
-                '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="flex-shrink:0;margin-top:2px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>' +
-                '<span style="min-width:0;overflow-wrap:anywhere;">' + safeHtml(ev.eventLocation || 'Non défini') + '</span>' +
+              '<h3 style="font-family:' + UI.fontDisplay + ';font-size:22px;font-weight:800;letter-spacing:-0.6px;color:var(--ink);margin:0 0 10px;line-height:1.1;overflow-wrap:anywhere;">' + safeHtml(ev.eventTitle) + '</h3>' +
+              (secTags ? '<div style="display:flex;flex-wrap:wrap;align-items:center;margin-bottom:12px;">' + secTags + '</div>' : '') +
+              // Horaire + Lieu en lignes à pastille ronde (façon maquette).
+              '<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:14px;">' +
+                '<div style="display:flex;align-items:center;gap:10px;">' +
+                  '<div style="width:34px;height:34px;border-radius:50%;background:var(--tile);display:flex;align-items:center;justify-content:center;flex-shrink:0;">' +
+                    '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>' +
+                  '</div>' +
+                  '<div style="min-width:0;">' +
+                    '<div style="font-size:10.5px;font-weight:600;letter-spacing:0.6px;text-transform:uppercase;color:var(--faint);">Horaire</div>' +
+                    '<div style="font-family:' + UI.fontMono + ';font-size:15px;font-weight:700;color:var(--ink);">' + (ev.eventStart||'--:--') + ' - ' + (ev.eventEnd||'--:--') + '</div>' +
+                  '</div>' +
+                '</div>' +
+                '<div style="display:flex;align-items:center;gap:10px;">' +
+                  '<div style="width:34px;height:34px;border-radius:50%;background:var(--tile);display:flex;align-items:center;justify-content:center;flex-shrink:0;">' +
+                    '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>' +
+                  '</div>' +
+                  '<div style="min-width:0;">' +
+                    '<div style="font-size:10.5px;font-weight:600;letter-spacing:0.6px;text-transform:uppercase;color:var(--faint);">Lieu</div>' +
+                    '<div style="font-size:14px;font-weight:600;color:var(--ink);overflow-wrap:anywhere;">' + safeHtml(ev.eventLocation || 'Non défini') + '</div>' +
+                  '</div>' +
+                '</div>' +
               '</div>' +
               (ev.caption ? '<p style="font-size:13px;color:var(--ink2);margin:0 0 16px;line-height:1.4;overflow-wrap:anywhere;">' + safeHtml(ev.caption) + '</p>' : '') +
               renderEventCheckInAction(ev) +
@@ -866,17 +892,17 @@
     // ============================================================
     // GRAPHIQUE 1 — NOTE : jauge demi-cercle + courbe d'évolution
     // ============================================================
-    var R = 54, HALF = Math.PI * R, FULL = 2 * Math.PI * R;
+    // Jauge large façon maquette : demi-cercle + très grand chiffre au centre.
+    var R = 95, HALF = Math.PI * R, FULL = 2 * Math.PI * R;
     var prog = HALF * Math.max(0, Math.min(1, ((avg + 4) / 9)));
-    var gauge = '<div style="position:relative;width:150px;height:88px;margin:2px auto 0;">' +
-      '<svg width="150" height="88" viewBox="0 0 150 88">' +
-        '<circle cx="75" cy="72" r="' + R + '" fill="none" stroke="' + UI.line + '" stroke-width="12" stroke-linecap="round" stroke-dasharray="' + HALF + ' ' + (FULL * 2) + '" transform="rotate(180 75 72)"/>' +
-        '<circle cx="75" cy="72" r="' + R + '" fill="none" stroke="' + col + '" stroke-width="12" stroke-linecap="round" stroke-dasharray="' + prog + ' ' + (FULL * 2) + '" transform="rotate(180 75 72)" style="transition:stroke-dasharray 0.6s ease;"/>' +
+    var gauge = '<div style="position:relative;width:100%;max-width:220px;height:124px;margin:8px auto 0;">' +
+      '<svg width="100%" height="124" viewBox="0 0 220 124" preserveAspectRatio="xMidYMax meet">' +
+        '<circle cx="110" cy="112" r="' + R + '" fill="none" stroke="' + UI.line + '" stroke-width="14" stroke-linecap="round" stroke-dasharray="' + HALF + ' ' + (FULL * 2) + '" transform="rotate(180 110 112)"/>' +
+        '<circle cx="110" cy="112" r="' + R + '" fill="none" stroke="' + col + '" stroke-width="14" stroke-linecap="round" stroke-dasharray="' + prog + ' ' + (FULL * 2) + '" transform="rotate(180 110 112)" style="transition:stroke-dasharray 0.6s ease;"/>' +
       '</svg>' +
-      '<div style="position:absolute;left:0;right:0;top:26px;display:flex;flex-direction:column;align-items:center;">' +
-        ico('star', 15, col) +
-        '<div style="font-family:' + UI.fontMono + ';font-size:30px;font-weight:700;color:' + UI.ink + ';line-height:1;margin-top:2px;">' + String(avg).replace('.', ',') + '</div>' +
-        '<div style="font-size:10px;color:' + UI.faint + ';margin-top:2px;">sur 5</div>' +
+      '<div style="position:absolute;left:0;right:0;bottom:12px;display:flex;flex-direction:column;align-items:center;">' +
+        '<div style="font-family:' + UI.fontDisplay + ';font-size:48px;font-weight:800;letter-spacing:-1px;color:' + col + ';line-height:1;">' + String(avg).replace('.', ',') + '</div>' +
+        '<div style="font-size:14px;font-weight:600;color:' + UI.faint + ';margin-top:4px;">/ 5,0</div>' +
       '</div>' +
     '</div>';
 
@@ -912,7 +938,15 @@
       evolution = '<div style="font-size:11.5px;color:' + UI.faint + ';text-align:center;margin-top:12px;line-height:1.5;">' +
         String(welcome).replace('.', ',') + '★ de bienvenue.<br>Votre première note sera calculée après votre 1ᵉʳ service.</div>';
     }
-    var noteChart = gauge + evolution;
+    // Phrase de synthèse sous la jauge (maquette).
+    var verdict = !h.count
+      ? 'Votre note de départ, en attendant votre premier service.'
+      : (avg >= 4 ? 'Performance exceptionnelle ce cycle.'
+        : avg >= 2 ? 'Des progrès à faire sur ce cycle.'
+        : 'Ponctualité critique : à redresser rapidement.');
+    var noteChart = gauge +
+      '<p style="text-align:center;font-size:15px;color:' + UI.muted + ';margin:10px 0 0;line-height:1.45;">' + verdict + '</p>' +
+      evolution;
 
     // ============================================================
     // GRAPHIQUE 2 — À L'HEURE : anneau de répartition
@@ -999,10 +1033,10 @@
     var body = chart === 'ontime' ? onTimeChart : chart === 'services' ? servicesChart : noteChart;
 
     return '<div style="margin:16px 0 14px;">' +
-      '<div style="background:' + UI.tile + ';border-radius:' + UI.r3 + ';padding:18px 16px 16px;">' +
-        '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px;">' +
-          '<div style="font-family:' + UI.fontDisplay + ';font-size:24px;font-weight:800;color:' + UI.ink + ';letter-spacing:-0.6px;line-height:1.05;">Mes<br>engagements</div>' +
-          '<div style="font-family:' + UI.fontMono + ';font-size:12px;color:' + UI.faint + ';text-align:right;line-height:1.4;flex-shrink:0;">Cycle ' + cycleStr + '<br>' + label + '</div>' +
+      '<div style="background:' + UI.card + ';border:1px solid ' + UI.line + ';border-radius:12px;box-shadow:' + UI.sh2 + ';padding:16px;">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;">' +
+          '<h2 style="font-family:' + UI.fontDisplay + ';font-size:24px;font-weight:600;color:' + UI.ink + ';letter-spacing:-0.4px;line-height:1.15;margin:0;">Mes engagements</h2>' +
+          '<div style="font-family:' + UI.fontMono + ';font-size:13px;color:' + UI.faint + ';text-align:right;line-height:1.35;max-width:44%;min-width:0;overflow-wrap:anywhere;">Cycle ' + cycleStr + ' · ' + label + '</div>' +
         '</div>' +
         switcher +
         '<div style="min-height:170px;">' + body + '</div>' +
@@ -1272,7 +1306,10 @@
     }).join('');
 
     // ---- Sticky top bar ----
-    var topBar = '<div style="position:sticky;top:0;z-index:200;background:' + UI.card + ';border-bottom:0.5px solid ' + UI.line + ';display:flex;align-items:center;justify-content:space-between;padding:12px 16px;">' +
+    // Sur SON PROPRE profil, la maquette n'a pas de barre de titre : l'écran
+    // s'ouvre directement sur le grand nom. On ne garde la barre (avec retour)
+    // que pour le profil d'un autre membre, où elle est indispensable.
+    var topBar = isMe ? '' : '<div style="position:sticky;top:0;z-index:200;background:' + UI.card + ';border-bottom:0.5px solid ' + UI.line + ';display:flex;align-items:center;justify-content:space-between;padding:12px 16px;">' +
       (isMe
         ? '<button onclick="App.tab(\'home\')" style="background:none;border:none;width:34px;height:34px;border-radius:' + UI.pill + ';cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;">' +
             '<svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="' + UI.muted + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>' +
@@ -1308,29 +1345,33 @@
       : '<div style="width:100%;height:100%;background:' + (freshU.avatar_color || '#0B63F6') + ';color:#FFF;font-family:' + UI.fontDisplay + ';font-size:30px;font-weight:800;display:flex;align-items:center;justify-content:center;">' + (freshU.prenom||'M').charAt(0).toUpperCase() + '</div>';
     var roleLbl = ROLE_LABELS[freshU.role] || 'Membre';
     var elevated = freshU.role && freshU.role !== 'MEMBRE';
-    // Statistique empilée : grand chiffre en mono, libellé en petites capitales.
+    // Statistique empilée : chiffre en mono (chasse fixe, léger interlettrage),
+    // libellé en petites capitales — exactement comme la maquette.
     var statInline = function(v, l, accent){
       return '<div style="min-width:0;">' +
-        '<div style="font-family:' + UI.fontMono + ';font-size:26px;font-weight:700;line-height:1;color:' + (accent ? UI.accent : UI.ink) + ';">' + v + '</div>' +
-        '<div style="font-size:10.5px;font-weight:600;letter-spacing:0.8px;text-transform:uppercase;color:' + UI.faint + ';margin-top:5px;">' + l + '</div>' +
+        '<div style="font-family:' + UI.fontMono + ';font-size:20px;font-weight:700;letter-spacing:0.05em;line-height:1.2;color:' + (accent ? UI.accent : UI.ink) + ';">' + v + '</div>' +
+        '<div style="font-size:12px;font-weight:600;letter-spacing:0.05em;text-transform:uppercase;color:' + UI.muted + ';margin-top:2px;">' + l + '</div>' +
       '</div>';
     };
 
-    // Pastille de rôle : or doux pour l'Admin, bleu doux pour un Responsable.
+    // Pastille de rôle : or doux pour l'Admin, bleu doux pour un Responsable
+    // (maquette : fond très translucide + fin liseré de la même teinte).
+    var pillTint = (freshU.role === 'GRAND_RESPONSABLE') ? '139,105,40' : '11,99,246';
+    var pillInk  = (freshU.role === 'GRAND_RESPONSABLE') ? '#8B6928' : UI.accentInk;
     var rolePill = elevated
-      ? '<div style="display:inline-flex;align-items:center;background:' + (freshU.role === 'GRAND_RESPONSABLE' ? 'rgba(203,163,92,0.16)' : UI.accentSoft) + ';color:' + (freshU.role === 'GRAND_RESPONSABLE' ? '#8B6928' : UI.accentInk) + ';font-size:12px;font-weight:700;padding:4px 12px;border-radius:999px;margin-top:10px;">' + roleLbl + '</div>'
+      ? '<div style="display:inline-flex;align-items:center;background:rgba(' + pillTint + ',0.10);color:' + pillInk + ';border:1px solid rgba(' + pillTint + ',0.22);font-size:14px;font-weight:600;padding:4px 14px;border-radius:999px;margin-top:8px;">' + roleLbl + '</div>'
       : '';
 
-    var hero = '<div style="background:' + UI.card + ';padding:20px 18px 18px;">' +
-      // En-tête : nom géant à gauche, avatar circulaire à droite.
+    // HERO — posé sur le fond de page (pas de carte blanche), comme la maquette.
+    var hero = '<div style="background:' + UI.page + ';padding:34px 20px 16px;">' +
       '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;">' +
         '<div style="flex:1;min-width:0;">' +
-          '<h1 style="font-family:' + UI.fontDisplay + ';font-size:32px;font-weight:800;letter-spacing:-1px;color:' + UI.ink + ';line-height:1.03;margin:0;overflow-wrap:anywhere;">' + safeHtml(freshU.prenom + ' ' + freshU.nom) + '</h1>' +
+          '<h1 style="font-family:' + UI.fontDisplay + ';font-size:32px;font-weight:700;letter-spacing:-1px;color:' + UI.ink + ';line-height:1.06;margin:0;overflow-wrap:anywhere;">' + safeHtml(freshU.prenom + ' ' + freshU.nom) + '</h1>' +
           rolePill +
         '</div>' +
         '<div style="position:relative;flex-shrink:0;">' +
-          '<div style="width:68px;height:68px;border-radius:50%;overflow:hidden;background:' + UI.tile + ';box-shadow:0 2px 8px rgba(0,0,0,0.08);">' + avatarInner + '</div>' +
-          (online && !isMe ? '<span style="position:absolute;bottom:2px;right:2px;width:14px;height:14px;border-radius:50%;background:#22C55E;border:3px solid ' + UI.card + ';"></span>' : '') +
+          '<div style="width:64px;height:64px;border-radius:50%;overflow:hidden;background:' + UI.tile + ';border:2px solid ' + UI.line + ';">' + avatarInner + '</div>' +
+          (online && !isMe ? '<span style="position:absolute;bottom:1px;right:1px;width:14px;height:14px;border-radius:50%;background:#22C55E;border:3px solid ' + UI.page + ';"></span>' : '') +
           (isMe ? '<label style="position:absolute;bottom:-2px;right:-2px;background:' + UI.card + ';border:1px solid ' + UI.line2 + ';border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,0.12);">' +
             '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="' + UI.ink + '" stroke-width="2.2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>' +
             '<input type="file" accept="image/*" onchange="App.handleAvatarSelect(event)" style="display:none;">' +
@@ -1338,32 +1379,33 @@
         '</div>' +
       '</div>' +
 
-      // Pôle + « membre depuis » sur une ligne discrète.
-      ((uSecs.length || freshU.joined_at) ? '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:13px;color:' + UI.muted + ';margin-top:10px;">' +
+      (freshU.bio ? '<p style="font-size:16px;color:' + UI.muted + ';line-height:1.5;margin:16px 0 0;max-width:24rem;white-space:pre-wrap;">' + safeHtml(freshU.bio) + '</p>' : '') +
+
+      // Pôle + « membre depuis », ligne discrète sous la bio.
+      ((uSecs.length || freshU.joined_at) ? '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:13px;color:' + UI.faint + ';margin-top:10px;">' +
         (uSecs.length ? '<span>' + uSecs.map(function(s){ return secNom(s); }).join(' · ') + '</span>' : '') +
-        ((uSecs.length && freshU.joined_at) ? '<span style="color:' + UI.faint + ';">·</span>' : '') +
-        (freshU.joined_at ? '<span style="color:' + UI.faint + ';">Membre depuis ' + new Date(freshU.joined_at).toLocaleDateString('fr-FR', {month:'long', year:'numeric'}) + '</span>' : '') +
+        ((uSecs.length && freshU.joined_at) ? '<span>·</span>' : '') +
+        (freshU.joined_at ? '<span>Membre depuis ' + new Date(freshU.joined_at).toLocaleDateString('fr-FR', {month:'long', year:'numeric'}) + '</span>' : '') +
       '</div>' : '') +
 
-      (freshU.bio ? '<div style="font-size:14.5px;color:' + UI.muted + ';line-height:1.55;margin-top:12px;white-space:pre-wrap;">' + safeHtml(freshU.bio) + '</div>' : '') +
       (freshU.skills ? '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;">' +
         freshU.skills.split(',').map(function(s){ var t=(s||'').trim(); return t ? '<span style="background:' + UI.tile + ';color:' + UI.ink + ';font-size:12.5px;font-weight:600;padding:5px 12px;border-radius:999px;">' + safeHtml(t) + '</span>' : ''; }).join('') +
       '</div>' : '') +
 
-      // Statistiques empilées, façon tableau de bord.
-      '<div style="display:flex;gap:28px;margin-top:18px;">' +
+      // Statistiques empilées : nombre en mono, libellé en petites capitales.
+      '<div style="display:flex;gap:24px;margin-top:24px;">' +
         statInline(myPosts.length, 'Publications') +
         statInline(hStats.count, 'Services') +
-        statInline(String(hStats.average).replace('.', ',') + '★', 'Note', true) +
+        statInline(String(hStats.average).replace('.', ','), 'Note', true) +
       '</div>' +
 
-      // Actions : primaire bleu plein + secondaire tuile.
-      '<div style="display:flex;gap:10px;margin-top:18px;">' +
+      // Actions en PILULES pleine largeur.
+      '<div style="display:flex;gap:16px;margin-top:24px;">' +
         (isMe
-          ? '<button onclick="App.openEditProfile()" style="flex:1;background:' + UI.accent + ';color:#FFF;border:none;border-radius:12px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;">Modifier le profil</button>' +
-            '<button onclick="App.tab(\'home\');App.openCreate();" style="flex:1;background:' + UI.tile + ';color:' + UI.ink + ';border:none;border-radius:12px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;">Publier</button>'
-          : '<button onclick="App.toggleFollow(\'' + freshU.id + '\')" style="flex:1;background:' + (isFollowing ? UI.tile : UI.accent) + ';color:' + (isFollowing ? UI.ink : '#FFF') + ';border:none;border-radius:12px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;">' + (isFollowing ? 'Suivi' : 'Suivre') + '</button>' +
-            '<button onclick="App.openDirectMessage(\'' + freshU.id + '\')" style="flex:1;background:' + UI.tile + ';color:' + UI.ink + ';border:none;border-radius:12px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;">Message</button>'
+          ? '<button onclick="App.openEditProfile()" style="flex:1;background:' + UI.accent + ';color:#FFF;border:none;border-radius:999px;padding:12px;font-size:14px;font-weight:600;cursor:pointer;">Modifier le profil</button>' +
+            '<button onclick="App.tab(\'home\');App.openCreate();" style="flex:1;background:' + UI.line + ';color:' + UI.ink + ';border:none;border-radius:999px;padding:12px;font-size:14px;font-weight:600;cursor:pointer;">Publier</button>'
+          : '<button onclick="App.toggleFollow(\'' + freshU.id + '\')" style="flex:1;background:' + (isFollowing ? UI.line : UI.accent) + ';color:' + (isFollowing ? UI.ink : '#FFF') + ';border:none;border-radius:999px;padding:12px;font-size:14px;font-weight:600;cursor:pointer;">' + (isFollowing ? 'Suivi' : 'Suivre') + '</button>' +
+            '<button onclick="App.openDirectMessage(\'' + freshU.id + '\')" style="flex:1;background:' + UI.line + ';color:' + UI.ink + ';border:none;border-radius:999px;padding:12px;font-size:14px;font-weight:600;cursor:pointer;">Message</button>'
         ) +
       '</div>' +
     '</div>';
@@ -1371,10 +1413,10 @@
     // ---- Info block ----
     // Le nom, le rôle, les pôles et la bio sont désormais dans le bandeau centré
     // ci-dessus : ce bloc ne garde que l'indice de confiance et les informations.
-    var infoBlock = '<div style="background:' + UI.card + ';padding:0 16px 16px;border-bottom:0.5px solid ' + UI.line + ';">' +
+    var infoBlock = '<div style="background:' + UI.page + ';padding:0 20px 16px;">' +
       renderPunctualityCard(freshU, cycleStr) +
-      '<div style="background:' + UI.tile + ';border-radius:' + UI.r2 + ';padding:14px;margin-bottom:14px;">' +
-        '<div style="font-size:13px;font-weight:600;color:' + UI.ink + ';margin-bottom:10px;">Informations</div>' +
+      '<div style="background:' + UI.card + ';border:1px solid ' + UI.line + ';border-radius:12px;box-shadow:' + UI.sh2 + ';padding:16px;margin-bottom:14px;">' +
+        '<div style="font-family:' + UI.fontDisplay + ';font-size:18px;font-weight:600;color:' + UI.ink + ';margin-bottom:10px;">Informations</div>' +
         '<div style="display:flex;flex-direction:column;gap:8px;">' +
           '<div style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--ink2);">' +
             '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>' +
