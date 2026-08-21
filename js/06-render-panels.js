@@ -1482,7 +1482,13 @@
                 ? '<video src="' + media + '"' + (p.videoPoster ? ' poster="' + p.videoPoster + '"' : '') + ' muted playsinline preload="metadata" onerror="App.handleProfileTileImgError(this)" data-fallback="' + textFallback + '" style="width:100%;height:100%;object-fit:cover;display:block;"></video>' +
                   '<div style="position:absolute;top:8px;right:8px;pointer-events:none;"><svg width="18" height="18" viewBox="0 0 24 24" fill="rgba(255,255,255,0.95)"><path d="M8 5v14l11-7z"/></svg></div>'
                 : '<img src="' + media + '" loading="lazy" onerror="App.handleProfileTileImgError(this)" data-fallback="' + textFallback + '" style="width:100%;height:100%;object-fit:cover;display:block;" />')
-            : '<div style="width:100%;height:100%;padding:14px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;text-align:center;font-size:13px;line-height:1.45;color:' + UI.muted + ';overflow:hidden;">' + textFallback + '</div>';
+            // Une publication sans média mais avec un fond coloré (texte stylisé)
+            // reprend ce même fond en miniature, comme dans le fil ; sinon repli neutre.
+            : (p.postBg
+                ? '<div style="width:100%;height:100%;padding:14px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;text-align:center;' + (String(p.postBg).indexOf('url') === 0 ? 'background:' + p.postBg + ';background-size:cover;background-position:center;' : 'background:' + p.postBg + ';') + '">' +
+                    '<p style="margin:0;color:#FFF;font-size:12.5px;font-weight:800;line-height:1.4;text-shadow:0 1px 4px rgba(0,0,0,0.28);overflow:hidden;display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;">' + textFallback + '</p>' +
+                  '</div>'
+                : '<div style="width:100%;height:100%;padding:14px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;text-align:center;font-size:13px;line-height:1.45;color:' + UI.muted + ';overflow:hidden;">' + textFallback + '</div>');
           var isSel = selectedIds.indexOf(p.id) !== -1;
           var action = selectMode
             ? 'App.toggleSelectProfilePost(\'' + p.id + '\')'
