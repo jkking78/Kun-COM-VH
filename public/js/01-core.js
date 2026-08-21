@@ -878,7 +878,22 @@
       var p = parseProfileItem(item);
       if (p && p.id) ids[p.id] = true;
     });
-    if (Object.keys(ids).length) _idsProfilsServeur = ids;
+    var count = Object.keys(ids).length;
+    if (!count) return;
+    // Une lecture tronquée (coupure réseau, réponse partielle) qui perd d'un
+    // coup plusieurs comptes d'un seul coup ne doit jamais être prise pour une
+    // vague de suppressions réelles — celles-ci se font une par une, depuis
+    // l'admin. Sans ce garde-fou, un simple accroc réseau pendant le sondage
+    // silencieux (fetchProfilesSilently, toutes les quelques secondes) pouvait
+    // faire disparaître définitivement les publications de membres bien vivants
+    // au prochain passage de separerOrphelines — c'est exactement ce qui a fait
+    // disparaître (puis réapparaître, une fois son profil rechargé à la main)
+    // les publications d'un membre qui venait de se déconnecter.
+    if (_idsProfilsServeur) {
+      var previousCount = Object.keys(_idsProfilsServeur).length;
+      if (count < previousCount - 1) return;
+    }
+    _idsProfilsServeur = ids;
   }
 
   // Prudence maximale : on ne déclare une publication orpheline que si la liste
