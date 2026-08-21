@@ -184,6 +184,8 @@
       var endEl = document.getElementById('eventEnd');
       var descEl = document.getElementById('eventDesc');
       var pinnedEl = document.getElementById('eventPinned');
+      var recurWeeklyEl = document.getElementById('eventRecurWeekly');
+      var recurWeeksEl = document.getElementById('eventRecurWeeks');
       if (titleEl || locEl || descEl) {
         var prev = S.createEventData || {};
         S.createEventData = {
@@ -194,6 +196,8 @@
           end: endEl ? endEl.value : (prev.end || ''),
           desc: descEl ? descEl.value : (prev.desc || ''),
           pinned: pinnedEl ? pinnedEl.checked : !!prev.pinned,
+          recurWeekly: recurWeeklyEl ? recurWeeklyEl.checked : !!prev.recurWeekly,
+          recurWeeks: recurWeeksEl ? (parseInt(recurWeeksEl.value, 10) || 8) : (prev.recurWeeks || 8),
           // Coordonnées du lieu : pas de champ de saisie, elles viennent de la
           // recherche d'adresse — on les reporte telles quelles.
           lat: prev.lat,
@@ -453,6 +457,12 @@
       // on rouvre le culte de dimanche dernier, on change la date, on duplique).
       // On demande à l'utilisateur, sauf s'il a déjà choisi.
       if (S.editEventId && !S.eventSaveMode) {
+        // Le re-rendu ci-dessous reconstruit le formulaire à partir de
+        // S.createEventData : sans cette synchronisation, les valeurs tapées
+        // (date, titre, heure...) étaient perdues et l'ancienne date réapparaissait.
+        S.createEventData = { title: title, location: loc, date: date, start: start, end: end, desc: desc, pinned: pinned,
+          lat: (S.createEventData||{}).lat, lng: (S.createEventData||{}).lng, accuracy: (S.createEventData||{}).accuracy,
+          placeName: (S.createEventData||{}).placeName, placeLabel: (S.createEventData||{}).placeLabel };
         S.eventSaveChoiceOpen = true;
         render();
         return;
@@ -537,13 +547,38 @@
         comments: [],
         mediaUrls: []
       };
+
+      // Répétition hebdomadaire : on crée d'un coup toutes les occurrences
+      // (même titre/heure/lieu/assignations, date +7 jours à chaque fois) pour
+      // éviter de reprogrammer chaque semaine un événement fixe (ex. les cultes).
+      var recurWeeklyEl = document.getElementById('eventRecurWeekly');
+      var recurWeeksEl = document.getElementById('eventRecurWeeks');
+      var recurWeekly = recurWeeklyEl ? recurWeeklyEl.checked : false;
+      var recurWeeks = recurWeekly ? Math.max(2, Math.min(52, parseInt(recurWeeksEl && recurWeeksEl.value, 10) || 8)) : 1;
+      if (recurWeekly) newPost.recurrenceGroupId = newPost.id;
+      var createdPosts = [newPost];
+      for (var w = 1; w < recurWeeks; w++) {
+        var occDateObj = new Date(date + 'T00:00:00');
+        occDateObj.setDate(occDateObj.getDate() + w * 7);
+        createdPosts.push(Object.assign({}, newPost, {
+          id: 'evt_' + (Date.now() + w),
+          eventDate: occDateObj.toISOString().split('T')[0],
+          timestamp: Date.now(),
+          likedBy: [],
+          comments: []
+        }));
+      }
+
       var allPosts = db(SK.POSTS, []);
-      allPosts.unshift(newPost);
-      dbSet(SK.POSTS, allPosts);
+      dbSet(SK.POSTS, createdPosts.concat(allPosts));
+      // Seule l'occurrence la plus proche notifie les équipes : personne n'a
+      // besoin d'être alerté d'un culte prévu dans 8 semaines.
       sendTargetedEventNotifications(newPost);
       if (supabase) {
         try {
-          await supabase.from('kun_com_posts').upsert({ id: newPost.id, content: newPost, created_at: new Date().toISOString() }, { onConflict: 'id' });
+          await supabase.from('kun_com_posts').upsert(createdPosts.map(function(p) {
+            return { id: p.id, content: p, created_at: new Date().toISOString() };
+          }), { onConflict: 'id' });
         } catch(e) {
           console.warn("Save event supabase error:", e);
         }
@@ -557,7 +592,8 @@
       S.tab = pinned ? 'home' : 'planning';
       render();
       setTimeout(function() { window.scrollTo({ top: 0, behavior: 'smooth' }); }, 50);
-      toast(wasDuplicate ? 'Nouvel événement créé, l\'ancien est conservé ! ' : 'Événement créé avec succès ! ', 'success');
+      toast(wasDuplicate ? 'Nouvel événement créé, l\'ancien est conservé ! '
+        : (recurWeekly ? recurWeeks + ' occurrences créées (chaque semaine) ! ' : 'Événement créé avec succès ! '), 'success');
     },
     // Choix proposé à l'enregistrement d'une modification.
     chooseEventSaveMode: function(mode) {

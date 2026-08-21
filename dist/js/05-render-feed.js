@@ -1328,6 +1328,8 @@
     var endVal = cData.end !== undefined ? cData.end : '11:30';
     var descVal = cData.desc !== undefined ? cData.desc : '';
     var pinnedVal = !!cData.pinned;
+    var recurWeeklyVal = !!cData.recurWeekly;
+    var recurWeeksVal = cData.recurWeeks || 8;
 
     // Bloc image (une seule image par événement)
     var imageBlock = '<div style="background:var(--card);border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px;">' +
@@ -1439,7 +1441,30 @@
             '</div>' +
           '</div>' +
         '</div>' +
-        
+
+        // Répétition hebdomadaire : évite de recréer manuellement chaque semaine
+        // un événement récurrent (ex : les 3 cultes du dimanche). Uniquement à la
+        // création — modifier une série déjà créée se fait événement par événement.
+        (isEdit ? '' :
+        '<div style="background:var(--card);border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px;">' +
+          '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">' +
+            '<div>' +
+              '<div style="font-size:15px;font-weight:600;color:var(--ink);">Se répète chaque semaine</div>' +
+              '<div style="font-size:12px;color:var(--faint);margin-top:2px;">Crée automatiquement les prochaines occurrences (même jour, même heure)</div>' +
+            '</div>' +
+            '<label style="position:relative;display:inline-block;width:50px;height:30px;flex-shrink:0;">' +
+              '<input type="checkbox" id="eventRecurWeekly"' + (recurWeeklyVal ? ' checked' : '') + ' style="opacity:0;width:0;height:0;" onchange="this.nextElementSibling.style.background=this.checked?\'#0E9F6E\':\'var(--line)\'; this.nextElementSibling.children[0].style.transform=this.checked?\'translateX(20px)\':\'translateX(0)\'; document.getElementById(\'eventRecurWeeksRow\').style.display=this.checked?\'flex\':\'none\';">' +
+              '<span style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:' + (recurWeeklyVal ? '#0E9F6E' : 'var(--line)') + ';transition:.3s;border-radius:30px;">' +
+                '<span style="position:absolute;content:\'\';height:26px;width:26px;left:2px;bottom:2px;background-color:white;transition:.3s;border-radius:50%;box-shadow:0 2px 4px rgba(0,0,0,0.2);transform:' + (recurWeeklyVal ? 'translateX(20px)' : 'translateX(0)') + ';"></span>' +
+              '</span>' +
+            '</label>' +
+          '</div>' +
+          '<div id="eventRecurWeeksRow" style="display:' + (recurWeeklyVal ? 'flex' : 'none') + ';align-items:center;justify-content:space-between;gap:12px;border-top:1px solid var(--line);margin-top:14px;padding-top:14px;">' +
+            '<label style="font-size:14px;color:var(--ink);font-weight:600;">Nombre de semaines</label>' +
+            '<input type="number" id="eventRecurWeeks" min="2" max="52" value="' + recurWeeksVal + '" style="width:70px;border:none;background:var(--tile);border-radius:10px;padding:8px 10px;font-size:15px;font-weight:700;color:var(--ink);text-align:center;outline:none;" />' +
+          '</div>' +
+        '</div>') +
+
         '<div style="background:var(--card);border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px;">' +
           '<label style="font-size:14px;font-weight:700;color:var(--ink);display:block;margin-bottom:12px;">Pôles concernés</label>' +
           '<div id="eventSectionBadgesContainer">' + App.renderSectionBadges(S.eventSections, 'toggleEventSection') + '</div>' + 

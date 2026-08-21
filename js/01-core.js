@@ -1573,6 +1573,9 @@
     loadingMorePosts: false,
     profileSelectMode: false,
     selectedProfilePostIds: [],
+    // Onglet actif de la grille du profil : 'posts' (mes publications) ou
+    // 'saved' (celles que j'ai enregistrées avec le signet).
+    profileGridTab: 'posts',
     bulkDeleteConfirmOpen: false,
     bulkDeleteBusy: false,
     viewersPostId: null,
