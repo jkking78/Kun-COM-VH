@@ -1270,7 +1270,7 @@
     var theme = ROLE_THEMES[freshU.role] || ROLE_THEMES['MEMBRE'];
 
     // ---- Stats ----
-    var myPosts = posts.filter(function(p){ return p.userId === freshU.id && p.type !== 'TASK_DONE'; }).sort(function(a,b){return (b.timestamp||0)-(a.timestamp||0)});
+    var myPosts = posts.filter(function(p){ return p.userId === freshU.id && p.type !== 'TASK_DONE' && p.type !== 'EVENT_ARCHIVED'; }).sort(function(a,b){return (b.timestamp||0)-(a.timestamp||0)});
     var photosPosts = myPosts.filter(function(p){ return p.mediaUrls && p.mediaUrls.length > 0; });
     var eventPosts = myPosts.filter(function(p){ return p.type === 'EVENT'; });
     var myLikesCount = posts.filter(function(p){ return Array.isArray(p.likedBy) && p.likedBy.indexOf(freshU.id) !== -1; }).length;
@@ -1447,7 +1447,7 @@
     var selectMode = isMe && gridTab === 'posts' && S.profileSelectMode;
     var selectedIds = S.selectedProfilePostIds || [];
     var savedPostsMap = S.savedPosts || {};
-    var savedPosts = posts.filter(function(p){ return savedPostsMap[p.id]; }).sort(function(a,b){return (b.timestamp||0)-(a.timestamp||0);});
+    var savedPosts = posts.filter(function(p){ return savedPostsMap[p.id] && p.type !== 'EVENT_ARCHIVED'; }).sort(function(a,b){return (b.timestamp||0)-(a.timestamp||0);});
 
     feed += '<div style="background:' + UI.page + ';padding:4px 20px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px;">' +
       (isMe
@@ -1474,21 +1474,38 @@
       // charger (URL cassée/expirée), on retombe aussi sur ce texte via onerror.
       feed += '<div style="background:' + UI.page + ';padding:0 20px 24px;display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
         filteredPosts.map(function(p) {
-          var media = (p.mediaUrls && p.mediaUrls.length) ? p.mediaUrls[0] : null;
+          var isEvent = p.type === 'EVENT' || p.type === 'EVENT_ARCHIVED';
+          var isRepost = p.type === 'REPOST';
+          // Un événement héberge son image dans eventImage (pas mediaUrls) ; un
+          // repartage sans média/texte propres retombe sur ceux de la publication
+          // d'origine — sinon sa tuile était toujours vide.
+          var media = (p.mediaUrls && p.mediaUrls.length) ? p.mediaUrls[0]
+            : (isEvent && p.eventImage) ? p.eventImage
+            : (isRepost && p.originalMediaUrls && p.originalMediaUrls.length) ? p.originalMediaUrls[0]
+            : null;
           var isVid = media && isVideoUrl(media);
-          var textFallback = safeHtml(String(p.caption || p.eventTitle || '').trim().slice(0, 90) || 'Publication');
+          var bg = p.postBg || (isRepost ? p.originalPostBg : null);
+          var textSource = p.caption || (isRepost ? p.originalCaption : '') || p.eventTitle;
+          var textFallback = safeHtml(String(textSource || '').trim().slice(0, 90) || 'Publication');
           var inner = media
             ? (isVid
                 ? '<video src="' + media + '"' + (p.videoPoster ? ' poster="' + p.videoPoster + '"' : '') + ' muted playsinline preload="metadata" onerror="App.handleProfileTileImgError(this)" data-fallback="' + textFallback + '" style="width:100%;height:100%;object-fit:cover;display:block;"></video>' +
                   '<div style="position:absolute;top:8px;right:8px;pointer-events:none;"><svg width="18" height="18" viewBox="0 0 24 24" fill="rgba(255,255,255,0.95)"><path d="M8 5v14l11-7z"/></svg></div>'
                 : '<img src="' + media + '" loading="lazy" onerror="App.handleProfileTileImgError(this)" data-fallback="' + textFallback + '" style="width:100%;height:100%;object-fit:cover;display:block;" />')
-            // Une publication sans média mais avec un fond coloré (texte stylisé)
-            // reprend ce même fond en miniature, comme dans le fil ; sinon repli neutre.
-            : (p.postBg
-                ? '<div style="width:100%;height:100%;padding:14px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;text-align:center;' + (String(p.postBg).indexOf('url') === 0 ? 'background:' + p.postBg + ';background-size:cover;background-position:center;' : 'background:' + p.postBg + ';') + '">' +
-                    '<p style="margin:0;color:#FFF;font-size:12.5px;font-weight:800;line-height:1.4;text-shadow:0 1px 4px rgba(0,0,0,0.28);overflow:hidden;display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;">' + textFallback + '</p>' +
+            // Un événement sans image se reconnaît d'un coup d'œil (icône + date).
+            : (isEvent
+                ? '<div style="width:100%;height:100%;padding:14px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:6px;background:linear-gradient(160deg, rgba(11,99,246,0.12), rgba(11,99,246,0.04));">' +
+                    '<span style="font-size:20px;line-height:1;">🗓️</span>' +
+                    '<p style="margin:0;color:' + UI.ink + ';font-size:12.5px;font-weight:800;line-height:1.35;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;">' + safeHtml(String(p.eventTitle || 'Événement').slice(0, 60)) + '</p>' +
+                    (p.eventDate ? '<span style="font-size:11px;font-weight:700;color:' + UI.accent + ';">' + new Date(p.eventDate + 'T00:00:00').toLocaleDateString('fr-FR', {day:'numeric', month:'short'}) + '</span>' : '') +
                   '</div>'
-                : '<div style="width:100%;height:100%;padding:14px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;text-align:center;font-size:13px;line-height:1.45;color:' + UI.muted + ';overflow:hidden;">' + textFallback + '</div>');
+                // Une publication sans média mais avec un fond coloré (texte stylisé,
+                // y compris via un repartage) reprend ce même fond en miniature.
+                : (bg
+                    ? '<div style="width:100%;height:100%;padding:14px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;text-align:center;' + (String(bg).indexOf('url') === 0 ? 'background:' + bg + ';background-size:cover;background-position:center;' : 'background:' + bg + ';') + '">' +
+                        '<p style="margin:0;color:#FFF;font-size:12.5px;font-weight:800;line-height:1.4;text-shadow:0 1px 4px rgba(0,0,0,0.28);overflow:hidden;display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;">' + textFallback + '</p>' +
+                      '</div>'
+                    : '<div style="width:100%;height:100%;padding:14px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;text-align:center;font-size:13px;line-height:1.45;color:' + UI.muted + ';overflow:hidden;">' + textFallback + '</div>'));
           var isSel = selectedIds.indexOf(p.id) !== -1;
           var action = selectMode
             ? 'App.toggleSelectProfilePost(\'' + p.id + '\')'
