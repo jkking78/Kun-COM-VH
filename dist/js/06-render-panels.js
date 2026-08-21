@@ -1443,40 +1443,51 @@
     // blocs reprenaient déjà les mêmes publications sous une autre forme.
 
     // Section 3: All publications header
-    var selectMode = isMe && S.profileSelectMode;
+    var gridTab = isMe ? (S.profileGridTab || 'posts') : 'posts';
+    var selectMode = isMe && gridTab === 'posts' && S.profileSelectMode;
     var selectedIds = S.selectedProfilePostIds || [];
+    var savedPostsMap = S.savedPosts || {};
+    var savedPosts = posts.filter(function(p){ return savedPostsMap[p.id]; }).sort(function(a,b){return (b.timestamp||0)-(a.timestamp||0);});
+
     feed += '<div style="background:' + UI.page + ';padding:4px 20px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px;">' +
-      '<h3 style="font-family:' + UI.fontDisplay + ';font-size:24px;font-weight:600;letter-spacing:-0.4px;color:var(--ink);margin:0;">Publications récentes</h3>' +
-      (isMe && myPosts.length > 0
+      (isMe
+        ? '<div style="display:flex;gap:4px;background:' + UI.tile + ';border-radius:12px;padding:3px;">' +
+            '<span onclick="App.setProfileGridTab(\'posts\')" style="padding:7px 14px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;background:' + (gridTab==='posts'?UI.card:'transparent') + ';color:' + (gridTab==='posts'?UI.ink:UI.faint) + ';">Publications</span>' +
+            '<span onclick="App.setProfileGridTab(\'saved\')" style="padding:7px 14px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;background:' + (gridTab==='saved'?UI.card:'transparent') + ';color:' + (gridTab==='saved'?UI.ink:UI.faint) + ';">Enregistrées</span>' +
+          '</div>'
+        : '<h3 style="font-family:' + UI.fontDisplay + ';font-size:24px;font-weight:600;letter-spacing:-0.4px;color:var(--ink);margin:0;">Publications récentes</h3>') +
+      (isMe && gridTab === 'posts' && myPosts.length > 0
         ? '<span onclick="App.toggleProfileSelectMode()" style="font-size:12.5px;font-weight:700;color:' + UI.accent + ';cursor:pointer;flex-shrink:0;">' + (selectMode ? 'Annuler' : 'Sélectionner') + '</span>'
         : '') +
     '</div>';
 
-    var filteredPosts = myPosts;
+    var filteredPosts = gridTab === 'saved' ? savedPosts : myPosts;
 
     if (filteredPosts.length === 0) {
       feed += '<div style="padding:44px 20px;text-align:center;background:' + UI.page + ';">' +
-        '<div style="font-size:15px;font-weight:600;color:' + UI.ink + ';margin-bottom:4px;">Aucune publication</div>' +
-        '<div style="font-size:13.5px;color:' + UI.faint + ';">Vos publications apparaîtront ici.</div>' +
+        '<div style="font-size:15px;font-weight:600;color:' + UI.ink + ';margin-bottom:4px;">' + (gridTab === 'saved' ? 'Aucune publication enregistrée' : 'Aucune publication') + '</div>' +
+        '<div style="font-size:13.5px;color:' + UI.faint + ';">' + (gridTab === 'saved' ? 'Le signet sur une publication l\'ajoute ici.' : 'Vos publications apparaîtront ici.') + '</div>' +
       '</div>';
     } else {
       // GRILLE de vignettes carrées, 2 colonnes (maquette). Une publication sans
-      // média affiche un extrait de son texte sur une tuile.
+      // média affiche un extrait de son texte sur une tuile ; si le média échoue à
+      // charger (URL cassée/expirée), on retombe aussi sur ce texte via onerror.
       feed += '<div style="background:' + UI.page + ';padding:0 20px 24px;display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
         filteredPosts.map(function(p) {
           var media = (p.mediaUrls && p.mediaUrls.length) ? p.mediaUrls[0] : null;
           var isVid = media && isVideoUrl(media);
+          var textFallback = safeHtml(String(p.caption || p.eventTitle || '').trim().slice(0, 90) || 'Publication');
           var inner = media
             ? (isVid
-                ? '<video src="' + media + '"' + (p.videoPoster ? ' poster="' + p.videoPoster + '"' : '') + ' muted playsinline preload="metadata" style="width:100%;height:100%;object-fit:cover;display:block;"></video>' +
+                ? '<video src="' + media + '"' + (p.videoPoster ? ' poster="' + p.videoPoster + '"' : '') + ' muted playsinline preload="metadata" onerror="App.handleProfileTileImgError(this)" data-fallback="' + textFallback + '" style="width:100%;height:100%;object-fit:cover;display:block;"></video>' +
                   '<div style="position:absolute;top:8px;right:8px;pointer-events:none;"><svg width="18" height="18" viewBox="0 0 24 24" fill="rgba(255,255,255,0.95)"><path d="M8 5v14l11-7z"/></svg></div>'
-                : '<img src="' + media + '" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;" />')
-            : '<div style="width:100%;height:100%;padding:14px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;text-align:center;font-size:13px;line-height:1.45;color:' + UI.muted + ';overflow:hidden;">' + safeHtml(String(p.caption || '').slice(0, 90)) + '</div>';
+                : '<img src="' + media + '" loading="lazy" onerror="App.handleProfileTileImgError(this)" data-fallback="' + textFallback + '" style="width:100%;height:100%;object-fit:cover;display:block;" />')
+            : '<div style="width:100%;height:100%;padding:14px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;text-align:center;font-size:13px;line-height:1.45;color:' + UI.muted + ';overflow:hidden;">' + textFallback + '</div>';
           var isSel = selectedIds.indexOf(p.id) !== -1;
           var action = selectMode
             ? 'App.toggleSelectProfilePost(\'' + p.id + '\')'
             : 'App.goToPost(\'' + p.id + '\')';
-          return '<div onclick="' + action + '" style="position:relative;aspect-ratio:1/1;border-radius:8px;overflow:hidden;background:' + UI.tile + ';cursor:pointer;">' +
+          return '<div data-tile onclick="' + action + '" style="position:relative;aspect-ratio:1/1;border-radius:8px;overflow:hidden;background:' + UI.tile + ';cursor:pointer;">' +
             inner +
             (selectMode
               ? '<div style="position:absolute;inset:0;background:' + (isSel ? 'rgba(11,99,246,0.18)' : 'transparent') + ';"></div>' +

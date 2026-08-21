@@ -1629,6 +1629,27 @@ toggleParticipation: function(postId, status) {
       S.selectedProfilePostIds = [];
       render();
     },
+    // Bascule entre « Publications » (les miennes) et « Enregistrées » (celles
+    // que j'ai mises en favori, quel qu'en soit l'auteur) dans la grille du profil.
+    setProfileGridTab: function(tab) {
+      S.profileGridTab = tab;
+      S.profileSelectMode = false;
+      S.selectedProfilePostIds = [];
+      render();
+    },
+    // Une image de publication hébergée peut expirer ou échouer à charger (URL
+    // cassée, politique du bucket) : sans repli, la tuile de la grille du profil
+    // restait totalement vide. On la remplace par le texte de la publication.
+    handleProfileTileImgError: function(img) {
+      var wrap = img.closest('[data-tile]');
+      if (!wrap) return;
+      var media = wrap.querySelectorAll('img,video');
+      for (var i = 0; i < media.length; i++) media[i].remove();
+      var fallback = document.createElement('div');
+      fallback.style.cssText = 'width:100%;height:100%;padding:14px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;text-align:center;font-size:13px;line-height:1.45;color:var(--muted);overflow:hidden;';
+      fallback.textContent = img.getAttribute('data-fallback') || 'Publication';
+      wrap.insertBefore(fallback, wrap.firstChild);
+    },
     toggleSelectProfilePost: function(postId) {
       var idx = S.selectedProfilePostIds.indexOf(postId);
       if (idx !== -1) S.selectedProfilePostIds.splice(idx, 1);
