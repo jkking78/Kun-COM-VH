@@ -1890,6 +1890,19 @@
           } catch(e) { console.warn('Delete profile error:', e); }
         }
 
+        // 2 bis) Suppression RÉELLE du compte dans auth.users, via l'Edge
+        // Function « delete-account » (clé service_role côté serveur). Sans
+        // elle, le compte restait supprimable en apparence mais une simple
+        // reconnexion recréait la fiche : le membre « supprimé » réapparaissait
+        // dans l'annuaire. Si la fonction n'est pas encore déployée, on
+        // continue (la fiche est déjà retirée) et l'erreur est journalisée.
+        if (supabase && supabase.functions) {
+          try {
+            var rDelCompte = await supabase.functions.invoke('delete-account', { body: {} });
+            if (rDelCompte && rDelCompte.error) console.warn('delete-account :', rDelCompte.error);
+          } catch(eDelCompte) { console.warn('delete-account indisponible :', eDelCompte); }
+        }
+
         // 3) Nettoie la session locale et revient à l'écran de connexion
         localStorage.removeItem(SK.SESS);
         sessionStorage.removeItem(SK.SESS);
