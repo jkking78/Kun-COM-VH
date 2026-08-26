@@ -120,11 +120,13 @@
     // En dernier : la visionneuse doit passer par-dessus toutes les autres fenêtres.
     if (S.viewerImage) modals += renderImageViewer();
 
-    return '<div style="position:relative;width:100%;height:100%;display:flex;flex-direction:column;background:' + UI.page + ';font-family:-apple-system,BlinkMacSystemFont,\'SF Pro Text\',sans-serif;">' +
+    return '<div style="position:relative;width:100%;height:100%;display:flex;flex-direction:column;background:' + UI.page + ';font-family:var(--font-body);">' +
       // La réserve de bas de page suit la hauteur réelle de la barre de navigation,
       // indicateur d'accueil iPhone compris : sinon le dernier élément du fil reste
-      // caché derrière elle et ne peut plus être atteint.
-      '<div id="mainContent" style="flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;padding-bottom:calc(70px + env(safe-area-inset-bottom));">' + content + '</div>' +
+      // caché derrière elle et ne peut plus être atteint. Connecté, on compense
+      // AUSSI le FAB de notifications (52px posé à 92px du bas) : sans quoi la
+      // dernière carte passait sous lui et son action devenait injoignable.
+      '<div id="mainContent" style="flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;padding-bottom:calc(' + (S.user && S.auth === 'app' ? '150px' : '24px') + ' + env(safe-area-inset-bottom));">' + content + '</div>' +
       modals +
       renderNotifFab() +
       renderNav(initial) +
@@ -152,7 +154,7 @@
       nb('home', SVG.home, 'Accueil') +
       nb('planning', SVG.cal, 'Planning') +
       '<button onclick="App.openCreate()" aria-label="Publier" style="flex:1;background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;height:100%;-webkit-tap-highlight-color:transparent;">' +
-        '<div style="width:44px;height:44px;border-radius:22px;background:' + UI.accent + ';display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,122,255,0.4);">' + SVG.plus + '</div>' +
+        '<div style="width:44px;height:44px;border-radius:22px;background:' + UI.accent + ';display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(11,99,246,0.3);">' + SVG.plus + '</div>' +
       '</button>' +
       nb('debrief', SVG.star, 'Notation') +
       nb('profile', SVG.person, 'Profil') +
@@ -256,7 +258,7 @@
         '<span style="display:inline-flex;align-items:center;gap:4px;font-size:10.5px;color:' + UI.faint + ';white-space:nowrap;flex-shrink:0;">' + ico('flame', 13, UI.faint) + 'Tendances</span>' +
         trends.map(function(t) {
           var active = S.q.toLowerCase() === t.toLowerCase();
-          return '<button onclick="App.filterTag(\'' + encodeURIComponent(t) + '\')" style="flex-shrink:0;background:' + (active ? UI.accent : UI.tile) + ';color:' + (active ? '#FFF' : UI.muted) + ';border:none;padding:5px 12px;border-radius:' + UI.pill + ';font-size:12px;font-weight:500;cursor:pointer;">' + t + '</button>';
+          return '<button onclick="App.filterTag(\'' + encodeURIComponent(t) + '\')" style="flex-shrink:0;display:flex;align-items:center;min-height:44px;background:' + (active ? UI.accent : UI.tile) + ';color:' + (active ? '#FFF' : UI.muted) + ';border:none;padding:5px 12px;border-radius:' + UI.pill + ';font-size:12px;font-weight:500;cursor:pointer;">' + t + '</button>';
         }).join('') +
         '</div></div>';
     }
@@ -394,7 +396,7 @@
   function renderSkeletonBloc(largeur, hauteur, rayon, marge) {
     return '<div style="width:' + largeur + ';height:' + hauteur + 'px;border-radius:' + rayon + 'px;' +
       (marge ? 'margin:' + marge + ';' : '') +
-      'background:linear-gradient(90deg,#EDEFF3 25%,var(--tile) 50%,#EDEFF3 75%);background-size:800px 100%;' +
+      'background:linear-gradient(90deg,var(--skeleton) 25%,var(--tile) 50%,var(--skeleton) 75%);background-size:800px 100%;' +
       'animation:shimmer 1.4s linear infinite;"></div>';
   }
 
@@ -498,7 +500,7 @@
                   var chip, chipBg, chipFg;
                   if (ts.done && !ts.late) { chip = 'Livrée à temps ✓'; chipBg = 'rgba(14,159,110,0.22)'; chipFg = '#8FE9C4'; }
                   else if (ts.done && ts.late) { chip = 'Livrée en retard'; chipBg = 'rgba(217,138,11,0.22)'; chipFg = '#F3C77A'; }
-                  else if (ts.overdue) { chip = 'Non livrée · en retard'; chipBg = 'rgba(226,68,92,0.22)'; chipFg = '#F5A3AF'; }
+                  else if (ts.overdue) { chip = 'Non livrée · en retard'; chipBg = 'rgba(226,68,92,0.22)'; chipFg = 'var(--bad-line)'; }
                   else { chip = 'À livrer'; chipBg = UI.evGoldSoft; chipFg = UI.evGold; }
                   taskBlock =
                     '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:6px;">' +
@@ -569,7 +571,7 @@
           '<div style="font-size:15px;font-weight:900;color:var(--ink);text-transform:capitalize;">' + safeHtml(dateLabel) + '</div>' +
           '<div style="font-size:12px;color:var(--faint);font-weight:600;margin-top:2px;">' + events.length + ' événements · faites défiler</div>' +
         '</div>' +
-        '<div id="evgrpBadge-' + carId + '" style="background:#E8EEFB;color:#0B63F6;font-size:12px;font-weight:800;padding:4px 10px;border-radius:20px;flex-shrink:0;">' + (curIdx + 1) + '/' + events.length + '</div>' +
+        '<div id="evgrpBadge-' + carId + '" style="background:var(--accent-soft);color:#0B63F6;font-size:12px;font-weight:800;padding:4px 10px;border-radius:20px;flex-shrink:0;">' + (curIdx + 1) + '/' + events.length + '</div>' +
       '</div>' +
       // align-items:flex-start + hauteur pilotée en JS (voir App.recalerCarrousels) :
       // une rangée flex prend sinon la hauteur de son PLUS GRAND volet. Quand l'un
@@ -583,7 +585,7 @@
           return '<div style="flex:0 0 100%;scroll-snap-align:start;padding:0 16px 4px;box-sizing:border-box;">' +
             '<div style="position:relative;">' +
               '<div onclick="App.goToEvent(\'' + ev.id + '\')" style="cursor:pointer;">' + renderEventCardInner(ev) + '</div>' +
-              '<button onclick="event.stopPropagation();App.openOptions(\'' + ev.id + '\')" style="position:absolute;top:10px;right:10px;background:rgba(255,255,255,0.92);border:none;width:30px;height:30px;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.08);">' + SVG.dots + '</button>' +
+              '<button onclick="event.stopPropagation();App.openOptions(\'' + ev.id + '\')" style="position:absolute;top:8px;right:8px;background:rgba(255,255,255,0.92);border:none;width:44px;height:44px;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.08);">' + SVG.dots + '</button>' +
             '</div>' +
           '</div>';
         }).join('') +
@@ -626,7 +628,7 @@
       // Détail de la ponctualité automatique : qui est arrivé quand, et ce que
       // chacun a apporté au total du pôle.
       (ev.punctuality && ev.punctuality.details && ev.punctuality.details.length
-        ? '<div style="margin-top:16px;padding-top:14px;border-top:1px dashed #CBD5E1;">' +
+        ? '<div style="margin-top:16px;padding-top:14px;border-top:1px dashed var(--line2);">' +
             '<div style="font-size:10.5px;font-weight:800;color:var(--faint);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Ponctualité — calcul automatique</div>' +
             ev.punctuality.details.map(function(d) {
               var dc = d.stars >= 4 ? '#0E9F6E' : d.stars >= 2 ? '#D98A0B' : '#E2445C';
@@ -635,8 +637,8 @@
               if (!d.absent) {
                 if (!d.geo || !d.geo.available) geoNote = '<span style="display:block;font-size:10.5px;color:#B45309;font-weight:700;">présence non vérifiée</span>';
                 else if (d.distance === null || d.distance === undefined) geoNote = '';
-                else if (d.onSite) geoNote = '<span style="display:block;font-size:10.5px;color:#047857;">sur place (' + formatDistance(d.distance) + ')</span>';
-                else geoNote = '<span style="display:block;font-size:10.5px;color:#B42318;font-weight:700;">à ' + formatDistance(d.distance) + ' du lieu</span>';
+                else if (d.onSite) geoNote = '<span style="display:block;font-size:10.5px;color:var(--ok-ink);">sur place (' + formatDistance(d.distance) + ')</span>';
+                else geoNote = '<span style="display:block;font-size:10.5px;color:var(--bad-ink);font-weight:700;">à ' + formatDistance(d.distance) + ' du lieu</span>';
               }
               return '<div style="display:flex;justify-content:space-between;align-items:flex-start;font-size:12px;padding:3px 0;gap:10px;">' +
                 '<span style="color:var(--muted);min-width:0;">' + safeHtml(d.name) + (d.task ? ' <span style="color:var(--faint);">· ' + safeHtml(d.task) + '</span>' : '') + geoNote + '</span>' +
@@ -667,7 +669,7 @@
       evals = [{ teamName: meta.teamName, globalScore: meta.globalScore, criteria: meta.criteria, comment: post.caption || '' }];
     }
 
-    var boxStyle = 'padding:18px;background:linear-gradient(135deg, #F8FAFC 0%, var(--tile) 100%);border-radius:20px;border:1px solid var(--line);box-shadow:inset 0 2px 4px rgba(255,255,255,0.8), 0 4px 12px rgba(0,0,0,0.03);';
+    var boxStyle = 'padding:18px;background:linear-gradient(135deg, var(--card) 0%, var(--tile) 100%);border-radius:20px;border:1px solid var(--line);box-shadow:inset 0 2px 4px rgba(255,255,255,0.8), 0 4px 12px rgba(0,0,0,0.03);';
 
     if (evals.length === 1) {
       return '<div style="margin:10px 14px;' + boxStyle + '">' + evBadge + renderEvaluationSlide(evals[0]) + '</div>';
@@ -734,16 +736,16 @@
     var starCol = stars === null ? 'var(--faint)' : stars >= 4 ? '#0E9F6E' : stars >= 2 ? '#D98A0B' : '#E2445C';
 
     var confirmBtn = isAuthor
-      ? '<div style="margin-top:6px;"><button onclick="App.confirmPresence(\'' + post.id + '\')"' + (S.geoCapturing ? ' disabled' : '') + ' style="background:#EEF3FE;color:#0B63F6;border:none;border-radius:10px;padding:7px 12px;font-size:12px;font-weight:800;cursor:pointer;">📍 Confirmer ma présence</button></div>'
+      ? '<div style="margin-top:6px;"><button onclick="App.confirmPresence(\'' + post.id + '\')"' + (S.geoCapturing ? ' disabled' : '') + ' style="background:var(--accent-soft);color:#0B63F6;border:none;border-radius:10px;padding:7px 12px;font-size:12px;font-weight:800;cursor:pointer;">📍 Confirmer ma présence</button></div>'
       : '';
 
     // Bloc position selon l'état de présence.
     var geoBlock;
     if (presence === 'onsite') {
-      geoBlock = '<span style="color:#047857;font-weight:800;">' + ico('pin',12,'#047857') + ' Sur place</span>' +
+      geoBlock = '<span style="color:var(--ok-ink);font-weight:800;">' + ico('pin',12,'var(--ok-ink)') + ' Sur place</span>' +
         (dist !== null ? '<span style="color:var(--muted);"> · à ' + formatDistance(dist) + ' du point de référence</span>' : '');
     } else if (presence === 'offsite') {
-      geoBlock = '<span style="color:#B42318;font-weight:800;">' + ico('alert',12,'#B42318') + ' Hors zone — à ' + formatDistance(dist) + ' du lieu</span>';
+      geoBlock = '<span style="color:var(--bad-ink);font-weight:800;">' + ico('alert',12,'var(--bad-ink)') + ' Hors zone — à ' + formatDistance(dist) + ' du lieu</span>';
     } else if (presence === 'no_venue') {
       geoBlock = (geo && geo.available)
         ? '<span style="color:var(--muted);">Position enregistrée' + (geo.accuracy ? ' (±' + geo.accuracy + ' m)' : '') + ' · lieu de l\'événement non défini</span>'
@@ -752,16 +754,16 @@
       geoBlock = '<span style="color:#B45309;font-weight:800;">⏳ Vérification de la présence en cours…</span>' +
         '<span style="color:var(--faint);"> · l\'heure d\'arrivée est déjà prise en compte</span>' + confirmBtn;
     } else { // unverified : grâce écoulée sans position — sanctionné
-      geoBlock = '<span style="color:#B42318;font-weight:800;">' + ico('ban',12,'#B42318') + ' Présence non vérifiée</span>' +
+      geoBlock = '<span style="color:var(--bad-ink);font-weight:800;">' + ico('ban',12,'var(--bad-ink)') + ' Présence non vérifiée</span>' +
         '<span style="color:var(--faint);"> · position non obtenue dans le délai</span>' + confirmBtn;
     }
 
     var isBad = presence === 'offsite' || presence === 'unverified';
     var isWarn = presence === 'pending';
-    var bg = isBad ? '#FEF2F2' : (isWarn ? '#FFFBEB' : '#F8FAFC');
-    var border = isBad ? '#FECACA' : (isWarn ? '#FDE68A' : 'var(--line)');
-    var headLabel = presence === 'offsite' ? ico('ban',12,'#B42318') + ' Pointage hors zone'
-      : presence === 'unverified' ? ico('ban',12,'#B42318') + ' Pointage non validé'
+    var bg = isBad ? 'var(--bad-soft)' : (isWarn ? 'var(--warn-soft)' : 'var(--tile)');
+    var border = isBad ? 'var(--bad-line)' : (isWarn ? '#FDE68A' : 'var(--line)');
+    var headLabel = presence === 'offsite' ? ico('ban',12,'var(--bad-ink)') + ' Pointage hors zone'
+      : presence === 'unverified' ? ico('ban',12,'var(--bad-ink)') + ' Pointage non validé'
       : ico('clock',12,'#64748B') + ' Arrivée enregistrée';
     var penaltyNote = presence === 'offsite'
       ? 'Arrivée non comptabilisée : il fallait être à moins de ' + formatDistance(ON_SITE_RADIUS_M) + ' du lieu.'
@@ -769,7 +771,7 @@
 
     return '<div style="margin:0 14px 10px;padding:10px 12px;background:' + bg + ';border:1px solid ' + border + ';border-radius:14px;">' +
       '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px;">' +
-        '<span style="font-size:10px;font-weight:800;color:' + (isBad ? '#B42318' : 'var(--faint)') + ';text-transform:uppercase;letter-spacing:0.5px;">' + headLabel + '</span>' +
+        '<span style="font-size:10px;font-weight:800;color:' + (isBad ? 'var(--bad-ink)' : 'var(--faint)') + ';text-transform:uppercase;letter-spacing:0.5px;">' + headLabel + '</span>' +
         (stars === null ? '' : '<span style="font-size:12.5px;font-weight:900;color:' + starCol + ';white-space:nowrap;">' + (stars>0?'+':'') + stars + '★</span>') +
       '</div>' +
       '<div style="font-size:11.5px;color:var(--muted);line-height:1.5;">' +
@@ -777,8 +779,8 @@
         new Date(arrival).toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'}) +
       '</div>' +
       '<div style="font-size:11.5px;line-height:1.5;margin-top:2px;">' + geoBlock + '</div>' +
-      (penaltyNote ? '<div style="font-size:10.5px;color:#B42318;margin-top:3px;font-weight:700;line-height:1.4;">' + penaltyNote + '</div>' : '') +
-      (post.checkInByEdit ? '<div style="font-size:10.5px;color:#B42318;margin-top:3px;font-weight:700;">Rattaché à l\'événement après publication</div>' : '') +
+      (penaltyNote ? '<div style="font-size:10.5px;color:var(--bad-ink);margin-top:3px;font-weight:700;line-height:1.4;">' + penaltyNote + '</div>' : '') +
+      (post.checkInByEdit ? '<div style="font-size:10.5px;color:var(--bad-ink);margin-top:3px;font-weight:700;">Rattaché à l\'événement après publication</div>' : '') +
     '</div>';
   }
 
@@ -872,16 +874,16 @@
     var total = pollTotalVotes(poll);
     var hasVoted = myVote !== null;
 
-    return '<div style="margin:0 14px 10px;padding:14px;background:#F6FBF8;border:1px solid #DCF3E6;border-radius:16px;">' +
-      '<div style="font-size:10px;font-weight:800;color:#0EA65C;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;display:flex;align-items:center;gap:6px;"><span>📊</span> Sondage</div>' +
+    return '<div style="margin:0 14px 10px;padding:14px;background:var(--tile);border:1px solid var(--ok-line);border-radius:16px;">' +
+      '<div style="font-size:10px;font-weight:800;color:var(--ok-ink);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;display:flex;align-items:center;gap:6px;"><span>📊</span> Sondage</div>' +
       '<div style="font-size:14.5px;font-weight:800;color:var(--ink);margin-bottom:10px;line-height:1.4;">' + safeHtml(poll.question||'') + '</div>' +
       poll.options.map(function(opt, idx) {
         var pct = pollOptionPct(poll, idx);
         var mine = myVote === idx;
-        return '<div onclick="App.votePoll(\'' + post.id + '\', ' + idx + ')" style="position:relative;margin-bottom:7px;border-radius:12px;overflow:hidden;background:var(--card);border:1.5px solid ' + (mine?'#0EA65C':'var(--line)') + ';cursor:pointer;">' +
-          (hasVoted ? '<div style="position:absolute;top:0;left:0;bottom:0;width:' + pct + '%;background:' + (mine?'rgba(14,166,92,0.16)':'rgba(142,142,147,0.12)') + ';transition:width 0.3s;"></div>' : '') +
+        return '<div onclick="App.votePoll(\'' + post.id + '\', ' + idx + ')" style="position:relative;margin-bottom:7px;border-radius:12px;overflow:hidden;background:var(--card);border:1.5px solid ' + (mine?'var(--ok-ink)':'var(--line)') + ';cursor:pointer;">' +
+          (hasVoted ? '<div style="position:absolute;top:0;left:0;bottom:0;width:' + pct + '%;background:' + (mine?'var(--ok-soft)':'var(--tile)') + ';transition:width 0.3s;"></div>' : '') +
           '<div style="position:relative;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;">' +
-            '<span style="font-size:13px;font-weight:' + (mine?'800':'600') + ';color:' + (mine?'#0B7A42':'#0B0D12') + ';">' + (mine ? '✓ ' : '') + safeHtml(opt) + '</span>' +
+            '<span style="font-size:13px;font-weight:' + (mine?'800':'600') + ';color:' + (mine?'var(--ok-ink)':'var(--ink)') + ';">' + (mine ? '✓ ' : '') + safeHtml(opt) + '</span>' +
             (hasVoted ? '<span style="font-size:12px;font-weight:800;color:var(--faint);white-space:nowrap;">' + pct + '%</span>' : '') +
           '</div>' +
         '</div>';
@@ -1027,10 +1029,10 @@
          if (participants.length > 0) {
              partAvatars = '<div style="display:flex;margin-left:8px;">';
              for (var i=0; i<Math.min(participants.length, 3); i++) {
-                 partAvatars += '<div style="width:24px;height:24px;border-radius:12px;background:#0B63F6;color:#FFF;border:2px solid #FFF;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;margin-left:-8px;">👤</div>';
+                 partAvatars += '<div style="width:24px;height:24px;border-radius:12px;background:#0B63F6;color:#FFF;border:2px solid var(--card);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;margin-left:-8px;">👤</div>';
              }
              if (participants.length > 3) {
-                 partAvatars += '<div style="width:24px;height:24px;border-radius:12px;background:var(--line);color:var(--ink);border:2px solid #FFF;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;margin-left:-8px;">+'+(participants.length-3)+'</div>';
+                 partAvatars += '<div style="width:24px;height:24px;border-radius:12px;background:var(--line);color:var(--ink);border:2px solid var(--card);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;margin-left:-8px;">+'+(participants.length-3)+'</div>';
              }
              partAvatars += '</div>';
          }
@@ -1064,8 +1066,8 @@
           '</div>' +
 
           '<div style="display:flex;gap:10px;">' +
-            '<button onclick="App.toggleParticipation(\''+post.id+'\',\'yes\')" style="flex:1;padding:12px;border-radius:12px;font-size:14px;font-weight:800;border:none;cursor:pointer;background:'+((post.metadata.participations||{})[(S.user||{}).id]==='yes'?'#0E9F6E':'#FFF')+';color:'+((post.metadata.participations||{})[(S.user||{}).id]==='yes'?'#FFF':'#000')+';box-shadow:'+((post.metadata.participations||{})[(S.user||{}).id]==='yes'?'0 4px 12px rgba(52,199,89,0.3)':'0 2px 6px rgba(0,0,0,0.05)')+';transition:all 0.2s;">' + ((post.metadata.participations||{})[(S.user||{}).id]==='yes' ? ico('thumb',14,'#FFF') + ' Confirmé' : ico('thumb',14,'currentColor') + ' Je participe') + '</button>' +
-            '<button onclick="App.toggleParticipation(\''+post.id+'\',\'no\')" style="flex:1;padding:12px;border-radius:12px;font-size:14px;font-weight:800;border:none;cursor:pointer;background:'+((post.metadata.participations||{})[(S.user||{}).id]==='no'?'linear-gradient(135deg,#E2445C,#E2445C)':'#FFF')+';color:'+((post.metadata.participations||{})[(S.user||{}).id]==='no'?'#FFF':'#000')+';box-shadow:'+((post.metadata.participations||{})[(S.user||{}).id]==='no'?'0 4px 12px rgba(255,59,48,0.3)':'0 2px 6px rgba(0,0,0,0.05)')+';transition:all 0.2s;">' + ((post.metadata.participations||{})[(S.user||{}).id]==='no' ? '❌ Indisponible' : '❌ Non dispo') + '</button>' +
+            '<button onclick="App.toggleParticipation(\''+post.id+'\',\'yes\')" style="flex:1;padding:12px;border-radius:12px;font-size:14px;font-weight:800;border:none;cursor:pointer;background:'+((post.metadata.participations||{})[(S.user||{}).id]==='yes'?'#0E9F6E':'var(--card)')+';color:'+((post.metadata.participations||{})[(S.user||{}).id]==='yes'?'#FFF':'var(--ink)')+';box-shadow:'+((post.metadata.participations||{})[(S.user||{}).id]==='yes'?'0 4px 12px rgba(52,199,89,0.3)':'0 2px 6px rgba(0,0,0,0.05)')+';transition:all 0.2s;">' + ((post.metadata.participations||{})[(S.user||{}).id]==='yes' ? ico('thumb',14,'#FFF') + ' Confirmé' : ico('thumb',14,'currentColor') + ' Je participe') + '</button>' +
+            '<button onclick="App.toggleParticipation(\''+post.id+'\',\'no\')" style="flex:1;padding:12px;border-radius:12px;font-size:14px;font-weight:800;border:none;cursor:pointer;background:'+((post.metadata.participations||{})[(S.user||{}).id]==='no'?'linear-gradient(135deg,#E2445C,#E2445C)':'var(--card)')+';color:'+((post.metadata.participations||{})[(S.user||{}).id]==='no'?'#FFF':'var(--ink)')+';box-shadow:'+((post.metadata.participations||{})[(S.user||{}).id]==='no'?'0 4px 12px rgba(255,59,48,0.3)':'0 2px 6px rgba(0,0,0,0.05)')+';transition:all 0.2s;">' + ((post.metadata.participations||{})[(S.user||{}).id]==='no' ? '❌ Indisponible' : '❌ Non dispo') + '</button>' +
           '</div>' +
         '</div>';
       } else if (post.type === 'EVALUATION' && post.metadata && (post.metadata.evaluations || post.metadata.teamName)) {
@@ -1159,7 +1161,7 @@
             '</div>' +
           '</div>' +
         '</div>' +
-        '<button onclick="App.openOptions(\'' + post.id + '\')" style="background:var(--tile);border:none;width:32px;height:32px;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' + SVG.dots + '</button>' +
+        '<button onclick="App.openOptions(\'' + post.id + '\')" style="background:var(--tile);border:none;width:44px;height:44px;border-radius:12px;margin:-6px -6px -6px 0;cursor:pointer;display:flex;align-items:center;justify-content:center;">' + SVG.dots + '</button>' +
       '</div>' +
       (function(){
         if (!post.aboutEventId) return '';
@@ -1167,7 +1169,7 @@
         if (!aboutEv) return '';
         var aEvDate = aboutEv.eventDate ? new Date(aboutEv.eventDate + 'T00:00:00') : null;
         var aEvDateStr = aEvDate ? aEvDate.toLocaleDateString('fr-FR', {weekday:'short', day:'numeric', month:'short'}) : '';
-        return '<div onclick="App.goToEvent(\''+aboutEv.id+'\')" style="margin:0 14px 10px;padding:10px 12px;background:#E8EEFB;border-radius:14px;border:1px solid #E2E0FF;display:flex;align-items:center;gap:10px;cursor:pointer;">' +
+        return '<div onclick="App.goToEvent(\''+aboutEv.id+'\')" style="margin:0 14px 10px;padding:10px 12px;background:var(--accent-soft);border-radius:14px;border:1px solid var(--line2);display:flex;align-items:center;gap:10px;cursor:pointer;">' +
           '<span style="font-size:18px;">🗓️</span>' +
           '<div style="flex:1;min-width:0;">' +
             '<div style="font-size:10px;font-weight:800;color:#0B63F6;text-transform:uppercase;letter-spacing:0.5px;">À propos de cet événement</div>' +
@@ -1227,7 +1229,34 @@
         '<div style="font-size:13px;color:var(--faint);">Vous êtes à jour ! Aucune nouvelle activité.</div>' +
       '</div>';
     } else {
-      itemsHtml = notifs.map(function(n) {
+      // Groupage par jour : les notifications défilaient en vrac, sans repère
+      // temporel. On insère un sur-titre collant devant chaque groupe.
+      // jourIso travaille en heure LOCALE (getFullYear/getMonth/getDate) :
+      // toISOString bascule sur UTC et aurait envoyé les notifications du soir
+      // dans « Hier » pour un membre en UTC+.
+      var jourIso = function(ts) {
+        var d = new Date(ts || Date.now());
+        return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+      };
+      var isoAujourdhui = jourIso(Date.now());
+      var hierDate = new Date();
+      hierDate.setDate(hierDate.getDate() - 1);
+      var isoHier = jourIso(hierDate.getTime());
+
+      // Libellé du sur-titre : Aujourd'hui / Hier / date précise (ex. « Lun. 12 août »).
+      var libelleJour = function(iso) {
+        if (iso === isoAujourdhui) return 'Aujourd\u2019hui';
+        if (iso === isoHier) return 'Hier';
+        var morceaux = iso.split('-');
+        var d = new Date(Number(morceaux[0]), Number(morceaux[1]) - 1, Number(morceaux[2]));
+        var label = d.toLocaleDateString('fr-FR', { weekday:'short', day:'numeric', month:'long' });
+        if (d.getFullYear() !== new Date().getFullYear()) label += ' ' + d.getFullYear();
+        return label.charAt(0).toUpperCase() + label.slice(1);
+      };
+
+      // Rendu d'un item (identique à l'ancien rendu unitaire) ; le fond distingue
+      // toujours les non-lues via --accent-soft.
+      var itemNotifHtml = function(n) {
         var iconName = n.type === 'LIKE' ? 'star'
           : (n.type === 'COMMENT' || n.type === 'REPLY' || n.type === 'MENTION') ? 'message'
           : n.type === 'EVALUATION' ? 'chart'
@@ -1251,7 +1280,7 @@
           ? '<img src="' + safeHtml(photo) + '" style="width:44px;height:44px;border-radius:22px;object-fit:cover;flex-shrink:0;" />'
           : '<div style="width:44px;height:44px;border-radius:22px;background:' + teinte + ';color:#FFF;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + (n.senderName||'S').charAt(0).toUpperCase() + '</div>';
 
-        return '<div onclick="App.clickNotification(\'' + n.id + '\', \'' + (n.targetId||'') + '\')" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:0.5px solid var(--tile);background:' + (isUnread ? '#E8EEFB' : '#FFF') + ';cursor:pointer;transition:background 0.2s;position:relative;">' +
+        return '<div onclick="App.clickNotification(\'' + n.id + '\', \'' + (n.targetId||'') + '\')" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:0.5px solid var(--tile);background:' + (isUnread ? 'var(--accent-soft)' : 'var(--card)') + ';cursor:pointer;transition:background 0.2s;position:relative;">' +
           '<div style="position:relative;flex-shrink:0;">' +
             avatarHtml +
             '<div style="position:absolute;bottom:-2px;right:-2px;width:19px;height:19px;border-radius:' + UI.pill + ';background:' + bgIcon + ';display:flex;align-items:center;justify-content:center;border:1.5px solid ' + UI.card + ';">' + icon + '</div>' +
@@ -1264,6 +1293,28 @@
           '</div>' +
           (isUnread ? '<div style="width:8px;height:8px;border-radius:4px;background:#0B63F6;flex-shrink:0;"></div>' : '') +
         '</div>';
+      };
+
+      // Bucket par jour en préservant l'ordre d'arrivée du tableau (déjà du plus
+      // récent au plus ancien) : chaque jour ne donne lieu qu'à UN seul sur-titre.
+      var groupes = [];
+      var indexParJour = {};
+      notifs.forEach(function(n) {
+        var iso = jourIso(n.timestamp || Date.now());
+        if (indexParJour[iso] === undefined) {
+          indexParJour[iso] = groupes.length;
+          groupes.push({ iso: iso, items: [] });
+        }
+        groupes[indexParJour[iso]].items.push(itemNotifHtml(n));
+      });
+
+      // Sur-titre collant : il reste visible tant que son groupe défile sous lui
+      // (le conteneur parent est le seul scrollable de la feuille).
+      itemsHtml = groupes.map(function(g) {
+        return '<div style="position:sticky;top:0;z-index:2;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--faint);background:var(--page);padding:8px 16px;">' +
+          libelleJour(g.iso) +
+        '</div>' +
+        g.items.join('');
       }).join('');
     }
 
@@ -1356,7 +1407,7 @@
           '<div style="font-size:11.5px;color:var(--faint);line-height:1.4;">L\'événement d\'origine est remplacé. Ses assignations et son historique sont conservés.</div>' +
         '</button>' +
 
-        '<button type="button" onclick="App.chooseEventSaveMode(\'duplicate\')" style="width:100%;background:#EEF5FF;border:1px solid #CCDEFF;border-radius:16px;padding:14px;margin-bottom:14px;cursor:pointer;text-align:left;">' +
+        '<button type="button" onclick="App.chooseEventSaveMode(\'duplicate\')" style="width:100%;background:var(--accent-soft);border:1px solid var(--line2);border-radius:16px;padding:14px;margin-bottom:14px;cursor:pointer;text-align:left;">' +
           '<div style="font-size:14.5px;font-weight:800;color:#0B63F6;margin-bottom:2px;">➕ Créer un nouvel événement</div>' +
           '<div style="font-size:11.5px;color:#5A7BAA;line-height:1.4;">L\'ancien reste intact. Idéal pour répéter un événement : changez la date et dupliquez.</div>' +
         '</button>' +
@@ -1385,7 +1436,7 @@
       '<label style="font-size:14px;font-weight:700;color:var(--ink);display:block;margin-bottom:12px;">Image de l\'événement <span style="font-weight:500;color:var(--faint);">(optionnelle)</span></label>' +
       (S.eventImageProcessing
         ? '<div style="display:flex;align-items:center;gap:10px;background:var(--tile);border-radius:12px;padding:14px;">' +
-            '<div style="width:18px;height:18px;border:3px solid #E2E4E9;border-top-color:#0B63F6;border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0;"></div>' +
+            '<div style="width:18px;height:18px;border:3px solid var(--line2);border-top-color:#0B63F6;border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0;"></div>' +
             '<span style="font-size:12.5px;font-weight:700;color:var(--ink2);">Traitement de l\'image…</span>' +
           '</div>'
         : (S.eventImage
@@ -1425,9 +1476,9 @@
             '<div style="display:flex;flex-direction:column;gap:8px;">' +
               '<label style="font-size:13px;color:var(--faint);font-weight:600;">Situer le lieu sur la carte <span style="font-weight:500;">(optionnel)</span></label>' +
               (typeof cData.lat === 'number'
-                ? '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;background:#ECFDF5;border:1px solid #A7F3D0;border-radius:12px;padding:10px 12px;">' +
+                ? '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;background:var(--ok-soft);border:1px solid var(--ok-line);border-radius:12px;padding:10px 12px;">' +
                     '<div style="min-width:0;">' +
-                      '<div style="font-size:12.5px;font-weight:800;color:#047857;">' + safeHtml(cData.placeName || 'Lieu situé') + '</div>' +
+                      '<div style="font-size:12.5px;font-weight:800;color:var(--ok-ink);">' + safeHtml(cData.placeName || 'Lieu situé') + '</div>' +
                       '<div style="font-size:11px;color:var(--muted);line-height:1.35;">' + safeHtml(cData.placeLabel || (cData.lat.toFixed(5) + ', ' + cData.lng.toFixed(5))) + '</div>' +
                     '</div>' +
                     '<button type="button" onclick="App.clearEventPosition()" style="background:none;border:none;color:#E2445C;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">Changer</button>' +
@@ -1438,11 +1489,11 @@
                       '<input type="text" id="eventPlaceInput" value="' + safeHtml(S.eventPlaceQuery || '') + '" oninput="App.onEventPlaceInput(this.value)" placeholder="Ex : Église Vase d\'Honneur, Cocody" style="flex:1;border:none;background:transparent;font-size:14px;color:var(--ink);outline:none;min-width:0;" />' +
                       '<span style="font-size:10px;font-weight:800;color:var(--faint);background:var(--line);padding:2px 7px;border-radius:6px;flex-shrink:0;">🇨🇮 CI</span>' +
                       (S.eventPlaceSearching
-                        ? '<div style="width:15px;height:15px;border:2.5px solid #E2E4E9;border-top-color:#0B63F6;border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0;"></div>'
+                        ? '<div style="width:15px;height:15px;border:2.5px solid var(--line2);border-top-color:#0B63F6;border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0;"></div>'
                         : '') +
                     '</div>' +
                     (S.eventPlaceError
-                      ? '<div style="font-size:11.5px;color:#B42318;font-weight:600;margin-top:6px;">' + safeHtml(S.eventPlaceError) + '</div>'
+                      ? '<div style="font-size:11.5px;color:var(--bad-ink);font-weight:600;margin-top:6px;">' + safeHtml(S.eventPlaceError) + '</div>'
                       : '') +
                     '<div id="eventPlaceResults" style="margin-top:' + ((S.eventPlaceResults||[]).length ? '6px' : '0') + ';">' +
                       (S.eventPlaceResults||[]).map(function(r, i) {
@@ -1479,9 +1530,9 @@
               // État initial calculé au rendu : à la réouverture d'une veillée
               // déjà enregistrée, la mention doit être visible sans toucher au champ.
               (function(){
-                var msg = '', col = '#0B63F6', bg = '#E8EEFB';
+                var msg = '', col = '#0B63F6', bg = 'var(--accent-soft)';
                 if (startVal && endVal && endVal === startVal) {
-                  msg = 'La fin ne peut pas être identique au début.'; col = '#B42318'; bg = '#FEF2F2';
+                  msg = 'La fin ne peut pas être identique au début.'; col = 'var(--bad-ink)'; bg = 'var(--bad-soft)';
                 } else if (startVal && endVal && endVal < startVal) {
                   msg = 'Se termine le lendemain à ' + endVal + '.';
                 }
@@ -1580,10 +1631,10 @@
 
     var previewHtml = renderComposerMediaPreview();
 
-    var hashHtml = '<div id="hashSugg" style="display:none;flex-wrap:wrap;gap:6px;background:#E8EEFB;border:1px solid #CCDEFF;border-radius:14px;padding:10px;margin-bottom:12px;">' +
+    var hashHtml = '<div id="hashSugg" style="display:none;flex-wrap:wrap;gap:6px;background:var(--accent-soft);border:1px solid var(--line2);border-radius:14px;padding:10px;margin-bottom:12px;">' +
       '<div style="font-size:11px;font-weight:800;color:#0B63F6;width:100%;margin-bottom:4px;">Hashtags suggérés :</div>' +
       HASHTAGS.map(function(h) {
-        return '<button type="button" onclick="App.insertTag(\''+h+'\')" style="background:#0B63F6;color:#FFF;border:none;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;">'+h+'</button>';
+        return '<button type="button" onclick="App.insertTag(\''+h+'\')" style="display:inline-flex;align-items:center;min-height:36px;background:#0B63F6;color:#FFF;border:none;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;">'+h+'</button>';
       }).join('') +
     '</div>';
 
@@ -1591,18 +1642,18 @@
       '<div onclick="event.stopPropagation()" style="width:100%;max-width:460px;background:var(--card);border-top-left-radius:32px;border-top-right-radius:32px;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 -8px 40px rgba(0,0,0,0.18);animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
 
         '<div style="display:flex;justify-content:center;padding:10px 0 0;cursor:pointer;" onclick="App.closeEditPost()">' +
-          '<div style="width:38px;height:5px;background:#E2E4E9;border-radius:3px;"></div>' +
+          '<div style="width:38px;height:5px;background:var(--line2);border-radius:3px;"></div>' +
         '</div>' +
 
         '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px 12px;">' +
           '<span onclick="App.closeEditPost()" style="font-size:14.5px;color:var(--muted);cursor:pointer;font-weight:700;padding:8px 4px;">Annuler</span>' +
           '<h3 style="font-size:16px;font-weight:800;margin:0;color:var(--ink);letter-spacing:-0.2px;">Modifier la publication</h3>' +
-          '<button type="button" onclick="App.saveEditPost(\'' + post.id + '\')" style="font-size:14px;color:#FFF;font-weight:800;background:#0B63F6;border:none;border-radius:20px;padding:8px 18px;cursor:pointer;box-shadow:0 4px 12px rgba(0,122,255,0.28);">Enregistrer</button>' +
+          '<button type="button" onclick="App.saveEditPost(\'' + post.id + '\')" style="font-size:14px;color:#FFF;font-weight:800;background:#0B63F6;border:none;border-radius:20px;padding:8px 18px;cursor:pointer;box-shadow:0 4px 12px rgba(11,99,246,0.3);">Enregistrer</button>' +
         '</div>' +
 
         '<div style="overflow-y:auto;flex:1;padding:4px 16px 16px;">' +
           hashHtml +
-          '<div id="mentionSugg" style="display:none;flex-wrap:wrap;gap:6px;background:#E8EEFB;border:1px solid #CCDEFF;border-radius:14px;padding:10px;margin-bottom:12px;"></div>' +
+          '<div id="mentionSugg" style="display:none;flex-wrap:wrap;gap:6px;background:var(--accent-soft);border:1px solid var(--line2);border-radius:14px;padding:10px;margin-bottom:12px;"></div>' +
           previewHtml +
 
           (S.pendingMedia.length === 0 && S.postBg
@@ -1615,8 +1666,8 @@
 
           '<!-- Confidentialité -->' +
           '<div style="background:var(--tile);border-radius:20px;padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
-            '<span style="font-size:13px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="width:26px;height:26px;border-radius:13px;background:#E8EEFB;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">🔒</span>Qui peut voir cette publication ?</span>' +
-            '<div style="display:flex;gap:4px;background:#EAEBEF;border-radius:16px;padding:3px;">' +
+            '<span style="font-size:13px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="width:26px;height:26px;border-radius:13px;background:var(--accent-soft);display:inline-flex;align-items:center;justify-content:center;font-size:13px;">🔒</span>Qui peut voir cette publication ?</span>' +
+            '<div style="display:flex;gap:4px;background:var(--line2);border-radius:16px;padding:3px;">' +
               '<button type="button" onclick="App.setPostVisibility(\'all\')" style="flex:1;padding:8px 6px;border-radius:13px;font-size:11.5px;font-weight:800;border:none;cursor:pointer;transition:all 0.2s;background:' + (vis==='all'?'#FFFFFF':'transparent') + ';color:' + (vis==='all'?'#0B63F6':'var(--muted)') + ';box-shadow:' + (vis==='all'?'0 2px 6px rgba(0,0,0,0.08)':'none') + ';">🌍 Tout le monde</button>' +
               '<button type="button" onclick="App.setPostVisibility(\'sections\')" style="flex:1;padding:8px 6px;border-radius:13px;font-size:11.5px;font-weight:800;border:none;cursor:pointer;transition:all 0.2s;background:' + (vis==='sections'?'#FFFFFF':'transparent') + ';color:' + (vis==='sections'?'#0B63F6':'var(--muted)') + ';box-shadow:' + (vis==='sections'?'0 2px 6px rgba(0,0,0,0.08)':'none') + ';">Sections ciblées</button>' +
             '</div>' +
@@ -1640,7 +1691,7 @@
           '<!-- À propos -->' +
           '<div style="background:var(--tile);border-radius:20px;padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
             '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:' + (S.postAboutEventId?'10px':'0') + ';">' +
-              '<span style="font-size:13px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:8px;"><span style="width:26px;height:26px;border-radius:13px;background:#E8EEFB;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">🗓️</span>À propos <span style="font-weight:600;color:var(--faint);font-size:11px;">(optionnel)</span></span>' +
+              '<span style="font-size:13px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:8px;"><span style="width:26px;height:26px;border-radius:13px;background:var(--accent-soft);display:inline-flex;align-items:center;justify-content:center;font-size:13px;">🗓️</span>À propos <span style="font-weight:600;color:var(--faint);font-size:11px;">(optionnel)</span></span>' +
               (S.postAboutEventId ? '<span onclick="App.clearAboutEvent()" style="color:#E2445C;font-size:12px;font-weight:700;cursor:pointer;">Retirer</span>' : '') +
             '</div>' +
             (function(){
@@ -1668,8 +1719,8 @@
                 '</div>' +
               '</div>' +
               '<label style="position:relative;display:inline-block;width:48px;height:28px;flex-shrink:0;">' +
-                '<input type="checkbox" id="editPostEphemeral" ' + (post.is_ephemeral ? 'checked' : '') + ' style="opacity:0;width:0;height:0;" onchange="this.nextElementSibling.style.background=this.checked?\'#D98A0B\':\'#DADCE1\'; this.nextElementSibling.children[0].style.transform=this.checked?\'translateX(20px)\':\'translateX(0)\';"/>' +
-                '<span style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:' + (post.is_ephemeral?'#D98A0B':'#DADCE1') + ';transition:.25s;border-radius:28px;">' +
+                '<input type="checkbox" id="editPostEphemeral" ' + (post.is_ephemeral ? 'checked' : '') + ' style="opacity:0;width:0;height:0;" onchange="this.nextElementSibling.style.background=this.checked?\'var(--warn)\':\'var(--line2)\'; this.nextElementSibling.children[0].style.transform=this.checked?\'translateX(20px)\':\'translateX(0)\';"/>' +
+                '<span style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:' + (post.is_ephemeral?'var(--warn)':'var(--line2)') + ';transition:.25s;border-radius:28px;">' +
                   '<span style="position:absolute;content:\'\';height:22px;width:22px;left:3px;bottom:3px;background-color:white;transition:.25s;border-radius:50%;box-shadow:0 2px 4px rgba(0,0,0,0.2);transform:' + (post.is_ephemeral?'translateX(20px)':'translateX(0)') + ';"></span>' +
                 '</span>' +
               '</label>' +
@@ -1704,7 +1755,7 @@
             : ''
           ) +
           '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
-            '<label style="cursor:pointer;display:flex;align-items:center;gap:6px;color:#0B63F6;font-size:12.5px;font-weight:800;background:#E8EEFB;padding:9px 14px;border-radius:16px;">' +
+            '<label style="cursor:pointer;display:flex;align-items:center;gap:6px;color:#0B63F6;font-size:12.5px;font-weight:800;background:var(--accent-soft);padding:9px 14px;border-radius:16px;">' +
               '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0B63F6" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>' +
               'Photo / Vidéo' +
               '<input type="file" accept="image/*,video/*" multiple onchange="App.addMedia(event)" style="display:none;">' +
@@ -1727,10 +1778,10 @@
     var previewCaption = post.caption || '';
     var previewMedia = (post.mediaUrls && post.mediaUrls[0]) || null;
 
-    var hashHtml = '<div id="hashSugg" style="display:none;flex-wrap:wrap;gap:6px;background:#E8EEFB;border:1px solid #CCDEFF;border-radius:14px;padding:10px;margin-bottom:12px;">' +
+    var hashHtml = '<div id="hashSugg" style="display:none;flex-wrap:wrap;gap:6px;background:var(--accent-soft);border:1px solid var(--line2);border-radius:14px;padding:10px;margin-bottom:12px;">' +
       '<div style="font-size:11px;font-weight:800;color:#0B63F6;width:100%;margin-bottom:4px;">Hashtags suggérés :</div>' +
       HASHTAGS.map(function(h) {
-        return '<button type="button" onclick="App.insertTag(\''+h+'\')" style="background:#0B63F6;color:#FFF;border:none;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;">'+h+'</button>';
+        return '<button type="button" onclick="App.insertTag(\''+h+'\')" style="display:inline-flex;align-items:center;min-height:36px;background:#0B63F6;color:#FFF;border:none;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;">'+h+'</button>';
       }).join('') +
     '</div>';
 
@@ -1738,18 +1789,18 @@
       '<div onclick="event.stopPropagation()" style="width:100%;max-width:460px;background:var(--card);border-top-left-radius:32px;border-top-right-radius:32px;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 -8px 40px rgba(0,0,0,0.18);animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
 
         '<div style="display:flex;justify-content:center;padding:10px 0 0;cursor:pointer;" onclick="App.closeRepostModal()">' +
-          '<div style="width:38px;height:5px;background:#E2E4E9;border-radius:3px;"></div>' +
+          '<div style="width:38px;height:5px;background:var(--line2);border-radius:3px;"></div>' +
         '</div>' +
 
         '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px 12px;">' +
           '<span onclick="App.closeRepostModal()" style="font-size:14.5px;color:var(--muted);cursor:pointer;font-weight:700;padding:8px 4px;">Annuler</span>' +
           '<h3 style="font-size:16px;font-weight:800;margin:0;color:var(--ink);letter-spacing:-0.2px;">Partager</h3>' +
-          '<button type="button" onclick="App.confirmRepost()" style="font-size:14px;color:#FFF;font-weight:800;background:#0B63F6;border:none;border-radius:20px;padding:8px 18px;cursor:pointer;box-shadow:0 4px 12px rgba(0,122,255,0.28);">Partager</button>' +
+          '<button type="button" onclick="App.confirmRepost()" style="font-size:14px;color:#FFF;font-weight:800;background:#0B63F6;border:none;border-radius:20px;padding:8px 18px;cursor:pointer;box-shadow:0 4px 12px rgba(11,99,246,0.3);">Partager</button>' +
         '</div>' +
 
         '<div style="overflow-y:auto;flex:1;padding:4px 16px 16px;">' +
           hashHtml +
-          '<div id="mentionSugg" style="display:none;flex-wrap:wrap;gap:6px;background:#E8EEFB;border:1px solid #CCDEFF;border-radius:14px;padding:10px;margin-bottom:12px;"></div>' +
+          '<div id="mentionSugg" style="display:none;flex-wrap:wrap;gap:6px;background:var(--accent-soft);border:1px solid var(--line2);border-radius:14px;padding:10px;margin-bottom:12px;"></div>' +
           '<textarea id="repostText" oninput="App.onPostInput(this.value)" placeholder="Ajoutez un commentaire... Tapez # pour un hashtag ou @ pour mentionner un membre..." style="width:100%;min-height:90px;border:none;background:var(--tile);border-radius:18px;padding:14px;font-size:15.5px;line-height:1.55;color:var(--ink);resize:none;outline:none;box-sizing:border-box;font-family:inherit;margin-bottom:14px;">' + safeHtml(S.postText||'') + '</textarea>' +
 
           '<div style="background:var(--tile);border-radius:18px;overflow:hidden;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
@@ -1779,7 +1830,7 @@
     var evMonth = evDate ? evDate.toLocaleDateString('fr-FR', {month:'short'}).toUpperCase() : '';
     var evDay = evDate ? evDate.getDate() : '';
     var isSel = S.postAboutEventId === ev.id;
-    return '<button type="button" onclick="App.selectAboutEvent(\''+ev.id+'\')" style="width:100%;display:flex;align-items:center;gap:12px;background:' + (isSel?'#E8EEFB':'#F8F8FA') + ';border:1.5px solid ' + (isSel?'#0B63F6':'transparent') + ';border-radius:16px;padding:12px;margin-bottom:10px;cursor:pointer;text-align:left;">' +
+    return '<button type="button" onclick="App.selectAboutEvent(\''+ev.id+'\')" style="width:100%;display:flex;align-items:center;gap:12px;background:' + (isSel?'var(--accent-soft)':'#F8F8FA') + ';border:1.5px solid ' + (isSel?'#0B63F6':'transparent') + ';border-radius:16px;padding:12px;margin-bottom:10px;cursor:pointer;text-align:left;">' +
       '<div style="background:var(--card);border-radius:10px;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,0.06);width:44px;text-align:center;flex-shrink:0;">' +
         '<div style="background:#0B63F6;color:#FFF;font-size:8.5px;font-weight:900;text-transform:uppercase;padding:3px 0;letter-spacing:0.5px;">' + evMonth + '</div>' +
         '<div style="font-size:18px;font-weight:900;color:var(--ink);padding:3px 0;">' + evDay + '</div>' +
@@ -1836,7 +1887,7 @@
     return '<div onclick="App.closeAboutEventPicker()" style="position:fixed;inset:0;background:rgba(15,15,20,0.55);backdrop-filter:blur(2px);z-index:10001;display:flex;justify-content:center;align-items:flex-end;">' +
       '<div onclick="event.stopPropagation()" style="width:100%;max-width:460px;background:var(--card);border-top-left-radius:28px;border-top-right-radius:28px;max-height:82vh;display:flex;flex-direction:column;box-shadow:0 -8px 40px rgba(0,0,0,0.18);animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
         '<div style="display:flex;justify-content:center;padding:10px 0 0;cursor:pointer;" onclick="App.closeAboutEventPicker()">' +
-          '<div style="width:38px;height:5px;background:#E2E4E9;border-radius:3px;"></div>' +
+          '<div style="width:38px;height:5px;background:var(--line2);border-radius:3px;"></div>' +
         '</div>' +
         '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px 12px;">' +
           '<span onclick="App.closeAboutEventPicker()" style="font-size:14.5px;color:var(--muted);cursor:pointer;font-weight:700;padding:8px 4px;">Annuler</span>' +
@@ -1878,7 +1929,7 @@
         '</div>';
       }
       return '<div style="display:flex;align-items:center;gap:10px;background:var(--tile);border-radius:16px;padding:14px;margin-bottom:12px;">' +
-        '<div style="width:20px;height:20px;border:3px solid #E2E4E9;border-top-color:#0B63F6;border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0;"></div>' +
+        '<div style="width:20px;height:20px;border:3px solid var(--line2);border-top-color:#0B63F6;border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0;"></div>' +
         '<span style="font-size:12.5px;font-weight:700;color:var(--ink2);">' + (S.reduceVideoQuality ? 'Traitement de la vidéo (HD)…' : 'Traitement de la vidéo…') + '</span>' +
       '</div>';
     }
@@ -1889,7 +1940,7 @@
       return '<div style="position:relative;margin-bottom:12px;border-radius:18px;overflow:hidden;background:#000;">' +
         '<video src="' + videoUrl + '"' + (S.pendingVideoPoster ? ' poster="' + S.pendingVideoPoster + '"' : '') +
           ' controls playsinline preload="auto" onloadeddata="App.primeVideoFrame(this)" style="width:100%;max-height:300px;display:block;background:#000;"></video>' +
-        '<button type="button" onclick="App.removeMedia(0)" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.65);border:none;border-radius:14px;width:32px;height:32px;color:#FFF;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:900;z-index:2;">×</button>' +
+          '<button type="button" onclick="App.removeMedia(0)" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.65);border:none;border-radius:14px;width:44px;height:44px;color:#FFF;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:900;z-index:2;">×</button>' +
       '</div>';
     }
 
@@ -1903,7 +1954,7 @@
             '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>' +
             'Modifier' +
           '</button>' +
-          '<button type="button" onclick="App.removeMedia('+i+')" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.72);border:none;border-radius:14px;width:28px;height:28px;color:#FFF;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:900;z-index:2;">×</button>' +
+          '<button type="button" onclick="App.removeMedia('+i+')" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.72);border:none;border-radius:14px;width:44px;height:44px;color:#FFF;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:900;z-index:2;">×</button>' +
         '</div>';
       }).join('') +
     '</div>';
@@ -1930,9 +1981,9 @@
       var delay = startTsSel ? Math.round((now - startTsSel) / 60000) : 0;
       var stars = starsForDelay(delay);
       var col = stars >= 4 ? '#0E9F6E' : stars >= 2 ? '#D98A0B' : '#E2445C';
-      return '<div style="background:#ECFDF5;border:1px solid #A7F3D0;border-radius:16px;padding:12px 14px;margin-bottom:10px;">' +
+      return '<div style="background:var(--ok-soft);border:1px solid var(--ok-line);border-radius:16px;padding:12px 14px;margin-bottom:10px;">' +
         '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px;">' +
-          '<span style="font-size:12.5px;font-weight:800;color:#047857;min-width:0;overflow-wrap:anywhere;">Arrivée : ' + safeHtml(selectedEv.eventTitle || 'Événement') + '</span>' +
+          '<span style="font-size:12.5px;font-weight:800;color:var(--ok-ink);min-width:0;overflow-wrap:anywhere;">Arrivée : ' + safeHtml(selectedEv.eventTitle || 'Événement') + '</span>' +
           '<button type="button" onclick="App.clearCheckInEvent()" style="background:none;border:none;color:#E2445C;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">Retirer</button>' +
         '</div>' +
         '<div style="font-size:11.5px;color:var(--muted);line-height:1.45;">' +
@@ -1943,8 +1994,8 @@
       '</div>';
     }
 
-    return '<div style="background:#FFF7E6;border:1px solid #FFE0A3;border-radius:16px;padding:12px 14px;margin-bottom:10px;">' +
-      '<div style="font-size:12.5px;font-weight:800;color:#8A5A00;margin-bottom:6px;">Enregistrer mon arrivée</div>' +
+    return '<div style="background:var(--warn-soft);border:1px solid var(--warn-line);border-radius:16px;padding:12px 14px;margin-bottom:10px;">' +
+      '<div style="font-size:12.5px;font-weight:800;color:var(--warn-ink);margin-bottom:6px;">Enregistrer mon arrivée</div>' +
       '<div style="font-size:11.5px;color:var(--muted);line-height:1.45;margin-bottom:8px;">Vous êtes de service ' + (candidates.length > 1 ? 'sur ces événements' : 'sur cet événement') + '. Pointez pour valider votre ponctualité.</div>' +
       candidates.map(function(ev) {
         var st = eventStartTimestamp(ev);
@@ -1966,10 +2017,10 @@
   function renderCreateModal(u) {
     var previewHtml = renderComposerMediaPreview();
 
-    var hashHtml = '<div id="hashSugg" style="display:none;flex-wrap:wrap;gap:6px;background:#E8EEFB;border:1px solid #CCDEFF;border-radius:14px;padding:10px;margin-bottom:12px;">' +
+    var hashHtml = '<div id="hashSugg" style="display:none;flex-wrap:wrap;gap:6px;background:var(--accent-soft);border:1px solid var(--line2);border-radius:14px;padding:10px;margin-bottom:12px;">' +
       '<div style="font-size:11px;font-weight:800;color:#0B63F6;width:100%;margin-bottom:4px;">Hashtags suggérés :</div>' +
       HASHTAGS.map(function(h) {
-        return '<button type="button" onclick="App.insertTag(\''+h+'\')" style="background:#0B63F6;color:#FFF;border:none;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;">'+h+'</button>';
+        return '<button type="button" onclick="App.insertTag(\''+h+'\')" style="display:inline-flex;align-items:center;min-height:36px;background:#0B63F6;color:#FFF;border:none;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;">'+h+'</button>';
       }).join('') +
     '</div>';
 
@@ -1977,13 +2028,13 @@
       '<div onclick="event.stopPropagation()" style="width:100%;max-width:460px;background:var(--card);border-top-left-radius:32px;border-top-right-radius:32px;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 -8px 40px rgba(0,0,0,0.18);animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
 
         '<div style="display:flex;justify-content:center;padding:10px 0 0;cursor:pointer;" onclick="App.closeCreate()">' +
-          '<div style="width:38px;height:5px;background:#E2E4E9;border-radius:3px;"></div>' +
+          '<div style="width:38px;height:5px;background:var(--line2);border-radius:3px;"></div>' +
         '</div>' +
 
         '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px 12px;">' +
           '<span onclick="App.closeCreate()" style="font-size:14.5px;color:var(--muted);cursor:pointer;font-weight:700;padding:8px 4px;">Annuler</span>' +
           '<h3 style="font-family:' + UI.fontDisplay + ';font-size:18px;font-weight:800;margin:0;color:var(--ink);letter-spacing:-0.3px;">Nouvelle publication</h3>' +
-          '<button type="submit" form="createPostForm" style="font-size:14px;color:#FFF;font-weight:800;background:#0B63F6;border:none;border-radius:20px;padding:8px 18px;cursor:pointer;box-shadow:0 4px 12px rgba(0,122,255,0.28);">Publier</button>' +
+          '<button type="submit" form="createPostForm" style="font-size:14px;color:#FFF;font-weight:800;background:#0B63F6;border:none;border-radius:20px;padding:8px 18px;cursor:pointer;box-shadow:0 4px 12px rgba(11,99,246,0.3);">Publier</button>' +
         '</div>' +
 
         '<div style="overflow-y:auto;flex:1;padding:4px 16px 16px;">' +
@@ -1993,7 +2044,7 @@
               : '<div style="width:42px;height:42px;border-radius:21px;background:linear-gradient(135deg,' + ((u||{}).avatar_color||'#0B63F6') + ',#0B63F6);color:#FFF;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 3px 8px rgba(0,0,0,0.12);">' + ((u&&u.prenom||'M').charAt(0)) + '</div>') +
             '<div>' +
               '<div style="font-size:14.5px;font-weight:800;color:var(--ink);">' + safeHtml((u&&u.prenom||'') + ' ' + (u&&u.nom||'')) + '</div>' +
-              '<div style="font-size:11.5px;color:#0B63F6;font-weight:700;background:#EEF5FF;display:inline-block;padding:2px 8px;border-radius:8px;margin-top:2px;">' + secNom((u&&u.section_id)||'cadrage') + ' · Tapez # pour les hashtags</div>' +
+              '<div style="font-size:11.5px;color:#0B63F6;font-weight:700;background:var(--accent-soft);display:inline-block;padding:2px 8px;border-radius:8px;margin-top:2px;">' + secNom((u&&u.section_id)||'cadrage') + ' · Tapez # pour les hashtags</div>' +
             '</div>' +
           '</div>' +
 
@@ -2002,7 +2053,7 @@
           renderCheckInBlock() +
 
           hashHtml +
-          '<div id="mentionSugg" style="display:none;flex-wrap:wrap;gap:6px;background:#E8EEFB;border:1px solid #CCDEFF;border-radius:14px;padding:10px;margin-bottom:12px;"></div>' +
+          '<div id="mentionSugg" style="display:none;flex-wrap:wrap;gap:6px;background:var(--accent-soft);border:1px solid var(--line2);border-radius:14px;padding:10px;margin-bottom:12px;"></div>' +
           previewHtml +
 
           // Color preview or plain textarea — hauteur généreuse et garantie, tout le
@@ -2027,16 +2078,16 @@
             : (S.linkPreview
                 ? '<div style="position:relative;margin-bottom:12px;">' +
                     renderLinkPreviewCard(S.linkPreview, { compact: true, noLink: true }) +
-                    '<button type="button" onclick="App.dismissLinkPreview()" title="Retirer l\'aperçu" style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,0.6);border:none;border-radius:50%;width:32px;height:32px;color:#FFF;font-size:15px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;touch-action:manipulation;">×</button>' +
+                    '<button type="button" onclick="App.dismissLinkPreview()" title="Retirer l\'aperçu" style="position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.6);border:none;border-radius:50%;width:44px;height:44px;color:#FFF;font-size:15px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;touch-action:manipulation;">×</button>' +
                   '</div>'
                 : '')) +
 
           // Qui peut voir
           '<div style="background:var(--tile);border-radius:20px;padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
             '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">' +
-              '<span style="font-size:13px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:8px;"><span style="width:26px;height:26px;border-radius:13px;background:#E8EEFB;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">🔒</span>Qui peut voir ?</span>' +
+              '<span style="font-size:13px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:8px;"><span style="width:26px;height:26px;border-radius:13px;background:var(--accent-soft);display:inline-flex;align-items:center;justify-content:center;font-size:13px;">🔒</span>Qui peut voir ?</span>' +
             '</div>' +
-            '<div style="display:flex;gap:4px;background:#EAEBEF;border-radius:16px;padding:3px;">' +
+            '<div style="display:flex;gap:4px;background:var(--line2);border-radius:16px;padding:3px;">' +
               '<button type="button" onclick="App.setPostVisibility(\'all\')" style="flex:1;padding:8px 6px;border-radius:13px;font-size:11.5px;font-weight:800;border:none;cursor:pointer;transition:all 0.2s;background:' + ((S.postVisibility||'all')==='all'?'#FFFFFF':'transparent') + ';color:' + ((S.postVisibility||'all')==='all'?'#0B63F6':'var(--muted)') + ';box-shadow:' + ((S.postVisibility||'all')==='all'?'0 2px 6px rgba(0,0,0,0.08)':'none') + ';">🌍 Tout le monde</button>' +
               '<button type="button" onclick="App.setPostVisibility(\'sections\')" style="flex:1;padding:8px 6px;border-radius:13px;font-size:11.5px;font-weight:800;border:none;cursor:pointer;transition:all 0.2s;background:' + ((S.postVisibility||'all')==='sections'?'#FFFFFF':'transparent') + ';color:' + ((S.postVisibility||'all')==='sections'?'#0B63F6':'var(--muted)') + ';box-shadow:' + ((S.postVisibility||'all')==='sections'?'0 2px 6px rgba(0,0,0,0.08)':'none') + ';">Sections ciblées</button>' +
             '</div>' +
@@ -2057,7 +2108,7 @@
           // À propos
           '<div style="background:var(--tile);border-radius:20px;padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
             '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:' + (S.postAboutEventId?'10px':'0') + ';">' +
-              '<span style="font-size:13px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:8px;"><span style="width:26px;height:26px;border-radius:13px;background:#E8EEFB;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">🗓️</span>À propos <span style="font-weight:600;color:var(--faint);font-size:11px;">(optionnel)</span></span>' +
+              '<span style="font-size:13px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:8px;"><span style="width:26px;height:26px;border-radius:13px;background:var(--accent-soft);display:inline-flex;align-items:center;justify-content:center;font-size:13px;">🗓️</span>À propos <span style="font-weight:600;color:var(--faint);font-size:11px;">(optionnel)</span></span>' +
               (S.postAboutEventId ? '<span onclick="App.clearAboutEvent()" style="color:#E2445C;font-size:12px;font-weight:700;cursor:pointer;">Retirer</span>' : '') +
             '</div>' +
             (function(){
@@ -2086,7 +2137,7 @@
                   (S.pollOptions||[]).map(function(opt, idx) {
                     return '<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">' +
                       '<input type="text" value="' + safeHtml(opt||'') + '" oninput="App.setPollOption(' + idx + ', this.value)" placeholder="Option ' + (idx+1) + '" maxlength="60" style="flex:1;height:38px;border-radius:11px;border:none;background:var(--card);padding:0 12px;font-size:12.5px;outline:none;box-shadow:0 1px 2px rgba(16,24,40,0.06);box-sizing:border-box;" />' +
-                      (S.pollOptions.length > 2 ? '<button type="button" onclick="App.removePollOption(' + idx + ')" style="width:32px;height:32px;flex-shrink:0;border-radius:10px;border:none;background:#FFF0EF;color:#E2445C;font-size:16px;font-weight:800;cursor:pointer;">×</button>' : '') +
+                      (S.pollOptions.length > 2 ? '<button type="button" onclick="App.removePollOption(' + idx + ')" style="width:44px;height:44px;flex-shrink:0;margin:-6px -6px -6px 0;border-radius:10px;border:none;background:#FFF0EF;color:#E2445C;font-size:16px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;">×</button>' : '') +
                     '</div>';
                   }).join('') +
                   (S.pollOptions.length < 5
@@ -2094,7 +2145,7 @@
                     : '') +
                   '<div style="font-size:10.5px;color:var(--faint);line-height:1.4;margin-top:6px;">Une seule réponse par membre. Question et au moins 2 options requises.</div>'
                 )
-              : '<button type="button" onclick="App.togglePoll()" style="width:100%;background:var(--card);border:1px dashed var(--line);border-radius:12px;padding:10px;font-size:12.5px;font-weight:700;color:#0EA65C;cursor:pointer;">+ Ajouter un sondage</button>'
+              : '<button type="button" onclick="App.togglePoll()" style="width:100%;background:var(--card);border:1px dashed var(--line);border-radius:12px;padding:10px;font-size:12.5px;font-weight:700;color:var(--ok-ink);cursor:pointer;">+ Ajouter un sondage</button>'
             ) +
           '</div>' +
 
@@ -2109,8 +2160,8 @@
                 '</div>' +
               '</div>' +
               '<label style="position:relative;display:inline-block;width:48px;height:28px;flex-shrink:0;">' +
-                '<input type="checkbox" id="postEphemeral" style="opacity:0;width:0;height:0;" onchange="this.nextElementSibling.style.background=this.checked?\'#D98A0B\':\'#DADCE1\'; this.nextElementSibling.children[0].style.transform=this.checked?\'translateX(20px)\':\'translateX(0)\';"/>' +
-                '<span style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:#DADCE1;transition:.25s;border-radius:28px;">' +
+                '<input type="checkbox" id="postEphemeral" style="opacity:0;width:0;height:0;" onchange="this.nextElementSibling.style.background=this.checked?\'var(--warn)\':\'var(--line2)\'; this.nextElementSibling.children[0].style.transform=this.checked?\'translateX(20px)\':\'translateX(0)\';"/>' +
+                '<span style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:var(--line2);transition:.25s;border-radius:28px;">' +
                   '<span style="position:absolute;content:\'\';height:22px;width:22px;left:3px;bottom:3px;background-color:white;transition:.25s;border-radius:50%;box-shadow:0 2px 4px rgba(0,0,0,0.2);"></span>' +
                 '</span>' +
               '</label>' +
@@ -2147,7 +2198,7 @@
             : ''
           ) +
           '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
-            '<label style="cursor:pointer;display:flex;align-items:center;gap:6px;color:#0B63F6;font-size:12.5px;font-weight:800;background:#E8EEFB;padding:9px 14px;border-radius:16px;">' +
+            '<label style="cursor:pointer;display:flex;align-items:center;gap:6px;color:#0B63F6;font-size:12.5px;font-weight:800;background:var(--accent-soft);padding:9px 14px;border-radius:16px;">' +
               '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0B63F6" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>' +
               'Photo / Vidéo' +
               '<input type="file" accept="image/*,video/*" multiple onchange="App.addMedia(event)" style="display:none;">' +
@@ -2202,7 +2253,7 @@
     return '<div onclick="App.closeViewers()" style="position:fixed;inset:0;background:rgba(15,15,20,0.55);backdrop-filter:blur(2px);z-index:10001;display:flex;justify-content:center;align-items:flex-end;">' +
       '<div onclick="event.stopPropagation()" style="width:100%;max-width:460px;background:var(--card);border-top-left-radius:28px;border-top-right-radius:28px;max-height:78vh;display:flex;flex-direction:column;box-shadow:0 -8px 40px rgba(0,0,0,0.18);animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
         '<div style="display:flex;justify-content:center;padding:12px 0 8px;cursor:pointer;" onclick="App.closeViewers()">' +
-          '<div style="width:38px;height:5px;background:#E2E4E9;border-radius:3px;"></div>' +
+          '<div style="width:38px;height:5px;background:var(--line2);border-radius:3px;"></div>' +
         '</div>' +
         '<div style="text-align:center;padding-bottom:12px;border-bottom:0.5px solid var(--tile);">' +
           '<h3 style="font-size:16px;font-weight:800;margin:0;color:var(--ink);">Vues</h3>' +

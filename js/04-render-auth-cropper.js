@@ -18,7 +18,7 @@
           '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="13" height="13" rx="2"/><path d="M16 4h3a2 2 0 0 1 2 2v3"/><polyline points="18 2 21 5 18 8"/></svg>' +
           '<span style="font-size:11.5px;font-weight:700;">Pivoter</span>' +
         '</button>' +
-        '<button type="button" onclick="App.cropperReset()" style="background:none;border:none;color:#FFF;font-size:14px;font-weight:800;cursor:pointer;padding:8px 10px;">Réinitialiser</button>' +
+        '<button type="button" onclick="App.cropperReset()" style="background:none;border:none;color:#FFF;font-size:14px;font-weight:800;cursor:pointer;min-height:44px;padding:8px 10px;box-sizing:border-box;">Réinitialiser</button>' +
         '<button type="button" onclick="App.cropperToggleSquare()" style="background:none;border:none;color:' + (sqActive ? '#0B63F6' : '#FFF') + ';display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;padding:4px 8px;">' +
           '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="' + (sqActive ? '#0B63F6' : '#FFF') + '" stroke-width="2" stroke-dasharray="3 2.5" stroke-linecap="round"><rect x="4" y="4" width="16" height="16" rx="1.5"/></svg>' +
           '<span style="font-size:11.5px;font-weight:700;">' + (sqActive ? 'Libre' : 'Carré') + '</span>' +
@@ -27,9 +27,9 @@
     }
     return '<div id="cropperModal" class="safe-top" style="position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.94);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);display:flex;flex-direction:column;box-sizing:border-box;animation:fadeIn 0.2s ease-out;">' +
       '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:rgba(0,0,0,0.8);border-bottom:0.5px solid rgba(255,255,255,0.15);box-sizing:border-box;z-index:10;">' +
-        '<button onclick="App.closeCropper()" style="background:rgba(255,255,255,0.15);color:#FFF;border:none;border-radius:12px;padding:8px 16px;font-size:13.5px;font-weight:700;cursor:pointer;">Annuler</button>' +
+        '<button onclick="App.closeCropper()" style="background:rgba(255,255,255,0.15);color:#FFF;border:none;border-radius:12px;min-height:44px;padding:8px 16px;box-sizing:border-box;font-size:13.5px;font-weight:700;cursor:pointer;">Annuler</button>' +
         '<div style="font-size:15px;font-weight:800;color:#FFF;letter-spacing:-0.2px;">' + safeHtml(title) + '</div>' +
-        '<button onclick="App.confirmCropper()" style="background:#0B63F6;color:#FFF;border:none;border-radius:12px;padding:8px 18px;font-size:13.5px;font-weight:800;cursor:pointer;box-shadow:0 4px 14px rgba(0,122,255,0.4);">Terminé</button>' +
+        '<button onclick="App.confirmCropper()" style="background:#0B63F6;color:#FFF;border:none;border-radius:12px;min-height:44px;padding:8px 18px;box-sizing:border-box;font-size:13.5px;font-weight:800;cursor:pointer;box-shadow:0 4px 14px rgba(11,99,246,0.3);">Terminé</button>' +
       '</div>' +
       // Scène de recadrage : conteneur en position absolue avec des dimensions
       // explicites. Cropper.js calcule la largeur de sa zone à partir du parent de
@@ -240,7 +240,7 @@
     '<div style="width:100%;max-width:360px;">' +
 
       '<div style="text-align:center;margin-bottom:40px;">' +
-        '<div style="width:72px;height:72px;border-radius:24px;background:#0B63F6;display:flex;align-items:center;justify-content:center;margin:0 auto 18px;box-shadow:0 8px 28px rgba(0,122,255,0.4);">' +
+        '<div style="width:72px;height:72px;border-radius:24px;background:#0B63F6;display:flex;align-items:center;justify-content:center;margin:0 auto 18px;box-shadow:0 8px 28px rgba(11,99,246,0.3);">' +
           '<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' +
         '</div>' +
         '<h1 style="font-family:' + UI.fontDisplay + ';font-size:34px;font-weight:800;color:#0B63F6;margin:0 0 6px;letter-spacing:-1px;">Commit</h1>' +
@@ -251,12 +251,12 @@
       '<form onsubmit="event.preventDefault(); App.login(event);" style="display:flex;flex-direction:column;gap:14px;">' +
         renderPhoneField('loginPhone', 'Numéro de téléphone', 'tel') +
         renderField('loginPwd', 'password', 'Mot de passe', '••••••••', 'current-password') +
-        '<div style="text-align:right;margin-top:-6px;"><span onclick="App.nav(\'forgot\')" style="color:#0B63F6;font-size:12.5px;font-weight:700;cursor:pointer;">Mot de passe oublié ?</span></div>' +
+        '<div style="text-align:right;margin-top:-6px;"><span role="button" onclick="App.nav(\'forgot\')" style="display:inline-block;padding:12px 8px;margin:-12px 0;line-height:20px;color:#0B63F6;font-size:12.5px;font-weight:700;cursor:pointer;">Mot de passe oublié ?</span></div>' +
         '<button type="submit" id="loginSubmitBtn" style="' + btnStyle('#0B63F6') + '">Se connecter →</button>' +
       '</form>' +
 
       '<p style="text-align:center;font-size:13.5px;color:var(--faint);margin-top:22px;">' +
-        'Pas encore de compte ? <span onclick="App.nav(\'signup\')" style="color:#0B63F6;font-weight:700;cursor:pointer;">S\'inscrire</span>' +
+        'Pas encore de compte ? <span role="button" onclick="App.nav(\'signup\')" style="display:inline-block;padding:12px 8px;margin:-12px 0;line-height:20px;color:#0B63F6;font-weight:700;cursor:pointer;">S\'inscrire</span>' +
       '</p>' +
 
 
@@ -269,7 +269,7 @@
       return '<div style="flex:1;min-height:0;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:28px 24px 40px;box-sizing:border-box;background:var(--card);">' +
         '<div style="width:100%;max-width:360px;">' +
           '<div style="display:flex;align-items:center;gap:12px;margin-bottom:28px;">' +
-            '<button onclick="App.nav(\'login\')" style="background:var(--tile);border:none;width:36px;height:36px;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
+            '<button onclick="App.nav(\'login\')" style="background:var(--tile);border:none;width:44px;height:44px;flex-shrink:0;touch-action:manipulation;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
               '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2.2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>' +
             '</button>' +
             '<div><h1 style="font-size:22px;font-weight:900;color:var(--ink);margin:0;">Mot de passe oublié</h1></div>' +
@@ -292,9 +292,9 @@
           '<p style="font-size:14px;color:var(--faint);margin-bottom:20px;">Répondez aux deux questions de sécurité que vous avez définies lors de votre inscription.</p>' +
           '<form onsubmit="event.preventDefault(); App.resetPassword(event);" style="display:flex;flex-direction:column;gap:14px;">' +
             '<div><label style="font-size:12px;font-weight:700;color:var(--ink2);display:block;margin-bottom:5px;">Q1: ' + safeHtml(S.forgotUser.sec_q1||'Question 1') + '</label>' +
-            '<input id="forgotA1" type="text" placeholder="Votre réponse secrète" required style="width:100%;height:48px;border-radius:12px;border:1.5px solid var(--line);background:var(--tile);padding:0 14px;font-size:14px;box-sizing:border-box;outline:none;" /></div>' +
+            '<input id="forgotA1" type="text" placeholder="Votre réponse secrète" required autocomplete="off" autocapitalize="off" spellcheck="false" style="width:100%;height:50px;border-radius:14px;border:1.5px solid var(--line);background:var(--tile);padding:0 16px;font-size:14.5px;color:var(--ink);box-sizing:border-box;outline:none;transition:border-color 0.2s;" onfocus="this.style.borderColor=\'#0B63F6\'" onblur="this.style.borderColor=\'var(--line)\'" /></div>' +
             '<div><label style="font-size:12px;font-weight:700;color:var(--ink2);display:block;margin-bottom:5px;">Q2: ' + safeHtml(S.forgotUser.sec_q2||'Question 2') + '</label>' +
-            '<input id="forgotA2" type="text" placeholder="Votre réponse secrète" required style="width:100%;height:48px;border-radius:12px;border:1.5px solid var(--line);background:var(--tile);padding:0 14px;font-size:14px;box-sizing:border-box;outline:none;" /></div>' +
+            '<input id="forgotA2" type="text" placeholder="Votre réponse secrète" required autocomplete="off" autocapitalize="off" spellcheck="false" style="width:100%;height:50px;border-radius:14px;border:1.5px solid var(--line);background:var(--tile);padding:0 16px;font-size:14.5px;color:var(--ink);box-sizing:border-box;outline:none;transition:border-color 0.2s;" onfocus="this.style.borderColor=\'#0B63F6\'" onblur="this.style.borderColor=\'var(--line)\'" /></div>' +
             '<div style="margin-top:10px;">' + renderField('forgotPwd', 'password', 'Nouveau mot de passe', '8 caractères minimum', 'new-password') + '</div>' +
             '<button type="submit" style="' + btnStyle('#0B63F6') + 'margin-top:6px;">Réinitialiser le mot de passe</button>' +
           '</form>' +
@@ -307,7 +307,7 @@
     '<div style="width:100%;max-width:360px;">' +
 
       '<div style="display:flex;align-items:center;gap:12px;margin-bottom:28px;">' +
-        '<button onclick="App.nav(\'login\')" style="background:var(--tile);border:none;width:36px;height:36px;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
+        '<button onclick="App.nav(\'login\')" style="background:var(--tile);border:none;width:44px;height:44px;flex-shrink:0;touch-action:manipulation;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
           '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2.2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>' +
         '</button>' +
         '<div><p style="font-size:11px;font-weight:800;color:#0B63F6;text-transform:uppercase;letter-spacing:1.5px;margin:0;">Créer un compte</p>' +
@@ -320,7 +320,7 @@
           renderField('signupNom', 'text', 'Nom', 'Dupont', 'family-name') +
         '</div>' +
         renderPhoneField('signupPhone', 'Numéro de téléphone', 'tel') +
-        '<div><label style="font-size:12px;font-weight:700;color:var(--ink2);display:block;margin-bottom:8px;">Sections / Pôles (1 à 2 max) <span style="color:#E2445C;">*</span></label>' +
+        '<div><label style="font-size:12px;font-weight:700;color:var(--ink2);display:block;margin-bottom:8px;">Sections / Pôles (1 à 2 max) <span style="color:var(--bad-ink);">*</span></label>' +
           '<div id="signupSectionBadgesContainer">' +
             App.renderSectionBadges(S.signupSections, 'toggleSignupSection') +
           '</div>' +
@@ -335,9 +335,24 @@
       '</form>' +
 
       '<p style="text-align:center;font-size:13.5px;color:var(--faint);margin-top:20px;">' +
-        'Déjà inscrit ? <span onclick="App.nav(\'login\')" style="color:#0B63F6;font-weight:700;cursor:pointer;">Se connecter</span>' +
+        'Déjà inscrit ? <span role="button" onclick="App.nav(\'login\')" style="display:inline-block;padding:12px 8px;margin:-12px 0;line-height:20px;color:#0B63F6;font-weight:700;cursor:pointer;">Se connecter</span>' +
       '</p>' +
     '</div></div>';
+  }
+
+  // Œil ouvert : affiché quand le mot de passe est masqué (clic = révéler).
+  var OEIL_MDP_OUVERT = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+  // Œil barré : affiché quand le mot de passe est visible (clic = masquer).
+  var OEIL_MDP_BARRE = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+
+  // Bascule la visibilité d'un champ « mot de passe » (bouton œil à droite).
+  // Appelé en inline handler depuis le bouton, qui se redessine lui-même.
+  function basculerVisibiliteMdp(champId, bouton) {
+    var champ = document.getElementById(champId);
+    if (!champ) return;
+    var visible = (champ.type === 'text');
+    champ.type = visible ? 'password' : 'text';
+    bouton.innerHTML = visible ? OEIL_MDP_OUVERT : OEIL_MDP_BARRE;
   }
 
   // Les champs des formulaires de connexion / inscription mémorisent ce qui y est
@@ -348,17 +363,26 @@
   // pendant la création d'un compte.
   function renderField(id, type, label, placeholder, autocomplete) {
     var valeur = (S.champsAuth && S.champsAuth[id]) ? S.champsAuth[id] : '';
-    return '<div style="flex:1;">' +
+    var estMdp = (type === 'password');
+    // Mot de passe : l'input vit dans un conteneur relatif avec le bouton œil
+    // (44×44, cible tactile) posé à droite ; le padding-right libère cette zone.
+    var styleChamp = 'width:100%;height:50px;border-radius:14px;border:1.5px solid var(--line);background:var(--tile);padding:' + (estMdp ? '0 48px 0 16px' : '0 16px') + ';font-size:14.5px;color:var(--ink);box-sizing:border-box;outline:none;transition:border-color 0.2s;';
+    var html = '<div style="flex:1;">' +
       '<label style="font-size:12px;font-weight:700;color:var(--ink2);display:block;margin-bottom:5px;">' + label + '</label>' +
+      (estMdp ? '<div style="position:relative;">' : '') +
       '<input id="' + id + '" type="' + type + '" value="' + safeHtml(valeur) + '" oninput="App.saisieAuth(\'' + id + '\', this.value)"' + ' placeholder="' + placeholder + '" autocomplete="' + (autocomplete||'off') + '" required ' +
-      'style="width:100%;height:50px;border-radius:14px;border:1.5px solid var(--line);background:var(--tile);padding:0 16px;font-size:14.5px;color:var(--ink);box-sizing:border-box;outline:none;transition:border-color 0.2s;" ' +
-      'onfocus="this.style.borderColor=\'#0B63F6\'" onblur="this.style.borderColor=\'var(--line)\'">' +
-    '</div>';
+      'style="' + styleChamp + '" ' +
+      'onfocus="this.style.borderColor=\'#0B63F6\'" onblur="this.style.borderColor=\'var(--line)\'">';
+    if (estMdp) {
+      html += '<button type="button" onclick="basculerVisibiliteMdp(\'' + id + '\', this)" aria-label="Afficher ou masquer le mot de passe" style="position:absolute;top:50%;right:4px;transform:translateY(-50%);width:44px;height:44px;background:transparent;border:none;padding:0;display:flex;align-items:center;justify-content:center;cursor:pointer;">' + OEIL_MDP_OUVERT + '</button>' +
+        '</div>';
+    }
+    return html + '</div>';
   }
 
   function btnStyle(bg) {
     // Bouton primaire plein (refonte : plus de dégradé), relief doux.
-    return 'width:100%;height:54px;background:' + (bg || '#0B63F6') + ';color:#FFF;border:none;border-radius:14px;font-family:' + UI.fontBody + ';font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 8px 24px rgba(11,99,246,0.28);letter-spacing:0.1px;';
+    return 'width:100%;height:54px;background:' + (bg || '#0B63F6') + ';color:#FFF;border:none;border-radius:14px;font-family:' + UI.fontBody + ';font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 8px 24px rgba(11,99,246,0.3);letter-spacing:0.1px;';
   }
 
   // Champ NUMÉRO DE TÉLÉPHONE (connexion sans e-mail ni SMS). Préfixe « +225 »
