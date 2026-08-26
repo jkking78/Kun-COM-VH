@@ -560,9 +560,13 @@
       for (var w = 1; w < recurWeeks; w++) {
         var occDateObj = new Date(date + 'T00:00:00');
         occDateObj.setDate(occDateObj.getDate() + w * 7);
+        // Formatage en heure LOCALE : toISOString() convertit en UTC, ce qui
+        // décalait chaque occurrence à la veille sur tous les fuseaux positifs
+        // (Europe...) — le culte du dimanche devenait samedi.
+        var occDateIso = occDateObj.getFullYear() + '-' + ('0' + (occDateObj.getMonth() + 1)).slice(-2) + '-' + ('0' + occDateObj.getDate()).slice(-2);
         createdPosts.push(Object.assign({}, newPost, {
           id: 'evt_' + (Date.now() + w),
-          eventDate: occDateObj.toISOString().split('T')[0],
+          eventDate: occDateIso,
           timestamp: Date.now(),
           likedBy: [],
           comments: []
@@ -733,24 +737,19 @@
         }
         if (!res || !res.data || !res.data.ok) { toast('Réponses incorrectes.', 'error'); return; }
         toast('Mot de passe réinitialisé ! Connectez-vous avec le nouveau.', 'success');
+        // Purge les champs sensibles restés dans l'état (mot de passe fraîchement
+        // utilisé, réponses aux questions) — même hygiène que login/signup.
+        S.champsAuth = {};
         S.forgotUser = null; S.auth = 'login'; render();
       } catch(err) {
         console.warn('reset password error:', err);
         toast('Réinitialisation impossible. Vérifiez vos réponses.', 'error');
       }
     },
-toggleParticipation: function(postId, status) {
-      if (!S.user) return;
-      var posts = db(SK.POSTS, []);
-      var p = posts.find(function(x){ return x.id === postId; });
-      if (p && p.metadata) {
-        if (!p.metadata.participations) p.metadata.participations = {};
-        p.metadata.participations[S.user.id] = status;
-        dbSet(SK.POSTS, posts);
-        if (supabase) supabase.from('kun_com_posts').upsert({ id: p.id, content: p }, { onConflict: 'id' }).then(function(){});
-        render();
-      }
-    },
+    // (Ancienne définition dupliquée de toggleParticipation supprimée : la clé
+    // existait DEUX fois dans ce littéral objet — la seconde, complète,
+    // écrasait silencieusement la première. Risque : corriger un jour la
+    // mauvaise copie.)
 
     // Détail d'une métrique RH (fenêtre encore présente dans le code, sa fermeture
     // n'était reliée à rien : le panneau serait resté bloqué à l'écran).
@@ -770,15 +769,19 @@ toggleParticipation: function(postId, status) {
 
       var actuel = ev.metadata.participations[S.user.id];
       // Retoucher le même bouton annule la réponse : on peut se raviser.
-      if (actuel === reponse) delete ev.metadata.participations[S.user.id];
-      else ev.metadata.participations[S.user.id] = reponse;
-      var nouveau = ev.metadata.participations[S.user.id] || null;
+      var nouvelleValeur;
+      if (actuel === reponse) { delete ev.metadata.participations[S.user.id]; nouvelleValeur = null; }
+      else { ev.metadata.participations[S.user.id] = reponse; nouvelleValeur = reponse; }
 
       dbSet(SK.POSTS, posts);
-      if (supabase) {
-        supabase.from('kun_com_posts').upsert({ id: ev.id, content: ev }, { onConflict: 'id' })
-          .then(function(){}, function(e){ console.warn('Participation :', e); });
-      }
+      // Écriture serveur via relecture fraîche (même raisonnement que like/submitComment).
+      App.ecrirePostFrais(ev.id, function(frais) {
+        if (!frais.metadata) frais.metadata = {};
+        if (!frais.metadata.participations) frais.metadata.participations = {};
+        if (nouvelleValeur === null) delete frais.metadata.participations[S.user.id];
+        else frais.metadata.participations[S.user.id] = nouvelleValeur;
+      });
+      var nouveau = nouvelleValeur; // pour la notification et le toast ci-dessous
       if (nouveau === 'yes' && ev.userId && ev.userId !== S.user.id) {
         sendNotificationToUser(ev.userId, {
           type: 'EVENT_PARTICIPATION',
@@ -802,10 +805,14 @@ toggleParticipation: function(postId, status) {
       if (idx === -1) { ev.likedBy.push(S.user.id); joining = true; }
       else { ev.likedBy.splice(idx, 1); joining = false; }
       dbSet(SK.POSTS, posts);
-      if (supabase) {
-        supabase.from('kun_com_posts').upsert({ id: ev.id, content: ev }, { onConflict: 'id' })
-          .then(function(){}, function(e){ console.warn('Participation :', e); });
-      }
+      // Écriture serveur via relecture fraîche : on applique notre état FINAL
+      // (présent/absent) sur la version du serveur, sans écraser les autres.
+      App.ecrirePostFrais(ev.id, function(frais) {
+        if (!Array.isArray(frais.likedBy)) frais.likedBy = [];
+        var iFrais = frais.likedBy.indexOf(S.user.id);
+        if (joining) { if (iFrais === -1) frais.likedBy.push(S.user.id); }
+        else { if (iFrais !== -1) frais.likedBy.splice(iFrais, 1); }
+      });
       // Prévient l'organisateur, sauf s'il s'agit de lui-même.
       if (joining && ev.userId && ev.userId !== S.user.id) {
         sendNotificationToUser(ev.userId, {
@@ -882,7 +889,7 @@ toggleParticipation: function(postId, status) {
       if (uIdx !== -1) allUsers[uIdx] = S.user;
       dbSet(SK.USERS, allUsers);
       sauverSession(S.user);
-      if (supabase) supabase.from('kun_com_profiles').upsert({ id: S.user.id, content: S.user }, { onConflict: 'id' }).then(function(){}, function(e){});
+      if (supabase) supabase.from('kun_com_profiles').upsert({ id: S.user.id, content: profilSansSecret(S.user) }, { onConflict: 'id' }).then(function(){}, function(e){});
       if (nowFollowing) {
         sendNotificationToUser(targetUserId, {
           type: 'FOLLOW',
@@ -1305,6 +1312,7 @@ toggleParticipation: function(postId, status) {
     viewPost: function(id) {
        S.postOptionsOpen = false; S.selectedPostId = null;
        S.q = ''; // clear search
+       S.story = 'all'; // même raison que goToPost : un filtre de section actif masquait la cible et le scroll échouait en silence
        // Scroll to post logic could go here
        render();
        setTimeout(function() {
@@ -1447,6 +1455,83 @@ toggleParticipation: function(postId, status) {
       var h = el.naturalHeight || el.videoHeight || 0;
       if (w && h) memoriserRatioMedia(url, w, h);
     },
+
+    // Média du fil introuvable (objet Storage supprimé avec sa publication
+    // d'origine, URL invalide...) : remplace l'élément cassé par un encart
+    // discret au lieu de laisser une image/vidéo brisée à l'écran. Appelé par
+    // les attributs onerror des cartes du fil (05-render-feed).
+    mediaEchoue: function(el) {
+      if (!el || !el.parentNode) return;
+      var encart = document.createElement('div');
+      encart.style.cssText = 'display:flex;align-items:center;justify-content:center;width:100%;padding:28px 16px;background:#F2F2F7;color:#8A93A0;font-size:13px;border-radius:12px;';
+      encart.textContent = 'Média indisponible';
+      el.parentNode.replaceChild(encart, el);
+    },
+
+    // ---- Écritures de publications SANS écrasement concurrent ----
+    // Commentaires, likes et participations vivent DANS le JSON du post :
+    // réécrire la version lue dans le cache local écraserait toute action
+    // concurrente d'un autre membre (son commentaire disparaissait alors
+    // définitivement, en base comme chez tous les clients). On relit donc la
+    // version fraîche du serveur, on y applique UNIQUEMENT notre mutation en
+    // valeur absolue (état final voulu, pas un basculement), puis on réécrit —
+    // le même schéma que votePoll, généralisé.
+    ecrirePostFrais: async function(postId, mutateur) {
+      var posts = db(SK.POSTS, []);
+      var local = posts.find(function(p){ return p.id === postId; });
+      if (!local) return null;
+      var cible = local;
+      if (supabase) {
+        try {
+          var res = await supabase.from('kun_com_posts').select('content').eq('id', postId).single();
+          if (res && res.data && res.data.content) cible = res.data.content;
+        } catch(e) { /* hors-ligne ou post absent : on mute la version locale */ }
+      }
+      mutateur(cible);
+      var allPosts = db(SK.POSTS, []);
+      var idx = allPosts.findIndex(function(p){ return p.id === postId; });
+      if (idx !== -1) { allPosts[idx] = cible; dbSet(SK.POSTS, allPosts); }
+      if (supabase) {
+        supabase.from('kun_com_posts').upsert({ id: postId, content: cible }, { onConflict: 'id' })
+          .then(function(){}, function(e){
+            console.warn('Écriture post : mise en file d\'attente.', e);
+            App._mettreEnFileAttenteEcriture({ table: 'kun_com_posts', row: { id: postId, content: cible } });
+          });
+      }
+      return cible;
+    },
+
+    // ---- File d'attente d'écritures hors-ligne ----
+    // Les upserts réseau étaient « fire-and-forget » : hors connexion, le toast
+    // annonçait un succès mais rien n'arrivait jamais au serveur (et une
+    // suppression dont le tombstone échouait ressuscitait à chaque synchro).
+    // Les écritures qui échouent sont désormais empilées dans le localStorage,
+    // puis rejouées au retour du réseau / à la connexion suivante.
+    _mettreEnFileAttenteEcriture: function(item) {
+      try {
+        var file = JSON.parse(localStorage.getItem('kc_pending_writes') || '[]');
+        file.push(Object.assign({ at: Date.now() }, item));
+        // Borne raisonnable : au-delà, on privilégie les écritures récentes.
+        while (file.length > 200) file.shift();
+        localStorage.setItem('kc_pending_writes', JSON.stringify(file));
+      } catch(e) {}
+    },
+    viderFileAttenteEcriture: async function() {
+      var file = [];
+      try { file = JSON.parse(localStorage.getItem('kc_pending_writes') || '[]'); } catch(e) {}
+      if (!file.length || !supabase) return;
+      localStorage.setItem('kc_pending_writes', '[]'); // vidé d'abord : un échec ci-dessous repousse l'item
+      for (var i = 0; i < file.length; i++) {
+        var w = file[i];
+        try {
+          var r = await supabase.from(w.table).upsert(w.row, { onConflict: 'id' });
+          if (r && r.error) throw r.error;
+        } catch(e) {
+          console.warn('File d\'attente : écriture toujours impossible, replacée.', e);
+          App._mettreEnFileAttenteEcriture(w);
+        }
+      }
+    },
     saisieAuth: function(id, val) {
       if (!S.champsAuth) S.champsAuth = {};
       S.champsAuth[id] = val;
@@ -1486,6 +1571,7 @@ toggleParticipation: function(postId, status) {
         render();
         toast('Connexion réussie ! Bienvenue ' + (S.user && S.user.prenom || 'Membre') + '. ', 'success');
         try { syncSupabaseToLocal(); } catch(e){}
+        try { App.viderFileAttenteEcriture(); } catch(e){}
         try { tryOpenDeepLinkedPost(); } catch(e){}
       } finally {
         App._loginEnCours = false;
@@ -1502,6 +1588,10 @@ toggleParticipation: function(postId, status) {
     },
     signup: async function(e) {
       e && e.preventDefault();
+      // Garde anti double-clic (même raisonnement que _loginEnCours pour login) :
+      // sans lui, un appui répété pendant l'inscription lançait deux signUp en
+      // parallèle — le second produisait un faux « compte existe déjà ».
+      if (App._signupEnCours) return;
       var prenom = ((document.getElementById('signupPrenom')||{}).value||'').trim();
       var nom = ((document.getElementById('signupNom')||{}).value||'').trim();
       // Inscription au NUMÉRO : identifiant interne dérivé, numéro lisible stocké.
@@ -1517,7 +1607,7 @@ toggleParticipation: function(postId, status) {
       var secQA = readSecurityQA('signup', true);
       if (!secQA) return;
       if (!supabase || !supabase.auth) { toast('Inscription indisponible.', 'error'); return; }
-
+      App._signupEnCours = true;
       var userSecs = S.signupSections.length > 0 ? S.signupSections.slice() : ['cadrage'];
       try {
         // INSCRIPTION SUPABASE AUTH — crée le compte dans auth.users. Le rôle est
@@ -1586,6 +1676,8 @@ toggleParticipation: function(postId, status) {
       } catch(err) {
         console.warn('signup error:', err);
         toast('Inscription impossible. Réessayez.', 'error');
+      } finally {
+        App._signupEnCours = false;
       }
     },
     toggleSearch: function() {
@@ -1678,8 +1770,12 @@ toggleParticipation: function(postId, status) {
       render();
       try {
         var posts = db(SK.POSTS, []);
-        var toDelete = posts.filter(function(p){ return ids.indexOf(p.id) !== -1; });
-        var remaining = posts.filter(function(p){ return ids.indexOf(p.id) === -1; });
+        // Contrôle de propriété : la sélection venait d'un état UI falsifiable.
+        // On ne supprime que les publications appartenant réellement à
+        // l'utilisateur (ou toutes si Admin), comme deletePost le fait unitairement.
+        var uBulk = S.user || {};
+        var toDelete = posts.filter(function(p){ return ids.indexOf(p.id) !== -1 && (p.userId === uBulk.id || uBulk.role === 'GRAND_RESPONSABLE'); });
+        var remaining = posts.filter(function(p){ return ids.indexOf(p.id) === -1 || !(p.userId === uBulk.id || uBulk.role === 'GRAND_RESPONSABLE'); });
         dbSet(SK.POSTS, remaining);
 
         if (supabase) {
@@ -1688,7 +1784,11 @@ toggleParticipation: function(postId, status) {
           // propage jamais la disparition aux autres appareils.
           toDelete.forEach(function(p) {
             var tombstone = Object.assign({}, p, { status: 'deleted' });
-            supabase.from('kun_com_posts').upsert({ id: p.id, content: tombstone }, { onConflict: 'id' }).then(function(){}, function(e){ console.warn('Bulk delete post error:', e); });
+            supabase.from('kun_com_posts').upsert({ id: p.id, content: tombstone }, { onConflict: 'id' })
+              .then(function(){}, function(e){
+                console.warn('Bulk delete post error:', e);
+                App._mettreEnFileAttenteEcriture({ table: 'kun_com_posts', row: { id: p.id, content: tombstone } });
+              });
           });
         }
         toDelete.forEach(function(p) {
@@ -1842,59 +1942,11 @@ toggleParticipation: function(postId, status) {
         setTimeout(function(){ var i = document.getElementById('adminCodeInput'); if (i) i.focus(); }, 120);
       }
     },
-    // Promeut le compte connecté au rôle Admin (accès complet : création
-    // de publications, suppression de n'importe quelle publication, etc.).
-    grantGrandResponsable: function() {
-      if (!S.user) { S.adminCodeError = true; render(); return; }
-      if (S.user.role === 'GRAND_RESPONSABLE') {
-        S.adminGateOpen = false;
-        render();
-        toast('Ce compte est déjà Admin.', 'info');
-        return;
-      }
-      S.user.role = 'GRAND_RESPONSABLE';
-      var allUsers = db(SK.USERS, []);
-      var uIdx = allUsers.findIndex(function(u){ return u.id === S.user.id; });
-      if (uIdx !== -1) allUsers[uIdx] = S.user;
-      dbSet(SK.USERS, allUsers);
-      sauverSession(S.user);
-      if (supabase) supabase.from('kun_com_profiles').upsert({ id: S.user.id, content: S.user }, { onConflict: 'id' }).then(function(){}, function(e){});
-      S.adminGateOpen = false;
-      S.adminCodeInput = '';
-      render();
-      toast('Accès Admin accordé.', 'success');
-    },
-    // Promeut le compte connecté au rôle Responsable de pôle (code RP787).
-    grantRespSection: function() {
-      if (!S.user) { S.adminCodeError = true; render(); return; }
-      if (S.user.role === 'RESP_SECTION') {
-        S.adminGateOpen = false;
-        render();
-        toast('Ce compte est déjà Responsable.', 'info');
-        return;
-      }
-      // Un Admin a un accès PLUS large : ce code ne doit pas le lui
-      // retirer par une simple faute de frappe dans le même champ de saisie. Le
-      // changement volontaire d'un rôle se fait depuis la fiche du membre.
-      if (S.user.role === 'GRAND_RESPONSABLE') {
-        S.adminGateOpen = false;
-        S.adminCodeInput = '';
-        render();
-        toast('Ce compte est Admin, un accès déjà supérieur. Rôle inchangé.', 'info');
-        return;
-      }
-      S.user.role = 'RESP_SECTION';
-      var tousUsers = db(SK.USERS, []);
-      var idx = tousUsers.findIndex(function(u){ return u.id === S.user.id; });
-      if (idx !== -1) tousUsers[idx] = S.user;
-      dbSet(SK.USERS, tousUsers);
-      sauverSession(S.user);
-      if (supabase) supabase.from('kun_com_profiles').upsert({ id: S.user.id, content: S.user }, { onConflict: 'id' }).then(function(){}, function(e){ console.warn('Enregistrement du rôle Responsable :', e); });
-      S.adminGateOpen = false;
-      S.adminCodeInput = '';
-      render();
-      toast('Accès Responsable accordé.', 'success');
-    },
+    // (Fonctions grantGrandResponsable / grantRespSection SUPPRIMÉES : elles
+    // s'attribuaient un rôle élevé sans aucune vérification. Le flux est
+    // révoqué depuis longtemps — les rôles se gèrent via l'Edge Function
+    // « set-role » depuis le panneau Admin — mais ce code mort restait une
+    // auto-promotion prête à être réactivée par erreur.)
     lockAdmin: function() {
       S.adminUnlocked = false;
       S.storageStatsOpen = false;
@@ -1913,7 +1965,7 @@ toggleParticipation: function(postId, status) {
       if (uIdx !== -1) allUsers[uIdx] = S.user;
       dbSet(SK.USERS, allUsers);
       sauverSession(S.user);
-      if (supabase) supabase.from('kun_com_profiles').upsert({ id: S.user.id, content: S.user }, { onConflict: 'id' }).then(function(){}, function(e){});
+      if (supabase) supabase.from('kun_com_profiles').upsert({ id: S.user.id, content: profilSansSecret(S.user) }, { onConflict: 'id' }).then(function(){}, function(e){});
       render();
       toast('Rôle Admin retiré — vous êtes de nouveau Membre.', 'success');
     },
@@ -1940,7 +1992,10 @@ toggleParticipation: function(postId, status) {
     },
     closeRolesPanel: function() { S.rolesPanelOpen = false; S.roleUpdatingId = null; render(); },
     setMemberRole: async function(userId, role) {
-      if (!S.user || S.user.role !== 'GRAND_RESPONSABLE') { toast('Réservé au Admin.', 'error'); return; }
+      // Test sur le rôle du JWT (S.jwtRole, signé par Supabase) et non sur
+      // S.user.role : ce dernier vient d'un JSON stocké en localStorage,
+      // modifiable — adminResetPassword utilise déjà le JWT, on s'aligne.
+      if (!S.user || S.jwtRole !== 'GRAND_RESPONSABLE') { toast('Réservé au Admin.', 'error'); return; }
       if (userId === S.user.id) { toast('Vous ne pouvez pas modifier votre propre rôle ici (évite de te verrouiller dehors). Passe par un autre Admin.', 'info'); return; }
       if (!supabase || !supabase.functions) { toast('Service indisponible.', 'error'); return; }
       var LABELS = { MEMBRE: 'Membre', RESP_SECTION: 'Responsable', GRAND_RESPONSABLE: 'Admin' };
@@ -2066,6 +2121,12 @@ toggleParticipation: function(postId, status) {
       S.cropperOpen=false; S.membersListOpen=false; S.repostPostId=null; S.aboutEventPickerOpen=false;
       S.deleteAccountOpen=false; S.bulkDeleteConfirmOpen=false; S.viewersPostId=null; S.adminGateOpen=false;
       S.storageStatsOpen=false; S.dmOpen=false; S.dmWithUserId=null; S.assignManagerId=null; S.viewerImage=null;
+      // Quitter un écran via la barre détruit proprement ce qui y vivait :
+      // l'instance Cropper (canvas + listeners, sinon détachée du DOM mais
+      // vivante) et l'interval de polling de la messagerie (sinon orphelin à
+      // chaque sortie par la barre d'onglets).
+      try { if (window._currentCropper) { window._currentCropper.destroy(); window._currentCropper = null; } } catch(eCropperTab){}
+      try { App._stopDmPolling(); } catch(eDmTab){}
       render();
     },
 
@@ -2077,15 +2138,28 @@ toggleParticipation: function(postId, status) {
       S.loadingMorePosts = true;
       render();
       try {
-        var offset = S.postsRemotePage * POSTS_PAGE_SIZE;
-        var res = await supabase.from('kun_com_posts').select('*').order('created_at', { ascending: false }).range(offset, offset + POSTS_PAGE_SIZE - 1);
+        // Pagination par CURSEUR (created_at du dernier post reçu) et non plus
+        // par offset : avec .range(offset…), une publication créée entre deux
+        // clics décalait toute la fenêtre et des publications plus anciennes
+        // sautaient un créneau — devenues définitivement injoignables depuis
+        // le fil. Avec un curseur, la fenêtre ne bouge pas.
+        var curseur = S.postsRemoteCursor || null;
+        if (!curseur) {
+          var datesConnues = db(SK.POSTS, [])
+            .map(function(p){ return p.created_at; })
+            .filter(Boolean).sort().reverse();
+          curseur = datesConnues[0] || null;
+        }
+        var requete = supabase.from('kun_com_posts').select('*').order('created_at', { ascending: false }).limit(POSTS_PAGE_SIZE);
+        if (curseur) requete = requete.lt('created_at', curseur);
+        var res = await requete;
         if (res && res.error) { console.warn('loadMorePosts error:', res.error); toast('Impossible de charger plus de publications.', 'error'); }
         if (res && res.data) {
           if (res.data.length < POSTS_PAGE_SIZE) S.postsAllLoaded = true;
           if (res.data.length > 0) {
+            S.postsRemoteCursor = res.data[res.data.length - 1].created_at || S.postsRemoteCursor || null;
             var mergedPosts = mergePostsWithLocal(res.data);
             dbSet(SK.POSTS, mergedPosts);
-            S.postsRemotePage++;
           } else {
             S.postsAllLoaded = true;
           }
@@ -2183,6 +2257,21 @@ toggleParticipation: function(postId, status) {
         taskDoneAt: now,
         timestamp: now
       };
+      // Dédoublonnage SERVEUR : le cache local ne garde que ~60 publications,
+      // une validation plus ancienne peut donc exister en base sans être dans
+      // `posts`. Sans cette relecture, re-cocher créait un second enregistrement
+      // distant que la dé-coche ne retirait qu'en partie. On réutilise l'id
+      // existant : l'upsert met simplement l'horodatage à jour.
+      if (supabase) {
+        try {
+          var resTD = await supabase.from('kun_com_posts').select('id')
+            .filter('content->>type', 'eq', 'TASK_DONE')
+            .filter('content->>userId', 'eq', String(S.user.id))
+            .filter('content->>taskEventId', 'eq', String(eventId))
+            .limit(1);
+          if (resTD && resTD.data && resTD.data[0] && resTD.data[0].id) rec.id = resTD.data[0].id;
+        } catch(eTDdedup) { console.warn('toggleTaskDone dedup error:', eTDdedup); }
+      }
       posts.unshift(rec);
       dbSet(SK.POSTS, posts);
       if (supabase) {
@@ -2207,11 +2296,16 @@ toggleParticipation: function(postId, status) {
       if (idx === -1) { post.likedBy.push(S.user.id); }
       else { post.likedBy.splice(idx, 1); }
       var nowLiked = post.likedBy.indexOf(S.user.id) !== -1;
-      var likeCount = post.likedBy.length;
       dbSet(SK.POSTS, posts);
-      if (supabase && post) {
-        supabase.from('kun_com_posts').upsert({ id: post.id, content: post }, { onConflict: 'id' }).then(function(){}, function(e){ console.warn(e); });
-      }
+      // Rendu optimiste immédiat, puis écriture serveur via relecture fraîche :
+      // appliquer notre état FINAL sur la version du serveur au lieu de réécrire
+      // la version locale empêche d'effacer un like/commentaire concurrent.
+      App.ecrirePostFrais(postId, function(frais) {
+        if (!Array.isArray(frais.likedBy)) frais.likedBy = [];
+        var iFrais = frais.likedBy.indexOf(S.user.id);
+        if (nowLiked) { if (iFrais === -1) frais.likedBy.push(S.user.id); }
+        else { if (iFrais !== -1) frais.likedBy.splice(iFrais, 1); }
+      });
       if (nowLiked && post.userId && post.userId !== S.user.id) {
         sendNotificationToUser(post.userId, {
           type: 'LIKE',
@@ -2489,6 +2583,10 @@ toggleParticipation: function(postId, status) {
       var posts = db(SK.POSTS, []);
       var p = posts.find(function(x){ return x.id === postId; });
       if (!p) return;
+      // Même contrôle que deletePost : sans lui, n'importe qui appelant la
+      // méthode (console, lien forgé) pouvait ouvrir l'éditeur d'un post tiers.
+      var u = S.user || {};
+      if (u.role !== 'GRAND_RESPONSABLE' && p.userId !== u.id) { toast('Action non autorisée.', 'error'); return; }
       S.editPostId = postId;
       S.postVisibility = p.visibility || 'all';
       S.postTargetSections = (p.targetSections || []).slice();
@@ -2520,6 +2618,10 @@ toggleParticipation: function(postId, status) {
       var posts = db(SK.POSTS, []);
       var post = posts.find(function(p){ return p.id === postId; });
       if (!post) return;
+      // Contrôle serveur-symétrique : l'ouverture de l'éditeur est déjà gardée,
+      // mais la sauvegarde reste le point d'écriture réel — on y revérifie.
+      var uSave = S.user || {};
+      if (uSave.role !== 'GRAND_RESPONSABLE' && post.userId !== uSave.id) { toast('Action non autorisée.', 'error'); return; }
 
       post.caption = txt;
       post.is_edited = true;
@@ -2604,7 +2706,15 @@ toggleParticipation: function(postId, status) {
       // de l'application (il en retardait l'affichage), mais l'avoir prêt dès l'ouverture
       // du composeur rend le recadrage instantané au moment de choisir une photo.
       try { chargerCropper(); } catch(e){} },
-    closeCreate: function() { S.createOpen=false; S.pendingMedia=[]; clearPendingLocalCopies(); S.hashSuggestions=false; S.postBg=null; S.postText=''; S.pendingVideoPoster=null; S.postAboutEventId=null; S.postCheckInEventId=null; S.videoProcessing=false; S.pollOpen=false; S.pollQuestion=''; S.pollOptions=['','']; S.linkPreview=null; S.linkPreviewUrl=null; S.linkPreviewLoading=false; S.linkPreviewDismissed=false; render(); },
+    closeCreate: function() {
+      // Un brouillon substantiel mérite une confirmation : le fond du composeur
+      // est cliquable et un tap mal placé effaçait un long texte sans retour.
+      var brouillonSubstantiel = (S.postText && S.postText.trim()) ||
+        (S.pendingMedia && S.pendingMedia.length > 0) ||
+        (S.pollQuestion && S.pollQuestion.trim());
+      if (brouillonSubstantiel && !window.confirm('Abandonner cette publication ? Le brouillon sera perdu.')) return;
+      S.createOpen=false; S.pendingMedia=[]; clearPendingLocalCopies(); S.hashSuggestions=false; S.postBg=null; S.postText=''; S.pendingVideoPoster=null; S.postAboutEventId=null; S.postCheckInEventId=null; S.videoProcessing=false; S.pollOpen=false; S.pollQuestion=''; S.pollOptions=['','']; S.linkPreview=null; S.linkPreviewUrl=null; S.linkPreviewLoading=false; S.linkPreviewDismissed=false; render();
+    },
     // Déplie / replie la pile des épinglés.
     togglePinnedStack: function() { S.pinnedOpen = !S.pinnedOpen; render(); },
 
@@ -2832,6 +2942,11 @@ toggleParticipation: function(postId, status) {
           //    publication. En cas d'échec (bucket pas créé, hors-ligne...), on retombe
           //    sur le data:URL pour ne jamais bloquer la publication.
           uploadMediaToStorage(dataUrl, function(hostedUrl) {
+            // Le composeur a pu être fermé pendant l'envoi (vidéo jusqu'à 60 Mo) :
+            // sans ce garde, l'URL arrivait trop tard et se retrouvait poussée
+            // dans le tableau fraîchement vidé — média fantôme pré-chargé dans
+            // la PROCHAINE publication. La branche image se protège déjà.
+            if (!S.createOpen && !S.editPostId) { S.videoProcessing = false; clearPendingLocalCopies(); return; }
             S.pendingMedia.push(hostedUrl || dataUrl);
             S.videoProcessing = false;
             render();
@@ -3044,7 +3159,14 @@ toggleParticipation: function(postId, status) {
 
       if (supabase) {
         try {
-          supabase.from('kun_com_posts').upsert({ id: newPost.id, content: newPost, created_at: new Date().toISOString() }, { onConflict: 'id' }).then(function(){});
+          supabase.from('kun_com_posts').upsert({ id: newPost.id, content: newPost, created_at: new Date().toISOString() }, { onConflict: 'id' })
+            .then(function(){}, function(eSync){
+              // Hors-ligne : le toast « publié » reste vrai localement, mais
+              // sans file d'attente la publication n'atteignait JAMAIS les
+              // autres appareils.
+              console.warn('Supabase submitPost sync error:', eSync);
+              App._mettreEnFileAttenteEcriture({ table: 'kun_com_posts', row: { id: newPost.id, content: newPost, created_at: new Date().toISOString() } });
+            });
         } catch(err) {
           console.warn("Supabase submitPost sync error:", err);
         }
@@ -3128,7 +3250,14 @@ toggleParticipation: function(postId, status) {
           // sans quoi elle disparaît seulement de CET appareil : les autres membres la
           // revoient indéfiniment, ressuscitée à chaque synchronisation.
           var tombstone = Object.assign({}, p, { status: 'deleted' });
-          supabase.from('kun_com_posts').upsert({ id: p.id, content: tombstone }, { onConflict: 'id' }).then(function(){}, function(e){ console.warn('Delete post error:', e); });
+          supabase.from('kun_com_posts').upsert({ id: p.id, content: tombstone }, { onConflict: 'id' })
+            .then(function(){}, function(eDel){
+              // Si le marqueur status:'deleted' n'arrive pas au serveur, la
+              // publication ressuscite à chaque synchro (fusion additive) :
+              // on l'empile pour rejeu au retour du réseau.
+              console.warn('Delete post error:', eDel);
+              App._mettreEnFileAttenteEcriture({ table: 'kun_com_posts', row: { id: p.id, content: tombstone } });
+            });
         }
         deleteUnusedMediaFromStorage((p.mediaUrls || []), postId);
       }
@@ -3220,7 +3349,13 @@ toggleParticipation: function(postId, status) {
       var parentComment = parentId ? post.comments.find(function(c){ return c.id === parentId; }) : null;
       var newC = { id:'c'+Date.now(), userId:S.user.id, author:(S.user.prenom||'User')+' '+(S.user.nom?S.user.nom.charAt(0):'')+'.', avatarColor:S.user.avatar_color||'#0B63F6', text:txt, imageUrl:S.pendingCommentImage||null, timestamp:Date.now(), parentId: parentId };
       post.comments.push(newC); dbSet(SK.POSTS, posts);
-      if (supabase && post) supabase.from('kun_com_posts').upsert({ id: post.id, content: post }, { onConflict: 'id' }).then(function(){}, function(e){});
+      // Affichage optimiste, puis écriture serveur via relecture fraîche : on
+      // ajoute NOTRE commentaire à la version du serveur au lieu de réécrire la
+      // version locale (qui aurait effacé les commentaires arrivés entre-temps).
+      App.ecrirePostFrais(post.id, function(frais) {
+        if (!Array.isArray(frais.comments)) frais.comments = [];
+        if (!frais.comments.some(function(c){ return c.id === newC.id; })) frais.comments.push(newC);
+      });
       if (parentComment && parentComment.userId && parentComment.userId !== S.user.id) {
         sendNotificationToUser(parentComment.userId, {
           type: 'REPLY',
@@ -3637,4 +3772,10 @@ toggleParticipation: function(postId, status) {
       render();
     }
   };
+
+  // Retour du réseau : on rejoue les écritures restées en file d'attente
+  // (publications, suppressions, commentaires... créés hors connexion).
+  window.addEventListener('online', function() {
+    try { App.viderFileAttenteEcriture(); } catch(e) {}
+  });
 

@@ -158,11 +158,13 @@
       ? '<img src="' + cAvatarUrl + '" style="width:'+avSize+'px;height:'+avSize+'px;border-radius:'+(avSize/2)+'px;object-fit:cover;flex-shrink:0;" />'
       : '<div style="width:'+avSize+'px;height:'+avSize+'px;border-radius:'+(avSize/2)+'px;background:linear-gradient(135deg,' + cColor + ',#0B63F6);color:#FFF;font-size:'+(isReply?'11px':'13px')+';font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + cInitial + '</div>';
 
-    // Le nom passé en 2e argument doit rester une chaîne JS à guillemets simples
-    // (l'attribut onclick est lui-même entre guillemets doubles) : JSON.stringify()
-    // produit des guillemets doubles qui fermaient l'attribut prématurément et
-    // cassaient totalement le bouton (c'était le bug "on ne peut pas répondre").
-    var authorJs = (c.author || 'Membre').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+    // Double contexte d'échappement : d'abord la chaîne JS à guillemets simples
+    // (antislash puis apostrophe) — JSON.stringify() produisait des guillemets
+    // doubles qui fermaient l'attribut prématurément et cassaient le bouton —,
+    // ensuite l'attribut HTML délimité par des guillemets doubles : un nom
+    // contenant « " » doit devenir &quot; sans quoi il referme l'attribut onclick
+    // et permet l'injection de code.
+    var authorJs = (c.author || 'Membre').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
     var replyBtn = isReply ? '' : '<button onclick="App.replyToComment(\'' + c.id + '\', \'' + authorJs + '\')" style="background:none;border:none;padding:0;font-size:12px;font-weight:700;color:var(--faint);cursor:pointer;">Répondre</button>';
 
     var u = S.user || {};
@@ -208,7 +210,14 @@
   // à la Instagram). Chaque commentaire racine porte un conteneur "replies-<id>"
   // où les réponses s'ajoutent, y compris via App.submitComment sans re-render complet.
   function renderCommentsList(comments, postId, canManagePost) {
-    var top = (comments || []).filter(function(c){ return !c.parentId; });
+    // Une réponse dont le parent a été supprimé remonte au premier niveau au
+    // lieu de disparaître (elle restait sinon comptée mais jamais rendue).
+    var idsConnus = {};
+    (comments || []).forEach(function(c){ idsConnus[c.id] = true; });
+    var top = (comments || []).filter(function(c){
+      if (!c.parentId) return true;
+      return !idsConnus[c.parentId]; // parent supprimé -> remonte au niveau racine
+    });
     var byParent = {};
     (comments || []).forEach(function(c) {
       if (!c.parentId) return;
@@ -519,7 +528,6 @@
         '<div style="font-size:14px;margin-top:4px;">Rien de prévu pour cette date.</div>' +
       '</div>';
     } else {
-      var nowTime = new Date().toTimeString().slice(0,5);
       // Chaque événement produit un bloc ; on décide ensuite de l'affichage :
       // liste verticale habituelle s'il n'y en a qu'un, carrousel horizontal dès
       // que la journée en compte plusieurs (ordonnés par heure de début).
@@ -848,7 +856,6 @@
     // remplit donc au fil du travail fourni, au lieu d'afficher une moyenne.
     var NOTE_MAX = 30;
     var score = Math.min(h.total, NOTE_MAX);
-    var avg = h.average;                    // conservée pour les autres graphiques
     var col = score >= 24 ? UI.ok : score >= 15 ? UI.warn : UI.bad;
     var label = !h.count ? 'Note de départ'
       : score >= 24 ? 'Excellent'
@@ -1283,7 +1290,6 @@
     // Numéro de cycle court (maquette : « Cycle 16 »). Deux cycles par mois :
     // 1–15 puis 16–fin. Le libellé long débordait sur trois lignes.
     var cycleStr = String(now.getMonth() * 2 + (now.getDate() <= 15 ? 1 : 2));
-    var currentCycleStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() <= 15 ? 1 : 16).getTime();
 
     // NOTE : l'ancien « indice de confiance » combinait présences et évaluations
     // (score sur 20, bonus/malus, moyenne des bilans). Il a été remplacé par
@@ -1626,7 +1632,7 @@
     // Responsable de changer leur rôle (via l'Edge Function set-role → JWT).
     function renderRolesModal() {
       var me = S.user || {};
-      var rank = { GRAND_RESPONSABLE: 0, RESP_SECTION: 1, MEMBRE: 2 };
+      var rank = { GRAND_RESPONSABLE: 0, RESP_SECTION: 1, MEMBRE: 2, STAGIAIRE: 3 };
       var members = (db(SK.USERS, []) || []).filter(function(m){ return m && m.id; });
       members.sort(function(a, b) {
         var ra = rank[a.role] == null ? 2 : rank[a.role];
@@ -1659,6 +1665,7 @@
             '</div>' +
           '</div>' +
           '<div style="display:flex;gap:6px;">' +
+            roleBtn(m, 'STAGIAIRE', 'Stagiaire') +
             roleBtn(m, 'MEMBRE', 'Membre') +
             roleBtn(m, 'RESP_SECTION', 'Responsable') +
             roleBtn(m, 'GRAND_RESPONSABLE', 'Admin') +
@@ -1766,50 +1773,6 @@
     var freshU = db(SK.USERS, []).find(function(p){ return p.id === u.id; }) || u;
     
     var displayAvatar = S.avatarPreview || freshU.avatar_url;
-        // ---- Dynamic RH Metrics (15-day cycle) ----
-    var posts = db(SK.POSTS, []);
-    var now = new Date();
-    // Cycle de 15 jours: du 1er au 15, puis du 16 à la fin du mois
-    var currentCycleStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() <= 15 ? 1 : 16).getTime();
-
-    var eventsList = posts.filter(function(p){ return p.type === 'EVENT' && (p.timestamp || 0) >= currentCycleStart; });
-    var myServicesCount = 0;
-    eventsList.forEach(function(ev) {
-      var assignments = ev.assignments || [];
-      var isAssigned = assignments.some(function(a){ return a.userId === freshU.id; });
-      var isParticipant = Array.isArray(ev.likedBy) && ev.likedBy.indexOf(freshU.id) !== -1;
-      if (isAssigned || isParticipant) myServicesCount++;
-    });
-
-    var evalPosts = posts.filter(function(p){ 
-      var isEval = p.type === 'EVALUATION' || (p.metadata && p.metadata.type === 'EVALUATION');
-      return isEval && (p.timestamp || 0) >= currentCycleStart; 
-    });
-    var sumScores = 0;
-    var evalCount = 0;
-    evalPosts.forEach(function(ep) {
-      var meta = ep.metadata || {};
-      var r = parseFloat(meta.globalScore || meta.overallRating || meta.rating || ep.rating || 0);
-      if (r > 0) {
-        if (r <= 5.0) { r = r * 4; } // Conversion automatique sur 20
-        sumScores += r;
-        evalCount++;
-      }
-    });
-    var avgRating = evalCount > 0 ? (sumScores / evalCount).toFixed(1) : '—';
-
-    // Calculate real trust score based on event participation ratio
-    var totalEvents = eventsList.length;
-    var trustScore;
-    if (freshU.trust_score !== undefined) {
-      trustScore = freshU.trust_score;
-    } else if (totalEvents > 0) {
-      trustScore = Math.round((myServicesCount / totalEvents) * 100);
-    } else {
-      trustScore = myServicesCount > 0 ? 100 : 0;
-    }
-    var trustColor = trustScore < 50 ? '#E2445C' : (trustScore <= 80 ? '#D98A0B' : '#0E9F6E');
-    var trustLabel = trustScore < 50 ? 'Suivi Requis' : (trustScore <= 80 ? 'Assiduité Satisfaisante' : 'Fiabilité Élevée 🌟');
 
     var avatarContent = displayAvatar 
       ? '<img id="editAvatarPreview" src="' + displayAvatar + '" style="width:100%;height:100%;object-fit:cover;" />'
@@ -1945,7 +1908,7 @@
       : '';
 
     var compte = ligne(svg('<path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>'), 'Modifier le profil', '›', 'App.closeSettings();App.openEditProfile()') +
-      ligne('<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="' + UI.bad + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>', 'Supprimer mon compte', '', 'App.openDeleteAccount()', true);
+      ligne('<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="' + UI.bad + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>', 'Supprimer mon compte', '', 'App.closeSettings();App.openDeleteAccount()', true);
 
     return '<div class="safe-top" style="position:fixed;inset:0;z-index:10005;background:' + UI.page + ';display:flex;flex-direction:column;animation:fadeIn 0.2s ease-out;">' +
       '<div style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:' + UI.card + ';border-bottom:1px solid ' + UI.line + ';">' +

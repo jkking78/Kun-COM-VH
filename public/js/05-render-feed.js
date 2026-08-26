@@ -4,6 +4,41 @@
   // ============================================================
   // MAIN APP
   // ============================================================
+  // Prédicat partagé de visibilité : définit ce qui n'apparaît PAS dans le fil
+  // (marqueurs internes, programmation à venir, ciblage par pôles, éphémère
+  // expirée). Le compteur de non-lus des pôles l'utilise aussi — sinon il
+  // compte des publications que le membre ne verra jamais et affiche des
+  // badges mensongers. Une seule source de vérité pour les deux.
+  function publicationVisiblePour(p, u) {
+    if (!p) return false;
+    // Événement supprimé mais archivé pour préserver les étoiles déjà
+    // attribuées (voir App.deletePost) : invisible dans le fil, comme une
+    // suppression normale — seuls les calculs de ponctualité le retrouvent.
+    if (p.type === 'EVENT_ARCHIVED') return false;
+
+    // Enregistrement de tâche livrée : marqueur interne (voir toggleTaskDone),
+    // jamais une publication du fil.
+    if (p.type === 'TASK_DONE') return false;
+
+    // Scheduled post filter
+    if (p.status === 'scheduled' && p.scheduled_at && p.scheduled_at > Date.now()) {
+      if (u.role !== 'GRAND_RESPONSABLE' && p.userId !== u.id) return false;
+    }
+
+    // Privacy / Targeted sections filter
+    if (p.visibility === 'sections' && Array.isArray(p.targetSections) && p.targetSections.length > 0) {
+      if (u.role !== 'GRAND_RESPONSABLE' && p.userId !== u.id) {
+        var mySecs = getUserSections(u);
+        var hasAccess = p.targetSections.some(function(sec) { return mySecs.indexOf(sec) !== -1; });
+        if (!hasAccess) return false;
+      }
+    }
+
+    // Filter expired ephemeral posts
+    if (p.is_ephemeral && p.ephemeral_expiry && p.ephemeral_expiry < Date.now()) return false;
+    return true;
+  }
+
   function renderApp() {
     var u = S.user || {};
     var initial = (u.prenom || 'M').charAt(0).toUpperCase();
@@ -15,32 +50,12 @@
         if (ap !== bp) return ap ? -1 : 1;
         return (b.timestamp||0)-(a.timestamp||0); 
       }).filter(function(p) {
-        // Événement supprimé mais archivé pour préserver les étoiles déjà
-        // attribuées (voir App.deletePost) : invisible dans le fil, comme une
-        // suppression normale — seuls les calculs de ponctualité le retrouvent.
-        if (p.type === 'EVENT_ARCHIVED') return false;
-
-        // Enregistrement de tâche livrée : marqueur interne (voir toggleTaskDone),
-        // jamais une publication du fil.
-        if (p.type === 'TASK_DONE') return false;
-
-        // Scheduled post filter
-        if (p.status === 'scheduled' && p.scheduled_at && p.scheduled_at > Date.now()) {
-          if (u.role !== 'GRAND_RESPONSABLE' && p.userId !== u.id) return false;
-        }
-
-        // Privacy / Targeted sections filter
-        if (p.visibility === 'sections' && Array.isArray(p.targetSections) && p.targetSections.length > 0) {
-          if (u.role !== 'GRAND_RESPONSABLE' && p.userId !== u.id) {
-            var mySecs = getUserSections(u);
-            var hasAccess = p.targetSections.some(function(sec) { return mySecs.indexOf(sec) !== -1; });
-            if (!hasAccess) return false;
-          }
-        }
+        // Visibilité (marqueurs internes, programmation, ciblage par pôles,
+        // éphémère expirée) : prédicat factorisé ci-dessus, partagé avec le
+        // compteur de non-lus des pôles.
+        if (!publicationVisiblePour(p, u)) return false;
 
         if (S.story !== 'all' && p.sectionId !== S.story) return false;
-        // Filter expired ephemeral posts
-        if (p.is_ephemeral && p.ephemeral_expiry && p.ephemeral_expiry < Date.now()) return false;
         if (S.q.trim()) {
           var q = S.q.toLowerCase();
           return (p.caption||'').toLowerCase().indexOf(q) !== -1 ||
@@ -197,7 +212,7 @@
         '<div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">' +
           (rightActionHtml || '') +
           (u.avatar_url
-            ? '<button onclick="App.tab(\'profile\')" style="width:30px;height:30px;border-radius:' + UI.pill + ';border:none;cursor:pointer;padding:0;overflow:hidden;flex-shrink:0;"><img src="' + u.avatar_url + '" style="width:100%;height:100%;object-fit:cover;" /></button>'
+            ? '<button onclick="App.tab(\'profile\')" style="width:30px;height:30px;border-radius:' + UI.pill + ';border:none;cursor:pointer;padding:0;overflow:hidden;flex-shrink:0;"><img src="' + safeHtml(u.avatar_url) + '" style="width:100%;height:100%;object-fit:cover;" /></button>'
             : '<button onclick="App.tab(\'profile\')" style="width:30px;height:30px;border-radius:' + UI.pill + ';background:' + (u.avatar_color||UI.accent) + ';border:none;cursor:pointer;color:#FFF;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;">' + initial + '</button>') +
         '</div>' +
       '</div>' +
@@ -226,7 +241,7 @@
           iconBtn('App.openCreate()', '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="' + UI.muted + '" stroke-width="1.9" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>', 0) +
           '<button onclick="App.tab(\'profile\')" style="width:44px;height:44px;border-radius:' + UI.pill + ';background:none;border:none;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;flex-shrink:0;touch-action:manipulation;">' +
             (u.avatar_url
-              ? '<img src="' + u.avatar_url + '" style="width:32px;height:32px;border-radius:' + UI.pill + ';object-fit:cover;" />'
+              ? '<img src="' + safeHtml(u.avatar_url) + '" style="width:32px;height:32px;border-radius:' + UI.pill + ';object-fit:cover;" />'
               : '<span style="width:32px;height:32px;border-radius:' + UI.pill + ';background:' + UI.accent + ';color:#FFF;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;">' + initial + '</span>') +
           '</button>' +
         '</div>' +
@@ -256,7 +271,10 @@
         var sel = S.story === s.id;
         var sc = secColor(s.id) || UI.accent;
         var lastSeen = s.id === 'all' ? null : (sectionSeen[s.id] || 0);
-        var cnt = lastSeen === null ? 0 : allPostsForCount.filter(function(p){ return p.sectionId === s.id && (p.timestamp||0) > lastSeen; }).length;
+        // Le compteur applique le MÊME prédicat de visibilité que le fil
+        // principal : sinon il compte des publications invisibles (programmées,
+        // ciblées sur d'autres pôles…) et affiche des badges mensongers.
+        var cnt = lastSeen === null ? 0 : allPostsForCount.filter(function(p){ return p.sectionId === s.id && (p.timestamp||0) > lastSeen && publicationVisiblePour(p, u); }).length;
         return '<div onclick="App.story(\'' + s.id + '\')" style="display:flex;flex-direction:column;align-items:center;cursor:pointer;min-width:64px;gap:6px;flex-shrink:0;">' +
           '<div style="position:relative;width:54px;height:54px;">' +
             '<div style="width:54px;height:54px;border-radius:50%;background:' + (sel ? sc + '1A' : UI.tile) + ';border:1.5px solid ' + (sel ? sc : 'transparent') + ';display:flex;align-items:center;justify-content:center;font-size:22px;transition:all 0.2s;">' +
@@ -280,11 +298,11 @@
     // avant de voir son propre fil. C'est le bug « ça charge trop longtemps ».
     // Désormais : s'il existe déjà des publications en cache, on les affiche
     // tout de suite et la synchronisation se termine silencieusement derrière.
-    // Le second cas (déjà présent avant) couvre une incohérence transitoire
-    // distincte : des publications existent dans le cache global mais le filtre
-    // du fil "Tous" les exclut toutes (ex. juste après une fusion) — il exige
-    // explicitement allLocalPosts.length > 0 et reste donc sans effet quand le
-    // cache est simplement vide pour de bon (voir « Aucune publication » ci-dessous).
+    // L'ancienne seconde clause (« cache plein mais filtre du fil Tous vide »)
+    // a été retirée : elle affichait des squelettes À L'INFINI quand le fil
+    // filtré était légitimement vide (uniquement des publications programmées
+    // ou archivées en cache), rendant l'état « Aucune publication » inaccessible.
+    // Désormais l'état vide s'affiche correctement dès la fin de la synchro.
     // S.initialLoading passe à false après 2,5 s même si le réseau est encore lent
     // (c'est voulu : ça ne débloque QUE l'écran plein écran). Sur un appareil sans
     // rien en cache, ça faisait passer un « toujours en train de charger » pour un
@@ -293,8 +311,7 @@
     // seule, quelques secondes plus tard, comme si le fil s'était « réparé tout
     // seul ». S.syncEnCours reste vrai tant que la synchronisation n'est pas
     // RÉELLEMENT terminée (voir syncSupabaseToLocal) — c'est lui qui tranche ici.
-    var isActuallySyncing = ((S.initialLoading || S.syncEnCours) && allLocalPosts.length === 0) ||
-      (allLocalPosts.length > 0 && filtered.length === 0 && !S.q && S.story === 'all');
+    var isActuallySyncing = (S.initialLoading || S.syncEnCours) && allLocalPosts.length === 0;
 
     // Le fil est-il encore en train de se charger ? S.syncEnCours reste vrai
     // jusqu'à la fin RÉELLE de la requête (voir syncSupabaseToLocal) : tant qu'il
@@ -445,7 +462,7 @@
       // height fixe plutôt que auto : sans hauteur connue, l'affiche occupait zéro
       // pixel jusqu'à son arrivée, puis faisait grandir la carte d'un coup. Le
       // recalage du carrousel est déclenché à son chargement.
-      ? '<img src="' + post.eventImage + '" loading="lazy" onload="App.recalerCarrousels()" onclick="event.stopPropagation();App.openImageViewer(\'' + post.eventImage + '\')" style="display:block;width:100%;height:200px;object-fit:cover;border-radius:' + UI.r1 + ';margin-bottom:14px;background:#000;cursor:pointer;" />'
+      ? '<img src="' + safeHtml(post.eventImage) + '" loading="lazy" onload="App.recalerCarrousels()" onerror="App.mediaEchoue(this)" onclick="event.stopPropagation();App.openImageViewer(\'' + safeHtml(String(post.eventImage)).replace(/'/g,"\\'") + '\')" style="display:block;width:100%;height:200px;object-fit:cover;border-radius:' + UI.r1 + ';margin-bottom:14px;background:#000;cursor:pointer;" />'
       : '';
 
     // Vert profond + or : identité réservée aux événements, pour qu'ils se
@@ -539,7 +556,10 @@
     var d = new Date(dateIso + 'T00:00:00');
     var dateLabel = d.toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long' });
     var carId = 'evgrp-' + dateIso.replace(/-/g, '');
-    var curIdx = S.eventGroupIdx && S.eventGroupIdx[dateIso] ? S.eventGroupIdx[dateIso] : 0;
+    // Bornage au rendu : l'indice stocké peut survivre à une édition (événement
+    // retiré du groupe) et produire un badge impossible (« 3/2 »).
+    var curIdx = Math.min((S.eventGroupIdx && S.eventGroupIdx[dateIso]) || 0, events.length - 1);
+    if (!(curIdx > 0)) curIdx = 0;
     var anyPinned = events.some(function(e){ return isPinnedNow(e); });
 
     return '<article style="background:' + UI.card + ';border-radius:' + UI.r2 + ';box-shadow:' + UI.sh2 + ';margin:0 12px 12px;overflow:hidden;">' +
@@ -653,7 +673,10 @@
       return '<div style="margin:10px 14px;' + boxStyle + '">' + evBadge + renderEvaluationSlide(evals[0]) + '</div>';
     }
 
-    var curIdx = (S.evalCarouselIdx && S.evalCarouselIdx[post.id]) || 0;
+    // Bornage au rendu : l'indice stocké peut survivre à une édition et produire
+    // un badge impossible (« 3/2 »).
+    var curIdx = Math.min((S.evalCarouselIdx && S.evalCarouselIdx[post.id]) || 0, evals.length - 1);
+    if (!(curIdx > 0)) curIdx = 0;
     return '<div style="margin:10px 14px;">' +
       evBadge +
       '<div style="position:relative;">' +
@@ -867,6 +890,26 @@
     '</div>';
   }
 
+  // Troncature prudente de texte : ne coupe JAMAIS au milieu d'une paire
+  // surrogate (sinon un emoji tronqué devient un caractère invalide « � »),
+  // et si possible recule jusqu'au dernier espace pour ne pas couper un mot.
+  // Exception : une caption contenant une URL est coupée dur à la longueur max,
+  // sans reculer, pour ne pas risquer d'abîmer le lien.
+  function sliceSafe(str, max) {
+    if (!str || str.length <= max) return str || '';
+    var cut = str.slice(0, max);
+    var last = cut.charCodeAt(cut.length - 1);
+    if (last >= 0xD800 && last <= 0xDBFF) cut = cut.slice(0, -1);
+    if (str.indexOf('http') === -1 && cut.length < str.length) {
+      var suivant = str.charAt(cut.length);
+      if (suivant && suivant !== ' ') {
+        var dernierEspace = cut.lastIndexOf(' ');
+        if (dernierEspace > 0) cut = cut.slice(0, dernierEspace);
+      }
+    }
+    return cut;
+  }
+
   function renderPostCard(post) {
     var iLiked = userIsLiked(post);
     var iSaved = !!S.savedPosts[post.id];
@@ -874,7 +917,10 @@
     // Rattrapage : publications vidéo déjà en ligne sans vignette (générée trop tôt
     // ou échouée sur mobile). On la fabrique une fois puis on l'enregistre.
     backfillVideoPoster(post);
-    var curIdx = S.carouselIdx[post.id] || 0;
+    // Bornage au rendu : l'indice stocké peut survivre à une édition de la
+    // publication (média retiré) et produire un badge impossible (« 3/2 »).
+    var curIdx = Math.min(S.carouselIdx[post.id] || 0, (post.mediaUrls||[]).length - 1);
+    if (!(curIdx > 0)) curIdx = 0;
     var expanded = !!S.expandedCaptions[post.id];
     var ago = timeAgo(post.timestamp);
     var sec = SECTIONS.find(function(s){ return s.id === post.sectionId; }) || { emoji:'📢', color:'var(--faint)' };
@@ -896,7 +942,7 @@
     var lines = fullCaption.split('\n');
     var needsTruncate = fullCaption.length > 120 || lines.length > 3;
     if (!expanded && needsTruncate) {
-      var short = fullCaption.slice(0, 120);
+      var short = sliceSafe(fullCaption, 120);
       captionHtml = hashtagify(short) + '... <span onclick="App.expandCaption(\'' + post.id + '\')" style="color:var(--faint);cursor:pointer;font-weight:600;">plus</span>';
     } else {
       captionHtml = hashtagify(fullCaption);
@@ -919,8 +965,10 @@
             var mediaTag = isVideoUrl(url)
               // preload="auto" + onloadeddata : si aucune vignette n'a pu être générée,
               // on force le navigateur à afficher la première image plutôt qu'un écran noir.
-              ? '<video src="'+url+'"' + (post.videoPoster ? ' poster="'+post.videoPoster+'"' : '') + ' controls playsinline preload="auto" onloadedmetadata="App.mediaCharge(this,\''+url+'\')" onloadeddata="App.primeVideoFrame(this)" style="display:block;width:auto;height:auto;max-width:100%;max-height:640px;object-fit:contain;margin:0 auto;background:#000;"></video>'
-              : '<img src="'+url+'" loading="lazy" onload="App.mediaCharge(this,\''+url+'\')" onclick="App.openImageViewer(\''+url+'\')" style="display:block;width:auto;height:auto;max-width:100%;max-height:640px;object-fit:contain;margin:0 auto;cursor:pointer;"/>';
+              // onerror : URL expirée/supprimée = encart « Média indisponible »
+              // (voir App.mediaEchoue) au lieu d'un média cassé définitif.
+              ? '<video src="'+url+'"' + (post.videoPoster ? ' poster="'+post.videoPoster+'"' : '') + ' controls playsinline preload="auto" onloadedmetadata="App.mediaCharge(this,\''+url+'\')" onloadeddata="App.primeVideoFrame(this)" onerror="App.mediaEchoue(this)" style="display:block;width:auto;height:auto;max-width:100%;max-height:640px;object-fit:contain;margin:0 auto;background:#000;"></video>'
+              : '<img src="'+url+'" loading="lazy" onload="App.mediaCharge(this,\''+url+'\')" onerror="App.mediaEchoue(this)" onclick="App.openImageViewer(\''+url+'\')" style="display:block;width:auto;height:auto;max-width:100%;max-height:640px;object-fit:contain;margin:0 auto;cursor:pointer;"/>';
             // Réservation de la hauteur AVANT que le média n'arrive : avec sa
             // proportion connue, la place est exacte et rien ne bouge ; sinon on
             // réserve une hauteur raisonnable, ce qui évite déjà que la carte soit
@@ -943,9 +991,9 @@
       // Text-only: only show dark zone for vedette/scored posts
       if (post.postBg) {
         // Colored/gradient background post — Facebook style
-        var bgStyle = post.postBg.startsWith('url') 
-          ? 'background:' + post.postBg + ';background-size:cover;background-position:center;'
-          : 'background:' + post.postBg + ';';
+        var bgStyle = post.postBg.startsWith('url')
+          ? 'background:' + safeHtml(post.postBg) + ';background-size:cover;background-position:center;'
+          : 'background:' + safeHtml(post.postBg) + ';';
         var captionForBg = post.caption || '';
         var fontSize = captionForBg.length > 100 ? '18px' : captionForBg.length > 60 ? '22px' : '26px';
         mediaZone = '<div ondblclick="App.doubleTapLike(\''+post.id+'\')" style="position:relative;' + bgStyle + 'min-height:220px;display:flex;align-items:center;justify-content:center;padding:28px 20px;text-align:center;overflow:hidden;">' +
@@ -1034,13 +1082,14 @@
              ? ' onclick="event.stopPropagation();App.goToOriginalPost(\'' + post.originalPostId + '\')" style="cursor:pointer;"'
              : '';
            if (origMedia.length > 0) {
-             contentZone = '<div' + goOrig + '>' + origMedia.map(function(url){
-               return isVideoUrl(url)
-                 ? '<video src="' + url + '"' + (post.originalVideoPoster ? ' poster="'+post.originalVideoPoster+'"' : '') + ' controls playsinline preload="metadata" style="width:100%;display:block;background:#000;"></video>'
-                 : '<img src="' + url + '" style="width:100%;display:block;" />';
-             }).join('') + '</div>';
+              contentZone = '<div' + goOrig + '>' + origMedia.map(function(url){
+                // onerror : même repli « Média indisponible » que les cartes normales.
+                return isVideoUrl(url)
+                  ? '<video src="' + url + '"' + (post.originalVideoPoster ? ' poster="'+post.originalVideoPoster+'"' : '') + ' controls playsinline preload="metadata" onerror="App.mediaEchoue(this)" style="width:100%;display:block;background:#000;"></video>'
+                  : '<img src="' + url + '" onerror="App.mediaEchoue(this)" style="width:100%;display:block;" />';
+              }).join('') + '</div>';
            } else if (post.originalPostBg) {
-             contentZone = '<div' + (goOrig ? goOrig.replace('style="cursor:pointer;"', '') : '') + ' style="background:' + post.originalPostBg + ';min-height:200px;display:flex;align-items:center;justify-content:center;padding:30px;' + (goOrig ? 'cursor:pointer;' : '') + '"><p style="color:#FFF;font-size:20px;font-weight:800;text-align:center;text-shadow:0 2px 8px rgba(0,0,0,0.3);margin:0;line-height:1.4;">' + safeHtml(post.originalCaption || '') + '</p></div>';
+              contentZone = '<div' + (goOrig ? goOrig.replace('style="cursor:pointer;"', '') : '') + ' style="background:' + safeHtml(post.originalPostBg) + ';min-height:200px;display:flex;align-items:center;justify-content:center;padding:30px;' + (goOrig ? 'cursor:pointer;' : '') + '"><p style="color:#FFF;font-size:20px;font-weight:800;text-align:center;text-shadow:0 2px 8px rgba(0,0,0,0.3);margin:0;line-height:1.4;">' + safeHtml(post.originalCaption || '') + '</p></div>';
            }
          }
       }
@@ -1093,7 +1142,7 @@
           var pName = (pAuthor && pAuthor.prenom && pAuthor.nom) ? (pAuthor.prenom + ' ' + pAuthor.nom) : (post.author || 'Membre');
 
           var avatarNode = pAvatarUrl
-            ? '<img src="' + pAvatarUrl + '" style="width:36px;height:36px;border-radius:' + UI.pill + ';object-fit:cover;flex-shrink:0;" />'
+            ? '<img src="' + safeHtml(pAvatarUrl) + '" style="width:36px;height:36px;border-radius:' + UI.pill + ';object-fit:cover;flex-shrink:0;" />'
             : '<div style="width:36px;height:36px;border-radius:' + UI.pill + ';background:' + pColor + ';color:#FFF;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + pInitial + '</div>';
 
           return '<div onclick="App.openUserProfile(\'' + post.userId + '\')" style="display:flex;align-items:center;gap:10px;cursor:pointer;min-width:0;">' +
@@ -1199,7 +1248,7 @@
         var teinte = (expediteur && expediteur.avatar_color) || n.senderColor || '#0B63F6';
 
         var avatarHtml = photo
-          ? '<img src="' + photo + '" style="width:44px;height:44px;border-radius:22px;object-fit:cover;flex-shrink:0;" />'
+          ? '<img src="' + safeHtml(photo) + '" style="width:44px;height:44px;border-radius:22px;object-fit:cover;flex-shrink:0;" />'
           : '<div style="width:44px;height:44px;border-radius:22px;background:' + teinte + ';color:#FFF;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + (n.senderName||'S').charAt(0).toUpperCase() + '</div>';
 
         return '<div onclick="App.clickNotification(\'' + n.id + '\', \'' + (n.targetId||'') + '\')" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:0.5px solid var(--tile);background:' + (isUnread ? '#E8EEFB' : '#FFF') + ';cursor:pointer;transition:background 0.2s;position:relative;">' +
@@ -1557,7 +1606,7 @@
           previewHtml +
 
           (S.pendingMedia.length === 0 && S.postBg
-            ? '<div id="bgPreviewZone" style="border-radius:22px;overflow:hidden;margin-bottom:14px;position:relative;min-height:180px;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 20px rgba(0,0,0,0.14);' + (S.postBg.startsWith('url') ? 'background:' + S.postBg + ';background-size:cover;background-position:center;' : 'background:' + S.postBg + ';') + '">' +
+            ? '<div id="bgPreviewZone" style="border-radius:22px;overflow:hidden;margin-bottom:14px;position:relative;min-height:180px;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 20px rgba(0,0,0,0.14);' + (S.postBg.startsWith('url') ? 'background:' + safeHtml(S.postBg) + ';background-size:cover;background-position:center;' : 'background:' + safeHtml(S.postBg) + ';') + '">' +
                 (S.postBg && !S.postBg.includes('linear-gradient') && !S.postBg.includes('url') ? '<div style="position:absolute;inset:0;background:rgba(0,0,0,0.18);border-radius:22px;"></div>' : '') +
                 '<textarea id="editPostText" oninput="App.onPostInput(this.value)" placeholder="Modifiez votre texte..." style="width:100%;min-height:180px;border:none;background:transparent;font-size:24px;font-weight:900;line-height:1.4;color:#FFF;resize:none;outline:none;box-sizing:border-box;font-family:inherit;text-align:center;padding:24px 20px;text-shadow:0 2px 12px rgba(0,0,0,0.3);position:relative;z-index:1;">' + safeHtml(S.postText||'') + '</textarea>' +
               '</div>'
@@ -1712,7 +1761,7 @@
                   ? '<video src="'+previewMedia+'"' + (post.videoPoster ? ' poster="'+post.videoPoster+'"' : '') + ' muted preload="metadata" style="width:100%;max-height:220px;object-fit:cover;display:block;background:#000;"></video>'
                   : '<img src="'+previewMedia+'" style="width:100%;max-height:220px;object-fit:cover;display:block;">')
               : (post.postBg
-                  ? '<div style="min-height:100px;display:flex;align-items:center;justify-content:center;padding:20px;background:' + post.postBg + ';"><p style="color:#FFF;font-size:15px;font-weight:800;text-align:center;margin:0;">' + safeHtml(previewCaption.slice(0,140)) + '</p></div>'
+                  ? '<div style="min-height:100px;display:flex;align-items:center;justify-content:center;padding:20px;background:' + safeHtml(post.postBg) + ';"><p style="color:#FFF;font-size:15px;font-weight:800;text-align:center;margin:0;">' + safeHtml(previewCaption.slice(0,140)) + '</p></div>'
                   : '<p style="font-size:13.5px;color:var(--ink2);margin:0;padding:12px;line-height:1.4;">' + safeHtml(previewCaption.slice(0,200)) + '</p>')
             ) +
           '</div>' +
@@ -1940,7 +1989,7 @@
         '<div style="overflow-y:auto;flex:1;padding:4px 16px 16px;">' +
           '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">' +
             ((u && u.avatar_url)
-              ? '<img src="' + u.avatar_url + '" style="width:42px;height:42px;border-radius:21px;object-fit:cover;flex-shrink:0;box-shadow:0 3px 8px rgba(0,0,0,0.12);" />'
+              ? '<img src="' + safeHtml(u.avatar_url) + '" style="width:42px;height:42px;border-radius:21px;object-fit:cover;flex-shrink:0;box-shadow:0 3px 8px rgba(0,0,0,0.12);" />'
               : '<div style="width:42px;height:42px;border-radius:21px;background:linear-gradient(135deg,' + ((u||{}).avatar_color||'#0B63F6') + ',#0B63F6);color:#FFF;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 3px 8px rgba(0,0,0,0.12);">' + ((u&&u.prenom||'M').charAt(0)) + '</div>') +
             '<div>' +
               '<div style="font-size:14.5px;font-weight:800;color:var(--ink);">' + safeHtml((u&&u.prenom||'') + ' ' + (u&&u.nom||'')) + '</div>' +
@@ -1959,7 +2008,7 @@
           // Color preview or plain textarea — hauteur généreuse et garantie, tout le
           // reste (options, footer) défile désormais avec elle dans le même conteneur.
           (S.pendingMedia.length === 0 && S.postBg
-            ? '<div id="bgPreviewZone" style="border-radius:22px;overflow:hidden;margin-bottom:14px;position:relative;min-height:180px;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 20px rgba(0,0,0,0.14);' + (S.postBg.startsWith('url') ? 'background:' + S.postBg + ';background-size:cover;background-position:center;' : 'background:' + S.postBg + ';') + '">' +
+            ? '<div id="bgPreviewZone" style="border-radius:22px;overflow:hidden;margin-bottom:14px;position:relative;min-height:180px;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 20px rgba(0,0,0,0.14);' + (S.postBg.startsWith('url') ? 'background:' + safeHtml(S.postBg) + ';background-size:cover;background-position:center;' : 'background:' + safeHtml(S.postBg) + ';') + '">' +
                 (S.postBg && !S.postBg.includes('linear-gradient') && !S.postBg.includes('url') ? '<div style="position:absolute;inset:0;background:rgba(0,0,0,0.18);border-radius:22px;"></div>' : '') +
                 '<textarea id="newPostText" oninput="App.onPostInput(this.value)" placeholder="Quoi de neuf ?" style="width:100%;min-height:180px;border:none;background:transparent;font-size:24px;font-weight:900;line-height:1.4;color:#FFF;resize:none;outline:none;box-sizing:border-box;font-family:inherit;text-align:center;padding:24px 20px;text-shadow:0 2px 12px rgba(0,0,0,0.3);position:relative;z-index:1;">' + safeHtml(S.postText||'') + '</textarea>' +
               '</div>'

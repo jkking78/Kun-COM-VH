@@ -82,10 +82,17 @@
         s.onload = function(){ resoudre(true); };
         s.onerror = function(){
           console.warn('Cropper.js indisponible : la photo sera utilisée sans recadrage.');
+          // Échec réseau : on remet le garde à zéro pour permettre une nouvelle
+          // tentative au prochain recadrage (sinon l'échec serait définitif).
+          _cropperEnChargement = null;
           resoudre(false);
         };
         document.head.appendChild(s);
-      } catch(e) { resoudre(false); }
+      } catch(e) {
+        // Même chose en cas d'exception synchrone : on libère le garde.
+        _cropperEnChargement = null;
+        resoudre(false);
+      }
     });
     return _cropperEnChargement;
   }
@@ -97,11 +104,25 @@
       return;
     }
     if (S.cropperOpen && S.cropperDataUrl && window.Cropper) {
-      setTimeout(function() {
+      // L'image cible n'est montée qu'après le rendu du modal : un unique essai
+      // tombait parfois trop tôt et « Terminé » échouait en silence. On sonde
+      // donc jusqu'à 12 fois, espacées de 100 ms (1,2 s maximum).
+      var essais = 0;
+      var sonderCropper = function() {
         var img = document.getElementById('cropperTargetImage');
-        if (img && !img._cropperInst) {
+        if (!img) {
+          essais += 1;
+          if (essais < 12) { setTimeout(sonderCropper, 100); return; }
+          toast('Recadrage indisponible, réessaie.', 'error');
+          return;
+        }
+        if (!img._cropperInst) {
+          // NaN = ratio libre pour Cropper.js ; sinon ratio imposé, carré par défaut.
+          var cropperAr = (S.cropperAspectRatio === undefined || S.cropperAspectRatio === null)
+            ? (S.cropperFreeRatio ? NaN : 1)
+            : S.cropperAspectRatio;
           img._cropperInst = new Cropper(img, {
-            aspectRatio: (S.cropperAspectRatio === undefined || S.cropperAspectRatio === null) ? 1 : S.cropperAspectRatio,
+            aspectRatio: cropperAr,
             viewMode: 1,
             dragMode: 'move',
             // Ratio libre : la sélection couvre toute l'image au départ, donc valider
@@ -117,7 +138,8 @@
           });
           window._currentCropper = img._cropperInst;
         }
-      }, 50);
+      };
+      sonderCropper();
     }
   }
 
@@ -138,8 +160,8 @@
     var memberRow = function(u){
       var initial = (u.prenom||'M').charAt(0).toUpperCase();
       var avatarImg = u.avatar_url
-        ? '<img src="' + u.avatar_url + '" style="width:48px;height:48px;border-radius:24px;object-fit:cover;" />'
-        : '<div style="width:48px;height:48px;border-radius:24px;background:' + (u.avatar_color||'#0B63F6') + ';color:#FFF;font-size:18px;font-weight:800;display:flex;align-items:center;justify-content:center;">' + initial + '</div>';
+        ? '<img src="' + safeHtml(u.avatar_url) + '" style="width:48px;height:48px;border-radius:24px;object-fit:cover;" />'
+        : '<div style="width:48px;height:48px;border-radius:24px;background:' + safeHtml(u.avatar_color||'#0B63F6') + ';color:#FFF;font-size:18px;font-weight:800;display:flex;align-items:center;justify-content:center;">' + initial + '</div>';
       var avatarNode = '<div style="position:relative;flex-shrink:0;">' + avatarImg +
         (estEnLigne(u) ? '<span style="position:absolute;bottom:1px;right:1px;width:12px;height:12px;border-radius:50%;background:#22C55E;border:2.5px solid var(--card);"></span>' : '') +
       '</div>';
@@ -269,9 +291,9 @@
           '</div>' +
           '<p style="font-size:14px;color:var(--faint);margin-bottom:20px;">Répondez aux deux questions de sécurité que vous avez définies lors de votre inscription.</p>' +
           '<form onsubmit="event.preventDefault(); App.resetPassword(event);" style="display:flex;flex-direction:column;gap:14px;">' +
-            '<div><label style="font-size:12px;font-weight:700;color:var(--ink2);display:block;margin-bottom:5px;">Q1: ' + (S.forgotUser.sec_q1||'Question 1') + '</label>' +
+            '<div><label style="font-size:12px;font-weight:700;color:var(--ink2);display:block;margin-bottom:5px;">Q1: ' + safeHtml(S.forgotUser.sec_q1||'Question 1') + '</label>' +
             '<input id="forgotA1" type="text" placeholder="Votre réponse secrète" required style="width:100%;height:48px;border-radius:12px;border:1.5px solid var(--line);background:var(--tile);padding:0 14px;font-size:14px;box-sizing:border-box;outline:none;" /></div>' +
-            '<div><label style="font-size:12px;font-weight:700;color:var(--ink2);display:block;margin-bottom:5px;">Q2: ' + (S.forgotUser.sec_q2||'Question 2') + '</label>' +
+            '<div><label style="font-size:12px;font-weight:700;color:var(--ink2);display:block;margin-bottom:5px;">Q2: ' + safeHtml(S.forgotUser.sec_q2||'Question 2') + '</label>' +
             '<input id="forgotA2" type="text" placeholder="Votre réponse secrète" required style="width:100%;height:48px;border-radius:12px;border:1.5px solid var(--line);background:var(--tile);padding:0 14px;font-size:14px;box-sizing:border-box;outline:none;" /></div>' +
             '<div style="margin-top:10px;">' + renderField('forgotPwd', 'password', 'Nouveau mot de passe', '8 caractères minimum', 'new-password') + '</div>' +
             '<button type="submit" style="' + btnStyle('#0B63F6') + 'margin-top:6px;">Réinitialiser le mot de passe</button>' +

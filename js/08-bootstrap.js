@@ -90,7 +90,13 @@
       mergePostsWithLocal: typeof mergePostsWithLocal,
       punctualityStars: typeof punctualityStars,
       isPinnedNow: typeof isPinnedNow,
-      isEventLike: typeof isEventLike
+      isEventLike: typeof isEventLike,
+      getUserSections: typeof getUserSections,
+      safeHtml: typeof safeHtml,
+      demarrerBattementPresence: typeof demarrerBattementPresence,
+      syncSupabaseToLocal: typeof syncSupabaseToLocal,
+      tryOpenDeepLinkedPost: typeof tryOpenDeepLinkedPost,
+      chargerCropper: typeof chargerCropper
     };
     var manquants = Object.keys(presence).filter(function(n){ return presence[n] === 'undefined'; });
     if (!manquants.length) return true;
@@ -107,9 +113,9 @@
 
     if (window.caches && caches.keys) {
       caches.keys().then(function(cles){ return Promise.all(cles.map(function(c){ return caches.delete(c); })); })
-        .then(function(){ location.reload(true); }, function(){ location.reload(true); });
+        .then(function(){ location.reload(); }, function(){ location.reload(); });
     } else {
-      location.reload(true);
+      location.reload();
     }
     return false;
   }
@@ -117,12 +123,23 @@
   async function init() {
     if (!verifierIntegrite()) return;
     try { injectCSS(); } catch(e) {}
+    // Rendu protégé : une exception lancée par render() après un await laissait
+    // sinon un écran blanc sans aucune récupération possible.
+    function rendreProtege() {
+      try { render(); } catch(eRender) {
+        console.warn('[Bootstrap] Erreur de rendu:', eRender);
+        try {
+          var rootEl = document.getElementById('root');
+          if (rootEl) rootEl.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:16px;padding:24px;text-align:center;font-family:-apple-system,sans-serif;"><p style="font-size:16px;font-weight:600;">Une erreur est survenue</p><button onclick="location.reload()" style="padding:10px 22px;border-radius:12px;border:none;background:#0B63F6;color:#FFF;font-size:14px;font-weight:600;">Recharger</button></div>';
+        } catch(e2) {}
+      }
+    }
     // L'authentification est désormais gouvernée par Supabase Auth : on attend la
     // restauration de session (ou son absence -> écran de connexion) AVANT le
     // premier rendu, sinon l'application s'afficherait brièvement à partir d'un
     // cache local sans session valide.
     try { await initAuthSession(); } catch(e) { console.warn("initAuthSession error:", e); }
-    render();
+    rendreProtege();
     try { syncSupabaseToLocal(); } catch(e) { console.warn("syncSupabaseToLocal init error:", e); }
     try { tryOpenDeepLinkedPost(); } catch(e){}
     // Présence : battement périodique tant que l'app est au premier plan.

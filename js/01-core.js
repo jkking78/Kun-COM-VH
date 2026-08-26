@@ -33,6 +33,17 @@
     return url.length > 500 ? null : url;
   }
 
+  // Copie de profil SANS secrets pour toute écriture vers Supabase : le hash
+  // legacy du mot de passe et les réponses aux questions de sécurité n'ont
+  // rien à faire sur un serveur partagé (l'authentification passe désormais
+  // par Supabase Auth, côté serveur).
+  function profilSansSecret(u) {
+    if (!u || typeof u !== 'object') return u;
+    var copie = Object.assign({}, u);
+    delete copie.pwd; delete copie.sec_a1; delete copie.sec_a2;
+    return copie;
+  }
+
   // Allège une liste de notifications déjà stockée. Sert au nettoyage des
   // données existantes : les notifications écrites par les anciennes versions
   // portent toutes une image en base64 qu'il faut évacuer une bonne fois.
@@ -329,7 +340,17 @@
         var deadline = p.checkInGraceUntil || 0;
         if (g && g.available) {
           p.geo = g; dbSet(SK.POSTS, posts);
-          if (supabase) supabase.from('kun_com_posts').upsert({ id: p.id, content: p }, { onConflict: 'id' }).then(function(){}, function(){});
+          // Relecture fraîche avant l'upsert : réécrire le post entier depuis
+          // le cache local pouvait écraser un commentaire/like arrivé entre-temps.
+          if (supabase) {
+            supabase.from('kun_com_posts').select('content').eq('id', p.id).single()
+              .then(function(resGeo){
+                var frais = (resGeo && resGeo.data && resGeo.data.content) ? resGeo.data.content : p;
+                frais.geo = g;
+                return supabase.from('kun_com_posts').upsert({ id: p.id, content: frais }, { onConflict: 'id' });
+              })
+              .then(function(){}, function(){});
+          }
           var ev = posts.find(function(x){ return x.id === p.checkInEventId && isEventLike(x); });
           if (ev && checkInPresence(p, ev) === 'onsite') announceArrival(p, ev);
           try { render(); } catch(e){}
@@ -499,7 +520,7 @@
       try { dbSet(SK.USERS, users); } catch(e){}
       try {
         if (supabase) supabase.from('kun_com_profiles')
-          .upsert({ id: S.user.id, content: S.user }, { onConflict: 'id' })
+          .upsert({ id: S.user.id, content: profilSansSecret(S.user) }, { onConflict: 'id' })
           .then(function(){}, function(){});
       } catch(e){}
     }
@@ -518,23 +539,32 @@
       console.warn('initAuthSession:', e); S.auth = 'login';
     }
     try {
-      supabase.auth.onAuthStateChange(function(event, sess){
-        if (event === 'PASSWORD_RECOVERY') {
-          var np = window.prompt('Choisissez un nouveau mot de passe (8 caractères min.) :');
-          if (np && np.length >= 8) {
-            supabase.auth.updateUser({ password: np }).then(function(r){
-              if (r && r.error) toast('Échec de la réinitialisation : ' + r.error.message, 'error');
-              else toast('Mot de passe mis à jour. ', 'success');
-            });
-          } else if (np !== null) {
-            toast('Mot de passe trop court (8 caractères minimum).', 'error');
+      // Garde anti-doublon : initAuthSession peut être rappelée (réessai réseau).
+      // Sans lui, chaque appel ré-enregistrait un listener onAuthStateChange →
+      // applyAuthUser + render() exécutés N fois par événement.
+      if (!supabase._kcAuthListenerAttache) {
+        supabase._kcAuthListenerAttache = true;
+        supabase.auth.onAuthStateChange(function(event, sess){
+          if (event === 'PASSWORD_RECOVERY') {
+            var np = window.prompt('Choisissez un nouveau mot de passe (8 caractères min.) :');
+            if (np && np.length >= 8) {
+              supabase.auth.updateUser({ password: np }).then(function(r){
+                if (r && r.error) toast('Échec de la réinitialisation : ' + r.error.message, 'error');
+                else toast('Mot de passe mis à jour. ', 'success');
+              }, function(errUpd){
+                console.warn('updateUser error:', errUpd);
+                toast('Réinitialisation impossible pour le moment.', 'error');
+              });
+            } else if (np !== null) {
+              toast('Mot de passe trop court (8 caractères minimum).', 'error');
+            }
+            return;
           }
-          return;
-        }
-        if (sess && sess.user) applyAuthUser(sess.user);
-        else { S.user = null; S.auth = 'login'; }
-        try { if (typeof render === 'function') render(); } catch(e){}
-      });
+          if (sess && sess.user) applyAuthUser(sess.user);
+          else { S.user = null; S.auth = 'login'; }
+          try { if (typeof render === 'function') render(); } catch(e){}
+        });
+      }
     } catch(e){}
   }
 
@@ -700,6 +730,10 @@
     }
     if (!p || typeof p !== 'object') return null;
     if (!p.id && item.id) p.id = item.id;
+    // Hygiène d'identité : l'id de profil finit interpolé dans des gestionnaires
+    // inline (mentions de profil). Un identifiant au format inattendu est
+    // rejeté à l'ingestion plutôt que propagé jusqu'au rendu.
+    if (p.id && !/^[A-Za-z0-9_\-]{1,64}$/.test(String(p.id))) return null;
     return p;
   }
 
@@ -731,15 +765,46 @@
       var rUser = parseProfileItem(item);
       if (rUser && rUser.id) {
         var existing = map[rUser.id] || {};
+        var estMoi = S.user && S.user.id === rUser.id;
+        // Hygiène des secrets : des fiches legacy pouvaient embarquer le hash
+        // du mot de passe et les réponses aux questions de sécurité. L'auth
+        // passe désormais par Supabase Auth : ces champs n'ont rien à faire
+        // dans un cache partagé — on ne les conserve que pour SA propre fiche.
+        if (!estMoi) { delete rUser.pwd; delete rUser.sec_a1; delete rUser.sec_a2; }
         var merged = Object.assign({}, existing, rUser);
-        if (existing.pwd && !merged.pwd) merged.pwd = existing.pwd;
-        if (existing.sec_a1 && !merged.sec_a1) merged.sec_a1 = existing.sec_a1;
-        if (existing.sec_a2 && !merged.sec_a2) merged.sec_a2 = existing.sec_a2;
+        if (estMoi && existing.pwd && !merged.pwd) merged.pwd = existing.pwd;
+        if (estMoi && existing.sec_a1 && !merged.sec_a1) merged.sec_a1 = existing.sec_a1;
+        if (estMoi && existing.sec_a2 && !merged.sec_a2) merged.sec_a2 = existing.sec_a2;
         merged.notifications = mergeNotifications(existing.notifications, rUser.notifications);
         map[rUser.id] = merged;
       }
     });
     return Object.keys(map).map(function(k) { return map[k]; });
+  }
+
+  // Union de deux listes d'identifiants (likes, participants) sans doublon,
+  // en conservant l'ordre : local d'abord (état affiché), puis les distants absents.
+  function unionSansDoublons(a, b) {
+    var out = [];
+    var vus = {};
+    (a || []).concat(b || []).forEach(function(id) {
+      if (id && !vus[id]) { vus[id] = true; out.push(id); }
+    });
+    return out;
+  }
+
+  // Fusion des commentaires local + distant, dédoublonnée par id (les ids sont
+  // uniques : 'c' + Date.now()). Le plus complet des deux gagne, l'autre
+  // n'est jamais perdu.
+  function fusionnerCommentaires(a, b) {
+    var map = {};
+    var out = [];
+    (a || []).concat(b || []).forEach(function(c) {
+      if (!c) return;
+      var key = c.id || ('idx' + c.timestamp + c.userId);
+      if (!map[key]) { map[key] = true; out.push(c); }
+    });
+    return out;
   }
 
   // mergePostsWithLocal : fusionne les publications distantes avec le cache local
@@ -765,16 +830,17 @@
         }
         var local = map[p.id];
         if (local) {
-          // Smart merge: conserve les commentaires et mentions J'aime les plus récents
-          var localComments = (local.comments || []).length;
-          var remoteComments = (p.comments || []).length;
-          var localLikes = (local.likedBy || []).length;
-          var remoteLikes = (p.likedBy || []).length;
-          if (localComments > remoteComments || localLikes > remoteLikes) {
-            map[p.id] = Object.assign({}, p, local);
-          } else {
-            map[p.id] = p;
-          }
+          // Fusion CHAMP PAR CHAMP : l'ancienne bascule comparait de simples
+          // compteurs et écrasait ensuite le post ENTIERS d'un côté ou de
+          // l'autre — un like local de plus faisait perdre à jamais les
+          // commentaires distants (et inversement). Ici : union des likes,
+          // union des commentaires dédoublonnée par id, puis le reste des
+          // champs au plus récent des deux.
+          var fusion = Object.assign({}, p, local);
+          fusion.likedBy = unionSansDoublons(local.likedBy, p.likedBy);
+          fusion.comments = fusionnerCommentaires(local.comments, p.comments);
+          fusion.timestamp = Math.max(local.timestamp || 0, p.timestamp || 0);
+          map[p.id] = fusion;
         } else {
           map[p.id] = p;
         }
@@ -1013,7 +1079,13 @@
     });
     console.log(orphelines.length + ' publication(s) d\'un compte supprimé retirée(s) définitivement.');
   }
+  var _syncEnVol = false;
   async function syncSupabaseToLocal() {
+    // Garde anti-chevauchement : les réessais programmés pouvaient courir en
+    // parallèle d'un déclenchement manuel → doubles upserts de renvoi et
+    // courses sur S.syncEnCours/initialLoading dans le finally.
+    if (_syncEnVol) return;
+    _syncEnVol = true;
     // S.initialLoading ne sert qu'à débloquer l'écran de chargement PLEIN ÉCRAN au
     // bout de 2,5 s — un choix cosmétique pour ne jamais laisser l'utilisateur face
     // à une roue qui tourne indéfiniment. Il ne veut PAS dire que la synchronisation
@@ -1040,7 +1112,7 @@
       // cache local et donne l'illusion de fonctionner (aucune publication ni membre
       // des autres utilisateurs). C'est exactement le symptôme à diagnostiquer vite.
       console.error('Aucun client Supabase : l\'application fonctionne en mode local uniquement.');
-      S.initialLoading = false; S.syncEnCours = false; render(); return;
+      S.initialLoading = false; S.syncEnCours = false; _syncEnVol = false; render(); return;
     }
     try {
       // Publications et profils récupérés EN PARALLÈLE (pas l'un après l'autre) —
@@ -1068,6 +1140,11 @@
       if (resEvents && resEvents.error) { console.warn('Supabase events fetch error:', resEvents.error); }
       if (res && res.data) {
         S.postsAllLoaded = res.data.length < POSTS_PAGE_SIZE;
+        // Borne de pagination : le curseur de la page la plus récente, utilisé
+        // ensuite par App.loadMorePosts (pagination par curseur, voir 07).
+        if (res.data.length > 0 && res.data[res.data.length - 1] && res.data[res.data.length - 1].created_at) {
+          S.postsRemoteCursor = res.data[res.data.length - 1].created_at;
+        }
         // La purge se calcule sur la SEULE page courante : y mêler les événements
         // anciens repousserait la borne "plus ancien de la page" très loin en
         // arrière et ferait supprimer des publications valides simplement absentes
@@ -1144,7 +1221,7 @@
         // Chaque appareil ne fait autorité que sur son propre compte.
         var remoteProfileIds = (resProf.data || []).map(function(item){ return item.id; });
         if (S.user && S.user.id && remoteProfileIds.indexOf(S.user.id) === -1) {
-          supabase.from('kun_com_profiles').upsert({ id: S.user.id, content: S.user }, { onConflict: 'id' }).then(function(){}, function(e){ console.warn('Push profile error:', e); });
+          supabase.from('kun_com_profiles').upsert({ id: S.user.id, content: profilSansSecret(S.user) }, { onConflict: 'id' }).then(function(){}, function(e){ console.warn('Push profile error:', e); });
         }
       }
       
@@ -1210,6 +1287,7 @@
       // et l'application restait bloquée sur la roue indéfiniment.
       S.initialLoading = false;
       S.syncEnCours = false;
+      _syncEnVol = false;
       // Ne pas redessiner par-dessus une saisie en cours : sur un réseau mobile
       // lent, la synchronisation se termine souvent pendant que l'utilisateur
       // remplit le formulaire d'inscription, et le redessin lui effaçait ce qu'il
@@ -1230,7 +1308,22 @@
       memoriserProfilsServeur(resProf.data);
       var mergedProfiles = mergeProfilesWithLocal(resProf.data);
       DB_CACHE[SK.USERS] = mergedProfiles;
-      try { localStorage.setItem(SK.USERS, JSON.stringify(mergedProfiles)); } catch(e){}
+      try {
+        localStorage.setItem(SK.USERS, JSON.stringify(mergedProfiles));
+      } catch(eQuotaProfils) {
+        // Même chemin d'allègement que dbSet : sans lui, un profil hérité
+        // encore lourd faisait échouer CE setItem EN BOUCLE (c'est le chemin de
+        // synchro le plus fréquent) — le disque n'était alors jamais rafraîchi.
+        try {
+          localStorage.setItem(SK.USERS, JSON.stringify(stripHeavyProfilesForStorage(mergedProfiles)));
+        } catch(eQuota2) {
+          try {
+            var minima = profilsMinimum(mergedProfiles, S.user && S.user.id);
+            DB_CACHE[SK.USERS] = minima;
+            localStorage.setItem(SK.USERS, JSON.stringify(minima));
+          } catch(eQuota3) {}
+        }
+      }
       if (S.user) {
         var freshMe = mergedProfiles.find(function(x){ return x.id === S.user.id; });
         if (freshMe) {
@@ -1266,12 +1359,21 @@
   var _fetchPostsInFlight = false;
   async function fetchPostsSilently() {
     if (!supabase || _fetchPostsInFlight) return;
+    // Déconnecté : le poll de secours (20 s) tournait encore après logout et
+    // interrogeait Supabase pour rien, voire redessinait l'écran de connexion.
+    if (!S.user || S.auth !== 'app') return;
     _fetchPostsInFlight = true;
     try {
       var res = await supabase.from('kun_com_posts').select('*').order('created_at', { ascending: false }).range(0, POSTS_PAGE_SIZE - 1);
       if (res && res.error) { console.warn('Supabase posts poll error:', res.error); }
       if (res && res.data) {
         if (res.data.length < POSTS_PAGE_SIZE) S.postsAllLoaded = true;
+        if (res.data.length > 0 && res.data[res.data.length - 1] && res.data[res.data.length - 1].created_at) {
+          S.postsRemoteCursor = res.data[res.data.length - 1].created_at;
+        }
+        // Profite d'une synchro réussie pour rejouer les écritures restées en
+        // file d'attente pendant une coupure réseau.
+        try { App.viderFileAttenteEcriture(); } catch(eFlush){}
         var mergedPosts = mergePostsWithLocal(res.data, true);
         var triSilencieux = separerOrphelines(mergedPosts);
         mergedPosts = triSilencieux.gardees;
@@ -1359,7 +1461,8 @@
         sections: p.sections, section_id: p.section_id,
         avatar_url: (typeof p.avatar_url === 'string' && p.avatar_url.indexOf('data:') !== 0) ? p.avatar_url : null,
         avatar_color: p.avatar_color,
-        pwd: p.pwd, sec_q1: p.sec_q1, sec_a1: p.sec_a1, sec_q2: p.sec_q2, sec_a2: p.sec_a2,
+        // Pas de secrets ici non plus : ce repli d'urgence n'a pas à recopier
+        // hash de mot de passe ni réponses de sécurité hérités.
         notifications: Array.isArray(p.notifications) ? p.notifications.slice(0, 30) : []
       };
     });
@@ -1455,15 +1558,25 @@
       }
       localStorage.setItem('kc_purge_avatars_notifs', '1');
     } catch(e) {
-      // Le stockage peut être trop plein pour réécrire : on repart alors de zéro
-      // sur les profils (ils se re-téléchargent intégralement à la connexion
-      // suivante) plutôt que de rester bloqué avec un disque saturé.
+      // Le stockage peut être trop plein pour réécrire : on dégrade en version
+      // minimale construite DEPUIS LE CACHE MÉMOIRE (lui reste intact), plutôt
+      // que d'effacer le disque — l'ancien repli removeItem() détruisait aussi
+      // les comptes créés hors-ligne jamais synchronisés, pourtant conçus pour
+      // être protégés via kc_local_accounts.
       try {
-        localStorage.removeItem(SK.USERS);
-        DB_CACHE[SK.USERS] = undefined;
+        var minimaPurge = profilsMinimum(DB_CACHE[SK.USERS] || [], S.user && S.user.id);
+        localStorage.setItem(SK.USERS, JSON.stringify(minimaPurge));
+        DB_CACHE[SK.USERS] = minimaPurge;
         localStorage.setItem('kc_purge_avatars_notifs', '1');
-        console.warn('Stockage trop saturé pour être réécrit : cache des profils réinitialisé, il sera retéléchargé.');
-      } catch(e2) {}
+        console.warn('Stockage trop saturé : cache des profils dégradé au minimum (comptes locaux conservés).');
+      } catch(e2) {
+        // Vraiment aucun espace : on n'a plus le choix.
+        try {
+          localStorage.removeItem(SK.USERS);
+          DB_CACHE[SK.USERS] = undefined;
+          localStorage.setItem('kc_purge_avatars_notifs', '1');
+        } catch(e3) {}
+      }
     }
   }
   nettoyerStockageHerite();
@@ -1583,7 +1696,7 @@
     videoProcessing: false,
     deleteAccountOpen: false,
     deleteAccountBusy: false,
-    postsRemotePage: 1,
+    postsRemoteCursor: null,
     postsAllLoaded: false,
     loadingMorePosts: false,
     profileSelectMode: false,
@@ -1871,7 +1984,7 @@
     { maxMinutes: 30,       stars: 3,  label: 'Retard toléré (≤ 30 min)' },
     { maxMinutes: 45,       stars: 2,  label: 'Retard notable (≤ 45 min)' },
     { maxMinutes: 60,       stars: 1,  label: "Retard important (≤ 1 h)" },
-    { maxMinutes: 90,       stars: -1, label: 'Retard critique (> 1 h)' },
+    { maxMinutes: 90,       stars: -1, label: 'Retard critique (≤ 1 h 30)' },
     { maxMinutes: Infinity, stars: -2, label: 'Retard majeur (> 1 h 30)' }
   ];
   // Absence : aucune publication d'arrivée pour un membre assigné. Sanction plus
@@ -2377,7 +2490,10 @@
         label: p.label,
         absent: p.absent,
         kind: 'presence',
-        status: p.absent ? 'missed' : (p.delayMinutes > 0 ? 'late' : 'ontime'),
+        // Un pointage sanctionné (hors zone / non vérifié) peut avoir
+        // delayMinutes <= 0 : sans le test sur les étoiles, il était classé
+        // « ontime » et gonflait artificiellement le compte de ponctualité.
+        status: p.absent ? 'missed' : ((p.stars || 0) < 0 ? 'late' : (p.delayMinutes > 0 ? 'late' : 'ontime')),
         task: mine.task || ''
       });
     });
@@ -2516,7 +2632,11 @@
       Object.keys(e.criteria).forEach(function(k) {
         var v = parseFloat(e.criteria[k]);
         if (isNaN(v)) return;
-        if (k !== 'Ponctualité' && !(v > 0) && v !== 0) return;
+        // Critères manuels (échelle 1-5) : 0 = entrée absente, on ne la compte
+        // PAS dans la moyenne (l'ancienne condition `v !== 0` laissait au
+        // contraire passer le zéro et tirait les moyennes vers le bas). Seule la
+        // Ponctualité, qui peut être négative, garde un traitement spécial.
+        if (k !== 'Ponctualité' && !(v > 0)) return;
         critTotals[k] = (critTotals[k] || 0) + v;
         critCounts[k] = (critCounts[k] || 0) + 1;
       });
@@ -2805,7 +2925,7 @@
 
     try {
       if (supabase) supabase.from('kun_com_profiles')
-        .upsert({ id: S.user.id, content: S.user }, { onConflict: 'id' })
+        .upsert({ id: S.user.id, content: profilSansSecret(S.user) }, { onConflict: 'id' })
         .then(function(){}, function(){});
     } catch(e){}
   }

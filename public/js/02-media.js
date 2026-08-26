@@ -34,6 +34,10 @@
     } else {
       var reader = new FileReader();
       reader.onload = function(e) { processDataUrl(e.target.result); };
+      // Échec de lecture du fichier (fichier corrompu, permission retirée…) :
+      // on rend la main avec null plutôt que de laisser l'appelant attendre
+      // indéfiniment un callback qui ne viendrait jamais.
+      reader.onerror = function() { callback(null); };
       reader.readAsDataURL(file);
     }
   }
@@ -185,11 +189,34 @@
     videoEl.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:2px;height:2px;opacity:0;pointer-events:none;';
 
     var finished = false;
+    // Garde d'idempotence de cleanup() : le nettoyage peut être déclenché par le
+    // flux normal OU par le watchdog ci-dessous ; un double appel ne doit rien refaire.
+    var termine = false;
+    // Référence au MediaRecorder conservée pour que le watchdog puisse l'arrêter
+    // même si la création a eu lieu dans onloadedmetadata.
+    var recorderRef = null;
+    var watchdog = null;
     function cleanup() {
+      if (termine) return; // déjà nettoyé : no-op
+      termine = true;
+      finished = true;
+      if (watchdog) { clearTimeout(watchdog); watchdog = null; }
       try { URL.revokeObjectURL(objectUrl); } catch(e){}
       try { videoEl.pause(); videoEl.removeAttribute('src'); videoEl.load(); } catch(e){}
       try { if (videoEl.parentNode) videoEl.parentNode.removeChild(videoEl); } catch(e){}
     }
+
+    // Watchdog anti-fuite : si play() ne se résout jamais ou que « ended » ne
+    // vient jamais, aucun handler de fin ne s'exécuterait et on fuiterait le
+    // <video>, l'objectURL et le MediaRecorder. Au bout de 2 min on stoppe tout
+    // et on rend la main avec null (l'appelant teste déjà !dataUrl).
+    watchdog = setTimeout(function() {
+      if (!termine) {
+        try { if (recorderRef && recorderRef.state !== 'inactive') recorderRef.stop(); } catch(e){}
+        try { cleanup(); } catch(e){}
+        if (callback) callback(null);
+      }
+    }, 120000);
 
     videoEl.onerror = function() { if (finished) return; finished = true; cleanup(); passthrough(); };
 
@@ -232,6 +259,7 @@
           if (!MediaRecorder.isTypeSupported(mimeType)) mimeType = 'video/webm';
         }
         var recorder = new MediaRecorder(stream, { mimeType: mimeType, videoBitsPerSecond: 2500000 });
+        recorderRef = recorder; // accessible au watchdog en cas de blocage global
         var chunks = [];
         recorder.ondataavailable = function(e) { if (e.data && e.data.size > 0) chunks.push(e.data); };
         recorder.onerror = function() {
@@ -405,12 +433,39 @@
         if (target && !target.videoPoster) {
           target.videoPoster = poster;
           dbSet(SK.POSTS, posts);
-          if (supabase) {
+          render();
+          // Secours : upsert de la copie locale (comportement historique), utilisé
+          // seulement si la relecture serveur échoue — mieux vaut ça que de perdre
+          // la vignette générée.
+          var fallbackLocal = function() {
             try {
               supabase.from('kun_com_posts').upsert({ id: target.id, content: target }, { onConflict: 'id' }).then(function(){}, function(){});
-            } catch(e){}
+            } catch(e3){}
+            render();
+          };
+          if (supabase) {
+            try {
+              // On relit D'ABORD le contenu frais du serveur : renvoyer le post
+              // entier depuis le cache local écraserait les commentaires/likes
+              // ajoutés entre-temps par d'autres membres. On n'attache au contenu
+              // frais QUE la vignette, puis on renvoie CETTE version fraîche.
+              supabase.from('kun_com_posts').select('content').eq('id', target.id).single().then(function(res) {
+                var fresh = (res && res.data && res.data.content && typeof res.data.content === 'object') ? res.data.content : null;
+                if (!fresh) { fallbackLocal(); return; }
+                fresh.videoPoster = poster;
+                try {
+                  supabase.from('kun_com_posts').upsert({ id: target.id, content: fresh }, { onConflict: 'id' }).then(function(){}, function(){});
+                } catch(e4){}
+                // Le cache local repart de cette version fraîche fusionnée.
+                var merged = db(SK.POSTS, []);
+                for (var i = 0; i < merged.length; i++) {
+                  if (merged[i].id === target.id) { merged[i] = fresh; break; }
+                }
+                dbSet(SK.POSTS, merged);
+                render();
+              }, fallbackLocal);
+            } catch(e2) { fallbackLocal(); }
           }
-          render();
         }
       }
       processPosterBackfillQueue();
@@ -439,11 +494,12 @@
 
     post.viewedBy.push(S.user.id);
     dbSet(SK.POSTS, posts);
-    if (supabase) {
-      try {
-        supabase.from('kun_com_posts').upsert({ id: post.id, content: post }, { onConflict: 'id' }).then(function(){}, function(){});
-      } catch(e){}
-    }
+    // PAS d'upsert vers Supabase ici : cette fonction est déclenchée au simple
+    // DÉFILEMENT, et renvoyer le post ENTIER depuis le cache local écraserait
+    // les commentaires/likes ajoutés entre-temps par d'autres membres. Le champ
+    // « viewedBy » n'est consommé que localement (compteur d'affichage et modale
+    // des lecteurs dans 05-render-feed.js), donc le partage réseau n'apporte rien
+    // face au risque d'écrasement.
     // Met à jour le compteur affiché sans re-rendre tout le fil (évite de
     // perturber le défilement pendant la lecture).
     try {
@@ -490,12 +546,33 @@
     if (!text) return '';
     var safe = safeHtml(text);
     var users = db(SK.USERS, []);
+
+    // ÉTAPE 1 — On extrait d'abord les URLs et on les remplace par des jetons
+    // sentinelles (\x00index\x00). Sans cela les remplacements hashtag/mention
+    // de l'étape 2 s'appliqueraient AUSSI à l'intérieur des liens : un # ou @
+    // présent dans une URL cassait le <a> généré. On restaurera les balises en
+    // étape 3.
+    var urls = [];
+    safe = safe.replace(/(https?:\/\/[^\s<]+)/gi, function(m) {
+      urls.push(m);
+      return '\x00' + (urls.length - 1) + '\x00';
+    });
+
+    // ÉTAPE 2 — Hashtags et mentions, sur un texte désormais garanti sans URL.
     var html = safe.replace(/#[\wéèêàâôûîçÉÈÊÀÂÔÛÎÇùÙ]+/gi, function(m) {
       return '<span onclick="App.filterTag(\'' + encodeURIComponent(m) + '\')" style="color:#007AFF;font-weight:700;cursor:pointer;">' + m + '</span>';
     }).replace(/@[\wéèêàâôûîçÉÈÊÀÂÔÛÎÇùÙ_.-]+/gi, function(m) {
       var r = resolveMentionToken(m.slice(1), users);
       if (r && r.kind === 'user') {
-        return '<span onclick="App.openUserProfile(\'' + r.user.id + '\')" style="color:#007AFF;font-weight:800;cursor:pointer;background:#EBF5FF;padding:2px 6px;border-radius:6px;">' + safeHtml(m) + '</span>';
+        // L'id vient d'un profil remplissable par son propriétaire : on ne rend
+        // le nom cliquable QUE si l'id est strictement alphanumérique (6-64
+        // caractères), sinon on l'affiche en simple texte coloré — aucune
+        // injection JS possible via onclick.
+        if (/^[A-Za-z0-9_\-]{6,64}$/.test(r.user.id)) {
+          return '<span onclick="App.openUserProfile(\'' + r.user.id + '\')" style="color:#007AFF;font-weight:800;cursor:pointer;background:#EBF5FF;padding:2px 6px;border-radius:6px;">' + safeHtml(m) + '</span>';
+        }
+        // Id suspect : même couleur/style, mais SANS onclick ni curseur pointeur.
+        return '<span style="color:#007AFF;font-weight:800;background:#EBF5FF;padding:2px 6px;border-radius:6px;">' + safeHtml(m) + '</span>';
       }
       // Mentions collectives : mises en évidence différemment (violet) pour qu'on
       // voie d'un coup d'œil qu'elles touchent plusieurs personnes.
@@ -506,10 +583,17 @@
         return '<span onclick="App.story(\'' + r.section.id + '\')" style="color:#5856D6;font-weight:800;cursor:pointer;background:#F0EFFF;padding:2px 6px;border-radius:6px;">' + safeHtml(m) + '</span>';
       }
       return '<span style="color:#007AFF;font-weight:700;">' + safeHtml(m) + '</span>';
-    }).replace(/(https?:\/\/[^\s<]+)/gi, function(m) {
-      return '<a href="' + m + '" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" style="color:#007AFF;font-weight:600;text-decoration:underline;word-break:break-all;">' + m + '</a>';
-    }).replace(/\n/g, '<br>');
-    return html;
+    });
+
+    // ÉTAPE 3 — On restaure chaque jeton par son lien <a> complet (mêmes
+    // couleurs, cible et attributs qu'avant la restructuration).
+    html = html.replace(/\x00(\d+)\x00/g, function(m, i) {
+      var u = urls[parseInt(i, 10)];
+      if (typeof u !== 'string') return '';
+      return '<a href="' + u + '" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" style="color:#007AFF;font-weight:600;text-decoration:underline;word-break:break-all;">' + u + '</a>';
+    });
+
+    return html.replace(/\n/g, '<br>');
   }
 
   // Extrait les liens http(s) d'un texte (pour l'enregistrement automatique dans le profil)
@@ -548,7 +632,7 @@
       try { localStorage.setItem(SK.SESS, JSON.stringify(u)); } catch(e){}
     }
     if (supabase) {
-      supabase.from('kun_com_profiles').upsert({ id: u.id, content: u }, { onConflict: 'id' }).then(function(){}, function(e){});
+      supabase.from('kun_com_profiles').upsert({ id: u.id, content: profilSansSecret(u) }, { onConflict: 'id' }).then(function(){}, function(e){});
     }
   }
 
