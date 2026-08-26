@@ -63,10 +63,10 @@ WHERE c.content->>'userId' IS NOT NULL
 -- ============================================================
 SELECT count(*) AS fiches_fantomes_a_purger
 FROM kun_com_profiles p
-WHERE NOT EXISTS (SELECT 1 FROM auth.users a WHERE a.id = p.id);
+WHERE NOT EXISTS (SELECT 1 FROM auth.users a WHERE a.id::text = p.id);
 
 DELETE FROM kun_com_profiles p
-WHERE NOT EXISTS (SELECT 1 FROM auth.users a WHERE a.id = p.id);
+WHERE NOT EXISTS (SELECT 1 FROM auth.users a WHERE a.id::text = p.id);
 
 -- ============================================================
 -- 4) MESSAGES PRIVÉS IMPLIQUANT UN COMPTE FANTÔME
@@ -165,7 +165,7 @@ WHERE (content->>'videoPoster') LIKE 'data:%'
 -- ============================================================
 SELECT a.id, a.email, a.phone, a.created_at, a.last_sign_in_at
 FROM auth.users a
-WHERE NOT EXISTS (SELECT 1 FROM kun_com_profiles p WHERE p.id = a.id)
+WHERE NOT EXISTS (SELECT 1 FROM kun_com_profiles p WHERE p.id = a.id::text)
 ORDER BY a.last_sign_in_at DESC NULLS LAST;
 
 -- Pour supprimer UN compte précis de la liste (remplace l'UUID) :
