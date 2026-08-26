@@ -36,6 +36,12 @@ WHERE content ?| ARRAY['pwd', 'sec_a1', 'sec_a2'];
 -- ------------------------------------------------------------
 ALTER TABLE kun_com_profiles ENABLE ROW LEVEL SECURITY;
 
+-- Une policy "p_profiles_all" (tout autoriser à tout connecté) existe déjà
+-- depuis la migration 01 : la laisser en place annulerait complètement le
+-- resserrement ci-dessous (Postgres additionne les policies permissives avec
+-- un OU logique — la plus large l'emporte toujours). On la retire donc d'abord.
+DROP POLICY IF EXISTS "p_profiles_all" ON kun_com_profiles;
+
 -- Lecture : réservée aux utilisateurs connectés (l'app est un annuaire interne ;
 -- l'anonyme ne peut plus aspirer la liste des membres).
 CREATE POLICY "profils_select_authentifie"
@@ -45,16 +51,17 @@ CREATE POLICY "profils_select_authentifie"
 
 -- Insertion / mise à jour : UNIQUEMENT sa propre fiche.
 -- Les upserts clients écrivent {id, content} avec id = auth.uid().
+-- id est de type text (pas uuid) : cast explicite obligatoire.
 CREATE POLICY "profils_insert_proprietaire"
   ON kun_com_profiles FOR INSERT
   TO authenticated
-  WITH CHECK (id = auth.uid());
+  WITH CHECK (id = auth.uid()::text);
 
 CREATE POLICY "profils_update_proprietaire"
   ON kun_com_profiles FOR UPDATE
   TO authenticated
-  USING (id = auth.uid())
-  WITH CHECK (id = auth.uid());
+  USING (id = auth.uid()::text)
+  WITH CHECK (id = auth.uid()::text);
 
 -- Pas de policy DELETE : personne ne supprime de ligne de profil via le client.
 
@@ -62,6 +69,11 @@ CREATE POLICY "profils_update_proprietaire"
 -- 3) PUBLICATIONS
 -- ------------------------------------------------------------
 ALTER TABLE kun_com_posts ENABLE ROW LEVEL SECURITY;
+
+-- Même remarque que pour les profils : la policy "p_posts_all" de la
+-- migration 01 (tout autoriser à tout connecté) doit être retirée, sinon elle
+-- reste active en parallèle et rend les policies ci-dessous sans effet.
+DROP POLICY IF EXISTS "p_posts_all" ON kun_com_posts;
 
 -- Lecture : publique (anonyme inclus) — nécessaire au partage de liens
 -- (/api/p/:id lit une publication sans session pour générer l'aperçu Open
