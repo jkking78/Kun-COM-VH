@@ -740,28 +740,28 @@
     if (!S.planningMode) S.planningMode = 'upcoming';
     
     var canCreate = S.user && (S.user.role === 'RESP_SECTION' || S.user.role === 'GRAND_RESPONSABLE');
-    var rightBtn = canCreate ? '<button onclick="App.openCreateEvent()" aria-label="Nouvel événement" style="background:' + UI.accent + ';color:#FFF;border:none;border-radius:16px;width:44px;height:44px;flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg></button>' : '';
+    var rightBtn = canCreate ? '<button onclick="App.openCreateEvent()" aria-label="Nouvel événement" style="background:' + UI.accent + ';color:#FFF;border:none;border-radius:22px;width:44px;height:44px;flex-shrink:0;cursor:pointer;display:flex;align-items:center;justify-content:center;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg></button>' : '';
     // En-tête à grand titre posé sur le fond de page (synthèse du design).
     var mesServices = (db(SK.POSTS, [])).filter(function(p) {
       return p.type === 'EVENT' && !isEventPast(p) && S.user && (p.assignments || []).some(function(a){ return a && a.userId === S.user.id; });
     }).length;
     var moisCourant = new Date().toLocaleDateString('fr-FR', { month: 'long' });
+    var mesIndispos = ((db(SK.USERS, []).find(function(x){ return S.user && x.id === S.user.id; }) || S.user || {}).indisponibilites || [])
+      .filter(function(x){ return x && x.date >= new Date().toISOString().split('T')[0]; });
+    // Ligne 1 : grand titre à gauche, cloche et « + » à droite.
+    // Ligne 2 : le résumé du mois et « Mes indisponibilités », qui passent
+    // l'un sous l'autre si l'écran est étroit au lieu d'écraser le titre.
     var header = '<div style="background:' + UI.page + ';padding:20px 16px 8px;">' +
-      '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">' +
-        '<div style="min-width:0;">' +
-          '<h1 style="font-size:28px;font-weight:800;letter-spacing:-0.5px;color:' + UI.ink + ';margin:0;line-height:1.1;">Planning</h1>' +
-          '<p style="font-size:13px;color:' + UI.muted + ';margin:4px 0 0;">' + moisCourant.charAt(0).toUpperCase() + moisCourant.slice(1) + ' · ' + (mesServices ? mesServices + ' service' + (mesServices > 1 ? 's' : '') + ' pour toi' : 'aucun service pour toi') + '</p>' +
-        '</div>' +
-        '<div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">' +
-          (function(){
-            var mes = ((db(SK.USERS, []).find(function(x){ return S.user && x.id === S.user.id; }) || S.user || {}).indisponibilites || [])
-              .filter(function(x){ return x && x.date >= new Date().toISOString().split('T')[0]; });
-            return '<button type="button" onclick="App.ouvrirIndispos()" style="height:36px;display:inline-flex;align-items:center;gap:6px;background:' + UI.card + ';border:none;border-radius:999px;padding:0 12px;font-size:13px;font-weight:700;color:' + UI.ink + ';cursor:pointer;">' +
-              'Mes indisponibilités' + (mes.length ? ' · ' + mes.length : '') +
-            '</button>';
-          })() +
-          renderCloche() + rightBtn +
-        '</div>' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">' +
+        '<h1 style="font-size:28px;font-weight:800;letter-spacing:-0.5px;color:' + UI.ink + ';margin:0;line-height:1.1;">Planning</h1>' +
+        '<div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">' + renderCloche() + rightBtn + '</div>' +
+      '</div>' +
+      '<div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 12px;margin-top:6px;">' +
+        '<p style="font-size:13px;color:' + UI.muted + ';margin:0;">' + moisCourant.charAt(0).toUpperCase() + moisCourant.slice(1) + ' · ' + (mesServices ? mesServices + ' service' + (mesServices > 1 ? 's' : '') + ' pour toi' : 'aucun service pour toi') + '</p>' +
+        '<button type="button" onclick="App.ouvrirIndispos()" style="height:36px;display:inline-flex;align-items:center;gap:6px;background:' + UI.card + ';border:none;border-radius:999px;padding:0 14px;font-size:13px;font-weight:700;color:' + UI.ink + ';cursor:pointer;white-space:nowrap;">' +
+          '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="9" y1="14" x2="15" y2="18"/><line x1="15" y1="14" x2="9" y2="18"/></svg>' +
+          'Mes indisponibilités' + (mesIndispos.length ? ' · ' + mesIndispos.length : '') +
+        '</button>' +
       '</div>' +
     '</div>';
 
@@ -867,9 +867,9 @@
     
     if (dayEvents.length === 0) {
       timeline += '<div style="text-align:center;padding:40px 20px;color:var(--faint);">' +
-        '<div style="font-size:40px;margin-bottom:12px;">📅</div>' +
-        '<div style="font-size:17px;font-weight:700;color:var(--ink);">Aucun événement</div>' +
-        '<div style="font-size:15px;margin-top:4px;">Rien de prévu pour cette date.</div>' +
+        '<div style="margin-bottom:12px;">' + ico('calendar', 40, 'var(--line2)', 1.6) + '</div>' +
+        '<div style="font-size:17px;font-weight:700;color:var(--ink);">' + (filtreMiens ? 'Aucun service pour toi' : 'Aucun événement à venir') + '</div>' +
+        '<div style="font-size:15px;margin-top:4px;">' + (filtreMiens ? 'Touche « Tout le département » pour voir tout le planning.' : 'Les prochains services apparaîtront ici.') + '</div>' +
       '</div>';
     } else {
       // Chaque événement produit un bloc ; on décide ensuite de l'affichage :
