@@ -14,8 +14,9 @@
 //   { action: "rappels" }                      → rappels dus (veille, 2 h avant,
 //       oubli de pointage, échéance de tâche ; étapes du plan de préparation,
 //       la veille et en cas de retard, aux responsables du pôle). Appelée toutes les 10 min par
-//       pg_cron (08b). Sans effet si on la rappelle : chaque rappel n'est envoyé
-//       qu'une fois (journal kun_com_push_envois).
+//       pg_cron (08b), avec l'en-tête x-kc-jeton (migration 13) : sans ce jeton,
+//       connu du seul serveur, l'appel est refusé. Sans effet si on la rappelle :
+//       chaque rappel n'est envoyé qu'une fois (journal kun_com_push_envois).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { envoyer, genererClesVapid, type Abonnement, type ClesVapid } from "./webpush.ts";
 import { destinataires, etapesDues, message } from "./etapes.ts";
@@ -112,6 +113,18 @@ function heureLocale(ts: number): string {
   return String(d.getUTCHours()).padStart(2, "0") + ":" + String(d.getUTCMinutes()).padStart(2, "0");
 }
 
+// Lit toutes les lignes d'une requête, 1000 par 1000.
+async function toutLire(page: (de: number, a: number) => Promise<{ data: unknown[] | null }>): Promise<Admin[]> {
+  const tout: Admin[] = [];
+  for (let de = 0; de < 50000; de += 1000) {
+    const r = await page(de, de + 999);
+    const lot = (r.data ?? []) as Admin[];
+    tout.push(...lot);
+    if (lot.length < 1000) break;
+  }
+  return tout;
+}
+
 async function rappels(admin: Admin): Promise<Record<string, number>> {
   const maintenant = Date.now();
   // Garde-fou : une exécution complète au plus toutes les 2 minutes.
@@ -119,16 +132,28 @@ async function rappels(admin: Admin): Promise<Record<string, number>> {
   const verrou = await admin.from("kun_com_push_envois").insert({ cle: tranche });
   if (verrou.error) return { ignore: 1 };
 
-  // Les trois lectures partent ensemble : en série, elles faisaient dépasser
-  // le délai de l'appel planifié.
-  const [evs, pointages, livraisons, cles] = await Promise.all([
-    admin.from("kun_com_posts").select("id, content").eq("content->>type", "EVENT"),
-    admin.from("kun_com_posts").select("content").not("content->>checkInEventId", "is", null),
-    admin.from("kun_com_posts").select("content").eq("content->>type", "TASK_DONE"),
+  // Seuls les événements d'hier et à venir comptent (C4) ; lus page par page,
+  // la base ne renvoyant jamais plus de 1000 lignes d'un coup. Puis les
+  // pointages et livraisons de ces événements-là seulement.
+  const hier = new Date(maintenant - 36 * 3600e3).toISOString().slice(0, 10);
+  const [evsLignes, cles] = await Promise.all([
+    toutLire((de, a) => admin.from("kun_com_posts").select("id, content").eq("content->>type", "EVENT")
+      .gte("content->>eventDate", hier).order("id").range(de, a)),
     clesVapid(admin),
   ]);
-  const aPointe = new Set((pointages.data ?? []).map((p: Admin) => p.content?.checkInEventId + "|" + p.content?.userId));
-  const aLivre = new Set((livraisons.data ?? []).map((p: Admin) => p.content?.taskEventId + "|" + p.content?.userId));
+  const evs = { data: evsLignes };
+  const ids = evsLignes.map((l: Admin) => String(l.id));
+  const pointages: Admin[] = [], livraisons: Admin[] = [];
+  for (let i = 0; i < ids.length; i += 100) {
+    const lot = ids.slice(i, i + 100);
+    const [p, l] = await Promise.all([
+      toutLire((de, a) => admin.from("kun_com_posts").select("content").in("content->>checkInEventId", lot).order("id").range(de, a)),
+      toutLire((de, a) => admin.from("kun_com_posts").select("content").eq("content->>type", "TASK_DONE").in("content->>taskEventId", lot).order("id").range(de, a)),
+    ]);
+    pointages.push(...p); livraisons.push(...l);
+  }
+  const aPointe = new Set(pointages.map((p: Admin) => p.content?.checkInEventId + "|" + p.content?.userId));
+  const aLivre = new Set(livraisons.map((p: Admin) => p.content?.taskEventId + "|" + p.content?.userId));
 
   const H = 3600e3;
   const aEnvoyer: { cle: string; userId: string; titre: string; corps: string; cible: string }[] = [];
@@ -136,6 +161,9 @@ async function rappels(admin: Admin): Promise<Record<string, number>> {
     const ev = ligne.content ?? {};
     const debut = horodatage(ev.eventDate, ev.eventStart);
     if (!debut) continue;
+    // C3 : la date et l'heure font partie de la clé du journal ; un événement
+    // reprogrammé reçoit de nouveau ses rappels.
+    const quand = ev.eventDate + "T" + (ev.eventStart || "") + ":";
     const titre = ev.eventTitle || "Événement";
     const vus = new Set<string>();
     for (const a of ev.assignments ?? []) {
@@ -147,19 +175,19 @@ async function rappels(admin: Admin): Promise<Record<string, number>> {
       if (a.deadline) {
         const echeance = Date.parse(a.deadline + (a.deadline.length <= 16 ? ":00Z" : ""));
         if (!isNaN(echeance) && maintenant >= echeance - 24 * H && maintenant < echeance && !aLivre.has(ev.id + "|" + uid)) {
-          aEnvoyer.push({ cle: "echeance:" + ev.id + ":" + uid, userId: uid, titre: "Tâche à livrer demain",
+          aEnvoyer.push({ cle: "echeance:" + ev.id + ":" + a.deadline + ":" + uid, userId: uid, titre: "Tâche à livrer demain",
             corps: (a.task || "Ta tâche") + " pour « " + titre + " » est attendue avant " + heureLocale(echeance) + ".", cible: "planning" });
         }
         continue;
       }
       if (maintenant >= debut - 24 * H && maintenant < debut - 2 * H) {
-        aEnvoyer.push({ cle: "veille:" + ev.id + ":" + uid, userId: uid, titre: "Demain : " + titre,
+        aEnvoyer.push({ cle: "veille:" + ev.id + ":" + quand + uid, userId: uid, titre: "Demain : " + titre,
           corps: "Rendez-vous à " + (ev.eventStart || "l'heure prévue") + (ev.eventLocation ? " · " + ev.eventLocation : "") + tache + ".", cible: "planning" });
       } else if (maintenant >= debut - 2 * H && maintenant < debut) {
-        aEnvoyer.push({ cle: "2h:" + ev.id + ":" + uid, userId: uid, titre: "Dans 2 h : " + titre,
+        aEnvoyer.push({ cle: "2h:" + ev.id + ":" + quand + uid, userId: uid, titre: "Dans 2 h : " + titre,
           corps: "Pense à pointer à ton arrivée avec « Je suis arrivé »" + tache + ".", cible: "planning" });
       } else if (maintenant >= debut + 10 * 60e3 && maintenant < debut + 3 * H && !aPointe.has(ev.id + "|" + uid)) {
-        aEnvoyer.push({ cle: "oubli:" + ev.id + ":" + uid, userId: uid, titre: "Tu es bien arrivé ?",
+        aEnvoyer.push({ cle: "oubli:" + ev.id + ":" + quand + uid, userId: uid, titre: "Tu es bien arrivé ?",
           corps: "« " + titre + " » a commencé à " + ev.eventStart + ". Pointe ton arrivée dès que tu es sur place.", cible: "planning" });
       }
     }
@@ -222,7 +250,12 @@ Deno.serve(async (req) => {
     const corps = await req.json().catch(() => ({}));
 
     if (corps.action === "cle") return json({ publique: (await clesVapid(admin)).publique });
-    if (corps.action === "rappels") return json({ ok: true, ...(await rappels(admin)) });
+    if (corps.action === "rappels") {
+      // S11 : réservé à l'appel planifié, qui porte le jeton du serveur.
+      const attendu = (await admin.from("kun_com_push_cles").select("jeton_rappels").eq("id", 1).maybeSingle()).data?.jeton_rappels;
+      if (!attendu || req.headers.get("x-kc-jeton") !== attendu) return json({ error: "Non autorisé" }, 401);
+      return json({ ok: true, ...(await rappels(admin)) });
+    }
 
     if (corps.action === "notifier") {
       const jeton = (req.headers.get("Authorization") ?? "").replace("Bearer ", "");
@@ -281,6 +314,8 @@ Deno.serve(async (req) => {
     }
     return json({ error: "Action inconnue" }, 400);
   } catch (e) {
-    return json({ error: String(e) }, 500);
+    // Le détail reste dans les journaux du serveur (S16), pas chez l'appelant.
+    console.error(e);
+    return json({ error: "Erreur interne" }, 500);
   }
 });

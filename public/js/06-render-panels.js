@@ -947,6 +947,7 @@
         safeHtml(m.text) +
         '<div style="font-family:' + UI.fontMono + ';font-size:11px;margin-top:3px;opacity:0.7;text-align:right;">' + timeAgo(m.timestamp) + '</div>' +
       '</div>' +
+      (m.nonEnvoye ? '<div role="status" style="display:flex;align-items:center;gap:4px;font-size:12px;font-weight:700;color:var(--bad-ink);margin-top:3px;">' + ico('alert', 13, 'currentColor') + 'Non envoyé</div>' : '') +
     '</div>';
   }
 
@@ -2384,6 +2385,14 @@
             roleBtn(m, 'GRAND_RESPONSABLE', 'Admin') +
           '</div>' +
           (isMe || S.roleMenuId !== m.id ? '' :
+            '<div style="margin-top:10px;">' +
+              '<div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px;">Pôles (2 au plus)</div>' +
+              '<div style="display:flex;flex-wrap:wrap;gap:6px;">' + SECTIONS.map(function(sec) {
+                var dedans = getUserSections(m).indexOf(sec.id) !== -1;
+                return '<button type="button" aria-pressed="' + (dedans ? 'true' : 'false') + '" onclick="App.definirPoleMembre(\'' + jsArg(m.id) + '\',\'' + jsArg(sec.id) + '\')" style="display:inline-flex;align-items:center;gap:5px;min-height:36px;padding:0 10px;border-radius:999px;border:1px solid ' + (dedans ? UI.accent : 'var(--line2)') + ';background:' + (dedans ? 'var(--accent-soft)' : 'var(--card)') + ';color:' + (dedans ? 'var(--accent-ink)' : 'var(--ink)') + ';font:inherit;font-size:12px;font-weight:700;cursor:pointer;">' + icoPole(sec.id, 13, 'currentColor') + safeHtml(sec.nom) + '</button>';
+              }).join('') + '</div>' +
+            '</div>') +
+          (isMe || S.roleMenuId !== m.id ? '' :
             '<button onclick="S.roleMenuId=null;App.adminResetPassword(\'' + jsArg(m.id) + '\',\'' + jsArg(((m.prenom||'') + ' ' + (m.nom||'')).trim() || 'Membre') + '\')" style="margin-top:8px;width:100%;min-height:44px;box-sizing:border-box;background:none;border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:10px 12px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;">' + ico('key', 14, 'currentColor') + 'Réinitialiser le mot de passe</button>') +
         '</div>';
       }).join('');
@@ -2545,8 +2554,15 @@
           '</div>' +
 
           '<div style="background:var(--card);border-radius:20px;padding:16px;">' +
-            '<label style="font-size:15px;font-weight:700;color:var(--ink);display:block;margin-bottom:12px;">Sections (2 max)</label>' +
-            '<div id="editSectionBadgesContainer">' + App.renderSectionBadges(S.editSections, 'toggleEditSection') + '</div>' +
+            '<label style="font-size:15px;font-weight:700;color:var(--ink);display:block;margin-bottom:12px;">Pôles (2 au plus)</label>' +
+            // S9 : une fois le compte validé, seuls l'Admin et l'inscription en
+            // attente choisissent les pôles (ils ouvrent canaux et préparation).
+            (compteEnAttente(u) || isGrandResponsable(u)
+              ? '<div id="editSectionBadgesContainer">' + App.renderSectionBadges(S.editSections, 'toggleEditSection') + '</div>'
+              : '<div style="display:flex;flex-wrap:wrap;gap:6px;">' + (getUserSections(u).map(function(id) {
+                  return '<span style="display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 12px;border-radius:999px;background:var(--tile);color:var(--ink);font-size:13px;font-weight:700;">' + icoPole(id, 14) + safeHtml(secNom(id)) + '</span>';
+                }).join('') || '<span style="font-size:13px;color:var(--muted);">Aucun pôle</span>') + '</div>' +
+                '<div style="font-size:12px;color:var(--muted);line-height:1.45;margin-top:8px;">Pour changer de pôle, demande à l\'Admin : tes pôles ouvrent les canaux et le plan de préparation.</div>') +
           '</div>' +
 
           '<div style="background:var(--card);border-radius:20px;padding:16px;margin-top:16px;">' +

@@ -5,7 +5,10 @@
 // site tiers (blocage CORS). Il faut donc que ce soit le serveur qui aille
 // chercher la page et n'en renvoie que le titre, la description et l'image.
 
+var dns = require('dns');
+
 var TIMEOUT_MS = 6000;
+var MAX_REDIRECTIONS = 3;
 var MAX_BYTES = 400 * 1024;   // l'en-tête <head> tient largement dedans
 
 // Garde-fou anti-SSRF : sans cela, n'importe qui pourrait faire interroger par
@@ -20,6 +23,27 @@ function isPublicHttpUrl(raw) {
   if (BLOCKED_HOST.test(u.hostname)) return null;
   if (!u.hostname || u.hostname.indexOf('.') === -1) return null;
   return u;
+}
+
+// S12 : le nom d'hôte ne suffit pas (« 127.0.0.1.nip.io » pointe vers la
+// machine elle-même). On vérifie donc les adresses IP RÉELLES du nom, à chaque
+// saut de redirection.
+function ipPrivee(ip) {
+  ip = String(ip || '').toLowerCase();
+  var v4 = ip.replace(/^::ffff:/, '');
+  var m = v4.match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
+  if (m) {
+    var a = +m[1], b = +m[2];
+    return a === 0 || a === 10 || a === 127 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31)
+      || (a === 192 && b === 168) || (a === 100 && b >= 64 && b <= 127) || a >= 224;
+  }
+  return ip === '::' || ip === '::1' || /^f[cd]/.test(ip) || /^fe[89ab]/.test(ip);
+}
+async function hotePublic(hostname) {
+  try {
+    var adresses = await dns.promises.lookup(hostname, { all: true });
+    return adresses.length > 0 && adresses.every(function(a){ return !ipPrivee(a.address); });
+  } catch (e) { return false; }
 }
 
 function decodeEntities(s) {
@@ -46,9 +70,25 @@ function meta(html, names) {
 // Lit au plus MAX_BYTES : inutile de télécharger une page entière alors que
 // tout ce qui nous intéresse se trouve dans son <head>.
 async function fetchHead(url, signal) {
-  var r = await fetch(url, {
+  // Redirections suivies à la main : chaque nouvelle adresse est revérifiée.
+  var r;
+  for (var saut = 0; ; saut++) {
+    var u = isPublicHttpUrl(url);
+    if (!u || !(await hotePublic(u.hostname))) return { ok: false, status: 400, html: '', finalUrl: url };
+    r = await fetchUneFois(url, signal);
+    if (r.status >= 300 && r.status < 400 && r.headers.get('location')) {
+      if (saut >= MAX_REDIRECTIONS) return { ok: false, status: 508, html: '', finalUrl: url };
+      url = new URL(r.headers.get('location'), url).href;
+      continue;
+    }
+    break;
+  }
+  return lireReponse(r, url);
+}
+function fetchUneFois(url, signal) {
+  return fetch(url, {
     signal: signal,
-    redirect: 'follow',
+    redirect: 'manual',
     headers: {
       // Beaucoup de sites ne servent les balises Open Graph qu'aux robots
       // sociaux ; se présenter comme un navigateur classique donne souvent
@@ -57,6 +97,8 @@ async function fetchHead(url, signal) {
       'Accept': 'text/html,application/xhtml+xml'
     }
   });
+}
+async function lireReponse(r, url) {
   if (!r.ok) return { ok: false, status: r.status, html: '', finalUrl: r.url || url };
   var type = (r.headers.get('content-type') || '').toLowerCase();
   if (type.indexOf('text/html') === -1 && type.indexOf('xhtml') === -1) {
@@ -67,8 +109,17 @@ async function fetchHead(url, signal) {
   return { ok: true, status: r.status, html: Buffer.from(slice).toString('utf8'), finalUrl: r.url || url };
 }
 
+// L'application appelle cette fonction depuis son propre domaine : un autre
+// site ne peut plus s'en servir de relais (S12).
+function origineAutorisee(origine) {
+  if (!origine) return true;                       // appel de même origine
+  return /^https:\/\/kun-com-vh(-[a-z0-9-]+)?\.vercel\.app$/.test(origine) || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origine);
+}
+
 module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  var origine = (req.headers && req.headers.origin) || '';
+  if (!origineAutorisee(origine)) { res.status(403).json({ error: 'origine refusée' }); return; }
+  if (origine) { res.setHeader('Access-Control-Allow-Origin', origine); res.setHeader('Vary', 'Origin'); }
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS');
   if (req.method === 'OPTIONS') { res.status(204).end(); return; }
 
@@ -124,3 +175,5 @@ module.exports = async function handler(req, res) {
     res.status(200).json(fallback);
   }
 };
+
+module.exports._interne = { ipPrivee: ipPrivee, origineAutorisee: origineAutorisee, isPublicHttpUrl: isPublicHttpUrl };
