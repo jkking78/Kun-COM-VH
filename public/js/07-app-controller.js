@@ -794,6 +794,117 @@
       toast(nouveau === 'yes' ? 'Participation confirmée.' : nouveau === 'no' ? 'Indisponibilité enregistrée.' : 'Réponse retirée.', 'success');
     },
 
+    // ---- Mes indisponibilités (lot 2) ----
+    ouvrirIndispos: function() { S.indisposOpen = true; render(); },
+    fermerIndispos: function() { S.indisposOpen = false; render(); },
+    ajouterIndispo: function() {
+      if (!S.user) return;
+      var date = ((document.getElementById('indispoDate') || {}).value || '').trim();
+      var motif = ((document.getElementById('indispoMotif') || {}).value || '').trim().slice(0, 80);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { toast('Choisis une date.', 'error'); return; }
+      var auj = new Date().toISOString().split('T')[0];
+      if (date < auj) { toast('Cette date est déjà passée.', 'error'); return; }
+      // Les dates passées sont retirées au passage : la liste reste courte.
+      var liste = (S.user.indisponibilites || []).filter(function(x){ return x && x.date >= auj && x.date !== date; });
+      liste.push({ date: date, motif: motif });
+      App._majMonProfil({ indisponibilites: liste });
+      toast('Indisponibilité enregistrée.', 'success');
+    },
+    retirerIndispo: function(date) {
+      if (!S.user) return;
+      App._majMonProfil({ indisponibilites: (S.user.indisponibilites || []).filter(function(x){ return x && x.date !== date; }) });
+    },
+
+    // ---- Réponse à une convocation (lot 2) ----
+    ouvrirDecliner: function(eventId) {
+      S.declinerEvId = eventId;
+      render();
+      setTimeout(function(){ var i = document.getElementById('motifDecline'); if (i) i.focus(); }, 80);
+    },
+    annulerDecliner: function() { S.declinerEvId = null; render(); },
+    repondreConvocation: function(eventId, statut) {
+      if (!S.user) return;
+      var ev = db(SK.POSTS, []).find(function(p){ return p.id === eventId && p.type === 'EVENT'; });
+      if (!ev) { toast('Événement introuvable.', 'error'); return; }
+      var motif = '';
+      if (statut === 'decline') {
+        motif = ((document.getElementById('motifDecline') || {}).value || '').trim().slice(0, 120);
+        if (!motif) { toast('Indique en quelques mots pourquoi tu ne peux pas venir.', 'error'); return; }
+      }
+      var reponse = { statut: statut, motif: motif, le: Date.now() };
+      var uid = S.user.id;
+      // Affichage immédiat, puis écriture fusionnée côté serveur.
+      var posts = db(SK.POSTS, []);
+      var local = posts.find(function(p){ return p.id === eventId; });
+      if (local) { local.reponsesConvocation = Object.assign({}, local.reponsesConvocation || {}); local.reponsesConvocation[uid] = reponse; dbSet(SK.POSTS, posts); }
+      S.declinerEvId = null;
+      render();
+      App.ecrirePostFrais(eventId, function(frais) {
+        frais.reponsesConvocation = Object.assign({}, frais.reponsesConvocation || {});
+        frais.reponsesConvocation[uid] = reponse;
+      });
+      // L'organisateur est prévenu d'un désistement (une confirmation ne
+      // mérite pas de notification : elle se lit dans la fiche).
+      if (statut === 'decline' && ev.userId && ev.userId !== uid) {
+        sendNotificationToUser(ev.userId, {
+          type: 'CONVOCATION', title: 'Indisponible',
+          text: 'ne pourra pas être là pour « ' + (ev.eventTitle || 'l\'événement') + ' » : ' + motif,
+          targetId: ev.id
+        });
+      }
+      toast(statut === 'confirme' ? 'Présence confirmée.' : 'Réponse envoyée à l\'organisateur.', 'success');
+    },
+    annulerReponseConvocation: function(eventId) {
+      if (!S.user) return;
+      var uid = S.user.id;
+      var posts = db(SK.POSTS, []);
+      var local = posts.find(function(p){ return p.id === eventId; });
+      if (local && local.reponsesConvocation) { local.reponsesConvocation = Object.assign({}, local.reponsesConvocation); delete local.reponsesConvocation[uid]; dbSet(SK.POSTS, posts); }
+      render();
+      App.ecrirePostFrais(eventId, function(frais) {
+        if (frais.reponsesConvocation) { frais.reponsesConvocation = Object.assign({}, frais.reponsesConvocation); delete frais.reponsesConvocation[uid]; }
+      });
+    },
+
+    // ---- Ajouter un événement à l'agenda du téléphone (.ics) ----
+    ajouterAgenda: function(eventId) {
+      var ev = db(SK.POSTS, []).find(function(p){ return p.id === eventId && isEventLike(p); });
+      if (!ev) { toast('Événement introuvable.', 'error'); return; }
+      var debut = eventStartTimestamp(ev);
+      if (!debut) { toast('Cet événement n\'a pas d\'heure de début.', 'error'); return; }
+      var fin = eventEndTimestamp(ev) || (debut + 2 * 3600000);
+      var utc = function(ts) { return new Date(ts).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, ''); };
+      var echapper = function(t) { return String(t || '').replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/([,;])/g, '\\$1'); };
+      var ics = [
+        'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Commit VH//FR', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
+        'BEGIN:VEVENT',
+        'UID:' + ev.id + '@commit-vh',
+        'DTSTAMP:' + utc(Date.now()),
+        'DTSTART:' + utc(debut),
+        'DTEND:' + utc(fin),
+        'SUMMARY:' + echapper(ev.eventTitle || 'Service'),
+        'LOCATION:' + echapper(ev.eventLocation || ''),
+        'DESCRIPTION:' + echapper(ev.caption || 'Département Communication — Commit VH'),
+        // Rappel la veille et 2 h avant, dans l'agenda du téléphone.
+        'BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:' + echapper(ev.eventTitle || 'Service'), 'TRIGGER:-P1D', 'END:VALARM',
+        'BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:' + echapper(ev.eventTitle || 'Service'), 'TRIGGER:-PT2H', 'END:VALARM',
+        'END:VEVENT', 'END:VCALENDAR'
+      ].join('\r\n');
+      try {
+        var url = URL.createObjectURL(new Blob([ics], { type: 'text/calendar;charset=utf-8' }));
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = (ev.eventTitle || 'evenement').replace(/[^\wÀ-ÿ -]/g, '').trim().replace(/\s+/g, '-') + '.ics';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(function(){ URL.revokeObjectURL(url); }, 4000);
+        toast('Ouvre le fichier pour l\'ajouter à ton agenda.', 'success');
+      } catch(e) {
+        toast('Impossible de créer le fichier d\'agenda sur ce téléphone.', 'error');
+      }
+    },
+
     toggleEventParticipation: function(eventId) {
       if (!S.user) { toast('Vous devez être connecté.', 'error'); return; }
       var posts = db(SK.POSTS, []);
@@ -1693,7 +1804,10 @@
           avatar_color: ['#0B63F6','#FF2D55','#0E9F6E','#D98A0B','#0B63F6','#AF52DE'][Math.floor(Math.random()*6)],
           welcomeStars: 5, joined_at: Date.now(),   // bonus 5★ + date d'inscription
           // Trace de l'acceptation des conditions (version et date).
-          conditionsAcceptees: { version: CONDITIONS_VERSION, le: Date.now() }, conditionsLues: CONDITIONS_VERSION };
+          conditionsAcceptees: { version: CONDITIONS_VERSION, le: Date.now() }, conditionsLues: CONDITIONS_VERSION,
+          // En attente jusqu'à la validation par un Admin ou un Responsable
+          // (le serveur impose de toute façon cette valeur).
+          approuve: false };
 
         // Écrit le profil (SANS aucun secret : ni mot de passe, ni question de
         // sécurité). Autorisé par la policy RLS car id = auth.uid().
@@ -1717,12 +1831,12 @@
         users.push(newUser); dbSet(SK.USERS, users);
         sauverSession(newUser);
         S.user = newUser; S.auth = 'app';
-
-        try { announceNewMember(newUser); } catch(e){}
+        // L'arrivée est annoncée à l'équipe au moment de la validation
+        // (App.validerInscription), plus à l'inscription.
 
         S.signupSections = []; S.signupRole = 'MEMBRE'; S.champsAuth = {};
         render();
-        toast('Bienvenue ' + prenom + ' ! Votre compte a été créé. ', 'success');
+        toast('Bienvenue ' + prenom + ' ! Ton compte a été créé.', 'success');
         try { syncSupabaseToLocal(); } catch(e){}
       } catch(err) {
         console.warn('signup error:', err);
@@ -1767,7 +1881,60 @@
       // l'écran de connexion.
       try { if (supabase && supabase.auth) await supabase.auth.signOut(); } catch(e) { console.warn('signOut:', e); }
       localStorage.removeItem(SK.SESS); sessionStorage.removeItem(SK.SESS);
-      S.user=null; S.jwtRole=null; S.auth='login'; S.tab='home'; render();
+      S.user=null; S.jwtRole=null; S.jwtApprouve=false; S.auth='login'; S.tab='home'; render();
+    },
+    // Écran d'attente : la validation a-t-elle eu lieu ? Nouveau jeton (qui
+    // porte app_metadata.approuve) puis relecture de sa fiche.
+    verifierValidation: async function() {
+      if (S.verificationEnCours || !supabase) return;
+      S.verificationEnCours = true; render();
+      try {
+        try {
+          var sess = await supabase.auth.refreshSession();
+          if (sess && sess.data && sess.data.user) applyAuthUser(sess.data.user);
+        } catch(e) {}
+        await fetchProfilesSilently();
+      } finally {
+        S.verificationEnCours = false;
+      }
+      if (compteEnAttente(S.user)) {
+        render();
+        toast('Pas encore validé. Réessaie un peu plus tard.', 'info');
+        return;
+      }
+      if (S.user) S.user.approuve = true;
+      render();
+      toast('Ton compte est validé. Bienvenue dans l\'équipe !', 'success');
+      try { syncSupabaseToLocal(); } catch(e) {}
+    },
+    // Admin ou Responsable : valide (ou refuse) une inscription. Le refus
+    // supprime le compte ; la validation annonce l'arrivée à toute l'équipe.
+    validerInscription: async function(userId, accepter) {
+      var users = db(SK.USERS, []);
+      var m = users.find(function(x){ return x.id === userId; });
+      if (!m || !supabase || !supabase.functions) return;
+      var nom = ((m.prenom || '') + ' ' + (m.nom || '')).trim() || 'cette personne';
+      if (!accepter && !window.confirm('Refuser l\'inscription de ' + nom + ' ? Son compte sera supprimé.')) return;
+      try {
+        var r = await supabase.functions.invoke('set-role', { body: { action: accepter ? 'approuver' : 'refuser', userId: userId } });
+        if (r && r.error) {
+          var msg = 'Échec : réessaie dans un instant.';
+          try { if (r.error.context && r.error.context.json) { var b = await r.error.context.json(); if (b && b.error) msg = b.error; } } catch(e){}
+          toast(msg, 'error');
+          return;
+        }
+      } catch(e) { toast('Échec : réessaie dans un instant.', 'error'); return; }
+      users = db(SK.USERS, []);
+      if (accepter) {
+        var idx = users.findIndex(function(x){ return x.id === userId; });
+        if (idx !== -1) { users[idx].approuve = true; dbSet(SK.USERS, users); }
+        try { announceNewMember(users[idx] || m); } catch(e) {}
+        toast(nom + ' a maintenant accès à Commit.', 'success');
+      } else {
+        dbSet(SK.USERS, users.filter(function(x){ return x.id !== userId; }));
+        toast('Inscription refusée.', 'success');
+      }
+      render();
     },
 
     // ============================================================
@@ -2064,7 +2231,8 @@
         } else {
           var users = db(SK.USERS, []);
           var idx = users.findIndex(function(u){ return u.id === userId; });
-          if (idx !== -1) { users[idx].role = role; dbSet(SK.USERS, users); }
+          // Un changement de rôle valide aussi le compte (voir set-role).
+          if (idx !== -1) { users[idx].role = role; users[idx].approuve = true; dbSet(SK.USERS, users); }
           toast('Rôle mis à jour : ' + (LABELS[role] || role) + '. La personne doit se reconnecter.', 'success');
         }
       } catch(e) { toast('Échec de la mise à jour.', 'error'); }
@@ -2174,7 +2342,7 @@
       S.viewUserProfileId=null; S.notificationsOpen=false; S.editProfileOpen=false;
       S.postOptionsOpen=false; S.selectedPostId=null; S.createEventOpen=false; S.editPostId=null;
       S.cropperOpen=false; S.membersListOpen=false; S.repostPostId=null; S.aboutEventPickerOpen=false;
-      S.deleteAccountOpen=false; S.bulkDeleteConfirmOpen=false; S.viewersPostId=null;
+      S.deleteAccountOpen=false; S.bulkDeleteConfirmOpen=false; S.viewersPostId=null; S.indisposOpen=false; S.declinerEvId=null;
       S.storageStatsOpen=false; S.dmOpen=false; S.dmWithUserId=null; S.assignManagerId=null; S.viewerImage=null;
       // Quitter un écran via la barre détruit proprement ce qui y vivait :
       // l'instance Cropper (canvas + listeners, sinon détachée du DOM mais
@@ -2272,6 +2440,7 @@
     openMembersList: function() { S.membersListOpen = true; S.membersSearch = ''; render(); },
     closeMembersList: function() { S.membersListOpen = false; render(); },
     setPunctualityChart: function(which) { S.punctualityChart = which; render(); },
+    basculerHistorique: function() { S.historiqueTout = !S.historiqueTout; render(); },
     // Le membre coche (ou décoche) SA tâche à livrer sur un événement. La note
     // est ensuite recalculée automatiquement d'après la deadline (voir
     // punctualityHistory / taskStatusFor). Enregistrement à part (type
@@ -2572,6 +2741,61 @@
       }, 140);
     },
     clearCheckInEvent: function() { S.postCheckInEventId = null; render(); },
+
+    // ---- Pointage en un geste (lot 2) ----
+    // L'heure d'arrivée est figée au moment de l'appui ; la position est relevée
+    // ensuite. Loin du lieu, on prévient AVANT d'enregistrer : un pointage hors
+    // zone compte comme une absence, autant laisser une chance de se rapprocher.
+    pointerEnUnGeste: async function(eventId, stampExistant, forcer) {
+      if (!S.user || S.pointageEnCours) return;
+      var ev = db(SK.POSTS, []).find(function(p){ return p.id === eventId && p.type === 'EVENT'; });
+      if (!ev) { toast('Événement introuvable.', 'error'); return; }
+      if (hasCheckedIn(S.user.id, eventId)) { toast('Ton arrivée est déjà enregistrée.', 'info'); return; }
+      var stamp = stampExistant || Date.now();
+      var geo = forcer && S.pointageHorsZone ? S.pointageHorsZone.geo : null;
+      fermerAlerteHorsZone();
+      if (!geo) {
+        S.pointageEnCours = eventId;
+        render();
+        try { geo = await positionForCheckIn(); }
+        catch (e) { geo = { available: false, reason: 'unavailable' }; }
+        S.pointageEnCours = null;
+      }
+      var essai = { geo: geo, checkInAt: stamp, checkInGraceUntil: stamp + CHECKIN_GRACE_MS };
+      if (!forcer && checkInPresence(essai, ev) === 'offsite') {
+        S.pointageHorsZone = { eventId: eventId, stamp: stamp, geo: geo, distance: checkInDistance(essai, ev) };
+        render();
+        ouvrirAlerteHorsZone();
+        return;
+      }
+      var p = {
+        id: 'p' + Date.now(), userId: S.user.id, timestamp: Date.now(),
+        author: S.user.prenom + ' ' + S.user.nom,
+        authorAvatar: (S.user.prenom || 'M').charAt(0).toUpperCase(),
+        avatarColor: S.user.avatar_color || '#0B63F6',
+        avatar_url: S.user.avatar_url || null,
+        sectionId: 'general', sectionNom: secNom('general'),
+        caption: '📍 Arrivé(e) pour « ' + (ev.eventTitle || 'le service') + ' ».',
+        mediaUrls: [], likes: 0, likedBy: [], comments: [], visibility: 'all', targetSections: [],
+        checkInEventId: eventId, geo: geo, checkInAt: stamp, checkInGraceUntil: stamp + CHECKIN_GRACE_MS
+      };
+      var posts = db(SK.POSTS, []);
+      posts.unshift(p);
+      dbSet(SK.POSTS, posts);
+      App._upsertFiable('kun_com_posts', { id: p.id, content: p, created_at: new Date().toISOString() });
+      var presence = checkInPresence(p, ev);
+      if (presence === 'onsite' || presence === 'no_venue') { try { announceArrival(p, ev); } catch(e){} }
+      else if (presence === 'pending') { try { scheduleCheckInVerify(p.id); } catch(e){} }
+      try { updateUserActivity('Pointage'); } catch(e) {}
+      render();
+      var debut = eventStartTimestamp(ev) || stamp;
+      var retard = Math.round((stamp - debut) / 60000);
+      var points = presence === 'offsite' ? PUNCTUALITY_OFFSITE_STARS : starsForDelay(retard);
+      celebrerPointage(points,
+        presence === 'offsite' ? 'Hors du lieu : compte comme une absence'
+        : (retard <= 0 ? 'À l\'heure' : 'Retard de ' + retard + ' min') +
+          (presence === 'onsite' ? ' · sur place' : presence === 'pending' ? ' · position en cours de vérification' : ''));
+    },
     // Rattrapage : attache (ou met à jour) la position d'un pointage déjà publié,
     // sans toucher à l'heure d'arrivée (la ponctualité reste figée). Sert quand la
     // localisation avait été refusée par erreur, était lente, ou indisponible.
@@ -2584,7 +2808,7 @@
       S.geoCapturing = true; render();
       var g;
       // Capture FRAÎCHE (la personne peut s'être rapprochée du lieu entre-temps).
-      try { g = await capturePosition(12000, 0, false); }
+      try { g = await capturePosition(15000, 0, true); }
       catch (e) { g = { available: false, reason: 'unavailable' }; }
       S.geoCapturing = false;
       if (!g || !g.available) {

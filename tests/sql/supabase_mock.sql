@@ -70,3 +70,10 @@ create policy "profils_update_proprietaire" on public.kun_com_profiles for updat
 create policy p_storage_read on storage.objects for select using (bucket_id in ('avatars','post-media'));
 create policy p_storage_write on storage.objects for insert to authenticated with check (bucket_id in ('avatars','post-media'));
 create policy p_storage_update on storage.objects for update to authenticated using (bucket_id in ('avatars','post-media'));
+alter table public.kun_com_dms enable row level security;
+create policy p_dms_select on public.kun_com_dms for select to authenticated
+  using (from_id = auth.uid()::text or to_id = auth.uid()::text);
+create policy p_dms_insert on public.kun_com_dms for insert to authenticated
+  with check (from_id = auth.uid()::text);
+create policy p_dms_delete on public.kun_com_dms for delete to authenticated
+  using (from_id = auth.uid()::text);

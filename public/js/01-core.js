@@ -548,10 +548,22 @@
   // plus se promouvoir Responsable/Admin en modifiant le stockage
   // local ou la base — les policies RLS n'accordent les droits que sur le JWT.
   // ============================================================
+  // Inscription en attente de validation (voir migration 07) : la fiche porte
+  // approuve === false, posé par le serveur. Les fiches antérieures n'ont pas
+  // le champ et restent donc validées. Pour SON compte, le jeton fait foi dès
+  // qu'il annonce la validation (la fiche locale peut être en retard).
+  function compteEnAttente(u) {
+    if (!u || u.approuve !== false) return false;
+    if (u.role === 'GRAND_RESPONSABLE' || u.role === 'RESP_SECTION') return false;
+    if (S.user && S.user.id === u.id && S.jwtApprouve) return false;
+    return true;
+  }
+
   function applyAuthUser(authUser) {
     if (!authUser) { S.user = null; S.auth = 'login'; return; }
     var role = (authUser.app_metadata && authUser.app_metadata.role) || 'MEMBRE';
     S.jwtRole = role;                     // rôle de référence pour l'utilisateur courant
+    S.jwtApprouve = !!(authUser.app_metadata && authUser.app_metadata.approuve === true);
     var meta = authUser.user_metadata || {};
     var users = db(SK.USERS, []);
     var me = users.find(function(x){ return x && x.id === authUser.id; });
@@ -2095,7 +2107,7 @@
 
   // timeoutMs : délai max. maxAgeMs : âge maximal d'un fix déjà connu que l'on
   // accepte de réutiliser (0 = toujours frais). highAccuracy : GPS précis (plus
-  // lent) — inutile ici, le rayon « sur place » est large (1500 m).
+  // lent) — indispensable au pointage depuis que le rayon « sur place » est de 500 m.
   function capturePosition(timeoutMs, maxAgeMs, highAccuracy) {
     return new Promise(function(resolve) {
       if (!navigator || !navigator.geolocation) {
@@ -2158,8 +2170,8 @@
     // Un bon fix récent (< 90 s) suffit : inutile de relancer.
     if (_prewarmedGeo && _prewarmedGeo.available && _prewarmedGeo.at && (Date.now() - _prewarmedGeo.at) < 90000) return;
     _prewarmInFlight = true;
-    // Précision normale (rapide) + réutilisation d'un fix jusqu'à 90 s.
-    capturePosition(15000, 90000, false).then(function(g) {
+    // GPS précis (rayon de 500 m) + réutilisation d'un fix jusqu'à 90 s.
+    capturePosition(15000, 90000, true).then(function(g) {
       // Ne jamais écraser un bon fix par un refus/échec ultérieur.
       if (g && g.available) _prewarmedGeo = g;
       else if (!_prewarmedGeo) _prewarmedGeo = g;
@@ -2173,7 +2185,7 @@
     if (_prewarmedGeo && _prewarmedGeo.available && _prewarmedGeo.at && (Date.now() - _prewarmedGeo.at) < 120000) {
       return Promise.resolve(_prewarmedGeo);
     }
-    return capturePosition(8000, 120000, false);
+    return capturePosition(12000, 60000, true);
   }
 
   // Distance en mètres entre deux points (formule de haversine).
@@ -2194,9 +2206,11 @@
     return (Math.round(m / 100) / 10).toString().replace('.', ',') + ' km';
   }
 
-  // Rayon en deçà duquel on considère le membre "sur place". Large à dessein :
-  // le GPS est imprécis en intérieur, mieux vaut ne pas accuser à tort.
-  var ON_SITE_RADIUS_M = 1500;
+  // Rayon en deçà duquel on considère le membre "sur place" : 500 m. Le
+  // pointage demande donc une position GPS précise (voir positionForCheckIn) :
+  // la position approximative du réseau peut se tromper de plusieurs centaines
+  // de mètres.
+  var ON_SITE_RADIUS_M = 500;
 
   // Fenêtre de grâce pour obtenir la position d'un pointage : 1 minute, avec
   // jusqu'à 3 tentatives automatiques. Tant qu'on est dans cette fenêtre, une
@@ -2416,7 +2430,8 @@
 
   // Membres que l'utilisateur a le droit d'assigner.
   function assignableMembers(u, allUsers) {
-    var users = allUsers || db(SK.USERS, []);
+    // Une inscription pas encore validée n'est assignable à rien.
+    var users = (allUsers || db(SK.USERS, [])).filter(function(x){ return !compteEnAttente(x); });
     if (isGrandResponsable(u)) return users.slice();
     if (!isSectionResponsable(u)) return [];
     var mine = assignableSectionIds(u);

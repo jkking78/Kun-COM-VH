@@ -117,6 +117,29 @@ PGHOST=… PGPORT=… PGUSER=postgres npm run test:sql
 Crée une base PostgreSQL jetable imitant Supabase (`tests/sql/supabase_mock.sql`),
 applique la 06 deux fois, puis lance 50 vérifications (`tests/sql/test_06_durcissement.sql`).
 
+## Migration 07 — réponses aux convocations et validation des comptes (v153)
+
+- **Réponses aux convocations** : « Je confirme » / « Je ne peux pas » (avec
+  motif) sont enregistrées dans `reponsesConvocation` de l'événement. Comme
+  pour les votes, le serveur ne laisse chacun écrire que **sa propre** réponse,
+  et la copie périmée de l'organisateur ne les efface pas.
+- **Validation des comptes** : un compte créé depuis l'écran d'inscription ne
+  voit plus rien (publications, fiches des autres, messages) tant qu'un Admin
+  ou un Responsable de pôle ne l'a pas validé depuis l'accueil (« Demandes
+  d'inscription »). La validation est écrite par l'Edge Function `set-role`
+  (actions `approuver` / `refuser`) dans `app_metadata.approuve`. **Tous les
+  comptes existants sont validés d'office** par la migration.
+
+### Ordre de mise en production
+1. **Exécuter `07_convocations_et_validation.sql`** (idempotente, sans DROP).
+2. **Redéployer l'Edge Function `set-role`** (nouvelles actions).
+3. **Déployer le client v153.** Pas avant les deux étapes précédentes : le
+   nouveau client inscrit les comptes « en attente », et sans `set-role` à jour
+   personne ne pourrait les valider.
+
+`npm run test:sql` applique la 06 seule, puis la 06 + la 07, et lance les
+vérifications des deux (`tests/sql/test_07_convocations_validation.sql`).
+
 ## Limites restantes (connues)
 - La **position GPS** d'un pointage est fournie par le téléphone : le serveur
   borne l'heure, mais ne peut pas prouver la présence physique.
