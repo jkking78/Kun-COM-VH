@@ -314,9 +314,9 @@
       if (!n) { fond = 'var(--tile)'; couleur = 'var(--muted)'; }   // un zéro n'alerte pas
       return '<span style="font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px;background:' + fond + ';color:' + couleur + ';">' + n + ' ' + libelle + '</span>';
     };
-    return '<div style="border-top:1px solid var(--line);margin-top:4px;padding-top:10px;margin-bottom:10px;">' +
-      '<div style="font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--faint);margin-bottom:6px;">Réponses des convoqués</div>' +
-      '<div style="display:flex;flex-wrap:wrap;gap:6px;">' +
+    return '<div style="margin-bottom:10px;">' +
+      '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;">' +
+        '<span style="font-size:12px;font-weight:700;color:var(--muted);margin-right:2px;">Réponses</span>' +
         puce(confirmes, confirmes > 1 ? 'confirmés' : 'confirmé', 'var(--ok-soft)', 'var(--ok-ink)') +
         puce(declines.length, declines.length > 1 ? 'indisponibles' : 'indisponible', 'var(--bad-soft)', 'var(--bad-ink)') +
         puce(enAttente, 'en attente', 'var(--tile)', 'var(--muted)') +
@@ -373,7 +373,7 @@
     if (mienne && !mienne.deadline) {
       var ouvert = ouverts.find(function(e){ return e.uid === moi; });
       if (!ouvert) {
-        out += '<div style="margin:-4px 0 10px;text-align:right;"><button type="button" onclick="App.proposerEchange(\'' + jsArg(ev.id) + '\')" style="min-height:36px;background:none;border:none;color:' + UI.lien + ';font-size:13px;font-weight:700;cursor:pointer;">⇄ Proposer ma place à un membre du pôle</button></div>';
+        // Lien « Proposer ma place » : avec les liens de la carte (renderActionsEvenement).
       } else {
         out += bloc('var(--warn-soft)',
           '<div style="font-size:13px;font-weight:700;color:var(--warn-ink);margin-bottom:8px;">' +
@@ -428,12 +428,20 @@
           (st.enRetard ? '<span style="color:var(--bad-ink);">· ' + st.enRetard + ' en retard</span>' : '') +
         '</button>'
       : '';
+    // Convoqué sans échange en cours : proposer sa place à un membre du pôle.
+    var maPlace = S.user && (ev.assignments || []).find(function(a){ return a && a.userId === S.user.id; });
+    var debutEv = eventStartTimestamp(ev);
+    var echange = (maPlace && !maPlace.deadline && !(ev.echanges && ev.echanges[S.user.id]) && !(debutEv && Date.now() > debutEv))
+      ? '<button type="button" onclick="App.proposerEchange(\'' + jsArg(ev.id) + '\')" aria-label="Proposer ma place à un membre du pôle" style="' + lien + '">' +
+          '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3l4 4-4 4M21 7H7M7 21l-4-4 4-4M3 17h14"/></svg>Proposer ma place</button>'
+      : '';
     return '<div style="display:flex;flex-wrap:wrap;gap:4px 18px;margin-bottom:8px;">' +
       prep +
       '<button type="button" onclick="App.ajouterAgenda(\'' + jsArg(ev.id) + '\')" style="' + lien + '">' +
         '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="12" y1="14" x2="12" y2="18"/><line x1="10" y1="16" x2="14" y2="16"/></svg>Mon agenda</button>' +
       (dest ? '<a href="' + safeUrl('https://www.google.com/maps/dir/?api=1&destination=' + dest) + '" target="_blank" rel="noopener noreferrer" style="' + lien + '">' +
         '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>Itinéraire</a>' : '') +
+      echange +
     '</div>';
   }
 
@@ -715,6 +723,7 @@
     var endTs = eventEndTimestamp(ev) || startTs;
 
     if (now < startTs - CHECKIN_EARLY_WINDOW_MS) {
+      if (startTs - now > 24 * 3600e3) return '';
       return '<div style="background:var(--tile);border-radius:12px;padding:10px 12px;margin-bottom:10px;font-size:12px;color:var(--muted);line-height:1.4;">' +
         'Tu es de service. Le pointage s\'ouvrira 3 h avant le début.' +
       '</div>';
@@ -902,8 +911,21 @@
       return '<div style="margin:16px 20px 8px;font-size:12px;font-weight:700;color:' + UI.muted + ';">' + titre + '</div>' +
         '<div style="margin:0 16px;background:' + UI.card + ';border-radius:20px;overflow:hidden;">' + items.map(ligne).join('') + '</div>';
     };
-    var lignes = groupe('Canaux de pôle', liste.filter(function(c){ return estCanal(c.autre); })) +
-      groupe('Conversations', liste.filter(function(c){ return !estCanal(c.autre); }));
+    // Canaux : ceux qui ont des messages et ceux de ses pôles d'abord ; les
+    // canaux vides des autres pôles (l'Admin les voit tous) sont repliés en bas.
+    var mesPoles = getUserSections(S.user);
+    var canaux = liste.filter(function(c){ return estCanal(c.autre); });
+    var utiles = canaux.filter(function(c){ return c.dernier || mesPoles.indexOf(String(c.autre).slice(5)) !== -1; });
+    var replies = canaux.filter(function(c){ return utiles.indexOf(c) === -1; });
+    var lignes = groupe('Canaux de pôle', utiles) +
+      groupe('Conversations', liste.filter(function(c){ return !estCanal(c.autre); })) +
+      (replies.length
+        ? '<button type="button" onclick="S.boiteCanauxOuverts=!S.boiteCanauxOuverts;render()" aria-expanded="' + (S.boiteCanauxOuverts ? 'true' : 'false') + '" style="display:flex;align-items:center;justify-content:space-between;width:calc(100% - 32px);margin:16px 16px 0;min-height:48px;padding:0 16px;background:' + UI.card + ';border:none;border-radius:' + (S.boiteCanauxOuverts ? '20px 20px 0 0' : '20px') + ';font:inherit;font-size:15px;font-weight:600;color:' + UI.ink + ';cursor:pointer;">' +
+            '<span>Autres canaux <span style="color:' + UI.faint + ';font-weight:500;">· ' + replies.length + '</span></span>' +
+            '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="' + UI.muted + '" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="transform:rotate(' + (S.boiteCanauxOuverts ? '180' : '0') + 'deg);"><path d="M6 9l6 6 6-6"/></svg>' +
+          '</button>' +
+          (S.boiteCanauxOuverts ? '<div style="margin:0 16px;background:' + UI.card + ';border-radius:0 0 20px 20px;overflow:hidden;border-top:1px solid ' + UI.line + ';">' + replies.map(ligne).join('') + '</div>' : '')
+        : '');
     return '<div class="safe-top" style="position:fixed;inset:0;z-index:9500;background:' + UI.page + ';display:flex;flex-direction:column;animation:fadeIn 0.2s ease-out;">' +
       enTetePleinEcran('Messages', 'App.fermerBoite()', boutonEnTete('Nouveau', 'App.fermerBoite();App.openMembersList()')) +
       '<div id="boiteListe" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;background:' + UI.page + ';padding-bottom:24px;">' +
@@ -1004,20 +1026,25 @@
         '<h1 style="font-size:28px;font-weight:800;letter-spacing:-0.5px;color:' + UI.ink + ';margin:0;line-height:1.1;">Planning</h1>' +
         '<div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">' + renderCloche() + rightBtn + '</div>' +
       '</div>' +
-      '<div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px 12px;margin-top:6px;">' +
-        '<p style="font-size:13px;color:' + UI.muted + ';margin:0;">' + moisCourant.charAt(0).toUpperCase() + moisCourant.slice(1) + ' · ' + (mesServices ? mesServices + ' service' + (mesServices > 1 ? 's' : '') + ' pour toi' : 'aucun service pour toi') + '</p>' +
-        '<button type="button" onclick="App.ouvrirIndispos()" style="height:36px;display:inline-flex;align-items:center;gap:6px;background:' + UI.card + ';border:none;border-radius:999px;padding:0 14px;font-size:13px;font-weight:700;color:' + UI.ink + ';cursor:pointer;white-space:nowrap;">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px;">' +
+        '<p style="font-size:13px;color:' + UI.muted + ';margin:0;min-width:0;">' + moisCourant.charAt(0).toUpperCase() + moisCourant.slice(1) + ' · ' + (mesServices ? mesServices + ' service' + (mesServices > 1 ? 's' : '') + ' pour toi' : 'aucun service pour toi') + '</p>' +
+        '<button type="button" onclick="App.ouvrirIndispos()" aria-label="Mes indisponibilités' + (mesIndispos.length ? ' : ' + mesIndispos.length : '') + '" style="height:36px;flex-shrink:0;display:inline-flex;align-items:center;gap:6px;background:' + UI.card + ';border:none;border-radius:999px;padding:0 12px;font-size:13px;font-weight:700;color:' + UI.ink + ';cursor:pointer;white-space:nowrap;">' +
           '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="9" y1="14" x2="15" y2="18"/><line x1="15" y1="14" x2="9" y2="18"/></svg>' +
-          'Mes indisponibilités' + (mesIndispos.length ? ' · ' + mesIndispos.length : '') +
+          'Mes indispos' + (mesIndispos.length ? ' · ' + mesIndispos.length : '') +
         '</button>' +
       '</div>' +
     '</div>';
 
-    var modeSwitch = '<div style="background:' + UI.page + ';padding:4px 16px 8px;">' +
-      renderSegmented([
+    var filtreMiens = S.planningFiltre === 'miens';
+    var modeSwitch = '<div style="background:' + UI.page + ';padding:4px 16px 8px;display:flex;gap:8px;">' +
+      '<div style="flex:1;min-width:0;">' + renderSegmented([
         { label:'À venir',    action:"S.planningMode='upcoming';render()", active: S.planningMode==='upcoming' },
         { label:'Historique', action:"S.planningMode='history';render()",  active: S.planningMode==='history'  }
-      ]) +
+      ]) + '</div>' +
+      (S.planningMode === 'history' ? '' : '<div style="flex:1;min-width:0;">' + renderSegmented([
+        { label:'Mes services', action:"App.filtrerPlanning('miens')", active: filtreMiens },
+        { label:'Tous',         action:"App.filtrerPlanning('tous')",  active: !filtreMiens }
+      ]) + '</div>') +
     '</div>';
 
     var allPosts = db(SK.POSTS, []);
@@ -1083,14 +1110,6 @@
         '</button>';
       }).join('') +
     '</div>';
-    var filtreMiens = S.planningFiltre === 'miens';
-    var puce = function(actif, action, libelle) {
-      return '<button type="button" onclick="' + action + '" aria-pressed="' + (actif ? 'true' : 'false') + '" style="height:36px;padding:0 14px;border:none;border-radius:12px;background:' + (actif ? 'var(--ink)' : UI.card) + ';color:' + (actif ? 'var(--page)' : UI.ink) + ';font-size:13px;font-weight:700;cursor:pointer;">' + libelle + '</button>';
-    };
-    var filtres = '<div style="display:flex;gap:6px;padding:0 16px 4px;background:' + UI.page + ';">' +
-      puce(filtreMiens, "App.filtrerPlanning('miens')", 'Mes services') +
-      puce(!filtreMiens, "App.filtrerPlanning('tous')", 'Tout le département') +
-    '</div>';
 
     // Les événements encore à venir (ou en cours) passent devant, du plus proche
     // au plus lointain ; les événements déjà terminés viennent ensuite. Le
@@ -1117,7 +1136,7 @@
       timeline += '<div style="text-align:center;padding:40px 20px;color:var(--faint);">' +
         '<div style="margin-bottom:12px;">' + ico('calendar', 40, 'var(--line2)', 1.6) + '</div>' +
         '<div style="font-size:17px;font-weight:700;color:var(--ink);">' + (filtreMiens ? 'Aucun service pour toi' : 'Aucun événement à venir') + '</div>' +
-        '<div style="font-size:15px;margin-top:4px;">' + (filtreMiens ? 'Touche « Tout le département » pour voir tout le planning.' : 'Les prochains services apparaîtront ici.') + '</div>' +
+        '<div style="font-size:15px;margin-top:4px;">' + (filtreMiens ? 'Touche « Tous » pour voir tout le planning.' : 'Les prochains services apparaîtront ici.') + '</div>' +
       '</div>';
     } else {
       // Chaque événement produit un bloc ; on décide ensuite de l'affichage :
@@ -1222,7 +1241,7 @@
 
     timeline += '</div>';
 
-    return header + modeSwitch + frise + filtres + timeline;
+    return header + modeSwitch + frise + timeline;
   }
   // ============================================================
   // DEBRIEF TAB
@@ -1684,9 +1703,9 @@
 
     return '<div style="margin:16px 0 14px;">' +
       '<div style="background:' + UI.card + ';border:1px solid ' + UI.line + ';border-radius:12px;box-shadow:' + UI.sh2 + ';padding:16px;">' +
-        '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;">' +
-          '<h2 style="font-family:' + UI.fontDisplay + ';font-size:28px;font-weight:600;color:' + UI.ink + ';letter-spacing:-0.4px;line-height:1.15;margin:0;">' + (estMoi ? 'Mes engagements' : 'Engagements') + '</h2>' +
-          '<div style="font-family:' + UI.fontMono + ';font-size:13px;color:' + UI.faint + ';text-align:right;line-height:1.35;max-width:44%;min-width:0;overflow-wrap:anywhere;">Cycle ' + cycleStr + ' · ' + label + '</div>' +
+        '<div style="margin-bottom:14px;">' +
+          '<h2 style="font-family:' + UI.fontDisplay + ';font-size:22px;font-weight:700;color:' + UI.ink + ';letter-spacing:-0.3px;line-height:1.2;margin:0;">' + (estMoi ? 'Mes engagements' : 'Engagements') + '</h2>' +
+          '<div style="font-family:' + UI.fontMono + ';font-size:12px;color:' + UI.faint + ';line-height:1.35;margin-top:2px;">Cycle ' + cycleStr + ' · ' + label + '</div>' +
         '</div>' +
         switcher +
         '<div style="min-height:170px;">' + body + '</div>' +
@@ -2354,6 +2373,9 @@
               '<div style="font-size:15px;font-weight:800;color:var(--ink);">' + name + (isMe ? ' <span style="font-size:11px;color:var(--faint);font-weight:700;">(toi)</span>' : '') + '</div>' +
               '<div style="font-family:' + UI.fontMono + ';font-size:12px;color:var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(m.phone || m.email || '') + '</div>' +
             '</div>' +
+            // Actions rares (mot de passe) rangées dans un menu, plus sous chaque membre.
+            (isMe ? '' : '<button type="button" onclick="S.roleMenuId=(S.roleMenuId===\'' + jsArg(m.id) + '\'?null:\'' + jsArg(m.id) + '\');render()" aria-label="' + safeHtml('Plus d\'actions pour ' + (((m.prenom||'') + ' ' + (m.nom||'')).trim() || 'ce membre')) + '" aria-expanded="' + (S.roleMenuId === m.id ? 'true' : 'false') + '" style="width:44px;height:44px;flex-shrink:0;border:none;border-radius:22px;background:' + (S.roleMenuId === m.id ? 'var(--tile)' : 'none') + ';color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
+              '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></button>') +
           '</div>' +
           '<div style="display:flex;gap:6px;">' +
             roleBtn(m, 'STAGIAIRE', 'Stagiaire') +
@@ -2361,8 +2383,8 @@
             roleBtn(m, 'RESP_SECTION', 'Responsable') +
             roleBtn(m, 'GRAND_RESPONSABLE', 'Admin') +
           '</div>' +
-          (isMe ? '' :
-            '<button onclick="App.adminResetPassword(\'' + jsArg(m.id) + '\',\'' + jsArg(((m.prenom||'') + ' ' + (m.nom||'')).trim() || 'Membre') + '\')" style="margin-top:8px;width:100%;min-height:44px;box-sizing:border-box;background:none;border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:10px 12px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;">' + ico('key', 14, 'currentColor') + 'Réinitialiser le mot de passe</button>') +
+          (isMe || S.roleMenuId !== m.id ? '' :
+            '<button onclick="S.roleMenuId=null;App.adminResetPassword(\'' + jsArg(m.id) + '\',\'' + jsArg(((m.prenom||'') + ' ' + (m.nom||'')).trim() || 'Membre') + '\')" style="margin-top:8px;width:100%;min-height:44px;box-sizing:border-box;background:none;border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:10px 12px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;">' + ico('key', 14, 'currentColor') + 'Réinitialiser le mot de passe</button>') +
         '</div>';
       }).join('');
 
