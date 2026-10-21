@@ -45,6 +45,8 @@ select tst_en_tant_que('C');
 insert into kun_com_profiles (id, content) values (tst_qui('C'), jsonb_build_object('id', tst_qui('C'), 'sections', '["photo"]'::jsonb));
 select tst_en_tant_que('P');
 insert into kun_com_profiles (id, content) values (tst_qui('P'), jsonb_build_object('id', tst_qui('P'), 'sections', '["cadrage"]'::jsonb));
+select tst_en_tant_que('R');
+insert into kun_com_profiles (id, content) values (tst_qui('R'), jsonb_build_object('id', tst_qui('R'), 'sections', '["cadrage"]'::jsonb));
 
 -- ---------- Échange de service ----------
 select tst_en_tant_que('R');

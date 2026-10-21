@@ -120,6 +120,7 @@
       S.optionsOpen = false; S.optionsPost = null; S.postOptionsOpen = false;
       S.assignManagerId = postId;
       S.eventAssignments = (post.assignments || []).slice();
+      S.assignOriginal = (post.assignments || []).slice();
       render();
     },
     closeAssignManager: function() {
@@ -141,21 +142,17 @@
       if (btn) { btn.textContent = 'Enregistrement…'; btn.disabled = true; }
 
       var allU = db(SK.USERS, []);
-      // Fusion prudente : on ne réécrit QUE les assignations qui relèvent de
-      // l'utilisateur. Celles des autres pôles sont reprises telles quelles, pour
-      // éviter qu'un responsable n'efface le travail d'un autre en enregistrant.
-      var others = (post.assignments || []).filter(function(a){ return !canTouchAssignment(a, S.user, allU); });
+      // On ne touche QUE les assignations qui relèvent de l'utilisateur, et on
+      // n'applique que ses ajouts et retraits à la version fraîche du serveur :
+      // un autre responsable qui enregistre en même temps ne perd rien (C2).
+      var original = S.assignOriginal || post.assignments || [];
       var mine = (S.eventAssignments || []).filter(function(a){ return canTouchAssignment(a, S.user, allU); });
-      var merged = others.concat(mine);
-
-      var before = (post.assignments || []).map(function(a){ return a.userId || ('sec:'+a.sectionId); });
-      var updated = Object.assign({}, post, { assignments: merged, assignmentsUpdatedAt: Date.now() });
-      posts[idx] = updated;
-      dbSet(SK.POSTS, posts);
-      if (supabase) {
-        try { await supabase.from('kun_com_posts').upsert({ id: updated.id, content: updated }, { onConflict: 'id' }); }
-        catch(e) { console.warn('Update assignations supabase error:', e); }
-      }
+      var voulue = original.filter(function(a){ return !canTouchAssignment(a, S.user, allU); }).concat(mine);
+      var before = original.map(function(a){ return a.userId || ('sec:'+a.sectionId); });
+      await App.ecrirePostFrais(postId, function(p) {
+        p.assignments = fusionnerAssignations(p.assignments, original, voulue);
+        p.assignmentsUpdatedAt = Date.now();
+      });
 
       // Prévient les membres nouvellement assignés (et eux seuls).
       mine.forEach(function(a) {
@@ -172,6 +169,7 @@
 
       S.assignManagerId = null;
       S.eventAssignments = [];
+      S.assignOriginal = null;
       render();
       toast('Assignations enregistrées.', 'success');
     },
@@ -608,6 +606,7 @@
       App.chargerLieux();
       S.eventSections = (post.eventSections || []).slice();
       S.eventAssignments = (post.assignments || []).slice();
+      S.assignOriginal = (post.assignments || []).slice();
       S.eventImage = post.eventImage || null;
       S.eventImageProcessing = false;
       S.eventSaveChoiceOpen = false; S.eventSaveMode = null;
@@ -775,6 +774,16 @@
           edited: true,
           editedAt: Date.now()
         });
+        // Assignations : seulement ses ajouts et retraits, appliqués à la
+        // version fraîche du serveur (C2).
+        if (supabase && S.assignOriginal) {
+          try {
+            var fr = await supabase.from('kun_com_posts').select('content').eq('id', updated.id).single();
+            var frais = fr && fr.data && fr.data.content ? parsePostItem({ id: updated.id, content: fr.data.content }) : null;
+            if (frais) updated.assignments = fusionnerAssignations(frais.assignments, S.assignOriginal, updated.assignments);
+          } catch(e) { /* hors ligne : la liste éditée part telle quelle */ }
+        }
+        S.assignOriginal = null;
         allP[idxE] = updated;
         dbSet(SK.POSTS, allP);
         // Lieu mémorisé seulement s'il a changé : rouvrir l'événement pour en

@@ -81,6 +81,33 @@
   // ============================================================
   // RENDER ENGINE
   // ============================================================
+  // A1 : accessibilité au clavier. Une centaine d'éléments cliquables (div,
+  // span, img) n'étaient ni atteignables avec Tab ni activables avec Entrée.
+  // Plutôt que de les reprendre un par un, le rendu leur ajoute role="button"
+  // et tabindex="0" ; Entrée et Espace les activent (voir activerAuClavier).
+  // Exclus : les fonds de fenêtre (position:fixed, fermeture au clic à côté)
+  // et les simples barrières event.stopPropagation().
+  var RE_CLIQUABLE = /<(div|span|img|li|p|h[1-6]|article|section|label)\b[^>]*\sonclick="([^"]*)"[^>]*>/g;
+  function rendreCliquablesAccessibles(html) {
+    return html.replace(RE_CLIQUABLE, function(tag, nom, action) {
+      if (/^\s*event\.stopPropagation\(\)\s*;?\s*$/.test(action)) return tag;
+      if (/position:\s*fixed/.test(tag)) return tag;
+      var ajout = '';
+      if (!/\srole="/.test(tag)) ajout += ' role="button"';
+      if (!/\stabindex="/.test(tag)) ajout += ' tabindex="0"';
+      return ajout ? '<' + nom + ajout + tag.slice(nom.length + 1) : tag;
+    }).replace(/<button\b(?![^>]*aria-label)([^>]*)>\s*(×|✕|&times;)\s*<\/button>/g, '<button aria-label="Fermer"$1>$2</button>');
+  }
+  function activerAuClavier(e) {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    var el = e.target;
+    if (!el || !el.getAttribute || el.getAttribute('role') !== 'button') return;
+    if (/^(BUTTON|A|INPUT|TEXTAREA|SELECT)$/.test(el.tagName)) return;
+    e.preventDefault();
+    el.click();
+  }
+  try { document.addEventListener('keydown', activerAuClavier); } catch(e) {}
+
   function render() {
     var root = document.getElementById('root');
     if (!root) return;
@@ -123,6 +150,8 @@
           '</div>' +
         '</div>';
     }
+
+    try { html = rendreCliquablesAccessibles(html); } catch(eA11y) {}
 
     // Réconciliation DOM : on ne remplace plus tout le contenu à chaque appel
     // (root.innerHTML = html) mais on ne patch que ce qui a réellement changé, via
