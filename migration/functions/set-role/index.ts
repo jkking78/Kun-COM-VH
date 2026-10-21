@@ -3,14 +3,24 @@
 // exposée au navigateur. Seul un GRAND_RESPONSABLE peut appeler cette fonction.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const cors = {
-  "Access-Control-Allow-Origin": "*",
+// Origines autorisées à appeler la fonction depuis un navigateur : variable
+// d'environnement ALLOWED_ORIGINS (ex. « https://kun-com-vh.vercel.app »,
+// plusieurs séparées par des virgules). Non définie : toutes (comportement
+// historique). L'authentification reste faite par le JWT, quel que soit l'appelant.
+const ORIGINES = (Deno.env.get("ALLOWED_ORIGINS") ?? "").split(",").map((o) => o.trim()).filter(Boolean);
+function origineAutorisee(req: Request): string {
+  if (!ORIGINES.length) return "*";
+  const o = req.headers.get("Origin") ?? "";
+  return ORIGINES.includes(o) ? o : ORIGINES[0];
+}
+const corsBase = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 const ROLES = ["MEMBRE", "RESP_SECTION", "GRAND_RESPONSABLE"];
 
 Deno.serve(async (req) => {
+  const cors = { ...corsBase, "Access-Control-Allow-Origin": origineAutorisee(req), "Vary": "Origin" };
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   const json = (b: unknown, s = 200) =>
     new Response(JSON.stringify(b), { status: s, headers: { ...cors, "Content-Type": "application/json" } });
@@ -36,6 +46,21 @@ Deno.serve(async (req) => {
     // 3) Écrire le rôle dans le JWT (en fusionnant les métadonnées existantes)…
     const target = await admin.auth.admin.getUserById(userId);
     if (target.error || !target.data.user) return json({ error: "Membre introuvable" }, 404);
+
+    // Ne jamais retirer le DERNIER Admin : plus personne ne pourrait alors
+    // attribuer de rôle depuis l'application.
+    if (target.data.user.app_metadata?.role === "GRAND_RESPONSABLE" && role !== "GRAND_RESPONSABLE") {
+      let admins = 0;
+      for (let page = 1; ; page++) {
+        const lot = await admin.auth.admin.listUsers({ page, perPage: 1000 });
+        if (lot.error) return json({ error: lot.error.message }, 500);
+        admins += lot.data.users.filter((u) => u.app_metadata?.role === "GRAND_RESPONSABLE").length;
+        if (lot.data.users.length < 1000) break;
+      }
+      if (admins <= 1) {
+        return json({ error: "Impossible : c'est le dernier Admin. Nommez d'abord un autre Admin." }, 409);
+      }
+    }
     const meta = { ...(target.data.user.app_metadata ?? {}), role };
     const upd = await admin.auth.admin.updateUserById(userId, { app_metadata: meta });
     if (upd.error) return json({ error: upd.error.message }, 500);
