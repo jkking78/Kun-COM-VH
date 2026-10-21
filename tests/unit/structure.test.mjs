@@ -59,3 +59,26 @@ test('les fonctions Vercel se chargent', async () => {
     assert.equal(typeof (mod.default || mod), 'function', f);
   }
 });
+
+test('les questions de sécurité de l\'app et de la fonction de récupération sont les mêmes', () => {
+  const app = lire('public/js/01-core.js');
+  const fn = lire('migration/functions/password-recovery/index.ts');
+  const extraire = (src, debut) => [...src.slice(src.indexOf(debut), src.indexOf('];', src.indexOf(debut))).matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+  const a = extraire(app, 'var SECURITY_QUESTIONS = [');
+  const f = extraire(fn, 'const QUESTIONS = [');
+  assert.equal(a.length, 8);
+  assert.deepEqual(f, a);
+});
+
+test('aperçu de liens : adresses internes et origines étrangères refusées', async () => {
+  const og = await import(join(RACINE, 'api/og.js'));
+  const { ipPrivee, origineAutorisee, isPublicHttpUrl } = (og.default || og)._interne;
+  for (const ip of ['127.0.0.1', '10.1.2.3', '192.168.0.4', '172.20.1.1', '169.254.169.254', '::1', 'fd00::1', '::ffff:127.0.0.1', '100.64.0.1']) {
+    assert.equal(ipPrivee(ip), true, ip);
+  }
+  for (const ip of ['8.8.8.8', '41.202.219.1', '2606:4700::1111']) assert.equal(ipPrivee(ip), false, ip);
+  assert.equal(origineAutorisee('https://kun-com-vh.vercel.app'), true);
+  assert.equal(origineAutorisee(''), true);
+  assert.equal(origineAutorisee('https://pirate.example'), false);
+  assert.equal(isPublicHttpUrl('file:///etc/passwd'), null);
+});
