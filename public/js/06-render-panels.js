@@ -53,7 +53,7 @@
           : '') +
 
         (canAssignHere
-          ? '<button onclick="App.openAssignManager(\''+post.id+'\')" style="width:100%;background:#E8EEFB;border:1px solid #E2E0FF;border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;margin-bottom:10px;text-align:left;">' +
+          ? '<button onclick="App.openAssignManager(\''+post.id+'\')" style="width:100%;background:var(--accent-soft);border:1px solid var(--line2);border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;margin-bottom:10px;text-align:left;">' +
               '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0B63F6" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>' +
               '<span style="font-size:15px;font-weight:700;color:#0B63F6;">Assigner mon équipe</span>' +
             '</button>'
@@ -66,7 +66,7 @@
               '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0B63F6" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>' +
               '<span style="font-size:15px;font-weight:600;color:var(--ink);">' + (isEventPost ? 'Modifier l\'événement' : 'Modifier la publication') + '</span>' +
             '</button>' +
-            '<button onclick="App.deletePost(\''+post.id+'\')" style="width:100%;background:#FFF5F5;border:1px solid #FFE0E0;border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;margin-bottom:10px;text-align:left;">' +
+            '<button onclick="App.deletePost(\''+post.id+'\')" style="width:100%;background:var(--bad-soft);border:1px solid var(--bad-line);border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;margin-bottom:10px;text-align:left;">' +
               SVG.trash + '<span style="font-size:15px;font-weight:700;color:#E2445C;">Supprimer</span>' +
             '</button>'
           : '') +
@@ -110,22 +110,24 @@
         '</div>' +
 
         '<div style="border-top:0.5px solid var(--tile);">' +
-          '<div id="replyingToBanner" style="display:' + (S.replyingToCommentId ? 'flex' : 'none') + ';align-items:center;justify-content:space-between;background:#E8EEFB;padding:7px 14px;font-size:12.5px;color:#0B63F6;border-top:1px solid #CCDEFF;">' +
+          '<div id="replyingToBanner" style="display:' + (S.replyingToCommentId ? 'flex' : 'none') + ';align-items:center;justify-content:space-between;background:var(--accent-soft);padding:7px 14px;font-size:12.5px;color:#0B63F6;border-top:1px solid var(--line2);">' +
             '<span>Réponse à <b>' + safeHtml(S.replyingToAuthor||'') + '</b></span>' +
             '<button type="button" onclick="App.cancelReply()" style="background:none;border:none;color:#0B63F6;font-size:13px;font-weight:800;cursor:pointer;padding:2px 6px;">✕</button>' +
           '</div>' +
-          '<div id="commentMentionSugg" style="display:none;flex-wrap:wrap;gap:6px;background:#E8EEFB;border-top:1px solid #CCDEFF;padding:8px 14px;"></div>' +
+          '<div id="commentMentionSugg" style="display:none;flex-wrap:wrap;gap:6px;background:var(--accent-soft);border-top:1px solid var(--line2);padding:8px 14px;"></div>' +
           '<div id="commentImagePreview" style="padding:' + (S.pendingCommentImage ? '10px 14px 0' : '0') + ';">' +
             (S.pendingCommentImage
               ? '<div style="position:relative;display:inline-block;">' +
                   '<img src="'+S.pendingCommentImage+'" style="width:64px;height:64px;object-fit:cover;border-radius:10px;border:1px solid var(--line);">' +
-                  '<button type="button" onclick="App.removeCommentImage()" style="position:absolute;top:-6px;right:-6px;background:rgba(0,0,0,0.7);border:none;border-radius:50%;width:32px;height:32px;touch-action:manipulation;color:#FFF;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;">×</button>' +
+                  '<button type="button" onclick="App.removeCommentImage()" aria-label="Retirer l\'image" style="position:absolute;top:-8px;right:-8px;background:rgba(0,0,0,0.7);border:none;border-radius:50%;width:44px;height:44px;touch-action:manipulation;color:#FFF;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;">×</button>' +
                 '</div>'
               : '') +
           '</div>' +
-          '<div style="display:flex;justify-content:space-around;padding:8px 14px;border-bottom:0.5px solid var(--tile);">' +
+          // Emojis rapides : boutons de 44×44 minimum (cible tactile), l'emoji
+          // garde sa taille d'origine.
+          '<div style="display:flex;justify-content:space-around;padding:8px 2px;border-bottom:0.5px solid var(--tile);">' +
             emojis.map(function(e) {
-              return '<span onclick="App.addEmoji(\''+e+'\')" style="font-size:22px;cursor:pointer;padding:3px 2px;-webkit-tap-highlight-color:transparent;">'+e+'</span>';
+              return '<button type="button" onclick="App.addEmoji(\''+e+'\')" style="flex:1 1 auto;min-width:44px;min-height:44px;height:44px;display:flex;align-items:center;justify-content:center;font-size:22px;background:none;border:none;padding:0;cursor:pointer;-webkit-tap-highlight-color:transparent;">'+e+'</button>';
             }).join('') +
           '</div>' +
           '<form onsubmit="event.preventDefault(); App.submitComment(event);" style="display:flex;align-items:center;gap:8px;padding:10px 14px;">' +
@@ -183,7 +185,7 @@
         (c.imageUrl ? '<img src="'+c.imageUrl+'" onclick="event.stopPropagation();App.openImageViewer(\''+c.imageUrl+'\')" style="max-width:180px;max-height:180px;border-radius:' + UI.r1 + ';margin:2px 0 6px;display:block;object-fit:cover;cursor:pointer;">' : '') +
         replyBtn +
       '</div>' +
-      '<div id="clike-'+c.id+'" onclick="App.likeComment(\''+c.id+'\')" style="cursor:pointer;padding:4px;margin-top:2px;">' +
+      '<div id="clike-'+c.id+'" onclick="App.likeComment(\''+c.id+'\')" style="cursor:pointer;width:44px;height:44px;display:flex;align-items:center;justify-content:center;margin:-6px -8px -6px 0;flex-shrink:0;">' +
         SVG.heart(isLiked, 15) +
       '</div>' +
     '</div>';
@@ -248,9 +250,9 @@
     if (hasCheckedIn(S.user.id, ev.id, posts)) {
       var p = punctualityStars(S.user.id, ev.id, posts);
       if (!p) return '';
-      var c = p.stars >= 4 ? '#047857' : p.stars >= 2 ? '#8A5A00' : '#B42318';
-      var bg = p.stars >= 4 ? '#ECFDF5' : p.stars >= 2 ? '#FFF7E6' : '#FEF2F2';
-      var bd = p.stars >= 4 ? '#A7F3D0' : p.stars >= 2 ? '#FFE0A3' : '#FECACA';
+      var c = p.stars >= 4 ? 'var(--ok-ink)' : p.stars >= 2 ? 'var(--warn-ink)' : 'var(--bad-ink)';
+      var bg = p.stars >= 4 ? 'var(--ok-soft)' : p.stars >= 2 ? 'var(--warn-soft)' : 'var(--bad-soft)';
+      var bd = p.stars >= 4 ? 'var(--ok-line)' : p.stars >= 2 ? 'var(--warn-line)' : 'var(--bad-line)';
       return '<div style="background:' + bg + ';border:1px solid ' + bd + ';border-radius:12px;padding:10px 12px;margin-bottom:10px;">' +
         '<div style="font-size:12.5px;font-weight:800;color:' + c + ';">' +
           (p.offsite ? '⛔ Pointage non validé · ' : 'Arrivée enregistrée · ') + (p.stars>0?'+':'') + p.stars + '★' +
@@ -260,7 +262,7 @@
           (p.distance !== null && p.distance !== undefined ? ' · ' + (p.onSite ? 'sur place' : 'à ' + formatDistance(p.distance) + ' du lieu') : '') +
         '</div>' +
         (p.offsite
-          ? '<div style="font-size:11px;color:#B42318;font-weight:700;margin-top:4px;line-height:1.4;">' +
+          ? '<div style="font-size:11px;color:var(--bad-ink);font-weight:700;margin-top:4px;line-height:1.4;">' +
               'Pointage hors zone : vous deviez être à moins de ' + formatDistance(ON_SITE_RADIUS_M) + ' du lieu.' +
             '</div>'
           : '') +
@@ -277,7 +279,7 @@
       '</div>';
     }
     if (now > endTs + CHECKIN_LATE_WINDOW_MS) {
-      return '<div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:12px;padding:10px 12px;margin-bottom:10px;font-size:11.5px;color:#B42318;font-weight:700;line-height:1.4;">' +
+      return '<div style="background:var(--bad-soft);border:1px solid var(--bad-line);border-radius:12px;padding:10px 12px;margin-bottom:10px;font-size:11.5px;color:var(--bad-ink);font-weight:700;line-height:1.4;">' +
         'Vous étiez de service et n\'avez pas enregistré votre arrivée.' +
       '</div>';
     }
@@ -285,7 +287,7 @@
     var delay = Math.round((now - startTs) / 60000);
     var stars = starsForDelay(delay);
     var sc = stars >= 4 ? '#0E9F6E' : stars >= 2 ? '#D98A0B' : '#E2445C';
-    return '<button onclick="App.startCheckIn(\'' + ev.id + '\')" style="width:100%;background:#0B63F6;color:#FFF;border:none;border-radius:12px;padding:11px;font-size:13.5px;font-weight:800;cursor:pointer;box-shadow:0 4px 12px rgba(88,86,214,0.3);margin-bottom:10px;">' +
+    return '<button onclick="App.startCheckIn(\'' + ev.id + '\')" style="width:100%;background:#0B63F6;color:#FFF;border:none;border-radius:12px;padding:11px;font-size:13.5px;font-weight:800;cursor:pointer;box-shadow:0 4px 12px rgba(11,99,246,0.3);margin-bottom:10px;">' +
         'Je suis arrivé · ' + (stars>0?'+':'') + stars + '★' +
       '</button>' +
       '<div style="font-size:10.5px;color:var(--faint);text-align:center;margin-bottom:10px;line-height:1.4;">' +
@@ -314,7 +316,7 @@
       '</header>' +
       '<div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px;background:var(--tile);">' +
 
-        '<div style="background:#E8EEFB;border:1px solid #E2E0FF;border-radius:16px;padding:14px;margin-bottom:16px;">' +
+        '<div style="background:var(--accent-soft);border:1px solid var(--line2);border-radius:16px;padding:14px;margin-bottom:16px;">' +
           '<div style="font-size:10px;font-weight:800;color:#0B63F6;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px;">Événement</div>' +
           '<div style="font-size:15px;font-weight:800;color:var(--ink);">' + safeHtml(post.eventTitle || 'Événement') + '</div>' +
           '<div style="font-size:12.5px;color:var(--muted);margin-top:2px;">' + safeHtml(evDate) + (post.eventStart ? ' · ' + safeHtml(post.eventStart) : '') + (post.eventLocation ? ' · ' + safeHtml(post.eventLocation) : '') + '</div>' +
@@ -380,7 +382,7 @@
           '<div style="width:40px;height:4px;background:var(--line);border-radius:2px;"></div>' +
         '</div>' +
         '<div style="display:flex;align-items:center;gap:10px;padding:6px 16px 12px;border-bottom:0.5px solid var(--tile);">' +
-          '<div onclick="App.closeDirectMessage()" style="cursor:pointer;padding:4px;margin-left:-4px;">' +
+          '<div onclick="App.closeDirectMessage()" aria-label="Retour" style="cursor:pointer;width:44px;height:44px;display:flex;align-items:center;justify-content:center;margin-left:-8px;flex-shrink:0;">' +
             '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2.3"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>' +
           '</div>' +
           otherAvatar +
@@ -488,11 +490,13 @@
         var isSel = (iso === S.selectedDate);
         var dayName = d.toLocaleDateString('fr-FR', {weekday:'short'}).toUpperCase();
         var dayNum = d.getDate();
-        var bg = isSel ? '#000' : 'var(--tile)';
-        var col = isSel ? '#FFF' : 'var(--faint)';
-        var numCol = isSel ? '#FFF' : '#000';
+        // Cellule sélectionnée : fond var(--ink) / contenu var(--page) — les
+        // seules valeurs qui restent contrastées dans les DEUX thèmes.
+        var bg = isSel ? 'var(--ink)' : 'var(--tile)';
+        var col = isSel ? 'var(--page)' : 'var(--faint)';
+        var numCol = isSel ? 'var(--page)' : 'var(--ink)';
         var hasEv = allPosts.some(function(p){ return p.type==='EVENT' && p.eventDate===iso && !isEventPast(p, nowTsSlider); });
-        var dot = hasEv ? '<div style="width:4px;height:4px;border-radius:2px;background:'+(isSel?'#FFF':'#E2445C')+';margin-top:2px;"></div>' : '<div style="height:6px;"></div>';
+        var dot = hasEv ? '<div style="width:4px;height:4px;border-radius:2px;background:'+(isSel?'var(--page)':'#E2445C')+';margin-top:2px;"></div>' : '<div style="height:6px;"></div>';
         return '<div onclick="App.selectDate(\''+iso+'\')" style="min-width:54px;height:74px;border-radius:16px;background:'+bg+';display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;transition:0.2s;">' +
           '<span style="font-size:11px;font-weight:700;color:'+col+';margin-bottom:2px;">'+dayName+'</span>' +
           '<span style="font-size:20px;font-weight:800;color:'+numCol+';line-height:1;">'+dayNum+'</span>' +
@@ -550,7 +554,7 @@
         }
 
         if (status === 'active') {
-          statusHtml = '<div style="display:inline-flex;align-items:center;gap:4px;background:#E5F4E9;color:#0E9F6E;padding:4px 8px;border-radius:8px;font-size:11px;font-weight:800;margin-bottom:8px;"><div style="width:6px;height:6px;border-radius:3px;background:#0E9F6E;animation:blink 1.5s infinite;"></div>En cours</div>';
+          statusHtml = '<div style="display:inline-flex;align-items:center;gap:4px;background:var(--ok-soft);color:#0E9F6E;padding:4px 8px;border-radius:8px;font-size:11px;font-weight:800;margin-bottom:8px;"><div style="width:6px;height:6px;border-radius:3px;background:#0E9F6E;animation:blink 1.5s infinite;"></div>En cours</div>';
         } else if (status === 'closed') {
           statusHtml = '<div style="display:inline-block;background:var(--tile);color:var(--faint);padding:4px 8px;border-radius:8px;font-size:11px;font-weight:800;margin-bottom:8px;">Terminé</div>';
         }
@@ -612,7 +616,7 @@
                 if (status === 'closed') {
                   return '<button disabled style="width:100%;background:var(--tile);color:var(--faint);border:none;border-radius:12px;padding:11px;font-size:13.5px;font-weight:700;">Terminé (' + count + ' participants)</button>';
                 }
-                return '<button onclick="App.toggleEventParticipation(\'' + ev.id + '\')" style="width:100%;background:' + (isPart ? '#0E9F6E' : '#0B63F6') + ';color:#FFF;border:none;border-radius:12px;padding:11px;font-size:13.5px;font-weight:800;cursor:pointer;box-shadow:' + (isPart ? '0 4px 12px rgba(52,199,89,0.3)' : '0 4px 12px rgba(0,122,255,0.3)') + ';">' + (isPart ? '✓ Participation Confirmée (' + count + ')' : '+ Je participe 👍 (' + count + ')') + '</button>';
+                return '<button onclick="App.toggleEventParticipation(\'' + ev.id + '\')" style="width:100%;background:' + (isPart ? '#0E9F6E' : '#0B63F6') + ';color:#FFF;border:none;border-radius:12px;padding:11px;font-size:13.5px;font-weight:800;cursor:pointer;box-shadow:' + (isPart ? '0 4px 12px rgba(52,199,89,0.3)' : '0 4px 12px rgba(11,99,246,0.3)') + ';">' + (isPart ? '✓ Participation Confirmée (' + count + ')' : '+ Je participe 👍 (' + count + ')') + '</button>';
               })() +
             '</div>' +
           '</div>' +
@@ -647,7 +651,7 @@
           ]) +
         '</div>'
       : '<div style="padding:12px 16px 0;">' +
-          '<div style="background:#E8EEFB;border-radius:12px;padding:10px 12px;font-size:12px;color:#0B63F6;font-weight:700;display:flex;align-items:center;gap:8px;line-height:1.4;">' +
+          '<div style="background:var(--accent-soft);border-radius:12px;padding:10px 12px;font-size:12px;color:#0B63F6;font-weight:700;display:flex;align-items:center;gap:8px;line-height:1.4;">' +
             '<span style="font-size:16px;">👀</span> Consultation seule : la notation est réservée aux Grands Responsables.' +
           '</div>' +
         '</div>';
@@ -739,7 +743,7 @@
     var trendHtml = '';
     if (has && board.count >= 2 && board.trend !== 0) {
       var up = board.trend > 0;
-      trendHtml = '<span style="font-size:11px;font-weight:800;color:' + (up ? '#0E9F6E' : '#E2445C') + ';background:' + (up ? '#E8F8ED' : '#FFEBEA') + ';padding:2px 7px;border-radius:8px;white-space:nowrap;">' +
+      trendHtml = '<span style="font-size:11px;font-weight:800;color:' + (up ? '#0E9F6E' : '#E2445C') + ';background:' + (up ? 'var(--ok-soft)' : 'var(--bad-soft)') + ';padding:2px 7px;border-radius:8px;white-space:nowrap;">' +
         (up ? '▲ +' : '▼ ') + board.trend + '</span>';
     }
 
@@ -777,7 +781,7 @@
       '</div>';
     }).join('');
 
-    return '<div style="background:var(--card);border-radius:18px;margin-bottom:10px;border:1px solid #EFEFEF;box-shadow:0 2px 8px rgba(0,0,0,0.04);overflow:hidden;">' +
+    return '<div style="background:var(--card);border-radius:18px;margin-bottom:10px;border:1px solid var(--line);box-shadow:0 2px 8px rgba(0,0,0,0.04);overflow:hidden;">' +
       '<div onclick="App.toggleScoreboardSection(\'' + key + '\')" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:16px;cursor:pointer;">' +
         '<div style="display:flex;align-items:center;gap:10px;min-width:0;">' +
           '<div style="width:42px;height:42px;border-radius:21px;background:linear-gradient(135deg,' + sec.color + '20,' + sec.color + '10);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">' + sec.emoji + '</div>' +
@@ -813,7 +817,7 @@
 
         (function(){
           var eventPosts = db(SK.POSTS, []).filter(function(p){ return p.type === 'EVENT'; });
-          return '<div style="background:var(--card);border-radius:18px;padding:16px;margin-bottom:14px;border:1px solid #EFEFEF;box-shadow:0 2px 8px rgba(0,0,0,0.04);">' +
+          return '<div style="background:var(--card);border-radius:18px;padding:16px;margin-bottom:14px;border:1px solid var(--line);box-shadow:0 2px 8px rgba(0,0,0,0.04);">' +
             '<label style="font-size:13px;font-weight:800;color:var(--ink);display:block;margin-bottom:8px;">Événement concerné <span style="color:#E2445C;">*</span></label>' +
             '<select id="evalEventSelect" onchange="App.selectEvalEvent(this.value)" style="width:100%;height:44px;border-radius:12px;border:1.5px solid var(--line);background:var(--tile);padding:0 12px;font-size:14px;color:var(--ink);outline:none;font-weight:600;">' +
               '<option value="">Sélectionner l\'événement à évaluer...</option>' +
@@ -826,7 +830,7 @@
               }).join('') +
             '</select>' +
             (S.evalEventId && findOwnBilan(S.evalEventId)
-              ? '<div style="margin-top:10px;background:#FFF7E6;border:1px solid #FFE0A3;border-radius:12px;padding:10px 12px;font-size:12.5px;color:#8A5A00;font-weight:600;line-height:1.45;">Vous avez déjà publié un bilan pour cet événement. Vos notes sont pré-remplies — valider mettra à jour cette publication.</div>'
+              ? '<div style="margin-top:10px;background:var(--warn-soft);border:1px solid var(--warn-line);border-radius:12px;padding:10px 12px;font-size:12.5px;color:var(--warn-ink);font-weight:600;line-height:1.45;">Vous avez déjà publié un bilan pour cet événement. Vos notes sont pré-remplies — valider mettra à jour cette publication.</div>'
               : '') +
           '</div>';
         })() +
@@ -1053,7 +1057,7 @@
           ? '<div style="display:flex;gap:9px;background:' + UI.card + ';border-radius:' + UI.r2 + ';box-shadow:' + UI.sh2 + ';padding:11px 12px;margin-top:14px;">' +
               ico('alert', 16, UI.bad) +
               '<div style="min-width:0;">' +
-                '<div style="font-size:12.5px;font-weight:600;color:#B42318;margin-bottom:2px;">Rattrapage requis : ' + h.debt + ' étoiles</div>' +
+                '<div style="font-size:12.5px;font-weight:600;color:var(--bad-ink);margin-bottom:2px;">Rattrapage requis : ' + h.debt + ' étoiles</div>' +
                 '<div style="font-size:11.5px;color:' + UI.muted + ';line-height:1.45;">Soyez à l\'heure aux prochains services pour revenir au positif.</div>' +
               '</div>' +
             '</div>'
@@ -1067,15 +1071,15 @@
   function renderGeoFlag(d) {
     if (d.absent) return '';
     if (!d.geo || !d.geo.available) {
-      return '<span style="display:block;color:#B45309;font-weight:700;font-size:10.5px;">présence non vérifiée</span>';
+      return '<span style="display:block;color:var(--warn-ink);font-weight:700;font-size:10.5px;">présence non vérifiée</span>';
     }
     if (d.distance === null || d.distance === undefined) {
       return '<span style="display:block;color:var(--faint);font-size:10.5px;">position enregistrée (lieu non défini)</span>';
     }
     if (d.onSite) {
-      return '<span style="display:block;color:#047857;font-size:10.5px;">sur place (' + formatDistance(d.distance) + ')</span>';
+      return '<span style="display:block;color:var(--ok-ink);font-size:10.5px;">sur place (' + formatDistance(d.distance) + ')</span>';
     }
-    return '<span style="display:block;color:#B42318;font-weight:700;font-size:10.5px;">à ' + formatDistance(d.distance) + ' du lieu</span>';
+    return '<span style="display:block;color:var(--bad-ink);font-weight:700;font-size:10.5px;">à ' + formatDistance(d.distance) + ' du lieu</span>';
   }
 
   function renderEvalSectionCard(sec, userSec) {
@@ -1104,7 +1108,7 @@
     if (S.evalEventId) {
       if (punc) {
         var pc = punc.average >= 4 ? '#0E9F6E' : punc.average >= 2 ? '#D98A0B' : punc.average > 0 ? '#E2445C' : '#E2445C';
-        puncHtml = '<div style="padding:10px 0;border-top:1px solid #F4F4F6;">' +
+        puncHtml = '<div style="padding:10px 0;border-top:1px solid var(--tile);">' +
           '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
             '<span style="font-size:13.5px;font-weight:700;color:var(--ink);">Ponctualité <span style="font-size:10px;font-weight:800;color:var(--faint);background:var(--tile);padding:2px 6px;border-radius:6px;">AUTO</span></span>' +
             '<span style="font-size:13px;font-weight:800;color:' + pc + ';">' + punc.average + '/5</span>' +
@@ -1123,7 +1127,7 @@
           '</div>' +
         '</div>';
       } else {
-        puncHtml = '<div style="padding:10px 0;border-top:1px solid #F4F4F6;">' +
+        puncHtml = '<div style="padding:10px 0;border-top:1px solid var(--tile);">' +
           '<div style="display:flex;justify-content:space-between;align-items:center;">' +
             '<span style="font-size:13.5px;font-weight:700;color:var(--ink);">Ponctualité <span style="font-size:10px;font-weight:800;color:var(--faint);background:var(--tile);padding:2px 6px;border-radius:6px;">AUTO</span></span>' +
             '<span style="font-size:12px;color:var(--faint);">Aucun membre assigné</span>' +
@@ -1134,10 +1138,10 @@
 
     var criteriaHtml = puncHtml + EVAL_CRITERIA.map(function(c) {
       var v = r.criteria[c.id] || 0;
-      return '<div style="padding:10px 0;border-top:1px solid #F4F4F6;">' +
+      return '<div style="padding:10px 0;border-top:1px solid var(--tile);">' +
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
           '<span style="font-size:13.5px;font-weight:700;color:var(--ink);">' + c.nom + '</span>' +
-          '<span id="critval-' + sec.id + '-' + c.id + '" style="font-size:13px;font-weight:800;color:' + (v>0?'#0B0D12':'var(--line)') + ';">' + (v>0 ? v+'/5' : '—') + '</span>' +
+          '<span id="critval-' + sec.id + '-' + c.id + '" style="font-size:13px;font-weight:800;color:' + (v>0?'var(--ink)':'var(--line)') + ';">' + (v>0 ? v+'/5' : '—') + '</span>' +
         '</div>' +
         '<div id="critstars-' + sec.id + '-' + c.id + '" style="display:flex;gap:5px;">' +
           [1,2,3,4,5].map(function(star) {
@@ -1147,12 +1151,12 @@
       '</div>';
     }).join('');
 
-    return '<div style="background:var(--card);border-radius:18px;margin-bottom:10px;border:1px solid #EFEFEF;box-shadow:0 2px 8px rgba(0,0,0,0.04);overflow:hidden;">' +
+    return '<div style="background:var(--card);border-radius:18px;margin-bottom:10px;border:1px solid var(--line);box-shadow:0 2px 8px rgba(0,0,0,0.04);overflow:hidden;">' +
       '<div onclick="App.toggleEvalSection(\'' + sec.id + '\')" style="display:flex;align-items:center;justify-content:space-between;padding:16px;cursor:pointer;">' +
         '<div style="display:flex;align-items:center;gap:10px;">' +
           '<div style="width:42px;height:42px;border-radius:21px;background:linear-gradient(135deg,' + sec.color + '20,' + sec.color + '10);display:flex;align-items:center;justify-content:center;font-size:20px;">' + sec.emoji + '</div>' +
           '<div><strong style="font-size:14.5px;color:var(--ink);display:block;">' + sec.nom +
-            (isOwn ? ' <span style="font-size:10px;font-weight:800;color:#0B63F6;background:#EBF5FF;padding:2px 7px;border-radius:8px;vertical-align:middle;">Votre pôle</span>' : '') +
+            (isOwn ? ' <span style="font-size:10px;font-weight:800;color:#0B63F6;background:var(--accent-soft);padding:2px 7px;border-radius:8px;vertical-align:middle;">Votre pôle</span>' : '') +
           '</strong>' +
           '<span id="evalsub-' + sec.id + '" style="font-size:11.5px;color:var(--faint);">' + (ratedCount > 0 ? ratedCount + '/' + EVAL_CRITERIA.length + ' critères notés' : 'Appuyez pour noter les critères') + '</span></div>' +
         '</div>' +
@@ -1165,8 +1169,8 @@
         ? '<div style="padding:0 16px 16px;">' +
             criteriaHtml +
             '<input type="text" value="' + safeHtml(r.comment||'') + '" onchange="App.rateComment(\'' + sec.id + '\',this.value)" placeholder="Ajouter une observation..." ' +
-            'style="width:100%;height:40px;border:1.5px solid #EFEFEF;border-radius:12px;padding:0 12px;font-size:13.5px;color:var(--ink);box-sizing:border-box;outline:none;background:var(--tile);margin-top:12px;" ' +
-            'onfocus="this.style.borderColor=\'#0B63F6\'" onblur="this.style.borderColor=\'#EFEFEF\'">' +
+            'style="width:100%;height:40px;border:1.5px solid var(--line);border-radius:12px;padding:0 12px;font-size:13.5px;color:var(--ink);box-sizing:border-box;outline:none;background:var(--tile);margin-top:12px;" ' +
+            'onfocus="this.style.borderColor=\'#0B63F6\'" onblur="this.style.borderColor=\'var(--line)\'">' +
           '</div>'
         : '') +
     '</div>';
@@ -1270,7 +1274,7 @@
       STAGIAIRE: {
         primary: '#D98A0B', // Orange
         coverGradient: '#D98A0B',
-        badgeBg: '#FFF5E5',
+        badgeBg: 'var(--warn-soft)',
         badgeText: '#D98A0B'
       }
     };
@@ -1458,8 +1462,8 @@
     feed += '<div style="background:' + UI.page + ';padding:4px 20px 12px;display:flex;align-items:center;justify-content:space-between;gap:10px;">' +
       (isMe
         ? '<div style="display:flex;gap:4px;background:' + UI.tile + ';border-radius:12px;padding:3px;">' +
-            '<span onclick="App.setProfileGridTab(\'posts\')" style="padding:7px 14px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;background:' + (gridTab==='posts'?UI.card:'transparent') + ';color:' + (gridTab==='posts'?UI.ink:UI.faint) + ';">Publications</span>' +
-            '<span onclick="App.setProfileGridTab(\'saved\')" style="padding:7px 14px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;background:' + (gridTab==='saved'?UI.card:'transparent') + ';color:' + (gridTab==='saved'?UI.ink:UI.faint) + ';">Enregistrées</span>' +
+            '<span onclick="App.setProfileGridTab(\'posts\')" style="display:flex;align-items:center;justify-content:center;min-height:44px;padding:0 14px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;background:' + (gridTab==='posts'?UI.card:'transparent') + ';color:' + (gridTab==='posts'?UI.ink:UI.faint) + ';">Publications</span>' +
+            '<span onclick="App.setProfileGridTab(\'saved\')" style="display:flex;align-items:center;justify-content:center;min-height:44px;padding:0 14px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;background:' + (gridTab==='saved'?UI.card:'transparent') + ';color:' + (gridTab==='saved'?UI.ink:UI.faint) + ';">Enregistrées</span>' +
           '</div>'
         : '<h3 style="font-family:' + UI.fontDisplay + ';font-size:24px;font-weight:600;letter-spacing:-0.4px;color:var(--ink);margin:0;">Publications récentes</h3>') +
       (isMe && gridTab === 'posts' && myPosts.length > 0
@@ -1566,7 +1570,7 @@
 
       return '<div onclick="' + (busy?'':'App.closeDeleteAccount()') + '" style="position:fixed;inset:0;background:rgba(15,15,20,0.65);backdrop-filter:blur(2px);z-index:10002;display:flex;justify-content:center;align-items:center;padding:24px;">' +
         '<div onclick="event.stopPropagation()" style="width:100%;max-width:380px;background:var(--card);border-radius:24px;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
-          '<div style="width:52px;height:52px;border-radius:26px;background:#FFF0EE;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:26px;">⚠️</div>' +
+          '<div style="width:52px;height:52px;border-radius:26px;background:var(--bad-soft);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:26px;">⚠️</div>' +
           '<h3 style="font-size:17px;font-weight:900;color:var(--ink);margin:0 0 8px;text-align:center;">Supprimer définitivement votre compte ?</h3>' +
           '<p style="font-size:13px;color:var(--muted);line-height:1.5;margin:0 0 4px;text-align:center;">' +
             'Cette action est <strong>irréversible</strong>. Votre profil ainsi que ' +
@@ -1593,7 +1597,7 @@
       var busy = S.bulkDeleteBusy;
       return '<div onclick="' + (busy?'':'App.closeBulkDeleteConfirm()') + '" style="position:fixed;inset:0;background:rgba(15,15,20,0.65);backdrop-filter:blur(2px);z-index:10003;display:flex;justify-content:center;align-items:center;padding:24px;">' +
         '<div onclick="event.stopPropagation()" style="width:100%;max-width:380px;background:var(--card);border-radius:24px;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
-          '<div style="width:52px;height:52px;border-radius:26px;background:#FFF0EE;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:26px;">🗑️</div>' +
+          '<div style="width:52px;height:52px;border-radius:26px;background:var(--bad-soft);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:26px;">🗑️</div>' +
           '<h3 style="font-size:17px;font-weight:900;color:var(--ink);margin:0 0 8px;text-align:center;">Supprimer ' + count + ' publication' + (count>1?'s':'') + ' ?</h3>' +
           '<p style="font-size:13px;color:var(--muted);line-height:1.5;margin:0;text-align:center;">' +
             'Cette action est <strong>irréversible</strong>. Les publications et leurs photos/vidéos seront supprimées définitivement.' +
@@ -1613,7 +1617,7 @@
       var err = S.adminCodeError;
       return '<div onclick="App.closeAdminGate()" style="position:fixed;inset:0;background:rgba(15,15,20,0.65);backdrop-filter:blur(2px);z-index:10004;display:flex;justify-content:center;align-items:center;padding:24px;">' +
         '<div onclick="event.stopPropagation()" style="width:100%;max-width:340px;background:var(--card);border-radius:24px;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
-          '<div style="width:52px;height:52px;border-radius:26px;background:#E8EEFB;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:24px;">🔧</div>' +
+          '<div style="width:52px;height:52px;border-radius:26px;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:24px;">🔧</div>' +
           '<h3 style="font-size:17px;font-weight:900;color:var(--ink);margin:0 0 6px;text-align:center;">Accès administration</h3>' +
           '<p style="font-size:12.5px;color:var(--muted);line-height:1.5;margin:0 0 14px;text-align:center;">Entrez un code d\'accès administrateur (statistiques de stockage ou accès Admin).</p>' +
           '<form onsubmit="App.submitAdminCode(event)">' +
@@ -1645,7 +1649,7 @@
         var busy = S.roleUpdatingId === m.id;
         var isSelf = m.id === me.id;
         var disabled = active || busy || isSelf;
-        var bg = active ? '#0B63F6' : '#F1F3F6';
+        var bg = active ? '#0B63F6' : 'var(--tile)';
         var col = active ? '#FFF' : 'var(--ink2)';
         return '<button ' + (disabled ? 'disabled ' : '') +
           'onclick="App.setMemberRole(\'' + m.id + '\',\'' + role + '\')" ' +
@@ -1671,13 +1675,13 @@
             roleBtn(m, 'GRAND_RESPONSABLE', 'Admin') +
           '</div>' +
           (isMe ? '' :
-            '<button onclick="App.adminResetPassword(\'' + m.id + '\',\'' + safeHtml(name).replace(/'/g,"\\'") + '\')" style="margin-top:8px;width:100%;background:none;border:1px solid var(--line);color:var(--muted);border-radius:10px;padding:7px;font-size:11.5px;font-weight:700;cursor:pointer;">🔑 Réinitialiser le mot de passe</button>') +
+            '<button onclick="App.adminResetPassword(\'' + m.id + '\',\'' + safeHtml(name).replace(/'/g,"\\'") + '\')" style="margin-top:8px;width:100%;min-height:44px;box-sizing:border-box;background:none;border:1px solid var(--line);color:var(--muted);border-radius:10px;padding:10px 12px;font-size:11.5px;font-weight:700;cursor:pointer;">🔑 Réinitialiser le mot de passe</button>') +
         '</div>';
       }).join('');
 
       return '<div onclick="App.closeRolesPanel()" style="position:fixed;inset:0;background:rgba(15,15,20,0.55);backdrop-filter:blur(2px);z-index:10004;display:flex;justify-content:center;align-items:flex-end;">' +
         '<div onclick="event.stopPropagation()" style="width:100%;max-width:460px;background:var(--card);border-top-left-radius:28px;border-top-right-radius:28px;max-height:88vh;overflow-y:auto;box-shadow:0 -8px 40px rgba(0,0,0,0.18);animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
-          '<div style="display:flex;justify-content:center;padding:10px 0 0;cursor:pointer;" onclick="App.closeRolesPanel()"><div style="width:38px;height:5px;background:#E2E4E9;border-radius:3px;"></div></div>' +
+          '<div style="display:flex;justify-content:center;padding:10px 0 0;cursor:pointer;" onclick="App.closeRolesPanel()"><div style="width:38px;height:5px;background:var(--line2);border-radius:3px;"></div></div>' +
           '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px 4px;">' +
             '<h3 style="font-family:' + UI.fontDisplay + ';font-size:18px;font-weight:800;letter-spacing:-0.3px;margin:0;color:var(--ink);">👑 Gérer les rôles</h3>' +
             '<button onclick="App.closeRolesPanel()" style="background:var(--tile);border:none;border-radius:16px;width:44px;height:44px;flex-shrink:0;touch-action:manipulation;font-size:14px;cursor:pointer;">✕</button>' +
@@ -1736,7 +1740,7 @@
       return '<div onclick="App.closeStorageStats()" style="position:fixed;inset:0;background:rgba(15,15,20,0.55);backdrop-filter:blur(2px);z-index:10004;display:flex;justify-content:center;align-items:flex-end;">' +
         '<div onclick="event.stopPropagation()" style="width:100%;max-width:460px;background:var(--card);border-top-left-radius:28px;border-top-right-radius:28px;max-height:88vh;overflow-y:auto;box-shadow:0 -8px 40px rgba(0,0,0,0.18);animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
           '<div style="display:flex;justify-content:center;padding:10px 0 0;cursor:pointer;" onclick="App.closeStorageStats()">' +
-            '<div style="width:38px;height:5px;background:#E2E4E9;border-radius:3px;"></div>' +
+            '<div style="width:38px;height:5px;background:var(--line2);border-radius:3px;"></div>' +
           '</div>' +
           '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px 4px;">' +
             '<h3 style="font-size:16px;font-weight:900;margin:0;color:var(--ink);">Stockage (Admin)</h3>' +
@@ -1744,7 +1748,7 @@
           '</div>' +
           '<div style="padding:6px 20px 28px;">' +
             (loading ? '<div style="display:flex;align-items:center;gap:10px;justify-content:center;padding:30px 0;">' +
-              '<div style="width:20px;height:20px;border:3px solid #E2E4E9;border-top-color:#0B63F6;border-radius:50%;animation:spin 0.8s linear infinite;"></div>' +
+              '<div style="width:20px;height:20px;border:3px solid var(--line2);border-top-color:#0B63F6;border-radius:50%;animation:spin 0.8s linear infinite;"></div>' +
               '<span style="font-size:13px;font-weight:700;color:var(--muted);">Calcul en cours…</span>' +
             '</div>' :
             S.storageStatsError ? '<div style="text-align:center;padding:20px 0;">' +
@@ -1762,7 +1766,7 @@
             )) +
             '<div style="display:flex;gap:8px;margin-top:20px;">' +
               '<button onclick="App.loadStorageStats()" ' + (loading?'disabled':'') + ' style="flex:1;background:var(--tile);color:var(--ink);border:none;border-radius:14px;padding:12px;font-size:13.5px;font-weight:700;cursor:pointer;">🔄 Actualiser</button>' +
-              '<button onclick="App.lockAdmin()" style="flex:1;background:#FEE2E2;color:#E2445C;border:none;border-radius:14px;padding:12px;font-size:13.5px;font-weight:700;cursor:pointer;">Verrouiller</button>' +
+              '<button onclick="App.lockAdmin()" style="flex:1;background:var(--bad-soft);color:#E2445C;border:none;border-radius:14px;padding:12px;font-size:13.5px;font-weight:700;cursor:pointer;">Verrouiller</button>' +
             '</div>' +
           '</div>' +
         '</div>' +
@@ -1896,11 +1900,29 @@
     };
     var svg = function(d){ return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="' + UI.muted + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + d + '</svg>'; };
 
+    // Ligne « Version » : même pattern que les autres (libellé 15px/500 à
+    // gauche, valeur 14px faint à droite). APP_VERSION est défini par 08-bootstrap.
+    var version = ligne(svg('<path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.83z"/><line x1="7" y1="7" x2="7.01" y2="7"/>'), 'Version', safeHtml(String(window.APP_VERSION || 'v?')));
+
     var infos = ligne(svg('<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>'), 'Église', 'Vase d\'Honneur · Abidjan') +
       (uSecs.length ? ligne(svg('<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>'), 'Pôle', uSecs.map(function(s){ return secNom(s); }).join(' · ')) : '') +
-      (freshU.phone ? ligne(svg('<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/>'), 'Numéro', '<span style="font-family:' + UI.fontMono + ';">' + safeHtml(freshU.phone) + '</span>') : '');
+      (freshU.phone ? ligne(svg('<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/>'), 'Numéro', '<span style="font-family:' + UI.fontMono + ';">' + safeHtml(freshU.phone) + '</span>') : '') +
+      version;
 
-    var apparence = ligne(svg('<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>'), S.darkMode ? 'Mode sombre' : 'Mode clair', (S.darkMode ? 'Activé' : 'Désactivé') + ' ›', 'App.toggleTheme()');
+    // Switch iOS (piste 51×31, knob 27) : la piste suit le thème via les
+    // variables, le knob reste blanc dans les deux modes.
+    var switchTheme =
+      '<div onclick="App.toggleTheme()" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid ' + UI.line + ';cursor:pointer;">' +
+        '<div style="width:32px;height:32px;border-radius:50%;background:' + UI.tile + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + svg('<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>') + '</div>' +
+        '<div style="flex:1;min-width:0;font-size:15px;font-weight:500;color:' + UI.ink + ';">Mode sombre</div>' +
+        '<div aria-hidden="true" style="flex-shrink:0;width:51px;height:31px;border-radius:999px;background:' + (S.darkMode ? '#0B63F6' : 'var(--line2)') + ';position:relative;transition:background 0.2s ease;">' +
+          '<div style="position:absolute;top:2px;left:' + (S.darkMode ? '22px' : '2px') + ';width:27px;height:27px;border-radius:50%;background:#FFFFFF;box-shadow:0 2px 6px rgba(0,0,0,0.25);transition:left 0.2s ease;"></div>' +
+        '</div>' +
+      '</div>';
+
+    var apparence = switchTheme +
+      ligne(svg('<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>'), 'Vider le cache', '›', 'App.viderCacheApp()') +
+      '<div style="font-size:11px;color:' + UI.faint + ';padding:9px 16px 10px;line-height:1.4;">Utile si l\'app affiche une ancienne version.</div>';
 
     var admin = isAdmin
       ? ligne(svg('<path d="M3 6l4 3 5-6 5 6 4-3v12H3z"/>'), 'Gérer les rôles', '›', 'App.closeSettings();App.openRolesPanel()') +
@@ -1922,7 +1944,7 @@
         section('Apparence', apparence) +
         (admin ? section('Administration', admin) : '') +
         section('Compte', compte) +
-        '<button onclick="App.logout()" style="width:100%;background:#FEE2E2;color:#E2445C;border:none;border-radius:999px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;margin-top:8px;">Se déconnecter</button>' +
+        '<button onclick="App.logout()" style="width:100%;background:var(--bad-soft);color:#E2445C;border:none;border-radius:999px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;margin-top:8px;">Se déconnecter</button>' +
       '</div>' +
     '</div>';
   }

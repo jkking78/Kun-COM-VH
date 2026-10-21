@@ -1692,6 +1692,20 @@
       try { applyTheme(); } catch(e){}
       render();
     },
+    // Vide tous les caches du service worker puis recharge l'app : utile quand
+    // un appareil affiche une ancienne version malgré une mise à jour (cache
+    // persistant, réseau capricieux). Le SW re-remplit son cache au chargement.
+    viderCacheApp: async function() {
+      try {
+        if (!window.confirm('Vider le cache de l\'application ? L\'app va se recharger.')) return;
+        if (window.caches && caches.keys) {
+          var cles = await caches.keys();
+          await Promise.all(cles.map(function(k){ return caches.delete(k); }));
+        }
+        toast('Cache vidé. Rechargement…', 'success');
+        setTimeout(function(){ location.reload(); }, 400);
+      } catch(e) { toast('Impossible de vider le cache.', 'error'); }
+    },
     logout: async function() {
       if (S.user) {
         var users = db(SK.USERS, []); var idx = users.findIndex(function(u){ return u.id===S.user.id; });
