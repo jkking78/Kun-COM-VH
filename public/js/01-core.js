@@ -56,7 +56,7 @@
   // passent, sinon la couleur de repli.
   function couleurSure(c, repli) {
     if (typeof c === 'string' && /^(#[0-9a-f]{3,8}|rgba?\([\d\s.,%]+\)|[a-z]{3,20})$/i.test(c.trim())) return c.trim();
-    return repli || '#0B63F6';
+    return repli || '#0B5FE0';
   }
 
   // Fond de publication (couleur unie ou dégradé) : mêmes précautions, sans
@@ -74,7 +74,7 @@
   function assainirAuteur(o, champsCouleur, champsUrl) {
     if (!o || typeof o !== 'object') return o;
     champsCouleur.forEach(function(k) {
-      if (o[k] !== undefined && o[k] !== null) o[k] = couleurSure(o[k], '#0B63F6');
+      if (o[k] !== undefined && o[k] !== null) o[k] = couleurSure(o[k], '#0B5FE0');
     });
     champsUrl.forEach(function(k) {
       if (typeof o[k] === 'string') o[k] = urlSure(o[k]) || null;
@@ -255,7 +255,7 @@
       // pouvait s'enregistrer. L'affichage retrouve la photo à jour via senderId
       // dans la liste des profils (voir renderNotificationsModal).
       senderAvatar: avatarLeger(S.user ? S.user.avatar_url : null),
-      senderColor: S.user ? (S.user.avatar_color || '#007AFF') : '#007AFF',
+      senderColor: S.user ? (S.user.avatar_color || '#0B5FE0') : '#0B5FE0',
       type: notifData.type,
       title: notifData.title,
       text: notifData.text,
@@ -367,7 +367,7 @@
       senderId: newUser.id,
       senderName: (newUser.prenom || '') + ' ' + (newUser.nom ? newUser.nom.charAt(0) + '.' : ''),
       senderAvatar: avatarLeger(newUser.avatar_url),
-      senderColor: newUser.avatar_color || '#007AFF',
+      senderColor: newUser.avatar_color || '#0B5FE0',
       type: 'NEW_MEMBER',
       title: '🎉 Nouveau membre',
       text: 'a rejoint Commit' + (secs ? ' · ' + secs : '') + '.',
@@ -641,7 +641,7 @@
                  nom: (pending && pending.nom) || meta.nom || '',
                  sections: (pending && pending.sections) || [],
                  section_id: (pending && pending.section_id) || null,
-                 avatar_color: '#0B63F6', welcomeStars: 5, joined_at: Date.now(),
+                 avatar_color: '#0B5FE0', welcomeStars: 5, joined_at: Date.now(),
                  is_online: true, last_seen_at: new Date().toISOString() };
       try { if (pending) localStorage.removeItem('kc_pending_signup'); } catch(e){}
       users.push(S.user);
@@ -667,14 +667,14 @@
     fond.id = '_kcNouveauMdp';
     fond.style.cssText = 'position:fixed;inset:0;z-index:9999998;background:rgba(15,15,20,0.65);display:flex;align-items:center;justify-content:center;padding:16px;';
     fond.innerHTML =
-      '<form style="width:100%;max-width:340px;background:var(--card,#FFF);color:var(--ink,#0B0D12);border-radius:24px;padding:24px;font-family:var(--font-body,sans-serif);">' +
+      '<form style="width:100%;max-width:340px;background:var(--card,#FFF);color:var(--ink,#0B0D12);border-radius:20px;padding:24px;font-family:var(--font-body,sans-serif);">' +
         '<h3 style="font-size:17px;font-weight:800;margin:0 0 6px;text-align:center;">Nouveau mot de passe</h3>' +
         '<p style="font-size:13px;color:var(--muted,#6B7280);margin:0 0 14px;text-align:center;">8 caractères minimum.</p>' +
-        '<input name="mdp1" type="password" autocomplete="new-password" placeholder="Nouveau mot de passe" style="width:100%;min-height:44px;padding:10px 12px;border:1px solid var(--line,#DDD);border-radius:12px;font-size:16px;margin-bottom:8px;background:var(--tile,#F4F5F7);color:inherit;">' +
-        '<input name="mdp2" type="password" autocomplete="new-password" placeholder="Confirmer" style="width:100%;min-height:44px;padding:10px 12px;border:1px solid var(--line,#DDD);border-radius:12px;font-size:16px;background:var(--tile,#F4F5F7);color:inherit;">' +
-        '<div data-erreur style="color:#E2445C;font-size:12.5px;font-weight:700;text-align:center;min-height:18px;margin-top:8px;"></div>' +
-        '<button type="submit" style="width:100%;min-height:44px;margin-top:6px;background:#0B63F6;color:#FFF;border:none;border-radius:14px;font-size:15px;font-weight:800;">Enregistrer</button>' +
-        '<button type="button" data-annuler style="width:100%;min-height:44px;margin-top:8px;background:none;color:inherit;border:none;font-size:14px;font-weight:600;">Annuler</button>' +
+        '<input name="mdp1" type="password" autocomplete="new-password" placeholder="Nouveau mot de passe" style="width:100%;min-height:44px;padding:10px 12px;border:1px solid var(--line,#DDD);border-radius:12px;font-size:15px;margin-bottom:8px;background:var(--tile,#F4F5F7);color:inherit;">' +
+        '<input name="mdp2" type="password" autocomplete="new-password" placeholder="Confirmer" style="width:100%;min-height:44px;padding:10px 12px;border:1px solid var(--line,#DDD);border-radius:12px;font-size:15px;background:var(--tile,#F4F5F7);color:inherit;">' +
+        '<div data-erreur style="color:#D92D20;font-size:13px;font-weight:700;text-align:center;min-height:18px;margin-top:8px;"></div>' +
+        '<button type="submit" style="width:100%;min-height:44px;margin-top:6px;background:#0B5FE0;color:#FFF;border:none;border-radius:999px;font-size:15px;font-weight:800;">Enregistrer</button>' +
+        '<button type="button" data-annuler style="width:100%;min-height:44px;margin-top:8px;background:none;color:inherit;border:none;font-size:15px;font-weight:600;">Annuler</button>' +
       '</form>';
     document.body.appendChild(fond);
     var form = fond.querySelector('form');
@@ -1934,7 +1934,7 @@
       if (el) {
         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
         el.style.transition = 'box-shadow 0.4s';
-        el.style.boxShadow = '0 0 0 3px #007AFF inset';
+        el.style.boxShadow = '0 0 0 3px #0B5FE0 inset';
         setTimeout(function(){ el.style.boxShadow = ''; }, 2200);
       }
     }, 350);
@@ -1992,7 +1992,7 @@
   // Les couleurs neutres passent par des VARIABLES CSS (voir injectCSS) pour
   // basculer entre thème clair et sombre sans re-rendre chaque écran.
   var UI = {
-    accent:     '#0B63F6',   // l'unique couleur d'action de l'app (identique clair/sombre)
+    accent:     '#0B5FE0',   // l'unique couleur d'action de l'app (identique clair/sombre)
     accentSoft: 'var(--accent-soft)',
     accentInk:  'var(--accent-ink)',   // texte lisible sur accentSoft
 
@@ -2018,16 +2018,18 @@
     evGoldSoft: 'rgba(203,163,92,0.14)',
     evGoldLine: 'rgba(203,163,92,0.40)',
 
-    ok: '#0E9F6E', warn: '#D98A0B', bad: '#E2445C',
+    ok: '#0E9F6E', warn: '#D98A0B', bad: '#D92D20',
 
     r1: '12px', r2: '16px', r3: '20px', pill: '999px',
     sh:  'var(--sh)',
     sh2: 'var(--sh2)',   // relief doux des cartes détachées (voir injectCSS)
 
-    // Identité typographique de la refonte (voir index.html + injectCSS).
-    fontDisplay: 'var(--font-display)',  // titres — Bricolage Grotesque
-    fontBody:    'var(--font-body)',     // interface — Inter
-    fontMono:    'var(--font-mono)'      // données (heures, notes, compteurs) — JetBrains Mono
+    // Une seule police, Plus Jakarta Sans (voir index.html + injectCSS) : les
+    // trois rôles restent nommés, mais pointent tous vers elle. Les chiffres
+    // sont à chasse fixe partout (font-variant-numeric), sans police « code ».
+    fontDisplay: 'var(--font-display)',  // titres
+    fontBody:    'var(--font-body)',     // interface
+    fontMono:    'var(--font-mono)'      // données (heures, notes, compteurs)
   };
 
   // Icônes au trait remplaçant les emoji d'interface. Les emoji des PÔLES
@@ -2067,14 +2069,16 @@
       '" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;vertical-align:-2px;">' + d + '</svg>';
   }
 
+  // Une couleur par pôle, assez foncée pour porter du texte blanc (contraste
+  // AA) et se décliner en teinte claire (couleur + '1F').
   var SECTIONS = [
-    { id: 'cadrage', nom: 'Cadrage', emoji: '🎥', color: '#007AFF' },
-    { id: 'regie',   nom: 'Régie',   emoji: '🎛️', color: '#FF9500' },
-    { id: 'web',     nom: 'Web',     emoji: '🌐', color: '#34C759' },
-    { id: 'proj',    nom: 'Projection', emoji: '🖥️', color: '#5856D6' },
-    { id: 'prod',    nom: 'Prod',    emoji: '🎬', color: '#FF3B30' },
-    { id: 'photo',   nom: 'Photo',   emoji: '📸', color: '#FF2D55' },
-    { id: 'vente',   nom: 'Vente',   emoji: '🛒', color: '#AF52DE' }
+    { id: 'cadrage', nom: 'Cadrage', emoji: '🎥', color: '#0B5FE0' },
+    { id: 'regie',   nom: 'Régie',   emoji: '🎛️', color: '#C2410C' },
+    { id: 'web',     nom: 'Web',     emoji: '🌐', color: '#0E7490' },
+    { id: 'proj',    nom: 'Projection', emoji: '🖥️', color: '#6B2FD0' },
+    { id: 'prod',    nom: 'Prod',    emoji: '🎬', color: '#A61E4D' },
+    { id: 'photo',   nom: 'Photo',   emoji: '📸', color: '#0A6B4A' },
+    { id: 'vente',   nom: 'Vente',   emoji: '🛒', color: '#92400E' }
   ];
   var HASHTAGS = ['#Cadrage','#Régie','#Web','#Projection','#Prod','#Photo','#Vente','#CulteDuDimanche','#Chorale','#Formation','#Bilan'];
 
@@ -2933,8 +2937,8 @@
           return '<option value="' + safeHtml(q) + '"' + (q === sel ? ' selected' : '') + '>' + safeHtml(q) + '</option>';
         }).join('');
     };
-    var selStyle = 'width:100%;height:44px;border-radius:10px;border:1.5px solid var(--line);background:var(--tile);padding:0 12px;font-size:13.5px;color:var(--ink);outline:none;box-sizing:border-box;';
-    var inpStyle = 'width:100%;height:44px;border-radius:10px;border:1.5px solid var(--line);background:var(--tile);padding:0 12px;font-size:14px;color:var(--ink);outline:none;box-sizing:border-box;margin-top:8px;';
+    var selStyle = 'width:100%;height:44px;border-radius:12px;border:1.5px solid var(--line);background:var(--tile);padding:0 12px;font-size:13px;color:var(--ink);outline:none;box-sizing:border-box;';
+    var inpStyle = 'width:100%;height:44px;border-radius:12px;border:1.5px solid var(--line);background:var(--tile);padding:0 12px;font-size:15px;color:var(--ink);outline:none;box-sizing:border-box;margin-top:8px;';
     return '<div style="display:flex;flex-direction:column;gap:16px;">' +
       '<div>' +
         '<select id="' + prefix + 'SecQ1" style="' + selStyle + '">' + opts(q1) + '</select>' +

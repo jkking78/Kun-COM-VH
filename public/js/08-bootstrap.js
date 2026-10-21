@@ -12,9 +12,12 @@
       // familles de polices sont partagées par les deux thèmes ; seules les
       // couleurs basculent. Bricolage Grotesque = titres, Inter = interface,
       // JetBrains Mono = données (heures, notes, compteurs).
-      ':root{--font-display:\'Bricolage Grotesque\',system-ui,-apple-system,"Segoe UI",sans-serif;--font-body:\'Inter\',system-ui,-apple-system,"Segoe UI",sans-serif;--font-mono:\'JetBrains Mono\',ui-monospace,"SF Mono",Menlo,monospace;--page:#F5F6F8;--card:#FFFFFF;--tile:#EFF1F5;--line:#E4E7EC;--line2:#D6DBE3;--ink:#0C1116;--ink2:#2A313B;--muted:#5B6572;--faint:#8A93A0;--accent-soft:#E8EEFB;--accent-ink:#0B4FC4;--ok:#0E9F6E;--ok-ink:#047857;--ok-soft:#ECFDF5;--ok-line:#A7F3D0;--warn:#D98A0B;--warn-ink:#8A5A00;--warn-soft:#FFF7E6;--warn-line:#FFE0A3;--bad:#E2445C;--bad-ink:#B42318;--bad-soft:#FEF2F2;--bad-line:#FECACA;--skeleton:#EDEFF3;--sh:0 1px 2px rgba(16,24,40,0.04);--sh2:0 4px 20px rgba(16,24,40,0.06);--nav-bg:rgba(255,255,255,0.96);--nav-line:rgba(0,0,0,0.10);--overlay:rgba(255,255,255,0.92);}',
-      ':root[data-theme="dark"]{--page:#0A0A0B;--card:#141517;--tile:#1E2023;--line:#2A2D31;--line2:#33373C;--ink:#F2F3F5;--ink2:#D6D9DD;--muted:#9BA1A9;--faint:#6E747C;--accent-soft:#17233B;--accent-ink:#5B9BFF;--ok:#34D399;--ok-ink:#6EE7B7;--ok-soft:rgba(52,211,153,0.12);--ok-line:rgba(52,211,153,0.35);--warn:#FBBF24;--warn-ink:#FCD34D;--warn-soft:rgba(251,191,36,0.12);--warn-line:rgba(251,191,36,0.35);--bad:#FB7185;--bad-ink:#FDA4AF;--bad-soft:rgba(251,113,133,0.12);--bad-line:rgba(251,113,133,0.35);--skeleton:#1E2023;--sh:none;--sh2:0 6px 22px rgba(0,0,0,0.5);--nav-bg:rgba(20,21,23,0.92);--nav-line:rgba(255,255,255,0.10);--overlay:rgba(24,25,27,0.92);}',
-      'html,body{height:100%;overflow:hidden;background:var(--page);font-family:var(--font-body);}',
+      ':root{--font-display:\'Plus Jakarta Sans\',system-ui,-apple-system,"Segoe UI",sans-serif;--font-body:\'Plus Jakarta Sans\',system-ui,-apple-system,"Segoe UI",sans-serif;--font-mono:\'Plus Jakarta Sans\',system-ui,-apple-system,sans-serif;--page:#F4F5F7;--card:#FFFFFF;--tile:#EEF0F3;--line:#E6E9ED;--line2:#D5DAE1;--ink:#101418;--ink2:#2A313B;--muted:#5A6470;--faint:#6E7781;--accent-soft:#EAF1FD;--accent-ink:#0B4CB4;--ok:#0E9F6E;--ok-ink:#067647;--ok-soft:#E8F7EF;--ok-line:#A7F3D0;--warn:#D98A0B;--warn-ink:#93370D;--warn-soft:#FEF3E6;--warn-line:#FFE0A3;--bad:#D92D20;--bad-ink:#B42318;--bad-soft:#FEF2F2;--bad-line:#FECACA;--skeleton:#EDEFF3;--sh:0 1px 2px rgba(16,20,24,0.04);--sh2:0 1px 3px rgba(16,20,24,0.06);--nav-bg:#FFFFFF;--nav-line:#E6E9ED;--overlay:rgba(255,255,255,0.92);--pole-clair:0%;}',
+      ':root[data-theme="dark"]{--page:#0A0A0B;--card:#141517;--tile:#1E2023;--line:#2A2D31;--line2:#33373C;--ink:#F2F3F5;--ink2:#D6D9DD;--muted:#9BA1A9;--faint:#8A9099;--accent-soft:#17233B;--accent-ink:#5B9BFF;--ok:#34D399;--ok-ink:#6EE7B7;--ok-soft:rgba(52,211,153,0.12);--ok-line:rgba(52,211,153,0.35);--warn:#FBBF24;--warn-ink:#FCD34D;--warn-soft:rgba(251,191,36,0.12);--warn-line:rgba(251,191,36,0.35);--bad:#FB7185;--bad-ink:#FDA4AF;--bad-soft:rgba(251,113,133,0.12);--bad-line:rgba(251,113,133,0.35);--skeleton:#1E2023;--sh:none;--sh2:0 6px 22px rgba(0,0,0,0.5);--nav-bg:#141517;--nav-line:rgba(255,255,255,0.10);--overlay:rgba(24,25,27,0.92);--pole-clair:55%;}',
+      'html,body{height:100%;overflow:hidden;background:var(--page);font-family:var(--font-body);font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased;}',
+      // Une seule police (Plus Jakarta Sans) : les boutons et champs l'héritent,
+      // au lieu de la police système que les navigateurs leur imposent.
+      'button,input,textarea,select{font-family:inherit;}',
       // Utilitaires typographiques réutilisés par les écrans de la refonte.
       '.kc-display{font-family:var(--font-display);letter-spacing:-0.01em;}',
       '.kc-mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums;}',
@@ -79,7 +82,7 @@
   // comporte de façon inexplicable. On vérifie donc que les briques essentielles
   // sont bien là avant de démarrer, et on recharge UNE fois en contournant le
   // cache si ce n'est pas le cas.
-  var APP_VERSION = 'v154'; window.APP_VERSION = APP_VERSION; // Exposé pour l'écran Paramètres (ligne « Version »).
+  var APP_VERSION = 'v155'; window.APP_VERSION = APP_VERSION; // Exposé pour l'écran Paramètres (ligne « Version »).
   // Nom du cache tenu par le service worker pour CETTE version. Doit rester
   // aligné sur CACHE_NAME dans sw.js.
   var CACHE_COURANT = 'kun-com-pwa-' + APP_VERSION;
@@ -160,7 +163,7 @@
         console.warn('[Bootstrap] Erreur de rendu:', eRender);
         try {
           var rootEl = document.getElementById('root');
-          if (rootEl) rootEl.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:16px;padding:24px;text-align:center;font-family:-apple-system,sans-serif;"><p style="font-size:16px;font-weight:600;">Une erreur est survenue</p><button onclick="location.reload()" style="padding:10px 22px;border-radius:12px;border:none;background:#0B63F6;color:#FFF;font-size:14px;font-weight:600;">Recharger</button></div>';
+          if (rootEl) rootEl.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:16px;padding:24px;text-align:center;font-family:-apple-system,sans-serif;"><p style="font-size:15px;font-weight:600;">Une erreur est survenue</p><button onclick="location.reload()" style="padding:10px 22px;border-radius:12px;border:none;background:#0B5FE0;color:#FFF;font-size:15px;font-weight:600;">Recharger</button></div>';
         } catch(e2) {}
       }
     }

@@ -585,7 +585,7 @@
 
     // ÉTAPE 2 — Hashtags et mentions, sur un texte désormais garanti sans URL.
     var html = safe.replace(/#[\wéèêàâôûîçÉÈÊÀÂÔÛÎÇùÙ]+/gi, function(m) {
-      return '<span onclick="App.filterTag(\'' + jsArg(encodeURIComponent(m)) + '\')" style="color:#007AFF;font-weight:700;cursor:pointer;">' + m + '</span>';
+      return '<span onclick="App.filterTag(\'' + jsArg(encodeURIComponent(m)) + '\')" style="color:#0B5FE0;font-weight:700;cursor:pointer;">' + m + '</span>';
     }).replace(/@[\wéèêàâôûîçÉÈÊÀÂÔÛÎÇùÙ_.-]+/gi, function(m) {
       var r = resolveMentionToken(m.slice(1), users);
       if (r && r.kind === 'user') {
@@ -594,20 +594,20 @@
         // caractères), sinon on l'affiche en simple texte coloré — aucune
         // injection JS possible via onclick.
         if (/^[A-Za-z0-9_\-]{6,64}$/.test(r.user.id)) {
-          return '<span onclick="App.openUserProfile(\'' + jsArg(r.user.id) + '\')" style="color:#007AFF;font-weight:800;cursor:pointer;background:#EBF5FF;padding:2px 6px;border-radius:6px;">' + safeHtml(m) + '</span>';
+          return '<span onclick="App.openUserProfile(\'' + jsArg(r.user.id) + '\')" style="color:#0B5FE0;font-weight:800;cursor:pointer;background:#EBF5FF;padding:2px 6px;border-radius:8px;">' + safeHtml(m) + '</span>';
         }
         // Id suspect : même couleur/style, mais SANS onclick ni curseur pointeur.
-        return '<span style="color:#007AFF;font-weight:800;background:#EBF5FF;padding:2px 6px;border-radius:6px;">' + safeHtml(m) + '</span>';
+        return '<span style="color:#0B5FE0;font-weight:800;background:#EBF5FF;padding:2px 6px;border-radius:8px;">' + safeHtml(m) + '</span>';
       }
       // Mentions collectives : mises en évidence différemment (violet) pour qu'on
       // voie d'un coup d'œil qu'elles touchent plusieurs personnes.
       if (r && r.kind === 'all') {
-        return '<span style="color:#5856D6;font-weight:800;background:#F0EFFF;padding:2px 6px;border-radius:6px;">' + safeHtml(m) + '</span>';
+        return '<span style="color:#5856D6;font-weight:800;background:#F0EFFF;padding:2px 6px;border-radius:8px;">' + safeHtml(m) + '</span>';
       }
       if (r && r.kind === 'section') {
-        return '<span onclick="App.story(\'' + jsArg(r.section.id) + '\')" style="color:#5856D6;font-weight:800;cursor:pointer;background:#F0EFFF;padding:2px 6px;border-radius:6px;">' + safeHtml(m) + '</span>';
+        return '<span onclick="App.story(\'' + jsArg(r.section.id) + '\')" style="color:#5856D6;font-weight:800;cursor:pointer;background:#F0EFFF;padding:2px 6px;border-radius:8px;">' + safeHtml(m) + '</span>';
       }
-      return '<span style="color:#007AFF;font-weight:700;">' + safeHtml(m) + '</span>';
+      return '<span style="color:#0B5FE0;font-weight:700;">' + safeHtml(m) + '</span>';
     });
 
     // ÉTAPE 3 — On restaure chaque jeton par son lien <a> complet (mêmes
@@ -615,7 +615,7 @@
     html = html.replace(/\x00(\d+)\x00/g, function(m, i) {
       var u = urls[parseInt(i, 10)];
       if (typeof u !== 'string') return '';
-      return '<a href="' + safeUrl(u) + '" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" style="color:#007AFF;font-weight:600;text-decoration:underline;word-break:break-all;">' + u + '</a>';
+      return '<a href="' + safeUrl(u) + '" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" style="color:#0B5FE0;font-weight:600;text-decoration:underline;word-break:break-all;">' + u + '</a>';
     });
 
     return html.replace(/\n/g, '<br>');
