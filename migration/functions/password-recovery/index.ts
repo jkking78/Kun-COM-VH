@@ -6,7 +6,9 @@
 //
 // Actions :
 //  - "set"          (JWT requis) : définir/mettre à jour ses 2 questions+réponses.
-//  - "questions"    (public)     : récupérer les questions d'un compte par e-mail.
+//  - "questions"    (public)     : récupérer les questions d'un compte par numéro.
+//                                 Réponse identique qu'il existe ou non (S8) :
+//                                 un numéro inconnu reçoit deux questions leurres.
 //  - "reset"        (public)     : vérifier les réponses puis fixer un nouveau mdp.
 //  - "admin-reset"  (Admin)      : réinitialiser le mdp d'un membre (mdp provisoire).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -43,11 +45,23 @@ async function sha256Hex(s: string): Promise<string> {
 async function hashAnswer(answer: string, salt: string): Promise<string> {
   return sha256Hex(salt + "::" + normalize(answer));
 }
-// Identifiant cherché avec ilike (insensible à la casse) : %, _ et * (que
-// l'API traduit en %) y sont des jokers, « %12 » visait un compte sans
-// connaître son numéro.
-function sansJokers(id: string): string {
-  return id.replace(/[\\%_*]/g, (c) => "\\" + c);
+// Identifiant cherché à l'identique : les chiffres du numéro, rien d'autre
+// (plus de recherche approchée, donc plus de jokers possibles).
+function chiffres(v: unknown): string {
+  return String(v ?? "").replace(/[^0-9]/g, "").slice(0, 15);
+}
+// Les questions proposées par l'application (01-core.js) : un numéro inconnu
+// en reçoit deux, toujours les mêmes pour ce numéro.
+const QUESTIONS = [
+  "Le prénom de ton meilleur(e) ami(e) d'enfance ?", "Le nom de ton premier animal de compagnie ?",
+  "Ta ville de naissance ?", "Le prénom de ta grand-mère maternelle ?", "Le nom de ton école primaire ?",
+  "Le titre de ton chant préféré ?", "Le prénom de ton parrain ou de ta marraine ?", "Ton plat préféré ?",
+];
+async function questionsLeurres(id: string): Promise<{ q1: string; q2: string }> {
+  const h = await sha256Hex("leurre::" + id);
+  const i = parseInt(h.slice(0, 8), 16) % QUESTIONS.length;
+  const j = (i + 1 + parseInt(h.slice(8, 16), 16) % (QUESTIONS.length - 1)) % QUESTIONS.length;
+  return { q1: QUESTIONS[i], q2: QUESTIONS[j] };
 }
 // Adresse du client telle que la passerelle Supabase la transmet ; null si
 // absente (on ne met pas alors tout le monde dans le même compteur).
@@ -97,17 +111,19 @@ Deno.serve(async (req) => {
       if (normalize(q1) === normalize(q2))
         return json({ error: "Choisissez deux questions différentes." }, 400);
 
-      // Clé de recherche = NUMÉRO de téléphone (le membre s'y connecte). Le champ
-      // « email » de la table sert d'identifiant générique : on y stocke le numéro
-      // (chiffres canoniques) transmis par le client, pas l'e-mail interne.
-      const identifier = String(body.phone || user.phone || user.email || "").trim();
+      // Clé de recherche = NUMÉRO de téléphone, tiré du COMPTE lui-même
+      // (« 2250707070707@commit.aev ») et jamais du client : un membre ne peut
+      // plus enregistrer le numéro d'un autre et bloquer sa récupération (S8).
+      const local = String(user.email || "").split("@")[0];
+      const identifier = /^[0-9]{6,15}$/.test(local) ? local : String(user.phone || "").replace(/[^0-9]/g, "");
+      if (!identifier) return json({ error: "Numéro du compte introuvable." }, 400);
       const salt = randHex(16);
       const [a1_hash, a2_hash] = await Promise.all([hashAnswer(a1, salt), hashAnswer(a2, salt)]);
       const up = await admin.from("kun_com_secrets").upsert({
         user_id: user.id, email: identifier, q1, q2, a1_hash, a2_hash, salt,
         fail_count: 0, locked_until: null, verrous: 0, updated_at: new Date().toISOString(),
       }, { onConflict: "user_id" });
-      if (up.error) return json({ error: up.error.message }, 500);
+      if (up.error) { console.error(up.error); return json({ error: "Enregistrement impossible." }, 500); }
       return json({ ok: true });
     }
 
@@ -121,27 +137,25 @@ Deno.serve(async (req) => {
 
     // ---- QUESTIONS : récupérer les questions d'un compte par NUMÉRO ----
     if (action === "questions") {
-      const id = String(body.email || body.phone || "").trim().toLowerCase();
+      const id = chiffres(body.email || body.phone);
       if (!id) return json({ error: "Identifiant requis." }, 400);
-      const row = await admin.from("kun_com_secrets")
-        .select("q1,q2,locked_until").ilike("email", sansJokers(id)).maybeSingle();
-      if (row.error || !row.data) return json({ found: false });
-      if (row.data.locked_until && new Date(row.data.locked_until) > new Date())
-        return json({ found: true, locked: true, q1: row.data.q1, q2: row.data.q2 });
+      const row = await admin.from("kun_com_secrets").select("q1,q2").eq("email", id).maybeSingle();
+      // Même réponse qu'un compte existe ou non : on ne révèle pas les numéros
+      // inscrits. Un verrou éventuel n'est signalé qu'à l'étape suivante.
+      if (row.error || !row.data) return json({ found: true, ...(await questionsLeurres(id)) });
       return json({ found: true, q1: row.data.q1, q2: row.data.q2 });
     }
 
     // ---- RESET : vérifier les réponses puis fixer un nouveau mot de passe ----
     if (action === "reset") {
-      const id = String(body.email || body.phone || "").trim().toLowerCase();
+      const id = chiffres(body.email || body.phone);
       const a1 = String(body.a1 || "");
       const a2 = String(body.a2 || "");
       const newPassword = String(body.newPassword || "");
       if (!id) return json({ error: "Identifiant requis." }, 400);
       if (newPassword.length < 8) return json({ error: "Mot de passe : 8 caractères minimum." }, 400);
 
-      const row = await admin.from("kun_com_secrets")
-        .select("*").ilike("email", sansJokers(id)).maybeSingle();
+      const row = await admin.from("kun_com_secrets").select("*").eq("email", id).maybeSingle();
       // Message neutre : ne révèle pas l'existence du compte.
       if (row.error || !row.data) return json({ error: "Réponses incorrectes." }, 403);
       const sec = row.data;
@@ -182,6 +196,7 @@ Deno.serve(async (req) => {
 
     return json({ error: "Action inconnue." }, 400);
   } catch (e) {
-    return json({ error: String(e) }, 500);
+    console.error(e);
+    return json({ error: "Erreur interne" }, 500);
   }
 });

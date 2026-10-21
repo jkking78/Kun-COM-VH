@@ -1511,7 +1511,14 @@
       S.dmMessages.push(newMsg);
       marquerConversationLue(autre);
       if (supabase) {
-        supabase.from('kun_com_dms').upsert({ id: newMsg.id, from_id: newMsg.fromId, to_id: newMsg.toId, content: newMsg, sent_at: new Date(newMsg.timestamp).toISOString() }, { onConflict: 'id' }).then(function(){}, function(e){ console.warn('Erreur envoi message:', e); });
+        // C5 : hors connexion, le message part dans la file d'attente ; refusé
+        // par le serveur, il est marqué « Non envoyé » au lieu de passer pour livré.
+        var ligneDm = { id: newMsg.id, from_id: newMsg.fromId, to_id: newMsg.toId, content: newMsg, sent_at: new Date(newMsg.timestamp).toISOString() };
+        supabase.from('kun_com_dms').upsert(ligneDm, { onConflict: 'id' }).then(function(r) {
+          if (!r || !r.error) return;
+          if (estErreurReseau(r.error)) App._mettreEnFileAttenteEcriture({ table: 'kun_com_dms', row: ligneDm });
+          else App._messageNonEnvoye(newMsg.id, r.error);
+        }, function() { App._mettreEnFileAttenteEcriture({ table: 'kun_com_dms', row: ligneDm }); });
       }
       // Pas d'extrait dans la notification : elle est rangée dans la fiche du
       // destinataire, que tous les membres peuvent lire. L'aperçu du message
@@ -2070,6 +2077,14 @@
       });
     },
 
+    _messageNonEnvoye: function(id, err) {
+      console.warn('Message refusé par le serveur :', err);
+      var maj = function(liste) { (liste || []).forEach(function(m){ if (m && m.id === id) m.nonEnvoye = true; }); };
+      var dms = db(SK.DMS, []); maj(dms); dbSet(SK.DMS, dms);
+      maj(S.dmMessages);
+      render();
+      toast('Message non envoyé. Vérifie ton accès à cette conversation.', 'error');
+    },
     // ---- File d'attente d'écritures hors-ligne ----
     // Les upserts réseau étaient « fire-and-forget » : hors connexion, le toast
     // annonçait un succès mais rien n'arrivait jamais au serveur (et une
@@ -2666,6 +2681,27 @@
     // Réinitialisation du mot de passe d'un membre par l'Admin (pour les comptes
     // sans questions de sécurité). L'Edge Function génère un mot de passe
     // provisoire via l'API admin ; on l'affiche à l'Admin pour qu'il le transmette.
+    // S9 : seuls l'Admin (et le membre tant que son inscription est en
+    // attente) fixent les pôles, qui ouvrent canaux et plan de préparation.
+    definirPoleMembre: async function(userId, pole) {
+      if (!isGrandResponsable(S.user) || !supabase) return;
+      var u = db(SK.USERS, []).find(function(x){ return x.id === userId; });
+      if (!u) return;
+      var poles = getUserSections(u).filter(function(p){ return SECTIONS.some(function(s){ return s.id === p; }); });
+      var i = poles.indexOf(pole);
+      if (i !== -1) poles.splice(i, 1);
+      else {
+        if (poles.length >= 2) { toast('Deux pôles au plus : retire d\'abord l\'un des deux.', 'error'); return; }
+        poles.push(pole);
+      }
+      var r = await supabase.rpc('kc_definir_poles', { p_membre: userId, p_poles: poles });
+      if (r && r.error) { toast('Changement de pôle impossible. Réessaie.', 'error'); return; }
+      var users = db(SK.USERS, []);
+      var cible = users.find(function(x){ return x.id === userId; });
+      if (cible) { cible.sections = poles; delete cible.section_id; dbSet(SK.USERS, users); }
+      render();
+      toast('Pôles de ' + (u.prenom || 'ce membre') + ' : ' + (poles.length ? poles.map(secNom).join(' et ') : 'aucun') + '.', 'success');
+    },
     adminResetPassword: async function(userId, name) {
       if (!S.user || S.jwtRole !== 'GRAND_RESPONSABLE') { toast('Réservé à l\'Admin.', 'error'); return; }
       if (!supabase || !supabase.functions) { toast('Service indisponible.', 'error'); return; }
@@ -2997,7 +3033,7 @@
         catch(e) { console.warn('toggleTaskDone upsert error:', e); }
       }
       render();
-      var dlTs = new Date(mine.deadline).getTime();
+      var dlTs = echeanceTs(mine.deadline);
       toast(now <= dlTs ? 'Tâche livrée à temps ! +5 ★' : 'Tâche livrée (en retard) · +2 ★', 'success');
     },
     searchMembers: function(q) { S.membersSearch = q; render(); var i=document.getElementById('membersSearchInput'); if(i){i.focus(); var l=i.value.length; try{i.setSelectionRange(l,l);}catch(e){}} },

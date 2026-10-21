@@ -253,6 +253,29 @@ message par événement et par pôle, qui renvoie au plan. Préférence
 1. **Exécuter `12_assignations_par_pole.sql`.**
 2. **Déployer le client v164.**
 
+## Migration 13 — lot D2 : sécurité et fiabilité (v165)
+
+- **Pôles (S9)** : un membre validé (Responsable compris) ne change plus ses
+  pôles lui-même ; l'Admin les fixe (`kc_definir_poles`, menu « ⋯ » de Gérer
+  les rôles). Une inscription en attente choisit encore les siens.
+- **Ponctualité (C6)** : bonus d'accueil (`welcomeStars`) figé ; une position
+  ajoutée à un pointage après son délai de grâce reçoit `geoConfirmeLe`
+  (heure du serveur), retenue comme heure d'arrivée.
+- **Rappels (S11)** : la fonction `push` exige l'en-tête `x-kc-jeton`, que la
+  tâche planifiée lit dans `kun_com_push_cles.jeton_rappels`.
+- **Fichiers (S13)** : `post-media` réservé aux comptes validés, dans le
+  dossier `<id>/` ; `avatars` sous `avatar_<id>_…` ou `cover_<id>_…` ; 50 Mo
+  (images et vidéos) et 10 Mo (images) au plus.
+- **Récupération (S8)** : identifiant unique par compte (index) ; la fonction
+  le tire du compte et répond pareil qu'un numéro soit inscrit ou non.
+
+### Ordre de mise en production
+1. **Exécuter `13_securite_fiabilite.sql`** (la tâche planifiée envoie dès
+   lors le jeton ; l'ancienne fonction l'ignore).
+2. **Redéployer `push` puis `password-recovery`** (sans vérification
+   automatique du jeton, comme avant).
+3. **Déployer le client v165.**
+
 ## Limites restantes (connues)
 - La **position GPS** d'un pointage est fournie par le téléphone : le serveur
   borne l'heure, mais ne peut pas prouver la présence physique.

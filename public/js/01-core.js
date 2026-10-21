@@ -2469,10 +2469,9 @@
     });
     return res;
   }
-  // Date du jour en heure LOCALE (toISOString passerait en UTC).
+  // Date du jour à Abidjan (UTC) : même référence que les heures d'événement.
   function isoLocal(d) {
-    d = d || new Date();
-    return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+    return (d || new Date()).toISOString().slice(0, 10);
   }
   // Étapes d'un plan (d'un pôle ou de tous), à plat, dans l'ordre des dates.
   function etapesPreparation(prep, poleId) {
@@ -2621,10 +2620,22 @@
   }
 
   // Horodatage de fin d'un événement. null si inconnu.
+  // C8 : les heures d'événement sont celles d'Abidjan (UTC, sans heure d'été),
+  // quel que soit le fuseau réglé sur le téléphone. Lues en heure locale, elles
+  // décalaient les étoiles et la frise d'un téléphone réglé sur Paris.
+  function heureAbidjan(date, hhmm) {
+    return Date.parse(String(date) + 'T' + (hhmm || '00:00') + ':00Z');
+  }
+  // Échéance d'une tâche (« 2026-10-25T18:00 », saisie en heure d'Abidjan).
+  function echeanceTs(deadline) {
+    var s = String(deadline || '');
+    if (!s) return NaN;
+    return Date.parse(/Z|[+-]\d\d:\d\d$/.test(s) ? s : s + (s.length <= 16 ? ':00Z' : 'Z'));
+  }
   function eventEndTimestamp(ev) {
     if (!ev || !ev.eventDate) return null;
     var hhmm = ev.eventEnd || '23:59';
-    var t = new Date(ev.eventDate + 'T' + hhmm + ':00').getTime();
+    var t = heureAbidjan(ev.eventDate, hhmm);
     if (isNaN(t)) return null;
     // Sans ce décalage, une veillée se terminant à 00:30 était datée au petit matin
     // du MÊME jour, donc déjà passée : elle s'affichait « Terminé » avant même
@@ -2669,7 +2680,7 @@
   function eventStartTimestamp(ev) {
     if (!ev || !ev.eventDate) return null;
     var hhmm = ev.eventStart || '00:00';
-    var t = new Date(ev.eventDate + 'T' + hhmm + ':00').getTime();
+    var t = heureAbidjan(ev.eventDate, hhmm);
     return isNaN(t) ? null : t;
   }
 
@@ -2714,6 +2725,9 @@
     // saveEditPost). On retombe sur timestamp pour les publications antérieures à
     // cette mécanique.
     var arrival = checkIn.checkInAt || checkIn.timestamp || 0;
+    // C6 : une position confirmée après coup (heure fixée par le serveur) vaut
+    // arrivée à ce moment-là, pas à l'heure du premier pointage.
+    if (typeof checkIn.geoConfirmeLe === 'number' && checkIn.geoConfirmeLe > arrival) arrival = checkIn.geoConfirmeLe;
     var delayMinutes = Math.round((arrival - startTs) / 60000);
     var dist = checkInDistance(checkIn, ev);
     var geo = checkIn.geo || null;
@@ -2906,7 +2920,7 @@
       //                     sans livraison. La présence physique n'entre pas en jeu.
       //  - sans deadline  → PRÉSENCE : ponctualité fondée sur l'heure de pointage.
       if (mine.deadline) {
-        var dlTs = new Date(mine.deadline).getTime();
+        var dlTs = echeanceTs(mine.deadline);
         if (isNaN(dlTs)) return;
         var doneP = posts.find(function(p){
           return p.type === 'TASK_DONE' && p.userId === userId && p.taskEventId === ev.id;
@@ -3424,7 +3438,7 @@
     if (!ev || !userId) return null;
     var mine = (ev.assignments || []).find(function(a){ return a && a.userId === userId; });
     if (!mine || !mine.deadline) return null;
-    var dlTs = new Date(mine.deadline).getTime();
+    var dlTs = echeanceTs(mine.deadline);
     if (isNaN(dlTs)) return null;
     var posts = allPosts || db(SK.POSTS, []);
     var doneP = posts.find(function(p){
