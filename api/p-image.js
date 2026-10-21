@@ -6,7 +6,7 @@
 var SUPABASE_URL = 'https://yugkryhikrfsxbuyxacl.supabase.co';
 var SUPABASE_KEY = 'sb_publishable_CMnVxHYsKJIP51J0zDRX6w_hdLgiHR7';
 
-// Lecture via la fonction publique kc_apercu_publication (voir api/p/[id].js) :
+// Lecture via la fonction publique kc_apercu_publication (voir api/p.js) :
 // les publications elles-mêmes ne sont plus lisibles sans connexion.
 async function fetchImage(id) {
   var r = await fetch(SUPABASE_URL + '/rest/v1/rpc/kc_apercu_publication', {

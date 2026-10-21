@@ -4,6 +4,14 @@
   "trailingSlash": false,
   "rewrites": [
     {
+      "source": "/api/p/:id",
+      "destination": "/api/p?id=:id"
+    },
+    {
+      "source": "/api/p-image/:id",
+      "destination": "/api/p-image?id=:id"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
