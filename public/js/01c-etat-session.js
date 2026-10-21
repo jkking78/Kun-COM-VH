@@ -40,8 +40,6 @@
     searchFocused: false,
     membersListOpen: false,
     membersSearch: '',
-    // Graphique actif de la carte ponctualité : 'note' | 'ontime' | 'services'
-    punctualityChart: 'note',
     // Résultat d'une réinitialisation de mot de passe par l'Admin (mdp provisoire à afficher)
     adminResetResult: null,
     // Page Paramètres (informations, apparence, administration, compte)

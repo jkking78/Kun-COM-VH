@@ -102,7 +102,6 @@
     },
     openMembersList: function() { S.membersListOpen = true; S.membersSearch = ''; render(); },
     closeMembersList: function() { S.membersListOpen = false; render(); },
-    setPunctualityChart: function(which) { S.punctualityChart = which; render(); },
     basculerHistorique: function() { S.historiqueTout = !S.historiqueTout; render(); },
     // Le membre coche (ou décoche) SA tâche à livrer sur un événement. La note
     // est ensuite recalculée automatiquement d'après la deadline (voir
