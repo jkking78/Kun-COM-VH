@@ -2300,10 +2300,8 @@
     var now = Date.now();
     var today = new Date().toISOString().split('T')[0];
 
-    var candidates = pendingCheckIns(S.user, posts, now);
-
     var selectedId = S.postCheckInEventId;
-    if (!candidates.length && !selectedId) return '';
+    if (!selectedId) return '';
 
     var selectedEv = selectedId ? posts.find(function(p){ return p.id === selectedId; }) : null;
 
@@ -2325,24 +2323,10 @@
       '</div>';
     }
 
-    return '<div style="background:var(--warn-soft);border:1px solid var(--warn-line);border-radius:16px;padding:12px 14px;margin-bottom:10px;">' +
-      '<div style="font-size:13px;font-weight:800;color:var(--warn-ink);margin-bottom:6px;">Enregistrer mon arrivée</div>' +
-      '<div style="font-size:12px;color:var(--muted);line-height:1.45;margin-bottom:8px;">Tu es de service ' + (candidates.length > 1 ? 'sur ces événements' : 'sur cet événement') + '. Pointe pour valider ta ponctualité.</div>' +
-      candidates.map(function(ev) {
-        var st = eventStartTimestamp(ev);
-        var dl = st ? Math.round((now - st) / 60000) : 0;
-        var sc = starsForDelay(dl);
-        var c = sc >= 4 ? '#0E9F6E' : sc >= 2 ? '#D98A0B' : '#D92D20';
-        return '<button type="button" onclick="App.setCheckInEvent(\'' + jsArg(ev.id) + '\')" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--card);border:1px solid #F0E0BC;border-radius:999px;padding:10px 12px;margin-bottom:6px;cursor:pointer;text-align:left;">' +
-          '<span style="min-width:0;">' +
-            '<span style="display:block;font-size:13px;font-weight:800;color:var(--ink);overflow-wrap:anywhere;">' + safeHtml(ev.eventTitle || 'Événement') + '</span>' +
-            '<span style="display:block;font-size:11px;color:var(--faint);">' + safeHtml(ev.eventStart || '') + (dl > 0 ? ' · retard de ' + dl + ' min' : ' · à l\'heure') + '</span>' +
-          '</span>' +
-          '<span style="font-size:13px;font-weight:800;color:' + c + ';white-space:nowrap;">' + (sc>0?'+':'') + sc + '★</span>' +
-        '</button>';
-      }).join('') +
-      '<div style="font-size:11px;color:var(--faint);line-height:1.4;">Le pointage relève ta position, visible de tous et non retirable.</div>' +
-    '</div>';
+    // Pas de pointage proposé d'office ici : il fait doublon avec « Je suis
+    // arrivé » (accueil, Planning). Le bloc ci-dessus n'apparaît que si le
+    // membre a choisi « Pointer avec une photo ».
+    return '';
   }
 
   function renderCreateModal(u) {

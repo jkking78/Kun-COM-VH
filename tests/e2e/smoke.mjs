@@ -387,7 +387,7 @@ try {
     assert.ok((await page.textContent(mission)).includes('Indisponible'));
     // Indisponibilités : ajout d'une date depuis le Planning.
     await page.evaluate("App.tab('planning')");
-    await page.click('text=Mes indisponibilités');
+    await page.click('[aria-label^="Mes indisponibilités"]');
     await page.fill('#indispoDate', demain);
     await page.fill('#indispoMotif', 'Examen');
     await page.click('text=Ajouter cette date');
