@@ -12,23 +12,29 @@
     if (!el) {
       el = document.createElement('div');
       el.id = '_toast';
-      el.style.cssText = 'position:fixed;top:16px;left:50%;transform:translateX(-50%) translateY(-80px);z-index:9999999;max-width:360px;width:calc(100% - 32px);pointer-events:none;transition:transform 0.35s cubic-bezier(0.34,1.56,0.64,1),opacity 0.3s;opacity:0;';
+      // Sous la barre d'état de l'iPhone (heure, réseau, batterie) : sans
+      // cette marge, le message s'affichait par-dessus et devenait illisible
+      // dans l'application installée. 22 px minimum, comme le reste de l'app
+      // (voir .safe-top dans index.html), pour les iPhone sans encoche.
+      el.style.cssText = 'position:fixed;top:calc(max(env(safe-area-inset-top), 22px) + 10px);left:50%;transform:translateX(-50%) translateY(-24px);z-index:9999999;max-width:360px;width:calc(100% - 32px);pointer-events:none;transition:transform 0.35s cubic-bezier(0.34,1.56,0.64,1),opacity 0.25s;opacity:0;';
       document.body.appendChild(el);
     }
 
     var isErr = type === 'error';
     var isWarn = type === 'warning';
-    var accent = isErr ? '#FF3B30' : isWarn ? '#FF9500' : '#34C759';
-    var bgIcon = isErr ? '#FFF0EE' : isWarn ? '#FFF8EE' : '#EDFBF3';
+    var accent = isErr ? 'var(--bad)' : isWarn ? 'var(--warn)' : 'var(--ok)';
+    var bgIcon = isErr ? 'var(--bad-soft)' : isWarn ? 'var(--warn-soft)' : 'var(--ok-soft)';
     var icon = isErr
       ? '<path d="M18 6L6 18M6 6l12 12"/>'
       : '<path d="M20 6L9 17l-5-5"/>';
 
-    el.innerHTML = '<div style="display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.97);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);padding:13px 16px;border-radius:20px;border:1px solid rgba(0,0,0,0.06);box-shadow:0 12px 40px rgba(0,0,0,0.18);">' +
+    // Carte pleine (sans transparence) aux couleurs du thème : lisible sur
+    // n'importe quel fond, en clair comme en sombre.
+    el.innerHTML = '<div role="status" aria-live="polite" style="display:flex;align-items:center;gap:10px;background:var(--card);padding:12px 16px;border-radius:20px;border:1px solid var(--line);box-shadow:0 8px 28px rgba(16,20,24,0.16);">' +
       '<div style="width:28px;height:28px;border-radius:50%;background:' + bgIcon + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;">' +
         '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="' + accent + '" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">' + icon + '</svg>' +
       '</div>' +
-      '<span style="font-size:13px;font-weight:700;color:#1C1C1E;flex:1;line-height:1.3;">' + safeHtml(msg) + '</span>' +
+      '<span style="font-size:15px;font-weight:600;color:var(--ink);flex:1;line-height:1.35;">' + safeHtml(msg) + '</span>' +
     '</div>';
 
     requestAnimationFrame(function() {
@@ -37,7 +43,7 @@
     });
 
     S.toastTimer = setTimeout(function() {
-      el.style.transform = 'translateX(-50%) translateY(-80px)';
+      el.style.transform = 'translateX(-50%) translateY(-24px)';
       el.style.opacity = '0';
     }, 2800);
   }
