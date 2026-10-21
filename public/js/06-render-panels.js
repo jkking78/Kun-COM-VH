@@ -1644,29 +1644,20 @@
     ];
   }
 
-  // Badges : les obtenus en tuiles pleines aux couleurs des pôles, ceux à
-  // gagner en pointillés avec leur condition (synthèse du design).
-  var BADGE_SIGNE = { premier: '1er', dix: '10', serie: '×5', cycle: '100 %', tache: 'À temps', pilier: '25' };
-  var BADGE_COULEUR = { premier: '#0B5FE0', dix: '#C2410C', serie: '#0A6B4A', cycle: '#6B2FD0', tache: '#0E7490', pilier: '#A61E4D' };
   function renderBadges(freshU) {
     var badges = badgesMembre(freshU.id);
     var obtenus = badges.filter(function(b){ return b.ok; }).length;
-    return '<div id="badges" style="margin-top:16px;">' +
-      '<div style="display:flex;justify-content:space-between;align-items:baseline;margin:0 2px 10px;">' +
-        '<h2 style="font-size:17px;font-weight:800;color:' + UI.ink + ';margin:0;">Badges</h2>' +
-        '<span style="font-size:13px;font-weight:600;color:' + UI.muted + ';">' + obtenus + ' sur ' + badges.length + '</span>' +
+    return '<div id="badges" style="background:' + UI.card + ';border:1px solid ' + UI.line + ';border-radius:16px;padding:14px 16px;margin-top:12px;">' +
+      '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;">' +
+        '<strong style="font-size:15px;color:' + UI.ink + ';">Badges</strong>' +
+        '<span style="font-size:12px;font-weight:700;color:' + UI.faint + ';">' + obtenus + ' / ' + badges.length + '</span>' +
       '</div>' +
-      '<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;">' +
+      '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">' +
         badges.map(function(b) {
-          if (b.ok) {
-            return '<div title="' + safeHtml(b.cond) + '" class="kc-apparait" style="min-height:76px;box-sizing:border-box;padding:12px 10px;border-radius:16px;background:' + BADGE_COULEUR[b.id] + ';color:#FFF;">' +
-              '<div style="font-size:20px;font-weight:800;line-height:1.1;">' + BADGE_SIGNE[b.id] + '</div>' +
-              '<div style="font-size:12px;font-weight:700;margin-top:4px;line-height:1.2;">' + safeHtml(b.nom) + '</div>' +
-            '</div>';
-          }
-          return '<div style="min-height:76px;box-sizing:border-box;padding:12px 10px;border-radius:16px;background:' + UI.card + ';border:2px dashed var(--line2);color:' + UI.muted + ';">' +
-            '<div style="font-size:12px;font-weight:700;line-height:1.2;color:' + UI.ink + ';">' + safeHtml(b.nom) + '</div>' +
-            '<div style="font-size:11px;margin-top:4px;line-height:1.3;">' + safeHtml(b.cond) + '</div>' +
+          return '<div title="' + safeHtml(b.cond) + '" class="' + (b.ok ? 'kc-apparait' : '') + '" style="text-align:center;padding:10px 4px;border-radius:12px;background:' + (b.ok ? 'var(--accent-soft)' : UI.tile) + ';' + (b.ok ? '' : 'opacity:0.55;') + '">' +
+            '<div style="font-size:24px;line-height:1;' + (b.ok ? '' : 'filter:grayscale(1);') + '">' + b.emoji + '</div>' +
+            '<div style="font-size:11.5px;font-weight:800;color:' + UI.ink + ';margin-top:6px;line-height:1.2;">' + safeHtml(b.nom) + '</div>' +
+            (b.ok ? '' : '<div style="font-size:10px;color:' + UI.faint + ';margin-top:3px;line-height:1.25;">' + safeHtml(b.cond) + '</div>') +
           '</div>';
         }).join('') +
       '</div>' +

@@ -302,7 +302,7 @@ try {
     assert.ok((await page.textContent('#_kcPointage')).includes('+3'));
     // Profil : badges ; Bilans : rien à signaler pour un membre sans pôle.
     await page.evaluate("App.tab('profile')");
-    assert.ok((await page.textContent('#badges')).includes('0 sur 6'));
+    assert.ok((await page.textContent('#badges')).includes('0 / 6'));
     await page.evaluate("App.tab('debrief')");
     assert.equal(await page.$('#monPole'), null);
     // Un membre ne voit pas les demandes d'inscription, et ne peut pas
