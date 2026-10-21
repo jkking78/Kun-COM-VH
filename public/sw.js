@@ -5,7 +5,7 @@
 // même stratégie de cache, juste plus de fichiers listés ci-dessous.
 // ============================================================
 
-const CACHE_NAME = 'kun-com-pwa-v165';
+const CACHE_NAME = 'kun-com-pwa-v166';
 // Numéro de version seul ('102'), tel qu'il apparaît dans les ?v=… de index.html.
 const NUM_V = CACHE_NAME.split('-v')[1];
 const JS_FILES = [
@@ -29,15 +29,15 @@ const STATIC_ASSETS = [
   './vendor/morphdom-2.7.8.min.js'
 ].concat(JS_FILES.map((f) => `./js/${f}.js?v=${NUM_V}`));
 
+// C10 : si le pré-chargement échoue, l'installation échoue aussi : l'ancienne
+// version, complète, reste en place (avant, son cache était supprimé et la
+// nouvelle restait à moitié chargée, inutilisable hors connexion).
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_ASSETS).catch((err) => {
-        console.warn('[SW] Cache initial:', err);
-      });
-    })
+    caches.open(CACHE_NAME)
+      .then((cache) => cache.addAll(STATIC_ASSETS))
+      .then(() => self.skipWaiting())
   );
-  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
@@ -99,7 +99,11 @@ self.addEventListener('fetch', (event) => {
         }
         return networkResponse;
       }).catch(() => {
-        return caches.match(event.request);
+        // Hors connexion : une page ouverte avec des paramètres (« /?kc=… » au
+        // toucher d'une notification, « /?post=… ») retombe sur l'application.
+        const navigation = event.request.mode === 'navigate';
+        return caches.match(event.request, { ignoreSearch: navigation })
+          .then((r) => r || (navigation ? caches.match('./index.html') : undefined));
       })
     );
     return;

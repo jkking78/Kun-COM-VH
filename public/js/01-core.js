@@ -248,9 +248,12 @@
     // un 2e commentaire sur la même publication (même targetId+type+senderId,
     // commentId différent) passait pour un doublon du premier et était
     // silencieusement ignoré.
+    // C9 : l'anti-doublon ne vaut que pour 10 minutes ; au-delà, une deuxième
+    // relance ou une ré-assignation au même événement est une vraie nouvelle.
+    var depuis = Date.now() - 10 * 60 * 1000;
     var exists = targetUser.notifications.find(function(n){
       return n.targetId === notifData.targetId && n.type === notifData.type && n.senderId === (S.user ? S.user.id : 'system')
-        && (n.commentId || null) === (notifData.commentId || null);
+        && (n.commentId || null) === (notifData.commentId || null) && (n.timestamp || 0) > depuis;
     });
     if (exists) return;
     
@@ -747,13 +750,6 @@
       var arr = raw ? JSON.parse(raw) : [];
       return Array.isArray(arr) ? arr : [];
     } catch(e) { return []; }
-  }
-  function addLocalAccountId(id) {
-    if (!id) return;
-    try {
-      var arr = localAccountIds();
-      if (arr.indexOf(id) === -1) { arr.push(id); localStorage.setItem(SK_LOCAL_ACCOUNTS, JSON.stringify(arr)); }
-    } catch(e) {}
   }
   function removeLocalAccountId(id) {
     if (!id) return;
@@ -2603,15 +2599,6 @@
     return geoDistance(post.geo.lat, post.geo.lng, ev.eventLat, ev.eventLng);
   }
 
-  // Libellé lisible de l'état de position d'une publication d'arrivée.
-  function geoStatusLabel(geo) {
-    if (!geo) return 'Position non enregistrée';
-    if (geo.available) return 'Position enregistrée';
-    if (geo.reason === 'denied') return 'Position refusée par le membre';
-    if (geo.reason === 'unsupported') return 'Position non disponible sur cet appareil';
-    if (geo.reason === 'outside_country') return 'Position hors Côte d\'Ivoire';
-    return 'Position introuvable';
-  }
 
   // Un événement dont l'heure de fin est antérieure ou égale à l'heure de début
   // se termine le LENDEMAIN (veillée 21:30 → 00:30, par exemple).
@@ -2822,12 +2809,6 @@
     return canAssign(u);
   }
 
-  // Peut-il modifier l'événement lui-même (titre, date, lieu, pôles) ?
-  // Réservé au Admin et au créateur.
-  function canEditEvent(post, u) {
-    if (!post || !u) return false;
-    return isGrandResponsable(u) || post.userId === u.id;
-  }
 
   // Cette assignation relève-t-elle de l'autorité de l'utilisateur ?
   // Sert à empêcher un responsable de retirer les membres d'un autre pôle.
@@ -3491,7 +3472,6 @@
   function roleTint(role) { return ROLE_TINTS[role] || ROLE_TINTS.MEMBRE; }
 
   function secNom(id) { var s = SECTIONS.find(function(x){ return x.id===id; }); return s ? s.nom : 'Général'; }
-  function secEmoji(id) { var s = SECTIONS.find(function(x){ return x.id===id; }); return s ? s.emoji : '📢'; }
   function secColor(id) { var s = SECTIONS.find(function(x){ return x.id===id; }); return s ? s.color : '#8E8E93'; }
 
   function timeAgo(ts) {

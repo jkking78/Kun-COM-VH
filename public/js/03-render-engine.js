@@ -96,7 +96,44 @@
       if (!/\srole="/.test(tag)) ajout += ' role="button"';
       if (!/\stabindex="/.test(tag)) ajout += ' tabindex="0"';
       return ajout ? '<' + nom + ajout + tag.slice(nom.length + 1) : tag;
-    }).replace(/<button\b(?![^>]*aria-label)([^>]*)>\s*(×|✕|&times;)\s*<\/button>/g, '<button aria-label="Fermer"$1>$2</button>');
+    }).replace(/<button\b(?![^>]*aria-label)([^>]*)>\s*(×|✕|&times;)\s*<\/button>/g, '<button aria-label="Fermer"$1>$2</button>')
+      // A3 : les fenêtres plein écran (fond fixe couvrant l'écran) sont des dialogues.
+      .replace(/<div\b(?![^>]*\srole=")([^>]*\bstyle="[^"]*position:\s*fixed;[^"]*inset:\s*0[^"]*"[^>]*)>/g, '<div role="dialog" aria-modal="true"$1>')
+      // A4 : une image sans texte de remplacement est décorative pour les lecteurs d'écran.
+      .replace(/<img\b(?![^>]*\salt=)/g, '<img alt=""');
+  }
+  // Échap ferme la fenêtre du dessus : son bouton Retour / Fermer, sinon un
+  // clic sur son fond (qui ferme la plupart des feuilles).
+  function fermerFenetreAuClavier(e) {
+    if (e.key !== 'Escape') return;
+    var root = document.getElementById('root');
+    var fenetres = root ? root.querySelectorAll('[role="dialog"]') : [];
+    var haut = fenetres[fenetres.length - 1];
+    if (!haut) return;
+    var bouton = haut.querySelector('[aria-label="Retour"], [aria-label="Fermer"]');
+    e.preventDefault();
+    if (bouton) bouton.click(); else if (haut.getAttribute('onclick')) haut.click();
+  }
+  try { document.addEventListener('keydown', fermerFenetreAuClavier); } catch(e) {}
+  // À l'ouverture d'une fenêtre, le focus y entre (sauf saisie en cours), pour
+  // qui navigue au clavier seulement : au doigt, rien ne change à l'écran.
+  var _derniereFenetre = null;
+  var _auClavier = false;
+  try {
+    document.addEventListener('keydown', function(){ _auClavier = true; }, true);
+    document.addEventListener('pointerdown', function(){ _auClavier = false; }, true);
+  } catch(e) {}
+  function focusNouvelleFenetre(root) {
+    var fenetres = root.querySelectorAll('[role="dialog"]');
+    var haut = fenetres[fenetres.length - 1] || null;
+    if (haut && haut !== _derniereFenetre && _auClavier) {
+      var actif = document.activeElement;
+      if (!(actif && haut.contains(actif))) {
+        var cible = haut.querySelector('[aria-label="Retour"], [aria-label="Fermer"], button, [href], input, select, textarea, [tabindex="0"]');
+        if (cible && !(actif && /^(INPUT|TEXTAREA)$/.test(actif.tagName))) { try { cible.focus({ preventScroll: true }); } catch(e) {} }
+      }
+    }
+    _derniereFenetre = haut;
   }
   function activerAuClavier(e) {
     if (e.key !== 'Enter' && e.key !== ' ') return;
@@ -183,6 +220,8 @@
     // dans la grande majorité des cas puisque le nœud #mainContent n'est pas recréé)
     var mc = root.querySelector('#mainContent');
     if (mc && scrollTop > 0 && mc.scrollTop !== scrollTop) mc.scrollTop = scrollTop;
+
+    try { focusNouvelleFenetre(root); } catch(e) {}
 
     // Observe les publications visibles pour comptabiliser les vues
     try { setupViewTracking(); } catch(e){}

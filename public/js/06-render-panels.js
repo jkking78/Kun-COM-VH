@@ -1858,39 +1858,9 @@
     } catch(e) { return iso; }
   }
 
-  function fmtDateTime(iso) {
-    if (!iso) return '—';
-    try {
-      var d = new Date(iso);
-      return d.toLocaleDateString('fr-FR', { day:'numeric', month:'short', year:'numeric' }) +
-             ' à ' + d.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' });
-    } catch(e) { return iso; }
-  }
 
-  function infoRow(icon, label, val) {
-    return '<div style="display:flex;align-items:center;gap:12px;padding:13px 18px;border-bottom:0.5px solid var(--tile);">' +
-      '<span style="font-size:17px;width:24px;text-align:center;">' + icon + '</span>' +
-      '<div style="flex:1;">' +
-        '<div style="font-size:12px;color:var(--faint);font-weight:600;margin-bottom:1px;">' + label + '</div>' +
-        '<div style="font-size:15px;color:var(--ink);font-weight:600;">' + val + '</div>' +
-      '</div>' +
-    '</div>';
-  }
 
-  function adminKpi(icon, val, label) {
-    return '<div style="background:rgba(255,255,255,0.12);border-radius:16px;padding:10px;text-align:center;">' +
-      '<div style="font-size:15px;">' + icon + '</div>' +
-      '<strong style="font-size:22px;font-weight:800;color:#FFF;display:block;">' + val + '</strong>' +
-      '<span style="font-size:11px;color:rgba(255,255,255,0.6);">' + label + '</span>' +
-    '</div>';
-  }
 
-  function adminMiniInfo(icon, text, color) {
-    return '<div style="background:var(--card);border-radius:12px;padding:8px 10px;display:flex;align-items:center;gap:6px;">' +
-      '<span style="font-size:13px;">' + icon + '</span>' +
-      '<span style="font-size:12px;font-weight:700;color:' + (color||'#000') + ';overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + text + '</span>' +
-    '</div>';
-  }
 
   // ============================================================
   // PROFILE TAB

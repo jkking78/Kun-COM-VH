@@ -276,7 +276,30 @@ message par événement et par pôle, qui renvoie au plan. Préférence
    automatique du jeton, comme avant).
 3. **Déployer le client v165.**
 
+## Migration 14 — lot D3 : visibilité ciblée (v166)
+
+- **S14** : une publication réservée à des pôles, ou programmée, n'est plus
+  livrée par la base qu'à son auteur, à l'Admin et (une fois publiée) aux
+  membres des pôles visés (`kc_publication_visible`, règle de lecture).
+- Avec ce lot : fonction `delete-account` (refus de supprimer le dernier
+  Admin, abonnements et questions de sécurité effacés), en-têtes de sécurité
+  (`vercel.json`).
+
+### Ordre de mise en production
+1. **Exécuter `14_visibilite_ciblee.sql`.**
+2. **Redéployer `delete-account`.**
+3. **Déployer le client v166.**
+
 ## Limites restantes (connues)
+- **Pas de CSP stricte** : les ~270 gestionnaires `onclick` en ligne
+  l'empêchent ; seuls `frame-ancestors`, `object-src` et `base-uri` sont posés.
+- **Pointage différé hors réseau** : rejoué plus de 10 min après, il est
+  réhorodaté par le serveur (protection contre la triche, C6).
+- **Média publié en base64** si l'envoi vers Storage échoue (pour ne jamais
+  perdre une publication) ; les vignettes vidéo, elles, n'y vont plus.
+- **Session** : une réinitialisation de mot de passe ne ferme pas les
+  sessions déjà ouvertes ; une rétrogradation prend effet au renouvellement
+  du jeton.
 - La **position GPS** d'un pointage est fournie par le téléphone : le serveur
   borne l'heure, mais ne peut pas prouver la présence physique.
 - Les **notes** (ponctualité, tâches, classements) restent calculées dans

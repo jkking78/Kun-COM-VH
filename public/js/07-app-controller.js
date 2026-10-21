@@ -682,7 +682,6 @@
         err.style.display = 'none';
       }
     },
-    selectDate: function(d) { S.selectedDate = d; render(); },
     toggleEventSection: function(sec) {
       var idx = S.eventSections.indexOf(sec);
       if (idx !== -1) { S.eventSections.splice(idx, 1); }
@@ -936,16 +935,6 @@
       } else {
         render();
       }
-    },
-    setSignupRole: function(role) {
-      S.signupRole = role;
-      // Mise à jour ciblée du style (pas de render() complet pour ne pas effacer les champs déjà saisis)
-      var activeStyle = 'flex:1;height:44px;border-radius:12px;border:1.5px solid #0B5FE0;background:var(--accent-soft);color:var(--lien);font-size:13px;font-weight:800;cursor:pointer;';
-      var inactiveStyle = 'flex:1;height:44px;border-radius:12px;border:1.5px solid var(--line);background:var(--tile);color:var(--ink2);font-size:13px;font-weight:800;cursor:pointer;';
-      var mBtn = document.getElementById('signupRoleMembre');
-      var rBtn = document.getElementById('signupRoleResp');
-      if (mBtn) mBtn.style.cssText = (role === 'MEMBRE') ? activeStyle : inactiveStyle;
-      if (rBtn) rBtn.style.cssText = (role === 'RESP_SECTION') ? activeStyle : inactiveStyle;
     },
     toggleEditSection: function(sec) {
       var idx = S.editSections.indexOf(sec);
@@ -1431,7 +1420,9 @@
           if (!byId[m.id]) nouveau = true;
           byId[m.id] = m;
         });
-        dbSet(SK.DMS, Object.keys(byId).map(function(k){ return byId[k]; }));
+        // P6 : le cache des messages est plafonné aux 1000 plus récents.
+        dbSet(SK.DMS, Object.keys(byId).map(function(k){ return byId[k]; })
+          .sort(function(a, b){ return (b.timestamp || 0) - (a.timestamp || 0); }).slice(0, 1000));
         return nouveau;
       } catch(e) { console.warn('Erreur chargement messages:', e); return false; }
     },
@@ -1482,6 +1473,7 @@
       if (!supabase) return;
       window._dmPollInterval = setInterval(async function() {
         if (!S.dmOpen || !S.dmWithUserId || !S.user) return;
+        if (document.hidden) return;   // P2 : rien à relever quand l'app est en arrière-plan
         var autre = S.dmWithUserId;
         var nouveau = await App._chargerMessages(App._requeteConversation(autre));
         if (!nouveau || S.dmWithUserId !== autre) return;
@@ -1649,30 +1641,6 @@
                 if (el) {
                   var parent = el.parentNode;
                   parent.innerHTML = '<img id="editAvatarPreview" src="' + safeUrl(dataUrl) + '" style="width:100%;height:100%;object-fit:cover;" />';
-                }
-              }
-            });
-          });
-        };
-        reader.readAsDataURL(file);
-      }
-    },
-    handleCoverSelect: function(e) {
-      var file = e.target.files[0];
-      if (file) {
-        var reader = new FileReader();
-        reader.onload = function(evt) {
-          App.openCropper(evt.target.result, 16 / 9, 'Photo de Couverture (16:9)', function(croppedDataUrl) {
-            compressImage(croppedDataUrl, 640, 360, 0.75, function(dataUrl) {
-              S.coverPreview = dataUrl;
-              if (!S.editProfileOpen) {
-                S.editProfileOpen = true;
-                S.editSections = getUserSections(S.user).slice();
-                render();
-              } else {
-                var el = document.getElementById('editCoverPreview');
-                if (el) {
-                  el.innerHTML = '<img src="' + safeUrl(dataUrl) + '" style="width:100%;height:100%;object-fit:cover;" />';
                 }
               }
             });
@@ -2280,12 +2248,6 @@
         App._signupEnCours = false;
       }
     },
-    toggleSearch: function() {
-      S.searchOpen = !S.searchOpen;
-      if (!S.searchOpen) { S.q = ''; S.searchFocused = false; }
-      render();
-      if (S.searchOpen) { setTimeout(function(){ var i = document.getElementById('searchInput'); if (i) i.focus(); }, 90); }
-    },
     toggleTheme: function() {
       S.darkMode = !S.darkMode;
       try { localStorage.setItem('kc_dark', S.darkMode ? '1' : '0'); } catch(e){}
@@ -2319,8 +2281,16 @@
         var subPush = await App._abonnementPush();
         if (subPush && supabase) await supabase.from('kun_com_push_abonnements').delete().eq('id', subPush.endpoint);
       } catch(e) {}
-      try { if (supabase && supabase.auth) await supabase.auth.signOut(); } catch(e) { console.warn('signOut:', e); }
+      // Ce téléphone seulement : les autres appareils du compte restent connectés.
+      try { if (supabase && supabase.auth) await supabase.auth.signOut({ scope: 'local' }); } catch(e) { console.warn('signOut:', e); }
       localStorage.removeItem(SK.SESS); sessionStorage.removeItem(SK.SESS);
+      // S15 : sur un appareil partagé, rien du compte quitté ne doit rester
+      // lisible (messages privés, fiches, publications), et ses écritures en
+      // attente ne doivent pas repartir avec le jeton de la personne suivante.
+      [SK.DMS, SK.USERS, SK.POSTS, SK.LIEUX, SK.SAVED, SK.LIKED_COMMENTS, SK.SECTION_SEEN, 'kc_pending_writes'].forEach(function(k) {
+        try { localStorage.removeItem(k); } catch(e) {}
+        try { delete DB_CACHE[k]; } catch(e) {}
+      });
       S.user=null; S.jwtRole=null; S.jwtApprouve=false; S.auth='login'; S.tab='home'; render();
     },
     // Écran d'attente : la validation a-t-elle eu lieu ? Nouveau jeton (qui
@@ -2490,6 +2460,12 @@
       if (val !== 'SUPPRIMER') { toast('Tape SUPPRIMER pour confirmer.', 'error'); return; }
       if (!S.user) return;
       var userId = S.user.id;
+      // S16 : jamais sans Admin. Vérifié AVANT d'effacer quoi que ce soit (le
+      // serveur refuse aussi, mais publications et fiche seraient déjà parties).
+      if (isGrandResponsable(S.user) && db(SK.USERS, []).filter(function(u){ return u && u.role === 'GRAND_RESPONSABLE'; }).length <= 1) {
+        toast('Tu es le dernier Admin : nomme d\'abord un autre Admin, puis supprime ton compte.', 'error');
+        return;
+      }
 
       S.deleteAccountBusy = true;
       render();
@@ -2886,6 +2862,7 @@
     // Charge la page suivante de publications plus anciennes (pagination à la
     // demande — voir POSTS_PAGE_SIZE). N'efface jamais ce qui est déjà affiché :
     // mergePostsWithLocal est purement additif.
+    afficherPlusFil: function() { S.filLimite = (S.filLimite || 25) + 25; render(); },
     loadMorePosts: async function() {
       if (S.loadingMorePosts || S.postsAllLoaded || !supabase) return;
       S.loadingMorePosts = true;
@@ -2925,7 +2902,7 @@
       render();
     },
     story: function(s) {
-      S.story=s; S.q='';
+      S.story=s; S.q=''; S.filLimite = 25;
       if (s !== 'all') {
         var seen = db(SK.SECTION_SEEN, {});
         seen[s] = Date.now();
@@ -2934,7 +2911,7 @@
       render();
     },
     search: function(q) {
-      S.q = q;
+      S.q = q; S.filLimite = 25;
       // Debounced render (préserve la saisie ET le focus/curseur du champ)
       if (this._searchTimer) clearTimeout(this._searchTimer);
       this._searchTimer = setTimeout(function(){
@@ -2948,24 +2925,6 @@
         }
         _restoringSearchFocus = false;
       }, 250);
-    },
-    setSearchFocused: function(v) {
-      if (_restoringSearchFocus) return; // ignore les événements focus/blur déclenchés par le re-render lui-même
-      if (v) {
-        S.searchFocused = true;
-        _restoringSearchFocus = true;
-        render();
-        var input = document.getElementById('searchInput');
-        if (input) {
-          input.focus();
-          var len = input.value.length;
-          try { input.setSelectionRange(len, len); } catch(e) {}
-        }
-        _restoringSearchFocus = false;
-      } else {
-        // Petit délai pour laisser le clic sur "Voir tous les membres" s'exécuter avant de masquer le bandeau
-        setTimeout(function(){ S.searchFocused = false; render(); }, 180);
-      }
     },
     openMembersList: function() { S.membersListOpen = true; S.membersSearch = ''; render(); },
     closeMembersList: function() { S.membersListOpen = false; render(); },
@@ -3096,7 +3055,7 @@
       S.savedPosts[postId] = !S.savedPosts[postId];
       dbSet(SK.SAVED, S.savedPosts);
       var btn = document.getElementById('saveBtn-'+postId);
-      if (btn) btn.innerHTML = SVG.bookmark(S.savedPosts[postId]);
+      if (btn) { btn.innerHTML = SVG.bookmark(S.savedPosts[postId]); btn.setAttribute('aria-pressed', S.savedPosts[postId] ? 'true' : 'false'); }
       if (!S.optionsOpen) toast(S.savedPosts[postId] ? 'Publication enregistrée.' : 'Retiré des favoris.', 'success');
     },
     openRepostModal: function(postId) {

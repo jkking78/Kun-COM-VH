@@ -597,6 +597,37 @@ try {
     await contexte.close();
   });
 
+  await cas('lot D3 : Échap, liens à paramètres, fil par tranches, déconnexion propre', async () => {
+    const { page, erreurs, contexte } = await nouvellePage(nav, base, sessionPour('MEMBRE'));
+    await page.waitForSelector('#post-p_piege', { timeout: 15000 });
+    // A3 : les Paramètres sont un dialogue, Échap les ferme.
+    await page.evaluate('App.openSettings()');
+    assert.ok(await page.$('[role="dialog"][aria-modal="true"]'), 'la fenêtre est annoncée comme dialogue');
+    await page.keyboard.press('Escape');
+    assert.equal(await page.evaluate(() => !!S.settingsOpen), false, 'Échap ferme la fenêtre');
+    // C11 : un lien à paramètres n'est échappé qu'une fois.
+    const lien = await page.evaluate(() => hashtagify('voir https://exemple.ci/page?a=1&b=2'));
+    assert.ok(lien.includes('href="https://exemple.ci/page?a=1&amp;b=2"') && !lien.includes('&amp;amp;'), lien);
+    // P5 : le fil ne dessine que 25 cartes, puis « Afficher plus ».
+    const nb = await page.evaluate(() => {
+      const posts = db(SK.POSTS, []);
+      for (let i = 0; i < 40; i++) posts.push({ id: 'pp' + i, userId: 'x', author: 'X', caption: 'Publication ' + i, timestamp: Date.now() - 1e6 - i, likedBy: [], comments: [], mediaUrls: [] });
+      dbSet(SK.POSTS, posts); S.filLimite = 25; render();
+      return document.querySelectorAll('article[id^="post-"]').length;
+    });
+    assert.ok(nb <= 26, 'au plus 25 cartes (+ épinglée éventuelle) : ' + nb);
+    await page.click('text=/Afficher plus/');
+    assert.ok((await page.$$('article[id^="post-"]')).length > nb);
+    // S15 : la déconnexion efface les données du compte sur l'appareil.
+    await page.evaluate(() => { dbSet(SK.DMS, [{ id: 'd1', fromId: 'a', toId: 'b', text: 'secret', timestamp: 1 }]); localStorage.setItem('kc_pending_writes', '[{"x":1}]'); });
+    await page.evaluate('App.logout()');
+    await page.waitForSelector('#loginSubmitBtn', { timeout: 15000 });
+    const restes = await page.evaluate(() => [localStorage.getItem('kc_dms'), localStorage.getItem('kc_pending_writes'), localStorage.getItem('kc_profiles')]);
+    assert.deepEqual(restes, [null, null, null]);
+    assert.deepEqual(erreurs, []);
+    await contexte.close();
+  });
+
   await cas('un membre consulte le plan de préparation sans pouvoir le modifier', async () => {
     const { page, erreurs, contexte } = await nouvellePage(nav, base, sessionPour('MEMBRE'));
     await page.waitForSelector('#post-p_piege', { timeout: 15000 });
