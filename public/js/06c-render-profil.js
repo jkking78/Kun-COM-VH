@@ -208,9 +208,8 @@
     // sur les références : la lecture part du visage, pas d'un coin de l'écran.
     // Sans borne de date : total des services depuis la création du compte.
     var hStats = punctualityHistory(freshU.id);
-    // « Note » du profil = total de points du CYCLE en cours, sur 30 (même
-    // valeur que la jauge de la carte « Mes engagements »).
-    var noteCycle = Math.min(punctualityHistory(freshU.id, currentCycleStartTs()).total, 30);
+    // Niveau de fiabilité : le même que la carte « Mes engagements ».
+    var niveauProfil = niveauFiabilite(hStats.entries).niveau.nom;
     var isFollowing = !!(S.user && S.user.following && S.user.following.indexOf(freshU.id) !== -1);
 
     // Barre de données façon "readout" caméra : chiffres en chasse fixe.
@@ -263,7 +262,7 @@
         '</div>' +
       '</div>' +
       '<div style="display:flex;gap:8px;margin-top:18px;">' +
-        tuile(noteCycle + '<span style="font-size:12px;opacity:0.85;">/30</span>', 'Note du cycle') +
+        tuile('<span style="font-size:15px;">' + niveauProfil + '</span>', 'Niveau') +
         tuile(hStats.count, 'Services') +
         tuile(serie, 'Série à l\'heure') +
       '</div>' +
