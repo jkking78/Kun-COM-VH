@@ -26,8 +26,10 @@ const corsBase = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const MAX_FAILS = 5;
-const LOCK_MINUTES = 15;
+// Au plus 30 demandes publiques (questions, reset) par heure et par adresse
+// IP. Les essais par compte sont comptés en base (kc_reserver_essai, migration
+// 10) : 5 essais, puis un verrou de 15 min qui double à chaque récidive.
+const MAX_PAR_IP = 30;
 
 function normalize(a: string): string {
   return (a ?? "")
@@ -40,6 +42,19 @@ async function sha256Hex(s: string): Promise<string> {
 }
 async function hashAnswer(answer: string, salt: string): Promise<string> {
   return sha256Hex(salt + "::" + normalize(answer));
+}
+// Identifiant cherché avec ilike (insensible à la casse) : %, _ et * (que
+// l'API traduit en %) y sont des jokers, « %12 » visait un compte sans
+// connaître son numéro.
+function sansJokers(id: string): string {
+  return id.replace(/[\\%_*]/g, (c) => "\\" + c);
+}
+// Adresse du client telle que la passerelle Supabase la transmet ; null si
+// absente (on ne met pas alors tout le monde dans le même compteur).
+function adresseIp(req: Request): string | null {
+  const brute = req.headers.get("cf-connecting-ip") || req.headers.get("x-real-ip") ||
+    (req.headers.get("x-forwarded-for") ?? "").split(",")[0];
+  return (brute ?? "").trim() || null;
 }
 function randHex(n: number): string {
   const a = new Uint8Array(n); crypto.getRandomValues(a);
@@ -90,10 +105,18 @@ Deno.serve(async (req) => {
       const [a1_hash, a2_hash] = await Promise.all([hashAnswer(a1, salt), hashAnswer(a2, salt)]);
       const up = await admin.from("kun_com_secrets").upsert({
         user_id: user.id, email: identifier, q1, q2, a1_hash, a2_hash, salt,
-        fail_count: 0, locked_until: null, updated_at: new Date().toISOString(),
+        fail_count: 0, locked_until: null, verrous: 0, updated_at: new Date().toISOString(),
       }, { onConflict: "user_id" });
       if (up.error) return json({ error: up.error.message }, 500);
       return json({ ok: true });
+    }
+
+    // Actions publiques : limite par adresse IP.
+    const ip = adresseIp(req);
+    if ((action === "questions" || action === "reset") && ip) {
+      const permis = await admin.rpc("kc_limite", { p_cle: "recup:" + ip, p_max: MAX_PAR_IP, p_fenetre: "1 hour" });
+      if (permis.error) return json({ error: "Service indisponible, réessayez plus tard." }, 503);
+      if (permis.data !== true) return json({ error: "Trop de demandes depuis cette connexion. Réessayez dans une heure." }, 429);
     }
 
     // ---- QUESTIONS : récupérer les questions d'un compte par NUMÉRO ----
@@ -101,7 +124,7 @@ Deno.serve(async (req) => {
       const id = String(body.email || body.phone || "").trim().toLowerCase();
       if (!id) return json({ error: "Identifiant requis." }, 400);
       const row = await admin.from("kun_com_secrets")
-        .select("q1,q2,locked_until").ilike("email", id).maybeSingle();
+        .select("q1,q2,locked_until").ilike("email", sansJokers(id)).maybeSingle();
       if (row.error || !row.data) return json({ found: false });
       if (row.data.locked_until && new Date(row.data.locked_until) > new Date())
         return json({ found: true, locked: true, q1: row.data.q1, q2: row.data.q2 });
@@ -118,28 +141,25 @@ Deno.serve(async (req) => {
       if (newPassword.length < 8) return json({ error: "Mot de passe : 8 caractères minimum." }, 400);
 
       const row = await admin.from("kun_com_secrets")
-        .select("*").ilike("email", id).maybeSingle();
+        .select("*").ilike("email", sansJokers(id)).maybeSingle();
       // Message neutre : ne révèle pas l'existence du compte.
       if (row.error || !row.data) return json({ error: "Réponses incorrectes." }, 403);
       const sec = row.data;
 
-      if (sec.locked_until && new Date(sec.locked_until) > new Date())
+      // L'essai est réservé AVANT la comparaison, en une seule opération en
+      // base : des requêtes simultanées ne peuvent plus dépasser 5 essais.
+      const essai = await admin.rpc("kc_reserver_essai", { p_user: sec.user_id });
+      if (essai.error) return json({ error: "Service indisponible, réessayez plus tard." }, 503);
+      if (essai.data !== true)
         return json({ error: "Trop de tentatives. Réessayez plus tard ou demandez à un Admin." }, 429);
 
       const [h1, h2] = await Promise.all([hashAnswer(a1, sec.salt), hashAnswer(a2, sec.salt)]);
       const ok = h1 === sec.a1_hash && h2 === sec.a2_hash;
-      if (!ok) {
-        const fails = (sec.fail_count || 0) + 1;
-        const locked = fails >= MAX_FAILS ? new Date(Date.now() + LOCK_MINUTES * 60000).toISOString() : null;
-        await admin.from("kun_com_secrets").update({
-          fail_count: locked ? 0 : fails, locked_until: locked,
-        }).eq("user_id", sec.user_id);
-        return json({ error: locked ? "Trop de tentatives. Compte verrouillé 15 min." : "Réponses incorrectes." }, 403);
-      }
+      if (!ok) return json({ error: "Réponses incorrectes." }, 403);
 
       const upd = await admin.auth.admin.updateUserById(sec.user_id, { password: newPassword });
       if (upd.error) return json({ error: upd.error.message }, 500);
-      await admin.from("kun_com_secrets").update({ fail_count: 0, locked_until: null }).eq("user_id", sec.user_id);
+      await admin.from("kun_com_secrets").update({ fail_count: 0, locked_until: null, verrous: 0 }).eq("user_id", sec.user_id);
       return json({ ok: true });
     }
 

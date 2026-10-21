@@ -185,6 +185,30 @@ sur l'écran d'accueil (iOS 16.4 ou plus récent).
 2. **Redéployer l'Edge Function `push`** (mêmes réglages qu'en 08).
 3. **Déployer le client v158.**
 
+## Migration 10 — lot sécurité (v159)
+
+- **Notifications chez un autre** : heure imposée par le serveur, titre et
+  texte bornés, 5 ajouts au plus par écriture (plus de liste « squattée » avec
+  une date dans le futur).
+- **Extraits de messages privés** : effacés des fiches, où tous les membres
+  pouvaient les lire. L'aperçu n'apparaît plus que sur le téléphone, ajouté
+  par la fonction `push`, qui lit le message elle-même.
+- **Messages** : l'expéditeur et le destinataire du JSON sont ceux des colonnes.
+- **Événements** : heures « 09:00 » et date « 2026-10-25 » seulement.
+- **Récupération de mot de passe** : essais réservés de façon atomique
+  (`kc_reserver_essai`), verrou de 15 min qui double à chaque récidive
+  (24 h au plus), 30 demandes par heure et par adresse IP (`kc_limite`),
+  jokers neutralisés dans la recherche du numéro.
+- **Fonction `push`** : titre fixé selon le type, nom de l'expéditeur tiré de
+  sa fiche, envoi unique par notification, 30 par minute et par expéditeur ;
+  seuls les responsables passent outre les préférences.
+
+### Ordre de mise en production
+1. **Exécuter `10_securite.sql`**.
+2. **Redéployer les Edge Functions `password-recovery` et `push`** (sans
+   vérification automatique du jeton, comme avant).
+3. **Déployer le client v159.**
+
 ## Limites restantes (connues)
 - La **position GPS** d'un pointage est fournie par le téléphone : le serveur
   borne l'heure, mais ne peut pas prouver la présence physique.

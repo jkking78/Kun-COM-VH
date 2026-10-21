@@ -12,6 +12,7 @@ cd "$(dirname "$0")/../.."
 psql -q -d postgres -c "do \$\$ begin
   if not exists (select 1 from pg_roles where rolname = 'anon') then create role anon nologin; end if;
   if not exists (select 1 from pg_roles where rolname = 'authenticated') then create role authenticated nologin; end if;
+  if not exists (select 1 from pg_roles where rolname = 'service_role') then create role service_role nologin; end if;
 end \$\$" >/dev/null
 
 BASES=()
@@ -40,3 +41,6 @@ lancer tests/sql/test_08_temps_reel.sql migration/06_durcissement_ecritures.sql 
 # La 09 ne change aucun droit : test_08 doit passer à l'identique par-dessus.
 lancer tests/sql/test_08_temps_reel.sql migration/06_durcissement_ecritures.sql migration/07_convocations_et_validation.sql migration/08_temps_reel.sql migration/09_performances_rls.sql
 lancer tests/sql/test_09_performances_rls.sql migration/06_durcissement_ecritures.sql migration/07_convocations_et_validation.sql migration/08_temps_reel.sql migration/09_performances_rls.sql
+# La 10 durcit sans retirer de droit : test_08 doit encore passer par-dessus.
+lancer tests/sql/test_08_temps_reel.sql migration/03_security_questions.sql migration/06_durcissement_ecritures.sql migration/07_convocations_et_validation.sql migration/08_temps_reel.sql migration/09_performances_rls.sql migration/10_securite.sql
+lancer tests/sql/test_10_securite.sql migration/03_security_questions.sql migration/06_durcissement_ecritures.sql migration/07_convocations_et_validation.sql migration/08_temps_reel.sql migration/09_performances_rls.sql migration/10_securite.sql
