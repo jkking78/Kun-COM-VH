@@ -168,6 +168,23 @@ vérifications des deux (`tests/sql/test_07_convocations_validation.sql`).
 Sur iPhone, les notifications ne fonctionnent qu'avec l'application installée
 sur l'écran d'accueil (iOS 16.4 ou plus récent).
 
+## Migration 09 — performances et rappels (v158)
+
+- **`09_performances_rls.sql`** : neuf règles d'accès réécrites avec
+  `(select auth.uid())` pour que l'identité soit calculée une fois par requête
+  et non à chaque ligne (alerte « auth_rls_initplan » de Supabase). Aucun droit
+  ne change : `npm run test:sql` rejoue les tests de la 08 par-dessus.
+- **`09b_rappels_delai.sql`** (Supabase uniquement) : l'appel planifié des
+  rappels attend 30 s au lieu de 5 s, et l'historique de `pg_cron` est purgé
+  chaque dimanche (7 jours gardés).
+- **Edge Function `push`** : les trois lectures des rappels partent en
+  parallèle.
+
+### Ordre de mise en production
+1. **Exécuter `09_performances_rls.sql`**, puis **`09b_rappels_delai.sql`**.
+2. **Redéployer l'Edge Function `push`** (mêmes réglages qu'en 08).
+3. **Déployer le client v158.**
+
 ## Limites restantes (connues)
 - La **position GPS** d'un pointage est fournie par le téléphone : le serveur
   borne l'heure, mais ne peut pas prouver la présence physique.

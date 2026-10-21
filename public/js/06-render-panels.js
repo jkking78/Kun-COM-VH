@@ -55,7 +55,7 @@
         (canAssignHere
           ? '<button onclick="App.openAssignManager(\''+jsArg(post.id)+'\')" style="width:100%;background:var(--accent-soft);border:1px solid var(--line2);border-radius:999px;padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;margin-bottom:10px;text-align:left;">' +
               '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0B5FE0" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>' +
-              '<span style="font-size:15px;font-weight:700;color:#0B5FE0;">Assigner mon équipe</span>' +
+              '<span style="font-size:15px;font-weight:700;color:var(--lien);">Assigner mon équipe</span>' +
             '</button>'
           : '') +
 
@@ -71,7 +71,7 @@
             '</button>'
           : '') +
 
-        '<button onclick="App.closeOptions()" style="width:100%;background:var(--tile);border:none;border-radius:999px;padding:14px;font-size:15px;font-weight:700;color:#0B5FE0;cursor:pointer;">Annuler</button>' +
+        '<button onclick="App.closeOptions()" style="width:100%;background:var(--tile);border:none;border-radius:999px;padding:14px;font-size:15px;font-weight:700;color:var(--lien);cursor:pointer;">Annuler</button>' +
       '</div>' +
     '</div>';
   }
@@ -110,9 +110,9 @@
         '</div>' +
 
         '<div style="border-top:0.5px solid var(--tile);">' +
-          '<div id="replyingToBanner" style="display:' + (S.replyingToCommentId ? 'flex' : 'none') + ';align-items:center;justify-content:space-between;background:var(--accent-soft);padding:7px 14px;font-size:13px;color:#0B5FE0;border-top:1px solid var(--line2);">' +
+          '<div id="replyingToBanner" style="display:' + (S.replyingToCommentId ? 'flex' : 'none') + ';align-items:center;justify-content:space-between;background:var(--accent-soft);padding:7px 14px;font-size:13px;color:var(--lien);border-top:1px solid var(--line2);">' +
             '<span>Réponse à <b>' + safeHtml(S.replyingToAuthor||'') + '</b></span>' +
-            '<button type="button" onclick="App.cancelReply()" style="background:none;border:none;color:#0B5FE0;font-size:13px;font-weight:800;cursor:pointer;padding:2px 6px;">✕</button>' +
+            '<button type="button" onclick="App.cancelReply()" style="background:none;border:none;color:var(--lien);font-size:13px;font-weight:800;cursor:pointer;padding:2px 6px;">✕</button>' +
           '</div>' +
           '<div id="commentMentionSugg" style="display:none;flex-wrap:wrap;gap:6px;background:var(--accent-soft);border-top:1px solid var(--line2);padding:8px 14px;"></div>' +
           '<div id="commentImagePreview" style="padding:' + (S.pendingCommentImage ? '10px 14px 0' : '0') + ';">' +
@@ -265,7 +265,7 @@
         '<input id="motifDecline" type="text" maxlength="120" placeholder="Ex. voyage, examen, maladie" style="width:100%;min-height:44px;border:1px solid var(--line);border-radius:12px;padding:0 12px;background:var(--card);color:var(--ink);font-size:15px;box-sizing:border-box;">' +
         '<div style="display:flex;gap:8px;margin-top:8px;">' +
           bouton('App.annulerDecliner()', 'Annuler', 'var(--card)', 'var(--ink)') +
-          bouton('App.repondreConvocation(\'' + jsArg(ev.id) + '\',\'decline\')', 'Envoyer', 'var(--bad)', '#FFF') +
+          bouton('App.repondreConvocation(\'' + jsArg(ev.id) + '\',\'decline\')', 'Envoyer', UI.bad, '#FFF') +
         '</div>' +
       '</div>';
     }
@@ -369,7 +369,7 @@
     if (mienne && !mienne.deadline) {
       var ouvert = ouverts.find(function(e){ return e.uid === moi; });
       if (!ouvert) {
-        out += '<div style="margin:-4px 0 10px;text-align:right;"><button type="button" onclick="App.proposerEchange(\'' + jsArg(ev.id) + '\')" style="min-height:36px;background:none;border:none;color:' + UI.accent + ';font-size:13px;font-weight:700;cursor:pointer;">⇄ Proposer ma place à un membre du pôle</button></div>';
+        out += '<div style="margin:-4px 0 10px;text-align:right;"><button type="button" onclick="App.proposerEchange(\'' + jsArg(ev.id) + '\')" style="min-height:36px;background:none;border:none;color:' + UI.lien + ';font-size:13px;font-weight:700;cursor:pointer;">⇄ Proposer ma place à un membre du pôle</button></div>';
       } else {
         out += bloc('var(--warn-soft)',
           '<div style="font-size:13px;font-weight:700;color:var(--warn-ink);margin-bottom:8px;">' +
@@ -412,7 +412,7 @@
       ? ev.eventLat + ',' + ev.eventLng
       : (ev.eventLocation ? encodeURIComponent(ev.eventLocation + ', Abidjan') : '');
     // Liens discrets (synthèse du design) : l'action principale reste le bouton.
-    var lien = 'display:inline-flex;align-items:center;gap:6px;min-height:36px;background:none;color:' + UI.accent + ';border:none;padding:0;font-size:13px;font-weight:700;cursor:pointer;text-decoration:none;';
+    var lien = 'display:inline-flex;align-items:center;gap:6px;min-height:36px;background:none;color:' + UI.lien + ';border:none;padding:0;font-size:13px;font-weight:700;cursor:pointer;text-decoration:none;';
     return '<div style="display:flex;flex-wrap:wrap;gap:4px 18px;margin-bottom:8px;">' +
       '<button type="button" onclick="App.ajouterAgenda(\'' + jsArg(ev.id) + '\')" style="' + lien + '">' +
         '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="12" y1="14" x2="12" y2="18"/><line x1="10" y1="16" x2="14" y2="16"/></svg>Mon agenda</button>' +
@@ -483,7 +483,7 @@
       '<div style="font-size:11px;color:var(--faint);text-align:center;margin-bottom:10px;line-height:1.45;">' +
         (delay > 0 ? 'Retard actuel : ' + delay + ' min. ' : 'Tu es à l\'heure. ') +
         'Ta position sera relevée et visible de tous. ' +
-        '<button type="button" onclick="App.startCheckIn(\'' + jsArg(ev.id) + '\')" style="background:none;border:none;padding:4px 2px;font:inherit;font-weight:700;color:#0B5FE0;cursor:pointer;">Pointer avec une photo</button>' +
+        '<button type="button" onclick="App.startCheckIn(\'' + jsArg(ev.id) + '\')" style="background:none;border:none;padding:4px 2px;font:inherit;font-weight:700;color:var(--lien);cursor:pointer;">Pointer avec une photo</button>' +
       '</div>';
   }
 
@@ -503,12 +503,12 @@
       '<header style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--line);">' +
         '<button onclick="App.closeAssignManager()" style="background:none;border:none;font-size:15px;color:var(--ink);cursor:pointer;">Annuler</button>' +
         '<div style="font-weight:700;font-size:15px;">Assignations</div>' +
-        '<button onclick="App.saveAssignManager(this)" style="background:none;border:none;font-size:15px;font-weight:700;color:#0B5FE0;cursor:pointer;">Enregistrer</button>' +
+        '<button onclick="App.saveAssignManager(this)" style="background:none;border:none;font-size:15px;font-weight:700;color:var(--lien);cursor:pointer;">Enregistrer</button>' +
       '</header>' +
       '<div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px;background:var(--tile);">' +
 
         '<div style="background:var(--accent-soft);border:1px solid var(--line2);border-radius:16px;padding:14px;margin-bottom:16px;">' +
-          '<div style="font-size:11px;font-weight:800;color:#0B5FE0;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px;">Événement</div>' +
+          '<div style="font-size:11px;font-weight:800;color:var(--lien);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px;">Événement</div>' +
           '<div style="font-size:15px;font-weight:800;color:var(--ink);">' + safeHtml(post.eventTitle || 'Événement') + '</div>' +
           '<div style="font-size:13px;color:var(--muted);margin-top:2px;">' + safeHtml(evDate) + (post.eventStart ? ' · ' + safeHtml(post.eventStart) : '') + (post.eventLocation ? ' · ' + safeHtml(post.eventLocation) : '') + '</div>' +
         '</div>' +
@@ -671,7 +671,7 @@
   function renderDmBubble(m) {
     var mine = S.user && m.fromId === S.user.id;
     // Dans un canal, le prénom de l'auteur au-dessus de ses messages.
-    var auteur = (!mine && estCanal(m.toId)) ? '<div style="font-size:12px;font-weight:700;color:' + UI.accent + ';margin:0 0 2px 4px;">' + safeHtml(nomCourt(m.fromId)) + '</div>' : '';
+    var auteur = (!mine && estCanal(m.toId)) ? '<div style="font-size:12px;font-weight:700;color:' + UI.lien + ';margin:0 0 2px 4px;">' + safeHtml(nomCourt(m.fromId)) + '</div>' : '';
     return '<div style="display:flex;flex-direction:column;align-items:' + (mine ? 'flex-end' : 'flex-start') + ';margin-bottom:8px;">' + auteur +
       '<div style="max-width:72%;background:' + (mine ? '#0B5FE0' : 'var(--tile)') + ';color:' + (mine ? '#FFF' : 'var(--ink)') + ';padding:9px 13px;border-radius:16px;' + (mine ? 'border-bottom-right-radius:4px;' : 'border-bottom-left-radius:4px;') + 'font-size:15px;line-height:1.4;word-break:break-word;">' +
         safeHtml(m.text) +
@@ -1063,7 +1063,7 @@
         groups.map(function(g) {
           var groupKey = 'c' + g.cycle.startTs;
           return '<div style="margin-bottom:20px;">' +
-            '<div style="font-size:11px;font-weight:800;color:#0B5FE0;text-transform:uppercase;letter-spacing:0.8px;padding:4px 2px 10px;">' + safeHtml(cycleLabel(g.cycle)) + '</div>' +
+            '<div style="font-size:11px;font-weight:800;color:var(--lien);text-transform:uppercase;letter-spacing:0.8px;padding:4px 2px 10px;">' + safeHtml(cycleLabel(g.cycle)) + '</div>' +
             g.boards.map(function(b){ return renderScoreboardCard(b.sec, b.board, groupKey + '::' + b.sec.id); }).join('') +
           '</div>';
         }).join('') +
@@ -1221,7 +1221,7 @@
 
           // padding-bottom généreux : la barre de navigation du bas est en position
           // fixe et recouvrait la moitié du bouton (on ne pouvait pas l'atteindre).
-          '<button id="publishBilanBtn" onclick="App.publishBilan()" style="width:100%;background:#0E9F6E;color:#FFF;border:none;border-radius:999px;padding:15px;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 4px 14px rgba(52,199,89,0.3);">' + (S.evalEventId && findOwnBilan(S.evalEventId) ? 'Mettre à jour le Bilan ✓' : 'Valider &amp; Publier le Bilan ✓') + '</button>' +
+          '<button id="publishBilanBtn" onclick="App.publishBilan()" style="width:100%;background:' + UI.okPlein + ';color:#FFF;border:none;border-radius:999px;padding:15px;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 4px 14px rgba(52,199,89,0.3);">' + (S.evalEventId && findOwnBilan(S.evalEventId) ? 'Mettre à jour le Bilan ✓' : 'Valider &amp; Publier le Bilan ✓') + '</button>' +
           '<div style="height:96px;"></div>' +
         '</div>' +
 
@@ -1299,7 +1299,7 @@
           'style="--kc-jauge-depart:100;' + (pctJauge === 0 ? 'opacity:0;' : '') + '"/>' +
       '</svg>' +
       '<div style="position:absolute;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;">' +
-        '<div style="font-family:' + UI.fontDisplay + ';font-size:48px;font-weight:800;letter-spacing:-0.02em;color:' + UI.accent + ';line-height:1;">' + score + '</div>' +
+        '<div style="font-family:' + UI.fontDisplay + ';font-size:48px;font-weight:800;letter-spacing:-0.02em;color:' + UI.lien + ';line-height:1;">' + score + '</div>' +
         '<div style="font-size:15px;font-weight:600;color:' + UI.faint + ';margin-top:6px;">/ ' + NOTE_MAX + '</div>' +
       '</div>' +
     '</div>';
@@ -1545,7 +1545,7 @@
         '<div style="display:flex;align-items:center;gap:10px;">' +
           '<div style="width:42px;height:42px;border-radius:20px;background:linear-gradient(135deg,' + sec.color + '20,' + sec.color + '10);display:flex;align-items:center;justify-content:center;font-size:22px;">' + sec.emoji + '</div>' +
           '<div><strong style="font-size:15px;color:var(--ink);display:block;">' + sec.nom +
-            (isOwn ? ' <span style="font-size:11px;font-weight:800;color:#0B5FE0;background:var(--accent-soft);padding:2px 7px;border-radius:8px;vertical-align:middle;">Votre pôle</span>' : '') +
+            (isOwn ? ' <span style="font-size:11px;font-weight:800;color:var(--lien);background:var(--accent-soft);padding:2px 7px;border-radius:8px;vertical-align:middle;">Votre pôle</span>' : '') +
           '</strong>' +
           '<span id="evalsub-' + sec.id + '" style="font-size:12px;color:var(--faint);">' + (ratedCount > 0 ? ratedCount + '/' + EVAL_CRITERIA.length + ' critères notés' : 'Appuyez pour noter les critères') + '</span></div>' +
         '</div>' +
@@ -1690,7 +1690,7 @@
         '</div>';
       }).join('') +
       (h.count > 5
-        ? '<button type="button" onclick="App.basculerHistorique()" style="width:100%;min-height:40px;margin-top:6px;background:none;border:none;color:' + UI.accent + ';font-size:13px;font-weight:700;cursor:pointer;">' + (tout ? 'Réduire' : 'Voir les ' + h.count + ' services') + '</button>'
+        ? '<button type="button" onclick="App.basculerHistorique()" style="width:100%;min-height:40px;margin-top:6px;background:none;border:none;color:' + UI.lien + ';font-size:13px;font-weight:700;cursor:pointer;">' + (tout ? 'Réduire' : 'Voir les ' + h.count + ' services') + '</button>'
         : '') +
     '</div>';
   }
@@ -1928,7 +1928,7 @@
           '</div>'
         : '<h3 style="font-family:' + UI.fontDisplay + ';font-size:28px;font-weight:800;letter-spacing:-0.5px;color:var(--ink);margin:0;">Publications récentes</h3>') +
       (isMe && gridTab === 'posts' && myPosts.length > 0
-        ? '<span onclick="App.toggleProfileSelectMode()" style="font-size:13px;font-weight:700;color:' + UI.accent + ';cursor:pointer;flex-shrink:0;">' + (selectMode ? 'Annuler' : 'Sélectionner') + '</span>'
+        ? '<span onclick="App.toggleProfileSelectMode()" style="font-size:13px;font-weight:700;color:' + UI.lien + ';cursor:pointer;flex-shrink:0;">' + (selectMode ? 'Annuler' : 'Sélectionner') + '</span>'
         : '') +
     '</div>';
 
@@ -1968,7 +1968,7 @@
                 ? '<div style="width:100%;height:100%;padding:14px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:6px;background:linear-gradient(160deg, rgba(11,95,224,0.12), rgba(11,95,224,0.04));">' +
                     '<span style="font-size:22px;line-height:1;">🗓️</span>' +
                     '<p style="margin:0;color:' + UI.ink + ';font-size:13px;font-weight:800;line-height:1.35;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;">' + safeHtml(String(p.eventTitle || 'Événement').slice(0, 60)) + '</p>' +
-                    (p.eventDate ? '<span style="font-size:11px;font-weight:700;color:' + UI.accent + ';">' + new Date(p.eventDate + 'T00:00:00').toLocaleDateString('fr-FR', {day:'numeric', month:'short'}) + '</span>' : '') +
+                    (p.eventDate ? '<span style="font-size:11px;font-weight:700;color:' + UI.lien + ';">' + new Date(p.eventDate + 'T00:00:00').toLocaleDateString('fr-FR', {day:'numeric', month:'short'}) + '</span>' : '') +
                   '</div>'
                 // Une publication sans média mais avec un fond coloré (texte stylisé,
                 // y compris via un repartage) reprend ce même fond en miniature.
@@ -2230,7 +2230,7 @@
       '<header style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--line);background:var(--card);z-index:2;">' +
         '<button onclick="App.closeEditProfile()" style="background:none;border:none;font-size:15px;color:var(--ink);cursor:pointer;">Annuler</button>' +
         '<div style="font-weight:700;font-size:15px;">Modifier le profil</div>' +
-        '<button onclick="App.saveProfile(this)" style="background:none;border:none;font-size:15px;font-weight:700;color:#0B5FE0;cursor:pointer;">Terminer</button>' +
+        '<button onclick="App.saveProfile(this)" style="background:none;border:none;font-size:15px;font-weight:700;color:var(--lien);cursor:pointer;">Terminer</button>' +
       '</header>' +
       '<div style="flex:1;overflow-y:auto;background:var(--tile);">' +
         
@@ -2561,7 +2561,7 @@
     if (!pushDisponible()) {
       var ios = /iphone|ipad|ipod/i.test(navigator.userAgent || '');
       haut = '<div style="padding:14px 16px;border-bottom:1px solid ' + UI.line + ';font-size:13px;line-height:1.5;color:' + UI.muted + ';">' +
-        (ios ? 'Sur iPhone, installe d\'abord Commit sur l\'écran d\'accueil (iOS 16.4 ou plus récent), puis ouvre-le depuis son icône pour activer les notifications. <span onclick="ouvrirAideInstallation()" style="color:' + UI.accent + ';font-weight:700;cursor:pointer;">Comment faire</span>'
+        (ios ? 'Sur iPhone, installe d\'abord Commit sur l\'écran d\'accueil (iOS 16.4 ou plus récent), puis ouvre-le depuis son icône pour activer les notifications. <span onclick="ouvrirAideInstallation()" style="color:' + UI.lien + ';font-weight:700;cursor:pointer;">Comment faire</span>'
              : 'Ce navigateur ne peut pas recevoir de notifications.') +
       '</div>';
     } else if (typeof Notification !== 'undefined' && Notification.permission === 'denied') {
