@@ -684,7 +684,7 @@
         var isSel = selected.indexOf(s.id) !== -1;
         var bg = isSel ? '#0B63F6' : 'var(--tile)';
         var color = isSel ? '#FFF' : 'var(--ink2)';
-        html += '<div onclick="App.' + toggleFnName + '(\'' + s.id + '\')" style="background:' + bg + ';color:' + color + ';padding:6px 12px;border-radius:16px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:4px;transition:0.2s;">' + s.icon + ' ' + s.label + '</div>';
+        html += '<div onclick="App.' + toggleFnName + '(\'' + jsArg(s.id) + '\')" style="background:' + bg + ';color:' + color + ';padding:6px 12px;border-radius:16px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:4px;transition:0.2s;">' + s.icon + ' ' + s.label + '</div>';
       });
       html += '</div>';
       return html;
@@ -1111,7 +1111,7 @@
                 var el = document.getElementById('editAvatarPreview');
                 if (el) {
                   var parent = el.parentNode;
-                  parent.innerHTML = '<img id="editAvatarPreview" src="' + dataUrl + '" style="width:100%;height:100%;object-fit:cover;" />';
+                  parent.innerHTML = '<img id="editAvatarPreview" src="' + safeUrl(dataUrl) + '" style="width:100%;height:100%;object-fit:cover;" />';
                 }
               }
             });
@@ -1135,7 +1135,7 @@
               } else {
                 var el = document.getElementById('editCoverPreview');
                 if (el) {
-                  el.innerHTML = '<img src="' + dataUrl + '" style="width:100%;height:100%;object-fit:cover;" />';
+                  el.innerHTML = '<img src="' + safeUrl(dataUrl) + '" style="width:100%;height:100%;object-fit:cover;" />';
                 }
               }
             });
@@ -1492,13 +1492,38 @@
       var idx = allPosts.findIndex(function(p){ return p.id === postId; });
       if (idx !== -1) { allPosts[idx] = cible; dbSet(SK.POSTS, allPosts); }
       if (supabase) {
-        supabase.from('kun_com_posts').upsert({ id: postId, content: cible }, { onConflict: 'id' })
-          .then(function(){}, function(e){
-            console.warn('Écriture post : mise en file d\'attente.', e);
-            App._mettreEnFileAttenteEcriture({ table: 'kun_com_posts', row: { id: postId, content: cible } });
-          });
+        // Le serveur fusionne lui-même l'écriture (migration 06) et renvoie la
+        // version retenue : le cache local s'y recale aussitôt.
+        App._upsertFiable('kun_com_posts', { id: postId, content: cible }).then(function(contenuServeur) {
+          if (!contenuServeur) return;
+          var posts2 = db(SK.POSTS, []);
+          var i2 = posts2.findIndex(function(p){ return p.id === postId; });
+          if (i2 !== -1) { posts2[i2] = parsePostItem({ id: postId, content: contenuServeur }) || posts2[i2]; dbSet(SK.POSTS, posts2); }
+        });
       }
       return cible;
+    },
+
+    // Upsert qui ne perd rien : supabase-js ne REJETTE pas sa promesse en cas
+    // d'échec, il la résout avec { error }. Les gestionnaires « .then(ok, échec) »
+    // ne voyaient donc jamais les erreurs, et la file d'attente hors-ligne ne
+    // recevait presque rien. Ici : erreur réseau → file d'attente ; refus du
+    // serveur → journalisé (le rejouer ne changerait rien). Renvoie le contenu
+    // tel qu'enregistré par le serveur, ou null.
+    _upsertFiable: function(table, row) {
+      if (!supabase) return Promise.resolve(null);
+      return supabase.from(table).upsert(row, { onConflict: 'id' }).select('content').single().then(function(r) {
+        if (r && r.error) {
+          if (estErreurReseau(r.error)) App._mettreEnFileAttenteEcriture({ table: table, row: row });
+          else console.warn('Écriture refusée par le serveur (' + table + ') :', r.error);
+          return null;
+        }
+        return (r && r.data && r.data.content) || null;
+      }, function(e) {
+        App._mettreEnFileAttenteEcriture({ table: table, row: row });
+        console.warn('Écriture mise en file d\'attente (' + table + ') :', e);
+        return null;
+      });
     },
 
     // ---- File d'attente d'écritures hors-ligne ----
@@ -1523,12 +1548,21 @@
       localStorage.setItem('kc_pending_writes', '[]'); // vidé d'abord : un échec ci-dessous repousse l'item
       for (var i = 0; i < file.length; i++) {
         var w = file[i];
+        // Au-delà d'une semaine, une écriture en attente est abandonnée.
+        if (w.at && Date.now() - w.at > 7 * 24 * 3600 * 1000) continue;
         try {
           var r = await supabase.from(w.table).upsert(w.row, { onConflict: 'id' });
           if (r && r.error) throw r.error;
         } catch(e) {
-          console.warn('File d\'attente : écriture toujours impossible, replacée.', e);
-          App._mettreEnFileAttenteEcriture(w);
+          // Seule une panne réseau mérite un nouvel essai. Un refus du serveur
+          // (droits, données invalides) se reproduirait à l'identique à chaque
+          // démarrage : on l'abandonne au lieu de le rejouer indéfiniment.
+          if (estErreurReseau(e)) {
+            console.warn('File d\'attente : écriture toujours impossible, replacée.', e);
+            App._mettreEnFileAttenteEcriture(w);
+          } else {
+            console.warn('File d\'attente : écriture refusée par le serveur, abandonnée.', e);
+          }
         }
       }
     },
@@ -1691,6 +1725,20 @@
       try { localStorage.setItem('kc_dark', S.darkMode ? '1' : '0'); } catch(e){}
       try { applyTheme(); } catch(e){}
       render();
+    },
+    // Vide tous les caches du service worker puis recharge l'app : utile quand
+    // un appareil affiche une ancienne version malgré une mise à jour (cache
+    // persistant, réseau capricieux). Le SW re-remplit son cache au chargement.
+    viderCacheApp: async function() {
+      try {
+        if (!window.confirm('Vider le cache de l\'application ? L\'app va se recharger.')) return;
+        if (window.caches && caches.keys) {
+          var cles = await caches.keys();
+          await Promise.all(cles.map(function(k){ return caches.delete(k); }));
+        }
+        toast('Cache vidé. Rechargement…', 'success');
+        setTimeout(function(){ location.reload(); }, 400);
+      } catch(e) { toast('Impossible de vider le cache.', 'error'); }
     },
     logout: async function() {
       if (S.user) {
@@ -1871,7 +1919,13 @@
         dbSet(SK.POSTS, restantsNettoyes.posts);
         if (supabase && restantsNettoyes.modifies.length) {
           restantsNettoyes.modifies.forEach(function(p) {
-            supabase.from('kun_com_posts').upsert({ id: p.id, content: p }, { onConflict: 'id' })
+            // Ses commentaires sont désignés explicitement : le serveur ne
+            // supprime jamais un commentaire sur sa seule absence (migration 06).
+            var avant = remainingPosts.find(function(x){ return x && x.id === p.id; }) || {};
+            var miens = (avant.comments || []).filter(function(c){ return c && c.userId === userId && c.id; })
+              .map(function(c){ return c.id; });
+            var contenu = miens.length ? Object.assign({}, p, { _supprimerCommentaires: miens }) : p;
+            supabase.from('kun_com_posts').upsert({ id: p.id, content: contenu }, { onConflict: 'id' })
               .then(function(){}, function(e){ console.warn('Nettoyage des traces sur ' + p.id + ' :', e); });
           });
         }
@@ -1922,68 +1976,39 @@
     },
 
     // ============================================================
-    // PANNEAU ADMIN — statistiques de stockage Supabase (accès par code)
+    // PANNEAU ADMIN — statistiques de stockage Supabase
+    // Réservé au rôle Admin, lu dans le JWT. (Il était auparavant protégé par un
+    // code écrit en clair dans le code source, donc lisible par n'importe qui.)
     // ============================================================
-    openAdminGate: function() {
-      S.adminGateOpen = true;
-      S.adminCodeInput = '';
-      S.adminCodeError = false;
-      render();
-      setTimeout(function(){ var i = document.getElementById('adminCodeInput'); if (i) i.focus(); }, 120);
-    },
-    closeAdminGate: function() { S.adminGateOpen = false; render(); },
-    onAdminCodeInput: function(val) { S.adminCodeInput = val; S.adminCodeError = false; },
-    // Ce même champ gère deux codes distincts, historiquement séparés (le code
-    // stockage AZ7887 et l'ancien code "Admin78" du champ "Autre" à l'inscription,
-    // désormais retiré du formulaire) :
-    // - AZ7887 ouvre le panneau de statistiques de stockage
-    // - Admin78 promeut le compte actuellement connecté au rôle Admin
-    submitAdminCode: function(e) {
-      e && e.preventDefault();
-      var v = (S.adminCodeInput || '').trim().toUpperCase();
-      if (v === ADMIN_ACCESS_CODE) {
-        S.adminUnlocked = true;
-        S.adminGateOpen = false;
-        try { localStorage.setItem('kc_admin_unlocked', '1'); } catch(err) {}
+    // Rétrograde le compte connecté au rôle MEMBRE. Le rôle vit dans le JWT
+    // (app_metadata), pas dans la fiche : l'ancienne version ne modifiait que la
+    // fiche, et la reconnexion suivante rendait le rôle Admin. On passe donc par
+    // l'Edge Function « set-role », qui refuse de retirer le DERNIER Admin.
+    revokeGrandResponsable: async function() {
+      if (!S.user || S.jwtRole !== 'GRAND_RESPONSABLE') return;
+      if (!window.confirm('Quitter le rôle Admin et repasser en Membre simple ?')) return;
+      if (!supabase || !supabase.functions) { toast('Service indisponible.', 'error'); return; }
+      try {
+        var r = await supabase.functions.invoke('set-role', { body: { userId: S.user.id, role: 'MEMBRE' } });
+        if (r && r.error) {
+          var msg = 'Échec : le rôle n\'a pas été modifié.';
+          try { if (r.error.context && r.error.context.json) { var b = await r.error.context.json(); if (b && b.error) msg = b.error; } } catch(e){}
+          toast(msg, 'error');
+          return;
+        }
+        // Nouveau JWT tout de suite, pour que l'interface suive sans reconnexion.
+        try {
+          var sess = await supabase.auth.refreshSession();
+          if (sess && sess.data && sess.data.user) applyAuthUser(sess.data.user);
+        } catch(e) {}
         render();
-        App.openStorageStats();
-      } else {
-        // Les rôles ne se donnent plus par code secret : ils se gèrent depuis le
-        // panneau « Gérer les rôles » (réservé au Admin), via le JWT.
-        S.adminCodeError = true;
-        render();
-        setTimeout(function(){ var i = document.getElementById('adminCodeInput'); if (i) i.focus(); }, 120);
+        toast('Rôle Admin retiré — vous êtes de nouveau Membre.', 'success');
+      } catch(e) {
+        toast('Échec : le rôle n\'a pas été modifié.', 'error');
       }
     },
-    // (Fonctions grantGrandResponsable / grantRespSection SUPPRIMÉES : elles
-    // s'attribuaient un rôle élevé sans aucune vérification. Le flux est
-    // révoqué depuis longtemps — les rôles se gèrent via l'Edge Function
-    // « set-role » depuis le panneau Admin — mais ce code mort restait une
-    // auto-promotion prête à être réactivée par erreur.)
-    lockAdmin: function() {
-      S.adminUnlocked = false;
-      S.storageStatsOpen = false;
-      try { localStorage.removeItem('kc_admin_unlocked'); } catch(e) {}
-      render();
-      toast('Panneau admin verrouillé.', 'success');
-    },
-    // Rétrograde le compte connecté au rôle MEMBRE (seul moyen de sortir du rôle
-    // Admin — il n'existait auparavant aucun bouton pour cela).
-    revokeGrandResponsable: function() {
-      if (!S.user || S.user.role !== 'GRAND_RESPONSABLE') return;
-      if (!window.confirm('Quitter le rôle Admin et repasser en Membre simple ?')) return;
-      S.user.role = 'MEMBRE';
-      var allUsers = db(SK.USERS, []);
-      var uIdx = allUsers.findIndex(function(u){ return u.id === S.user.id; });
-      if (uIdx !== -1) allUsers[uIdx] = S.user;
-      dbSet(SK.USERS, allUsers);
-      sauverSession(S.user);
-      if (supabase) supabase.from('kun_com_profiles').upsert({ id: S.user.id, content: profilSansSecret(S.user) }, { onConflict: 'id' }).then(function(){}, function(e){});
-      render();
-      toast('Rôle Admin retiré — vous êtes de nouveau Membre.', 'success');
-    },
     openStorageStats: function() {
-      if (!S.adminUnlocked) { App.openAdminGate(); return; }
+      if (!isGrandResponsable(S.user)) { toast('Réservé à l\'Admin.', 'error'); return; }
       S.storageStatsOpen = true;
       render();
       App.loadStorageStats();
@@ -2132,7 +2157,7 @@
       S.viewUserProfileId=null; S.notificationsOpen=false; S.editProfileOpen=false;
       S.postOptionsOpen=false; S.selectedPostId=null; S.createEventOpen=false; S.editPostId=null;
       S.cropperOpen=false; S.membersListOpen=false; S.repostPostId=null; S.aboutEventPickerOpen=false;
-      S.deleteAccountOpen=false; S.bulkDeleteConfirmOpen=false; S.viewersPostId=null; S.adminGateOpen=false;
+      S.deleteAccountOpen=false; S.bulkDeleteConfirmOpen=false; S.viewersPostId=null;
       S.storageStatsOpen=false; S.dmOpen=false; S.dmWithUserId=null; S.assignManagerId=null; S.viewerImage=null;
       // Quitter un écran via la barre détruit proprement ce qui y vivait :
       // l'instance Cropper (canvas + listeners, sinon détachée du DOM mais
@@ -3295,7 +3320,7 @@
         if (prev) {
           prev.style.padding = '10px 14px 0';
           prev.innerHTML = '<div style="position:relative;display:inline-block;">' +
-            '<img src="'+dataUrl+'" style="width:64px;height:64px;object-fit:cover;border-radius:10px;border:1px solid var(--line);">' +
+            '<img src="'+safeUrl(dataUrl)+'" style="width:64px;height:64px;object-fit:cover;border-radius:10px;border:1px solid var(--line);">' +
             '<button type="button" onclick="App.removeCommentImage()" style="position:absolute;top:-6px;right:-6px;background:rgba(0,0,0,0.7);border:none;border-radius:8px;width:32px;height:32px;color:#FFF;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;">×</button>' +
           '</div>';
         } else {
@@ -3440,7 +3465,12 @@
       if (!canDelete) { toast('Action non autorisée.', 'error'); return; }
       post.comments = post.comments.filter(function(x){ return x.id !== commentId && x.parentId !== commentId; });
       dbSet(SK.POSTS, posts);
-      if (supabase) supabase.from('kun_com_posts').upsert({ id: post.id, content: post }, { onConflict: 'id' }).then(function(){}, function(e){ console.warn('Delete comment error:', e); });
+      // Le serveur ne déduit JAMAIS une suppression de l'absence d'un commentaire
+      // (une copie locale périmée en manque toujours) : elle se demande
+      // explicitement, et il vérifie le droit de la faire (migration 06).
+      if (supabase) {
+        App._upsertFiable('kun_com_posts', { id: post.id, content: Object.assign({}, post, { _supprimerCommentaires: [commentId] }) });
+      }
       render();
       toast('Commentaire supprimé.', 'success');
     },
@@ -3615,7 +3645,7 @@
       var starsEl = document.getElementById('critstars-' + secId + '-' + critId);
       if (starsEl) {
         starsEl.innerHTML = [1,2,3,4,5].map(function(s) {
-          return '<button type="button" onclick="App.rateCriterion(\'' + secId + '\',\'' + critId + '\',' + s + ')" style="font-size:26px;cursor:pointer;background:none;border:none;padding:0;line-height:1;color:' + (s<=score?'#FFD700':'var(--line)') + ';">★</button>';
+          return '<button type="button" onclick="App.rateCriterion(\'' + jsArg(secId) + '\',\'' + jsArg(critId) + '\',' + s + ')" style="font-size:26px;cursor:pointer;background:none;border:none;padding:0;line-height:1;color:' + (s<=score?'#FFD700':'var(--line)') + ';">★</button>';
         }).join('');
       }
       var valEl = document.getElementById('critval-' + secId + '-' + critId);

@@ -12,18 +12,26 @@ function esc(s) {
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
-async function fetchPost(id) {
-  var url = SUPABASE_URL + '/rest/v1/kun_com_posts?id=eq.' + encodeURIComponent(id) + '&select=*';
-  var r = await fetch(url, {
-    headers: { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SUPABASE_KEY }
+// Les publications ne sont plus lisibles sans connexion (migration 06) : on
+// passe par la fonction kc_apercu_publication, qui ne renvoie que l'auteur, la
+// légende et une image, et seulement pour une publication visible de tous.
+async function fetchApercu(id) {
+  var r = await fetch(SUPABASE_URL + '/rest/v1/rpc/kc_apercu_publication', {
+    method: 'POST',
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: 'Bearer ' + SUPABASE_KEY,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ p_id: String(id) })
   });
   if (!r.ok) return null;
-  var rows = await r.json();
-  if (!rows || !rows[0]) return null;
-  return rows[0].content || rows[0];
+  var apercu = await r.json();
+  return apercu && typeof apercu === 'object' ? apercu : null;
 }
 
 module.exports = async function handler(req, res) {
@@ -34,29 +42,30 @@ module.exports = async function handler(req, res) {
   var appUrl = origin + '/?post=' + encodeURIComponent(id);
 
   var post = null;
-  try { post = await fetchPost(id); } catch (e) { post = null; }
+  try { post = await fetchApercu(id); } catch (e) { post = null; }
 
   var title = 'Commit VH';
   var description = 'Découvrez cette publication sur Commit — Église Vase d\'Honneur.';
-  var hasImage = false;
+  var image = null;
 
   if (post) {
     var authorName = post.author || 'Un membre';
     title = authorName + ' · Commit VH';
     var caption = (post.caption || '').trim();
     description = caption ? caption.slice(0, 180) : 'Découvrez cette publication sur Commit VH.';
-    hasImage = (Array.isArray(post.mediaUrls) && post.mediaUrls.length > 0 && typeof post.mediaUrls[0] === 'string' && post.mediaUrls[0].indexOf('data:image') === 0)
-      || (typeof post.videoPoster === 'string' && post.videoPoster.indexOf('data:image') === 0)
-      || (Array.isArray(post.originalMediaUrls) && post.originalMediaUrls.length > 0 && typeof post.originalMediaUrls[0] === 'string' && post.originalMediaUrls[0].indexOf('data:image') === 0)
-      || (typeof post.originalVideoPoster === 'string' && post.originalVideoPoster.indexOf('data:image') === 0);
+    if (typeof post.image === 'string') {
+      // Média hébergé (Storage, public) : URL directe. Ancien média en base64 :
+      // servi par /api/p-image, les robots ne lisant pas les data:URL.
+      if (post.image.indexOf('https://') === 0) image = post.image;
+      else if (post.image.indexOf('data:image') === 0) image = origin + '/api/p-image/' + encodeURIComponent(id);
+    }
   }
 
   var imageTag = '';
-  if (hasImage) {
-    var imageUrl = origin + '/api/p-image/' + encodeURIComponent(id);
+  if (image) {
     imageTag =
-      '<meta property="og:image" content="' + esc(imageUrl) + '">' +
-      '<meta name="twitter:image" content="' + esc(imageUrl) + '">' +
+      '<meta property="og:image" content="' + esc(image) + '">' +
+      '<meta name="twitter:image" content="' + esc(image) + '">' +
       '<meta name="twitter:card" content="summary_large_image">';
   } else {
     imageTag = '<meta name="twitter:card" content="summary">';

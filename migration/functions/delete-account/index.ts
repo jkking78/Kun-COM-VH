@@ -8,13 +8,23 @@
 // QUE son propre compte.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const cors = {
-  "Access-Control-Allow-Origin": "*",
+// Origines autorisées à appeler la fonction depuis un navigateur : variable
+// d'environnement ALLOWED_ORIGINS (ex. « https://kun-com-vh.vercel.app »,
+// plusieurs séparées par des virgules). Non définie : toutes (comportement
+// historique). L'authentification reste faite par le JWT, quel que soit l'appelant.
+const ORIGINES = (Deno.env.get("ALLOWED_ORIGINS") ?? "").split(",").map((o) => o.trim()).filter(Boolean);
+function origineAutorisee(req: Request): string {
+  if (!ORIGINES.length) return "*";
+  const o = req.headers.get("Origin") ?? "";
+  return ORIGINES.includes(o) ? o : ORIGINES[0];
+}
+const corsBase = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
 Deno.serve(async (req) => {
+  const cors = { ...corsBase, "Access-Control-Allow-Origin": origineAutorisee(req), "Vary": "Origin" };
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   const json = (b: unknown, s = 200) =>
     new Response(JSON.stringify(b), { status: s, headers: { ...cors, "Content-Type": "application/json" } });

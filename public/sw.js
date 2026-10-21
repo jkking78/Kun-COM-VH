@@ -1,11 +1,11 @@
 // ============================================================
-// SERVICE WORKER — Kun COM VH PWA (v145)
+// SERVICE WORKER — Kun COM VH PWA (version : voir CACHE_NAME, alignée par scripts/version.mjs)
 // Stratégie : Network-First pour JS/HTML (Garantie de mise à jour instantanée)
 // app.js a été découpé en modules (voir dossier js/) pour la maintenabilité —
 // même stratégie de cache, juste plus de fichiers listés ci-dessous.
 // ============================================================
 
-const CACHE_NAME = 'kun-com-pwa-v146';
+const CACHE_NAME = 'kun-com-pwa-v148';
 // Numéro de version seul ('102'), tel qu'il apparaît dans les ?v=… de index.html.
 const NUM_V = CACHE_NAME.split('-v')[1];
 const JS_FILES = [
@@ -23,7 +23,10 @@ const STATIC_ASSETS = [
   './icons/icon-512.png',
   './icons/icon-192-maskable.png',
   './icons/icon-512-maskable.png',
-  './icons/apple-touch-icon-180.png'
+  './icons/apple-touch-icon-180.png',
+  // Bibliothèques à version fixe (le nom de fichier change à chaque mise à jour).
+  './vendor/supabase-js-2.117.2.js',
+  './vendor/morphdom-2.7.8.min.js'
 ].concat(JS_FILES.map((f) => `./js/${f}.js?v=${NUM_V}`));
 
 self.addEventListener('install', (event) => {
@@ -64,7 +67,10 @@ self.addEventListener('fetch', (event) => {
   // donc l'adresse demandée est différente et ne peut jamais être servie depuis
   // l'ancienne entrée. C'est index.html qui annonce les nouvelles versions, et
   // lui reste en réseau d'abord (voir ci-dessous).
-  const estScriptVersionne = url.pathname.endsWith('.js') && url.search.indexOf('v=') !== -1;
+  // Les bibliothèques de vendor/ portent leur version dans leur nom de fichier :
+  // même raisonnement, une nouvelle version = une nouvelle adresse.
+  const estScriptVersionne = url.pathname.endsWith('.js') &&
+    (url.search.indexOf('v=') !== -1 || url.pathname.indexOf('/vendor/') !== -1);
   if (estScriptVersionne) {
     event.respondWith(
       caches.match(event.request).then((cached) => {

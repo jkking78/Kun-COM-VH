@@ -538,9 +538,34 @@
     return [];
   }
 
+  // Texte inséré dans du HTML (contenu ou valeur d'attribut). L'apostrophe est
+  // échappée en &apos; et non &#39; : hashtagify repère les « #mot » dans le
+  // texte déjà échappé, et transformerait « #39 » en hashtag.
   function safeHtml(s) {
-    return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    var t = (s === null || s === undefined) ? '' : String(s);
+    if (!/[&<>"']/.test(t)) return t;   // cas courant ; évite 5 passes sur les longues data:URL
+    return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&apos;');
   }
+
+  // Valeur insérée comme argument texte d'un gestionnaire inline :
+  //   onclick="App.x('<ICI>')"
+  // Il faut DEUX échappements, dans cet ordre : celui de la chaîne JavaScript
+  // (\ et ' surtout), puis celui de l'attribut HTML — le navigateur décode
+  // l'attribut AVANT d'exécuter le code, si bien qu'un &#39; produit par
+  // safeHtml redeviendrait une apostrophe et refermerait la chaîne.
+  function jsArg(s) {
+    var t = String(s === null || s === undefined ? '' : s);
+    if (!/[\\'\r\n\u2028\u2029&<>"]/.test(t)) return t;   // ids, data:URL base64...
+    return t
+      .replace(/\\/g, '\\\\').replace(/'/g, "\\'")
+      .replace(/\r/g, '\\r').replace(/\n/g, '\\n')
+      .replace(/\u2028/g, '\\u2028').replace(/\u2029/g, '\\u2029')
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  // Même chose, prête à être placée dans un attribut src / href / poster.
+  function safeUrl(u) { return safeHtml(urlSure(u)); }
+
 
   function hashtagify(text) {
     if (!text) return '';
@@ -560,7 +585,7 @@
 
     // ÉTAPE 2 — Hashtags et mentions, sur un texte désormais garanti sans URL.
     var html = safe.replace(/#[\wéèêàâôûîçÉÈÊÀÂÔÛÎÇùÙ]+/gi, function(m) {
-      return '<span onclick="App.filterTag(\'' + encodeURIComponent(m) + '\')" style="color:#007AFF;font-weight:700;cursor:pointer;">' + m + '</span>';
+      return '<span onclick="App.filterTag(\'' + jsArg(encodeURIComponent(m)) + '\')" style="color:#007AFF;font-weight:700;cursor:pointer;">' + m + '</span>';
     }).replace(/@[\wéèêàâôûîçÉÈÊÀÂÔÛÎÇùÙ_.-]+/gi, function(m) {
       var r = resolveMentionToken(m.slice(1), users);
       if (r && r.kind === 'user') {
@@ -569,7 +594,7 @@
         // caractères), sinon on l'affiche en simple texte coloré — aucune
         // injection JS possible via onclick.
         if (/^[A-Za-z0-9_\-]{6,64}$/.test(r.user.id)) {
-          return '<span onclick="App.openUserProfile(\'' + r.user.id + '\')" style="color:#007AFF;font-weight:800;cursor:pointer;background:#EBF5FF;padding:2px 6px;border-radius:6px;">' + safeHtml(m) + '</span>';
+          return '<span onclick="App.openUserProfile(\'' + jsArg(r.user.id) + '\')" style="color:#007AFF;font-weight:800;cursor:pointer;background:#EBF5FF;padding:2px 6px;border-radius:6px;">' + safeHtml(m) + '</span>';
         }
         // Id suspect : même couleur/style, mais SANS onclick ni curseur pointeur.
         return '<span style="color:#007AFF;font-weight:800;background:#EBF5FF;padding:2px 6px;border-radius:6px;">' + safeHtml(m) + '</span>';
@@ -580,7 +605,7 @@
         return '<span style="color:#5856D6;font-weight:800;background:#F0EFFF;padding:2px 6px;border-radius:6px;">' + safeHtml(m) + '</span>';
       }
       if (r && r.kind === 'section') {
-        return '<span onclick="App.story(\'' + r.section.id + '\')" style="color:#5856D6;font-weight:800;cursor:pointer;background:#F0EFFF;padding:2px 6px;border-radius:6px;">' + safeHtml(m) + '</span>';
+        return '<span onclick="App.story(\'' + jsArg(r.section.id) + '\')" style="color:#5856D6;font-weight:800;cursor:pointer;background:#F0EFFF;padding:2px 6px;border-radius:6px;">' + safeHtml(m) + '</span>';
       }
       return '<span style="color:#007AFF;font-weight:700;">' + safeHtml(m) + '</span>';
     });
@@ -590,7 +615,7 @@
     html = html.replace(/\x00(\d+)\x00/g, function(m, i) {
       var u = urls[parseInt(i, 10)];
       if (typeof u !== 'string') return '';
-      return '<a href="' + u + '" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" style="color:#007AFF;font-weight:600;text-decoration:underline;word-break:break-all;">' + u + '</a>';
+      return '<a href="' + safeUrl(u) + '" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" style="color:#007AFF;font-weight:600;text-decoration:underline;word-break:break-all;">' + u + '</a>';
     });
 
     return html.replace(/\n/g, '<br>');

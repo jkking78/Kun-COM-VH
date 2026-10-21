@@ -73,10 +73,53 @@ rejetées, bonnes acceptées, normalisation casse/accents/espaces) → reconnexi
 > invisible dans l'app) a servi à la validation. Le supprimer :
 > `delete from auth.users where email like 'e2e_%@example.com';`
 
-## Limite connue (durcissement recommandé plus tard)
-Un membre **connecté** peut techniquement modifier la publication ou la fiche d'un
-autre, car « j'aime / commentaires / notifications » réécrivent l'objet entier.
-C'est acceptable pour une équipe interne de confiance, et c'est un progrès énorme
-vs l'accès anonyme mondial d'avant. Durcissement futur : déplacer j'aime,
-commentaires et notifications dans des tables dédiées + RPC `security definer`,
-puis restreindre `kun_com_posts`/`kun_com_profiles` au propriétaire.
+## Migration 06 — durcissement des écritures (v148)
+
+Remplace la « limite connue » des versions précédentes : un membre connecté ne
+peut plus modifier la publication ou la fiche d'un autre. Un déclencheur SQL
+recalcule chaque écriture à partir de la version en base et n'y applique que
+ce que l'auteur de la requête a le droit de changer (son J'aime, son vote, ses
+commentaires, sa participation ; tout le reste s'il est l'auteur ou l'Admin).
+Conséquence directe : deux écritures simultanées ne s'écrasent plus.
+
+> ⚠️ **Bug corrigé au passage.** Pour un upsert, PostgreSQL vérifie la policy
+> d'INSERTION même quand la ligne existe déjà. Avec la policy de la 04, les
+> J'aime / commentaires / votes posés sur la publication d'un autre, et les
+> notifications envoyées à un autre, étaient **refusés par le serveur** depuis
+> l'exécution de la 04 (l'interface les affichait quand même, localement).
+
+Ce que fait aussi la 06 :
+- rôle des fiches imposé depuis `auth.users` ;
+- heures de pointage et de livraison de tâche bornées par l'horloge du serveur ;
+- publications lisibles **uniquement par les membres connectés** ; les aperçus
+  de liens partagés passent par la fonction `kc_apercu_publication` (auteur,
+  légende, une image — rien d'autre) ;
+- événements réservés aux responsables, bilans à l'Admin, identifiants de
+  publication au format imposé ;
+- fichiers du stockage remplaçables/supprimables par leur seul propriétaire.
+
+### Ordre de mise en production
+1. **Déployer le client v148** (pousser la branche → Vercel). Il envoie les
+   suppressions de commentaires sous une forme que la 06 comprend
+   (`_supprimerCommentaires`) et appelle `kc_apercu_publication`.
+   Vercel sert désormais **`public/`** (fixé dans `vercel.json`).
+2. **Exécuter `06_durcissement_ecritures.sql`** dans le SQL Editor (idempotent).
+3. **Redéployer les Edge Functions** `set-role`, `password-recovery`,
+   `delete-account` (CORS configurable ; `set-role` refuse de retirer le dernier
+   Admin, et « Quitter le rôle Admin » passe désormais par elle).
+4. Optionnel : définir le secret `ALLOWED_ORIGINS` des Edge Functions
+   (ex. `https://kun-com-vh.vercel.app`) pour n'accepter que l'application.
+
+### Tester la migration sans toucher à la base réelle
+```bash
+PGHOST=… PGPORT=… PGUSER=postgres npm run test:sql
+```
+Crée une base PostgreSQL jetable imitant Supabase (`tests/sql/supabase_mock.sql`),
+applique la 06 deux fois, puis lance 50 vérifications (`tests/sql/test_06_durcissement.sql`).
+
+## Limites restantes (connues)
+- La **position GPS** d'un pointage est fournie par le téléphone : le serveur
+  borne l'heure, mais ne peut pas prouver la présence physique.
+- Les **notes** (ponctualité, tâches, classements) restent calculées dans
+  l'application. Un membre ne peut plus modifier les données des autres ; les
+  siennes, seulement dans les bornes ci-dessus.
