@@ -3060,7 +3060,7 @@
   // couleur du badge (voir roleTint), qui elle ne peut rien signifier d'autre.
   var ROLE_LABELS = {
     GRAND_RESPONSABLE: 'Admin',
-    RESP_SECTION: 'Responsable',
+    RESP_SECTION: 'Responsable de pôle',
     MEMBRE: 'Membre',
     STAGIAIRE: 'Stagiaire'
   };

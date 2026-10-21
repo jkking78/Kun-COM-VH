@@ -53,14 +53,22 @@ const AUTRE = 'bbbbbbbb-0000-4000-8000-000000000002';
 const PIEGE_HTML = '<img src=x onerror="window.__xss=\'html\'">';
 const maintenant = Date.now();
 
+// Les scénarios existants supposent la visite guidée déjà vue ; le scénario
+// « nouveau membre » la remet à zéro.
+let VISITE_VUE = true;
 const profils = [
-  { id: MOI, content: { id: MOI, prenom: 'Awa', nom: 'Test', role: 'MEMBRE', sections: [], notifications: [] } },
+  { id: MOI, content: { id: MOI, prenom: 'Awa', nom: 'Test', role: 'MEMBRE', sections: [], notifications: [], get visiteVue() { return VISITE_VUE; } } },
   { id: AUTRE, content: {
     id: AUTRE, prenom: "O'Brien " + PIEGE_HTML, nom: 'X', role: 'MEMBRE', sections: [],
     avatar_color: 'red;" onmouseover="window.__xss=\'couleur\'" data-pirate="',
   } },
 ];
+const demain = new Date(maintenant + 864e5).toISOString().split('T')[0];
 const publications = [
+  { id: 'ev_mission', created_at: new Date(maintenant - 1000).toISOString(), content: {
+    id: 'ev_mission', userId: AUTRE, author: 'O', type: 'EVENT', eventTitle: 'Culte du dimanche', eventDate: demain,
+    eventStart: '09:00', eventEnd: '12:00', eventLocation: 'Temple central', eventSections: ['cadrage'],
+    assignments: [{ userId: MOI, task: 'Caméra 2', sectionId: 'cadrage' }], timestamp: maintenant - 1000, likedBy: [], comments: [], mediaUrls: [] } },
   { id: 'p_piege', created_at: new Date(maintenant).toISOString(), content: {
     id: 'p_piege', userId: AUTRE, author: "O'Brien", timestamp: maintenant,
     caption: 'Légende ' + PIEGE_HTML + " l'église #Culte",
@@ -133,6 +141,21 @@ try {
     await contexte.close();
   });
 
+  await cas('les conditions d\'utilisation s\'ouvrent depuis l\'inscription', async () => {
+    const { page, erreurs, contexte } = await nouvellePage(nav, base, null);
+    await page.waitForSelector('#loginSubmitBtn', { timeout: 15000 });
+    await page.evaluate("App.nav('signup')");
+    assert.ok(await page.$('#signupConditions'), 'la case d\'acceptation doit être présente');
+    await page.click('text=conditions d\'utilisation');
+    await page.waitForSelector('#_kcConditions');
+    const texteConditions = await page.textContent('#_kcConditions');
+    assert.ok(texteConditions.includes('Droit à l\'image') && texteConditions.includes('07 99 44 24 02'));
+    await page.click('#_kcConditions [data-fermer]');
+    assert.equal(await page.$('#_kcConditions'), null, 'la fenêtre doit se fermer');
+    assert.deepEqual(erreurs, []);
+    await contexte.close();
+  });
+
   await cas('avec session, le fil s\'affiche et aucune donnée piégée ne s\'exécute', async () => {
     const session = {
       access_token: jetonFactice(MOI), refresh_token: 'r', token_type: 'bearer',
@@ -186,6 +209,62 @@ try {
     assert.equal(await page.evaluate(() => window.__xss), undefined);
     await contexte.close();
   });
+  await cas('lot 1 : navigation, cloche, mission, Bien démarrer, publier simple', async () => {
+    const session = {
+      access_token: jetonFactice(MOI), refresh_token: 'r', token_type: 'bearer',
+      expires_in: 3600, expires_at: Math.floor(maintenant / 1000) + 3600,
+      user: { id: MOI, aud: 'authenticated', email: 'awa@commit.aev', app_metadata: { role: 'MEMBRE' }, user_metadata: {} },
+    };
+    const { page, erreurs, contexte } = await nouvellePage(nav, base, session);
+    await page.waitForSelector('#post-p_piege', { timeout: 15000 });
+    // Barre du bas : un libellé lisible par onglet.
+    const libelles = await page.$$eval('nav[aria-label="Navigation principale"] button', (bs) => bs.map((b) => b.textContent.trim()));
+    assert.deepEqual(libelles, ['Accueil', 'Planning', 'Publier', 'Bilans', 'Profil']);
+    // Cloche dans l'en-tête de chaque onglet, plus de bouton flottant.
+    for (const onglet of ['home', 'planning', 'debrief', 'profile']) {
+      await page.evaluate((o) => App.tab(o), onglet);
+      await page.waitForTimeout(150);
+      assert.ok(await page.$('#notifCloche'), 'cloche absente sur ' + onglet);
+    }
+    assert.equal(await page.$('#notifFab'), null);
+    await page.evaluate("App.tab('home')");
+    // Ma prochaine mission : l'événement de demain, avec la tâche.
+    const mission = await page.textContent('section[aria-label="Ma prochaine mission"]');
+    assert.ok(mission.includes('Culte du dimanche') && mission.includes('Caméra 2') && mission.includes('Demain'), mission);
+    // Bien démarrer : la visite est déjà vue (1 étape cochée sur 6).
+    const bd = await page.textContent('section[aria-label="Bien démarrer"]');
+    assert.ok(bd.includes('1/6'), bd);
+    // Publier : options repliées puis dépliées.
+    await page.evaluate('App.openCreate()');
+    await page.waitForTimeout(200);
+    assert.equal(await page.$eval('.kc-options', (e) => getComputedStyle(e).display), 'none');
+    await page.click('text=Plus d\'options');
+    await page.waitForTimeout(200);
+    assert.equal(await page.$eval('.kc-options', (e) => getComputedStyle(e).display), 'block');
+    assert.deepEqual(erreurs, []);
+    await contexte.close();
+  });
+
+  await cas('lot 1 : visite guidée proposée à un nouveau membre', async () => {
+    VISITE_VUE = false;
+    const session = {
+      access_token: jetonFactice(MOI), refresh_token: 'r', token_type: 'bearer',
+      expires_in: 3600, expires_at: Math.floor(maintenant / 1000) + 3600,
+      user: { id: MOI, aud: 'authenticated', email: 'awa@commit.aev', app_metadata: { role: 'MEMBRE' }, user_metadata: {} },
+    };
+    try {
+      const { page, erreurs, contexte } = await nouvellePage(nav, base, session);
+      await page.waitForSelector('#_kcVisite', { timeout: 15000 });
+      for (let i = 0; i < 3; i++) await page.click('#_kcVisite [data-suivant]');
+      assert.equal((await page.textContent('#_kcVisite [data-suivant]')).trim(), 'C\'est parti');
+      await page.click('#_kcVisite [data-suivant]');
+      assert.equal(await page.$('#_kcVisite'), null);
+      assert.equal(await page.evaluate(() => S.user.visiteVue), true);
+      assert.deepEqual(erreurs, []);
+      await contexte.close();
+    } finally { VISITE_VUE = true; }
+  });
+
   // Tour de tous les écrans et panneaux : aucune erreur JavaScript, aucun
   // écran « Une erreur est survenue ». Fait pour un membre et pour l'Admin
   // (qui voit davantage de panneaux).
@@ -212,6 +291,9 @@ try {
                     'App.openRolesPanel()', 'App.closeRolesPanel && App.closeRolesPanel()',
                     'App.openStorageStats()', 'App.closeStorageStats()');
       }
+      etapes.push('ouvrirVisite()', "document.querySelector('#_kcVisite [data-passer]').click()",
+                  'ouvrirAideInstallation()', "document.querySelector('#_kcInstallation [data-fermer]').click()");
+      etapes.push('App.openSettings()', 'ouvrirConditions()', "document.querySelector('#_kcConditions [data-fermer]').click()", 'App.closeSettings()');
       for (const code of etapes) {
         await page.evaluate(code);
         await page.waitForTimeout(150);

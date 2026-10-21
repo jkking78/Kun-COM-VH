@@ -877,6 +877,19 @@
     // ============================================================
     // ABONNEMENT (bouton "Suivre" sur un profil)
     // ============================================================
+    // Enregistre quelques champs de SA fiche (préférences d'interface : visite
+    // vue, conditions lues, carte masquée...) en local puis sur le serveur.
+    _majMonProfil: function(champs) {
+      if (!S.user || !champs) return;
+      Object.assign(S.user, champs);
+      var allUsers = db(SK.USERS, []);
+      var uIdx = allUsers.findIndex(function(u){ return u.id === S.user.id; });
+      if (uIdx !== -1) Object.assign(allUsers[uIdx], champs);
+      dbSet(SK.USERS, allUsers);
+      sauverSession(S.user);
+      App._upsertFiable('kun_com_profiles', { id: S.user.id, content: profilSansSecret(S.user) });
+      try { render(); } catch(e) {}
+    },
     toggleFollow: function(targetUserId) {
       if (!S.user || !targetUserId || targetUserId === S.user.id) return;
       if (!Array.isArray(S.user.following)) S.user.following = [];
@@ -1637,6 +1650,8 @@
       if (!prenom || !nom || !email || !pwd) { toast('Veuillez remplir tous les champs (numéro compris).', 'error'); return; }
       if (pwd.length < 8) { toast('Le mot de passe doit contenir au moins 8 caractères.', 'error'); return; }
       if (S.signupSections.length === 0) { toast('Veuillez choisir au moins 1 section.', 'error'); return; }
+      var accepte = (document.getElementById('signupConditions') || {}).checked;
+      if (!accepte) { toast('Pour créer un compte, coche « J\'accepte les conditions d\'utilisation ».', 'error'); return; }
       // Questions de sécurité obligatoires : c'est le seul moyen de récupération.
       var secQA = readSecurityQA('signup', true);
       if (!secQA) return;
@@ -1676,7 +1691,9 @@
           sections: userSecs, section_id: userSecs[0], role: 'MEMBRE', is_online: true,
           last_seen_at: new Date().toISOString(), last_action: 'Inscription',
           avatar_color: ['#0B63F6','#FF2D55','#0E9F6E','#D98A0B','#0B63F6','#AF52DE'][Math.floor(Math.random()*6)],
-          welcomeStars: 5, joined_at: Date.now() };   // bonus 5★ + date d'inscription
+          welcomeStars: 5, joined_at: Date.now(),   // bonus 5★ + date d'inscription
+          // Trace de l'acceptation des conditions (version et date).
+          conditionsAcceptees: { version: CONDITIONS_VERSION, le: Date.now() }, conditionsLues: CONDITIONS_VERSION };
 
         // Écrit le profil (SANS aucun secret : ni mot de passe, ni question de
         // sécurité). Autorisé par la policy RLS car id = auth.uid().
@@ -2036,7 +2053,7 @@
       if (!S.user || S.jwtRole !== 'GRAND_RESPONSABLE') { toast('Réservé au Admin.', 'error'); return; }
       if (userId === S.user.id) { toast('Vous ne pouvez pas modifier votre propre rôle ici (évite de te verrouiller dehors). Passe par un autre Admin.', 'info'); return; }
       if (!supabase || !supabase.functions) { toast('Service indisponible.', 'error'); return; }
-      var LABELS = { MEMBRE: 'Membre', RESP_SECTION: 'Responsable', GRAND_RESPONSABLE: 'Admin' };
+      var LABELS = { STAGIAIRE: 'Stagiaire', MEMBRE: 'Membre', RESP_SECTION: 'Responsable de pôle', GRAND_RESPONSABLE: 'Admin' };
       S.roleUpdatingId = userId; render();
       try {
         var r = await supabase.functions.invoke('set-role', { body: { userId: userId, role: role } });
@@ -2740,7 +2757,13 @@
       render();
       toast('Publication modifiée ! ', 'success');
     },
-    openCreate: function() { S.createOpen=true; S.pendingMedia=[]; S.pendingVideoPoster=null; S.postAboutEventId=null; S.postCheckInEventId=null; S.videoProcessing=false; S.pollOpen=false; S.pollQuestion=''; S.pollOptions=['','']; S.linkPreview=null; S.linkPreviewUrl=null; S.linkPreviewLoading=false; S.linkPreviewDismissed=false; render(); setTimeout(function(){ var t=document.getElementById('newPostText'); if(t) t.focus(); },120); // Prépare l'outil de recadrage en arrière-plan : il n'est plus chargé au démarrage
+    basculerOptionsPublication: function() {
+      // Préserve le texte en cours à travers le re-rendu.
+      var ta = document.getElementById('newPostText'); if (ta) S.postText = ta.value;
+      S.createOptionsOpen = !S.createOptionsOpen;
+      render();
+    },
+    openCreate: function() { S.createOpen=true; S.createOptionsOpen=false; S.pendingMedia=[]; S.pendingVideoPoster=null; S.postAboutEventId=null; S.postCheckInEventId=null; S.videoProcessing=false; S.pollOpen=false; S.pollQuestion=''; S.pollOptions=['','']; S.linkPreview=null; S.linkPreviewUrl=null; S.linkPreviewLoading=false; S.linkPreviewDismissed=false; render(); setTimeout(function(){ var t=document.getElementById('newPostText'); if(t) t.focus(); },120); // Prépare l'outil de recadrage en arrière-plan : il n'est plus chargé au démarrage
       // de l'application (il en retardait l'affichage), mais l'avoir prêt dès l'ouverture
       // du composeur rend le recadrage instantané au moment de choisir une photo.
       try { chargerCropper(); } catch(e){} },

@@ -427,7 +427,7 @@
           '<h1 style="font-family:' + UI.fontDisplay + ';font-size:30px;font-weight:800;letter-spacing:-1px;color:' + UI.ink + ';margin:0;line-height:1.05;">Planning</h1>' +
           '<p style="font-size:13.5px;color:' + UI.faint + ';margin:5px 0 0;">Gérez et suivez les événements du département.</p>' +
         '</div>' +
-        rightBtn +
+        '<div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">' + renderCloche() + rightBtn + '</div>' +
       '</div>' +
     '</div>';
 
@@ -651,14 +651,14 @@
         '</div>'
       : '<div style="padding:12px 16px 0;">' +
           '<div style="background:var(--accent-soft);border-radius:12px;padding:10px 12px;font-size:12px;color:#0B63F6;font-weight:700;display:flex;align-items:center;gap:8px;line-height:1.4;">' +
-            '<span style="font-size:16px;">👀</span> Consultation seule : la notation est réservée aux Grands Responsables.' +
+            '<span style="font-size:16px;">👀</span> Consultation seule : seul l\'Admin publie les bilans.' +
           '</div>' +
         '</div>';
 
     if (view === 'suivi') {
-      return renderScreenHeader('Notation & Débrief', 'Évaluation Inter-Sections', '') + tabs + renderScoreboard(canEvaluate);
+      return renderScreenHeader('Bilans', 'Évaluation des pôles', '') + tabs + renderScoreboard(canEvaluate);
     }
-    return renderScreenHeader('Notation & Débrief', 'Évaluation Inter-Sections', '') + tabs + renderDebriefForm(u);
+    return renderScreenHeader('Bilans', 'Évaluation des pôles', '') + tabs + renderDebriefForm(u);
   }
 
   // ============================================================
@@ -854,6 +854,9 @@
     // Le total depuis la création du compte est affiché séparément, en haut du
     // profil à côté de l'avatar.
     var h = punctualityHistory(freshU.id, currentCycleStartTs());
+    // La carte s'affiche aussi sur le profil d'un autre membre : les textes
+    // passent alors de « votre » à « sa ».
+    var estMoi = !!(S.user && freshU && S.user.id === freshU.id);
     // NOTE DU CYCLE : total de points ACCUMULÉS pendant le cycle, sur 30.
     // Chaque service et chaque tâche ajoute (ou retire) ses points ; la jauge se
     // remplit donc au fil du travail fourni, au lieu d'afficher une moyenne.
@@ -898,17 +901,21 @@
     // ============================================================
     // GRAPHIQUE 1 — NOTE : jauge demi-cercle + courbe d'évolution
     // ============================================================
-    // JAUGE — reproduction exacte de la maquette (profil_commit/code.html) :
-    // deux dégradés coniques superposés (fond + remplissage) dans un cadre au
-    // rapport 2:1, masqués au centre par un disque de la couleur de la carte.
-    // La rotation du remplissage porte la valeur : -90° = vide, +90° = plein.
+    // JAUGE demi-cercle (aspect de la maquette profil_commit/code.html) tracée
+    // en SVG. L'ancienne version superposait deux dégradés coniques tournés :
+    // le remplissage n'était pas limité à la moitié haute et débordait des deux
+    // côtés (deux « ailes » bleues quelle que soit la note). Ici un seul arc,
+    // dont la longueur visible porte la valeur ; il se remplit à l'affichage.
     var pctJauge = Math.max(0, Math.min(1, score / NOTE_MAX));
-    var rotJauge = -90 + pctJauge * 180;
-    var gauge = '<div style="position:relative;width:100%;max-width:240px;aspect-ratio:2/1;margin:16px auto 0;overflow:hidden;">' +
-      '<div style="position:absolute;top:0;left:0;width:100%;height:200%;border-radius:50%;background:conic-gradient(' + UI.tile + ' 0deg 180deg, transparent 180deg 360deg);transform:rotate(-90deg);"></div>' +
-      '<div style="position:absolute;top:0;left:0;width:100%;height:200%;border-radius:50%;background:conic-gradient(' + UI.accent + ' 0deg 140deg, transparent 140deg 360deg);transform:rotate(' + rotJauge.toFixed(1) + 'deg);transition:transform 1s ease-out;"></div>' +
-      '<div style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:80%;height:160%;border-radius:50%;background:' + UI.card + ';"></div>' +
-      '<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding-bottom:6px;">' +
+    var arc = 'M 14 106 A 92 92 0 0 1 198 106';
+    var gauge = '<div style="position:relative;width:100%;max-width:240px;margin:16px auto 0;">' +
+      '<svg viewBox="0 0 212 116" width="100%" style="display:block;overflow:visible;" aria-hidden="true">' +
+        '<path d="' + arc + '" fill="none" stroke="' + UI.tile + '" stroke-width="22" stroke-linecap="round"/>' +
+        '<path class="kc-jauge" d="' + arc + '" fill="none" stroke="' + UI.accent + '" stroke-width="22" stroke-linecap="round" ' +
+          'pathLength="100" stroke-dasharray="100" stroke-dashoffset="' + (100 - pctJauge * 100).toFixed(1) + '" ' +
+          'style="--kc-jauge-depart:100;' + (pctJauge === 0 ? 'opacity:0;' : '') + '"/>' +
+      '</svg>' +
+      '<div style="position:absolute;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;">' +
         '<div style="font-family:' + UI.fontDisplay + ';font-size:48px;font-weight:800;letter-spacing:-0.02em;color:' + UI.accent + ';line-height:1;">' + score + '</div>' +
         '<div style="font-size:14px;font-weight:600;color:' + UI.faint + ';margin-top:6px;">/ ' + NOTE_MAX + '</div>' +
       '</div>' +
@@ -949,7 +956,7 @@
     // Phrase de synthèse sous la jauge (maquette).
     // Phrase alignée sur le TOTAL de points du cycle (même seuils que l'étiquette).
     var verdict = !h.count
-      ? 'Votre note de départ, en attendant votre premier service.'
+      ? (estMoi ? 'Votre note de départ, en attendant votre premier service.' : 'Note de départ, en attendant son premier service.')
       : (score >= NOTE_MAX ? 'Cycle au maximum : rien à redire.'
         : score >= 24 ? 'Performance exceptionnelle ce cycle.'
         : score >= 15 ? 'Bon rythme : continuez à cumuler des points.'
@@ -1003,7 +1010,7 @@
           ? '<div style="font-size:11.5px;color:' + UI.muted + ';text-align:center;margin-top:8px;border-top:0.5px solid ' + UI.line + ';padding-top:10px;">Retard moyen de <strong style="color:' + UI.warn + ';">' + h.avgDelay + ' min</strong> sur les services concernés.</div>'
           : '');
     } else {
-      onTimeChart = donut + empty('Aucun service pointé sur ce cycle.<br>La répartition apparaîtra dès votre premier pointage.');
+      onTimeChart = donut + empty('Aucun service pointé sur ce cycle.<br>La répartition apparaîtra dès ' + (estMoi ? 'votre' : 'son') + ' premier pointage.');
     }
 
     // ============================================================
@@ -1039,7 +1046,7 @@
           '<div><div style="font-family:' + UI.fontMono + ';font-size:18px;font-weight:700;color:' + col + ';">' + score + '</div><div style="font-size:10px;color:' + UI.faint + ';">Points</div></div>' +
         '</div>';
     } else {
-      servicesChart = empty('Aucun service sur ce cycle.<br>Vos services assurés s\'afficheront ici, notés étoile par étoile.');
+      servicesChart = empty('Aucun service sur ce cycle.<br>' + (estMoi ? 'Vos' : 'Ses') + ' services assurés s\'afficheront ici, notés étoile par étoile.');
     }
 
     var body = chart === 'ontime' ? onTimeChart : chart === 'services' ? servicesChart : noteChart;
@@ -1047,7 +1054,7 @@
     return '<div style="margin:16px 0 14px;">' +
       '<div style="background:' + UI.card + ';border:1px solid ' + UI.line + ';border-radius:12px;box-shadow:' + UI.sh2 + ';padding:16px;">' +
         '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;">' +
-          '<h2 style="font-family:' + UI.fontDisplay + ';font-size:24px;font-weight:600;color:' + UI.ink + ';letter-spacing:-0.4px;line-height:1.15;margin:0;">Mes engagements</h2>' +
+          '<h2 style="font-family:' + UI.fontDisplay + ';font-size:24px;font-weight:600;color:' + UI.ink + ';letter-spacing:-0.4px;line-height:1.15;margin:0;">' + (estMoi ? 'Mes engagements' : 'Engagements') + '</h2>' +
           '<div style="font-family:' + UI.fontMono + ';font-size:13px;color:' + UI.faint + ';text-align:right;line-height:1.35;max-width:44%;min-width:0;overflow-wrap:anywhere;">Cycle ' + cycleStr + ' · ' + label + '</div>' +
         '</div>' +
         switcher +
@@ -1292,7 +1299,10 @@
     var now = new Date();
     // Numéro de cycle court (maquette : « Cycle 16 »). Deux cycles par mois :
     // 1–15 puis 16–fin. Le libellé long débordait sur trois lignes.
-    var cycleStr = String(now.getMonth() * 2 + (now.getDate() <= 15 ? 1 : 2));
+    // Même libellé que l'écran Bilans (« 16 – fin octobre ») : le profil
+    // affichait un numéro (« Cycle 20 ») qui ne correspondait à rien ailleurs.
+    var cycleStr = now.getDate() <= 15 ? '1er – 15 ' + now.toLocaleDateString('fr-FR',{month:'long'})
+                                       : '16 – fin ' + now.toLocaleDateString('fr-FR',{month:'long'});
 
     // NOTE : l'ancien « indice de confiance » combinait présences et évaluations
     // (score sur 20, bonus/malus, moyenne des bilans). Il a été remplacé par
@@ -1385,8 +1395,8 @@
           '<h1 style="font-family:' + UI.fontDisplay + ';font-size:32px;font-weight:700;letter-spacing:-1px;color:' + UI.ink + ';line-height:1.06;margin:0;overflow-wrap:anywhere;">' + safeHtml(freshU.prenom + ' ' + freshU.nom) + '</h1>' +
           rolePill +
         '</div>' +
-        // Accès aux Paramètres : engrenage discret à gauche de l'avatar, pour
-        // ne pas alourdir l'en-tête (tout le reste vit dans la page Paramètres).
+        // Cloche puis engrenage des Paramètres, discrets, à gauche de l'avatar.
+        (isMe ? renderCloche() : '') +
         (isMe ? '<button onclick="App.openSettings()" aria-label="Paramètres" style="background:none;border:none;width:40px;height:40px;flex-shrink:0;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;margin-top:10px;">' +
           '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="' + UI.muted + '" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>' +
         '</button>' : '') +
@@ -1439,6 +1449,10 @@
     // désormais dans la page Paramètres (voir renderSettingsModal).
     var infoBlock = '<div style="background:' + UI.page + ';padding:0 20px 16px;">' +
       renderPunctualityCard(freshU, cycleStr) +
+      // Accès direct aux conditions d'utilisation depuis son propre profil.
+      (isMe ? '<button type="button" onclick="ouvrirConditions()" style="display:flex;align-items:center;justify-content:space-between;width:100%;min-height:44px;margin-top:4px;padding:12px 16px;background:' + UI.card + ';border:1px solid ' + UI.line + ';border-radius:12px;font-size:14px;font-weight:600;color:' + UI.ink + ';cursor:pointer;text-align:left;">' +
+        '<span>📜 Conditions d\'utilisation</span><span style="color:' + UI.faint + ';">›</span>' +
+      '</button>' : '') +
     '</div>';
 
     // ---- Continuous scroll (no tabs) ----
@@ -1884,6 +1898,9 @@
     var infos = ligne(svg('<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>'), 'Église', 'Vase d\'Honneur · Abidjan') +
       (uSecs.length ? ligne(svg('<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>'), 'Pôle', uSecs.map(function(s){ return secNom(s); }).join(' · ')) : '') +
       (freshU.phone ? ligne(svg('<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/>'), 'Numéro', '<span style="font-family:' + UI.fontMono + ';">' + safeHtml(freshU.phone) + '</span>') : '') +
+      ligne(svg('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/>'), 'Conditions d\'utilisation', '›', 'ouvrirConditions()') +
+      ligne(svg('<circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/>'), 'Revoir la visite guidée', '›', 'App.closeSettings();ouvrirVisite()') +
+      ligne(svg('<rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/>'), 'Installer sur mon téléphone', '›', 'ouvrirAideInstallation()') +
       version;
 
     // Switch iOS (piste 51×31, knob 27) : la piste suit le thème via les
@@ -1941,3 +1958,262 @@
   }
 
 
+
+  // ============================================================
+  // CONDITIONS D'UTILISATION
+  // Consultables à tout moment depuis Paramètres et le bas de son profil, et
+  // depuis l'écran d'inscription (avant même d'avoir un compte) : la fenêtre
+  // est donc injectée directement dans la page, comme le toast, sans dépendre
+  // de render() ni de l'écran affiché.
+  // Toute modification du texte doit faire avancer CONDITIONS_VERSION.
+  // ============================================================
+  var CONDITIONS_VERSION = '21 octobre 2026';
+  var CONDITIONS_SECTIONS = [
+    ['Objet',
+     '<p>Commit VH est l\'application interne du Département Communication de l\'Église Vase d\'Honneur (Abidjan). Elle sert à organiser les services (planning, convocations, pointage), à partager le travail de l\'équipe et à suivre l\'engagement de chacun.</p>' +
+     '<p>Leur acceptation est demandée à la création du compte ; en utilisant l\'application, vous vous engagez à les respecter.</p>'],
+    ['Accès et compte',
+     '<ul><li>L\'application est réservée aux membres du département et aux personnes qu\'il accueille (stagiaires).</li>' +
+     '<li>Un seul compte par personne, à votre vrai nom. Votre numéro de téléphone sert d\'identifiant de connexion.</li>' +
+     '<li>Votre mot de passe et vos réponses aux questions de sécurité sont personnels : ne les communiquez à personne, pas même à un responsable.</li>' +
+     '<li>Vous êtes responsable de ce qui est publié depuis votre compte. En cas de doute (téléphone perdu, compte utilisé par un autre), prévenez un Admin.</li></ul>'],
+    ['Rôles',
+     '<ul><li><b>Stagiaire</b> et <b>Membre</b> : consultent le planning, pointent leurs services, publient et commentent.</li>' +
+     '<li><b>Responsable de pôle</b> : crée des événements et convoque les membres.</li>' +
+     '<li><b>Admin</b> : publie les bilans, attribue les rôles et modère les contenus.</li></ul>' +
+     '<p>Les rôles sont attribués par un Admin ; ils ne se demandent pas dans l\'application.</p>'],
+    ['Règles de publication',
+     '<ul><li>Restez respectueux : pas d\'insultes, de moqueries, de propos discriminants ou contraires aux valeurs de l\'église.</li>' +
+     '<li><b>Droit à l\'image</b> : ne publiez la photo ou la vidéo d\'une personne reconnaissable qu\'avec son accord. Pour un mineur, l\'accord d\'un parent est nécessaire.</li>' +
+     '<li>Les informations internes (plannings, bilans, échanges) restent internes : ne les diffusez pas hors de l\'application sans l\'accord d\'un responsable.</li>' +
+     '<li>Le lien « Copier le lien » d\'une publication montre son auteur, sa légende et une image à toute personne qui l\'ouvre : ne le partagez qu\'à bon escient.</li></ul>'],
+    ['Pointage et localisation',
+     '<ul><li>Votre position n\'est demandée qu\'au moment où vous pointez votre arrivée à un service. Elle n\'est jamais suivie en continu.</li>' +
+     '<li>Elle sert uniquement à vérifier que vous êtes sur place (dans un rayon de 1,5 km du lieu). La distance au lieu est visible des autres membres.</li>' +
+     '<li>L\'heure d\'arrivée est contrôlée par le serveur et ne peut plus être modifiée ensuite.</li>' +
+     '<li>Pointer à distance, ou refuser la localisation, compte comme une absence.</li></ul>'],
+    ['Notes et engagement',
+     '<p>La note se calcule par cycle de 15 jours (du 1er au 15, du 16 à la fin du mois), sur 30 points :</p>' +
+     '<ul><li>Service : de +5 (à l\'heure) à −2 (retard de plus d\'1 h 30, absence ou pointage hors du lieu).</li>' +
+     '<li>Tâche à livrer : +5 à temps, +2 en retard, −2 si elle n\'est jamais livrée.</li>' +
+     '<li>Les bilans de pôle sont publiés par l\'Admin après les services.</li></ul>' +
+     '<p>Ces notes servent à encourager et à organiser l\'équipe, pas à juger les personnes.</p>'],
+    ['Messages privés',
+     '<p>Un message privé n\'est lisible que par vous et votre interlocuteur. Les règles de publication s\'y appliquent aussi.</p>'],
+    ['Vos données',
+     '<ul><li>Sont enregistrés : vos nom, prénom, numéro de téléphone, pôles, photo, bio, vos publications, commentaires, messages, pointages (heure et distance au lieu) et notes.</li>' +
+     '<li>Les membres connectés voient votre fiche, vos publications et vos notes. Sans compte, on ne peut rien consulter, sauf l\'aperçu d\'un lien partagé.</li>' +
+     '<li>Les photos et vidéos sont stockées à une adresse longue et impossible à deviner, mais toute personne qui obtient cette adresse peut les voir.</li>' +
+     '<li>Les données sont hébergées par Supabase (serveurs en Irlande, Union européenne) et l\'application par Vercel. Elles ne sont ni vendues ni utilisées à des fins publicitaires.</li>' +
+     '<li>Vous pouvez modifier votre fiche à tout moment, et supprimer définitivement votre compte depuis Paramètres → Supprimer mon compte.</li></ul>'],
+    ['Modération',
+     '<p>L\'auteur d\'une publication et l\'Admin peuvent supprimer les commentaires qui y sont faits. L\'Admin peut retirer tout contenu contraire à ces règles. En cas de manquement répété, les Admin peuvent retirer l\'accès à l\'application, après en avoir parlé avec la personne.</p>'],
+    ['Évolution des conditions',
+     '<p>Ces conditions peuvent évoluer. La date de la version en vigueur figure en haut de cette page ; les changements importants sont annoncés dans l\'application.</p>' +
+     '<p>Pour toute question : <b>07 99 44 24 02</b> (Département Communication).</p>']
+  ];
+
+  function ouvrirConditions() {
+    if (document.getElementById('_kcConditions')) return;
+    var fond = document.createElement('div');
+    fond.id = '_kcConditions';
+    fond.setAttribute('role', 'dialog');
+    fond.setAttribute('aria-modal', 'true');
+    fond.setAttribute('aria-label', 'Conditions d\'utilisation');
+    fond.className = 'safe-top';
+    fond.style.cssText = 'position:fixed;inset:0;z-index:9999990;background:var(--page,#F5F6F8);color:var(--ink,#0C1116);display:flex;flex-direction:column;animation:slideUp 0.28s cubic-bezier(0.22,1,0.36,1);font-family:var(--font-body,sans-serif);';
+    var sommaire = CONDITIONS_SECTIONS.map(function(s, i) {
+      return '<section style="background:var(--card,#FFF);border:1px solid var(--line,#E4E7EC);border-radius:12px;padding:16px;margin-bottom:12px;">' +
+        '<h2 style="font-family:var(--font-display,sans-serif);font-size:17px;font-weight:700;margin:0 0 8px;">' + (i + 1) + '. ' + s[0] + '</h2>' +
+        '<div class="kc-conditions" style="font-size:14.5px;line-height:1.55;color:var(--ink2,#2A313B);">' + s[1] + '</div>' +
+      '</section>';
+    }).join('');
+    fond.innerHTML =
+      '<div style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--card,#FFF);border-bottom:1px solid var(--line,#E4E7EC);">' +
+        '<button type="button" data-fermer aria-label="Fermer" style="background:var(--tile,#EFF1F5);border:none;width:44px;height:44px;flex-shrink:0;border-radius:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;">' +
+          '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>' +
+        '</button>' +
+        '<div style="min-width:0;">' +
+          '<h1 style="font-family:var(--font-display,sans-serif);font-size:21px;font-weight:700;margin:0;">Conditions d\'utilisation</h1>' +
+          '<div style="font-size:12.5px;color:var(--faint,#8A93A0);margin-top:2px;">Version du ' + CONDITIONS_VERSION + '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 16px 40px;">' + sommaire + '</div>';
+    document.body.appendChild(fond);
+    // Coche « Lire les conditions » de Bien démarrer (version lue retenue).
+    if (S.user && S.auth === 'app' && S.user.conditionsLues !== CONDITIONS_VERSION && window.App && App._majMonProfil) {
+      App._majMonProfil({ conditionsLues: CONDITIONS_VERSION });
+    }
+    var fermer = function() {
+      fond.remove();
+      document.removeEventListener('keydown', echap);
+    };
+    var echap = function(ev) { if (ev.key === 'Escape') fermer(); };
+    document.addEventListener('keydown', echap);
+    fond.querySelector('[data-fermer]').onclick = fermer;
+    // Le focus passe dans la fenêtre (lecteurs d'écran, touche Échap) sans
+    // dessiner de cadre autour du bouton retour.
+    fond.tabIndex = -1;
+    fond.style.outline = 'none';
+    try { fond.focus(); } catch(e) {}
+  }
+
+  // ============================================================
+  // VISITE GUIDÉE
+  // Quatre écrans au premier lancement, rejouables depuis Paramètres. Fenêtre
+  // injectée dans la page (comme les conditions), indépendante de render().
+  // ============================================================
+  var VISITE_ECRANS = [
+    { couleur: '#0B63F6', titre: 'Bienvenue sur Commit',
+      texte: 'L\'application du Département Communication : le planning des services, tes convocations, le pointage et la vie de l\'équipe, au même endroit.',
+      icone: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>' },
+    { couleur: '#0E9F6E', titre: 'Ta mission en un coup d\'œil',
+      texte: 'Quand un responsable te convoque, ta mission apparaît en haut de l\'Accueil avec ta tâche, l\'heure et l\'itinéraire. Tout le calendrier est dans l\'onglet Planning.',
+      icone: '<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M9 16l2 2 4-4"/>' },
+    { couleur: '#D98A0B', titre: 'Pointe ton arrivée',
+      texte: 'Le bouton « Je suis arrivé » s\'ouvre 3 h avant le début. Ta position est vérifiée dans un rayon de 1,5 km autour du lieu. Arriver à l\'heure rapporte +5.',
+      icone: '<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>' },
+    { couleur: '#AF52DE', titre: 'Suis ta note',
+      texte: 'Tous les 15 jours, tes services et tes tâches s\'additionnent sur 30 points. Ta jauge est dans ton Profil, les bilans des pôles dans l\'onglet Bilans.',
+      icone: '<line x1="4" y1="20" x2="20" y2="20"/><rect x="5.5" y="11" width="3" height="6" rx="1"/><rect x="10.5" y="6" width="3" height="11" rx="1"/><rect x="15.5" y="9" width="3" height="8" rx="1"/>' }
+  ];
+
+  // Fenêtre plein écran commune à la visite et à l'aide d'installation.
+  function fenetreInjectee(id, label) {
+    var fond = document.createElement('div');
+    fond.id = id;
+    fond.setAttribute('role', 'dialog');
+    fond.setAttribute('aria-modal', 'true');
+    fond.setAttribute('aria-label', label);
+    fond.className = 'safe-top';
+    fond.tabIndex = -1;
+    fond.style.cssText = 'position:fixed;inset:0;z-index:9999990;background:var(--page,#F5F6F8);color:var(--ink,#0C1116);display:flex;flex-direction:column;outline:none;font-family:var(--font-body,sans-serif);animation:fadeIn 0.25s ease-out;';
+    return fond;
+  }
+
+  function ouvrirVisite() {
+    if (document.getElementById('_kcVisite')) return;
+    var fond = fenetreInjectee('_kcVisite', 'Visite guidée');
+    var n = VISITE_ECRANS.length;
+    fond.innerHTML =
+      '<div style="display:flex;justify-content:flex-end;padding:8px 12px;">' +
+        '<button type="button" data-passer style="background:none;border:none;min-height:44px;padding:0 12px;font-size:15px;font-weight:600;color:var(--muted,#5B6572);cursor:pointer;">Passer</button>' +
+      '</div>' +
+      '<div data-piste style="flex:1;display:flex;overflow:hidden;">' +
+        '<div data-rail class="kc-rail" style="display:flex;flex-shrink:0;width:' + (n * 100) + '%;height:100%;">' +
+          VISITE_ECRANS.map(function(e, i) {
+            return '<div aria-hidden="' + (i ? 'true' : 'false') + '" style="width:' + (100 / n) + '%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px 32px;text-align:center;box-sizing:border-box;">' +
+              '<div class="kc-visite-icone" style="width:112px;height:112px;border-radius:36px;background:' + e.couleur + '1F;display:flex;align-items:center;justify-content:center;margin-bottom:28px;">' +
+                '<svg width="54" height="54" viewBox="0 0 24 24" fill="none" stroke="' + e.couleur + '" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + e.icone + '</svg>' +
+              '</div>' +
+              '<h2 style="font-family:var(--font-display,sans-serif);font-size:26px;font-weight:800;letter-spacing:-0.5px;margin:0 0 12px;">' + e.titre + '</h2>' +
+              '<p style="font-size:16px;line-height:1.55;color:var(--muted,#5B6572);max-width:22rem;margin:0;">' + e.texte + '</p>' +
+            '</div>';
+          }).join('') +
+        '</div>' +
+      '</div>' +
+      '<div style="padding:16px 24px calc(24px + env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:center;gap:18px;">' +
+        '<div data-points style="display:flex;gap:8px;">' +
+          VISITE_ECRANS.map(function(e, i){ return '<span style="height:8px;width:' + (i ? 8 : 24) + 'px;border-radius:4px;background:' + (i ? 'var(--line2,#D6DBE3)' : 'var(--accent,#0B63F6)') + ';transition:width 0.25s,background 0.25s;"></span>'; }).join('') +
+        '</div>' +
+        '<button type="button" data-suivant style="width:100%;max-width:360px;min-height:52px;background:#0B63F6;color:#FFF;border:none;border-radius:14px;font-size:16px;font-weight:700;cursor:pointer;">Suivant</button>' +
+      '</div>';
+    document.body.appendChild(fond);
+    try { fond.focus(); } catch(e) {}
+
+    var rail = fond.querySelector('[data-rail]');
+    var points = fond.querySelectorAll('[data-points] span');
+    var pages = rail.children;
+    var bouton = fond.querySelector('[data-suivant]');
+    var courant = 0;
+    var aller = function(i) {
+      courant = Math.max(0, Math.min(n - 1, i));
+      rail.style.transform = 'translateX(' + (-courant * 100 / n) + '%)';
+      for (var k = 0; k < n; k++) {
+        points[k].style.width = k === courant ? '24px' : '8px';
+        points[k].style.background = k === courant ? 'var(--accent,#0B63F6)' : 'var(--line2,#D6DBE3)';
+        pages[k].setAttribute('aria-hidden', k === courant ? 'false' : 'true');
+      }
+      bouton.textContent = courant === n - 1 ? 'C\'est parti' : 'Suivant';
+    };
+    var terminer = function() {
+      fond.remove();
+      document.removeEventListener('keydown', clavier);
+      if (S.user && !S.user.visiteVue && window.App && App._majMonProfil) App._majMonProfil({ visiteVue: true });
+    };
+    var clavier = function(ev) {
+      if (ev.key === 'Escape') terminer();
+      else if (ev.key === 'ArrowRight') aller(courant + 1);
+      else if (ev.key === 'ArrowLeft') aller(courant - 1);
+    };
+    document.addEventListener('keydown', clavier);
+    bouton.onclick = function() { if (courant === n - 1) terminer(); else aller(courant + 1); };
+    fond.querySelector('[data-passer]').onclick = terminer;
+    // Glisser du doigt pour changer d'écran.
+    var x0 = null;
+    var piste = fond.querySelector('[data-piste]');
+    piste.addEventListener('touchstart', function(ev){ x0 = ev.touches[0].clientX; }, { passive: true });
+    piste.addEventListener('touchend', function(ev){
+      if (x0 === null) return;
+      var dx = ev.changedTouches[0].clientX - x0;
+      if (Math.abs(dx) > 40) aller(courant + (dx < 0 ? 1 : -1));
+      x0 = null;
+    }, { passive: true });
+  }
+
+  // Au premier lancement (fiche sans « visiteVue »), une fois la fiche
+  // synchronisée : sans ce délai, un membre qui l'a déjà vue sur un autre
+  // téléphone la reverrait avant que sa fiche n'arrive du serveur.
+  function proposerVisiteSiNouvelle() {
+    setTimeout(function() {
+      try {
+        if (!S.user || S.auth !== 'app') return;
+        var fiche = db(SK.USERS, []).find(function(x){ return x && x.id === S.user.id; }) || S.user;
+        if (!fiche.visiteVue && !S.user.visiteVue) ouvrirVisite();
+      } catch(e) {}
+    }, 2500);
+  }
+
+  // ============================================================
+  // AIDE À L'INSTALLATION (écran d'accueil du téléphone)
+  // ============================================================
+  function ouvrirAideInstallation() {
+    if (document.getElementById('_kcInstallation')) return;
+    var ios = /iphone|ipad|ipod/i.test(navigator.userAgent || '');
+    var fond = fenetreInjectee('_kcInstallation', 'Installer Commit');
+    var etape = function(n, texte) {
+      return '<li style="display:flex;gap:12px;align-items:flex-start;margin-bottom:14px;">' +
+        '<span style="width:28px;height:28px;border-radius:50%;background:var(--accent-soft,#E8EEFB);color:var(--accent-ink,#0B4FC4);font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + n + '</span>' +
+        '<span style="font-size:15.5px;line-height:1.5;padding-top:3px;">' + texte + '</span></li>';
+    };
+    fond.innerHTML =
+      '<div style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--card,#FFF);border-bottom:1px solid var(--line,#E4E7EC);">' +
+        '<button type="button" data-fermer aria-label="Fermer" style="background:var(--tile,#EFF1F5);border:none;width:44px;height:44px;flex-shrink:0;border-radius:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:inherit;">' +
+          '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>' +
+        '</button>' +
+        '<h1 style="font-family:var(--font-display,sans-serif);font-size:21px;font-weight:700;margin:0;">Installer Commit</h1>' +
+      '</div>' +
+      '<div style="flex:1;overflow-y:auto;padding:20px 20px 40px;">' +
+        '<p style="font-size:15.5px;line-height:1.55;color:var(--muted,#5B6572);margin:0 0 18px;">Installée sur l\'écran d\'accueil, l\'application s\'ouvre comme une vraie app, en plein écran, et pourra bientôt t\'envoyer tes convocations et rappels.</p>' +
+        '<h2 style="font-size:16px;font-weight:700;margin:0 0 12px;">' + (ios ? 'Sur iPhone (Safari)' : 'Sur Android (Chrome)') + '</h2>' +
+        '<ol style="list-style:none;padding:0;margin:0;">' +
+          (ios
+            ? etape(1, 'Touche le bouton <b>Partager</b> (le carré avec une flèche vers le haut), en bas de Safari.') +
+              etape(2, 'Fais défiler et choisis <b>Sur l\'écran d\'accueil</b>.') +
+              etape(3, 'Touche <b>Ajouter</b> : l\'icône Commit apparaît avec tes autres applications.')
+            : etape(1, 'Touche le menu <b>⋮</b> en haut à droite de Chrome.') +
+              etape(2, 'Choisis <b>Installer l\'application</b> (ou <b>Ajouter à l\'écran d\'accueil</b>).') +
+              etape(3, 'Confirme : l\'icône Commit apparaît avec tes autres applications.')) +
+        '</ol>' +
+        '<p style="font-size:13.5px;color:var(--faint,#8A93A0);margin:8px 0 0;">' + (ios ? 'Sur Android : menu ⋮ de Chrome, puis « Installer l\'application ».' : 'Sur iPhone : bouton Partager de Safari, puis « Sur l\'écran d\'accueil ».') + '</p>' +
+      '</div>';
+    document.body.appendChild(fond);
+    try { fond.focus(); } catch(e) {}
+    // Consulter l'aide suffit à cocher l'étape : l'app ne peut pas savoir si
+    // elle a été installée tant qu'on l'utilise depuis le navigateur.
+    if (S.user && !S.user.installationVue && window.App && App._majMonProfil) App._majMonProfil({ installationVue: true });
+    var fermer = function() { fond.remove(); document.removeEventListener('keydown', echap); };
+    var echap = function(ev) { if (ev.key === 'Escape') fermer(); };
+    document.addEventListener('keydown', echap);
+    fond.querySelector('[data-fermer]').onclick = fermer;
+  }
