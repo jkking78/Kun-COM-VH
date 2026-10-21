@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#0B63F6">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -15,9 +15,7 @@
        lieu de s'y ajouter. Sur un réseau mobile, cela retire plusieurs centaines
        de millisecondes avant l'affichage des publications. -->
   <link rel="preconnect" href="https://yugkryhikrfsxbuyxacl.supabase.co" crossorigin>
-  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="dns-prefetch" href="https://yugkryhikrfsxbuyxacl.supabase.co">
-  <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
   <!-- Refonte : identité typographique. Bricolage Grotesque (titres),
        Inter (interface), JetBrains Mono (données : heures, notes, compteurs).
        display=swap pour ne jamais bloquer l'affichage ; repli système sinon. -->
@@ -250,29 +248,32 @@
     </div>
   </div>
 
-  <!-- SUPABASE SDK (CDN) -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- SUPABASE SDK — copie locale à version FIXE (public/vendor). Le CDN « @2 »
+       servait la dernière 2.x publiée : une mise à jour en amont pouvait casser
+       l'application en production sans aucun changement de notre côté. Servi
+       depuis notre domaine, il profite aussi du cache du service worker. -->
+  <script src="vendor/supabase-js-2.117.2.js"></script>
   <!-- Le SDK s'expose dans window.supabase. Or les scripts de js/ déclarent leur
        propre "var supabase" au niveau global, ce qui écrase cette référence avant
        de pouvoir s'en servir. On met donc le SDK de côté ici, juste après son
        chargement, sous un nom qui ne peut pas entrer en collision. -->
   <script>window.__supabaseSdk = window.supabase;</script>
 
-  <!-- MORPHDOM (CDN) — réconciliation DOM légère : ne patch que ce qui a changé au
-       lieu de tout redessiner à chaque rendu (fluidité + stabilité mémoire) -->
-  <script src="https://cdn.jsdelivr.net/npm/morphdom@2/dist/morphdom-umd.min.js"></script>
+  <!-- MORPHDOM (copie locale, version fixe) — réconciliation DOM légère : ne patch
+       que ce qui a changé au lieu de tout redessiner à chaque rendu -->
+  <script src="vendor/morphdom-2.7.8.min.js"></script>
 
   <!-- BUNDLE PRINCIPAL (PWA Vanilla JS) — anciennement un seul fichier app.js,
        désormais découpé en modules thématiques (même code, chargés dans l'ordre
        d'origine, aucun changement de comportement) pour faciliter la maintenance. -->
-  <script src="js/01-core.js?v=146"></script>
-  <script src="js/02-media.js?v=146"></script>
-  <script src="js/03-render-engine.js?v=146"></script>
-  <script src="js/04-render-auth-cropper.js?v=146"></script>
-  <script src="js/05-render-feed.js?v=146"></script>
-  <script src="js/06-render-panels.js?v=146"></script>
-  <script src="js/07-app-controller.js?v=146"></script>
-  <script src="js/08-bootstrap.js?v=146"></script>
+  <script src="js/01-core.js?v=148"></script>
+  <script src="js/02-media.js?v=148"></script>
+  <script src="js/03-render-engine.js?v=148"></script>
+  <script src="js/04-render-auth-cropper.js?v=148"></script>
+  <script src="js/05-render-feed.js?v=148"></script>
+  <script src="js/06-render-panels.js?v=148"></script>
+  <script src="js/07-app-controller.js?v=148"></script>
+  <script src="js/08-bootstrap.js?v=148"></script>
 
   <!-- DÉBLOCAGE ANTI-SPINNER (Garantie de déblocage 0ms / 400ms max) -->
   <script>

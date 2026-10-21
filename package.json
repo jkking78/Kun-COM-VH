@@ -1,20 +1,18 @@
 {
   "name": "kun-com-vh",
   "version": "1.0.0",
-  "description": "Application Web & PWA de gestion du Département Communication Église",
-  "main": "public/index.html",
+  "appVersion": 148,
+  "private": true,
+  "description": "Commit VH — application web & PWA du Département Communication, Église Vase d'Honneur",
   "scripts": {
     "start": "python3 -m http.server 5173 --directory public",
-    "build": "python3 -c \"import os, shutil; os.makedirs('dist', exist_ok=True); shutil.copytree('public', 'dist', dirs_exist_ok=True); print('✅ Build statique Web généré dans /dist')\"",
-    "test": "python3 schema/verify_schema.py && python3 schema/test_security_rules.py"
+    "build": "node scripts/version.mjs check",
+    "version:bump": "node scripts/version.mjs bump",
+    "test": "node --test tests/unit/*.test.mjs && node tests/e2e/smoke.mjs",
+    "test:sql": "tests/sql/run.sh"
   },
-  "keywords": [
-    "pwa",
-    "web",
-    "church",
-    "communication",
-    "react-native-web"
-  ],
-  "author": "Antigravity Senior Developer",
+  "devDependencies": {
+    "playwright-core": "1.56.1"
+  },
   "license": "MIT"
 }

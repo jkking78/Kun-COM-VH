@@ -24,6 +24,10 @@
       '*{scrollbar-width:none;-webkit-tap-highlight-color:transparent;box-sizing:border-box;}',
       'button{-webkit-appearance:none;touch-action:manipulation;}',
       'input,textarea,select{-webkit-appearance:none;}',
+      // Le zoom est désormais autorisé (accessibilité). iOS zoome automatiquement
+      // sur tout champ dont le texte fait moins de 16px au moment de la saisie :
+      // on garantit donc 16px minimum sur écran tactile pour éviter ce saut.
+      '@media (pointer:coarse){input,textarea,select{font-size:max(16px,1em) !important;}}',
       '@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}',
       '@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}',
       '@keyframes heartFloat{0%{transform:translate(-50%,-50%) scale(0);opacity:1}50%{transform:translate(-50%,-80%) scale(1.2);opacity:1}100%{transform:translate(-50%,-120%) scale(0.8);opacity:0}}',
@@ -49,7 +53,7 @@
   // comporte de façon inexplicable. On vérifie donc que les briques essentielles
   // sont bien là avant de démarrer, et on recharge UNE fois en contournant le
   // cache si ce n'est pas le cas.
-  var APP_VERSION = 'v147'; window.APP_VERSION = APP_VERSION; // Exposé pour l'écran Paramètres (ligne « Version »).
+  var APP_VERSION = 'v148'; window.APP_VERSION = APP_VERSION; // Exposé pour l'écran Paramètres (ligne « Version »).
   // Nom du cache tenu par le service worker pour CETTE version. Doit rester
   // aligné sur CACHE_NAME dans sw.js.
   var CACHE_COURANT = 'kun-com-pwa-' + APP_VERSION;

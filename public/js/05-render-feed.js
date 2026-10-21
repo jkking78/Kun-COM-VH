@@ -110,7 +110,6 @@
     if (S.deleteAccountOpen) modals += renderDeleteAccountModal();
     if (S.bulkDeleteConfirmOpen) modals += renderBulkDeleteConfirmModal();
     if (S.viewersPostId) modals += renderViewersModal();
-    if (S.adminGateOpen) modals += renderAdminGateModal();
     if (S.storageStatsOpen) modals += renderStorageStatsModal();
     if (S.rolesPanelOpen) modals += renderRolesModal();
     if (S.settingsOpen) modals += renderSettingsModal();
@@ -142,7 +141,7 @@
     // (façon barre flottante des apps récentes).
     function nb(id, iconFn, lbl) {
       var a = S.tab === id;
-      return '<button onclick="App.tab(\'' + id + '\')" aria-label="' + lbl + '" style="flex:1;background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;height:100%;padding:0;-webkit-tap-highlight-color:transparent;">' +
+      return '<button onclick="App.tab(\'' + jsArg(id) + '\')" aria-label="' + lbl + '" style="flex:1;background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;height:100%;padding:0;-webkit-tap-highlight-color:transparent;">' +
         '<div style="min-width:48px;height:40px;border-radius:14px;display:flex;align-items:center;justify-content:center;background:' + (a ? 'var(--accent-soft)' : 'transparent') + ';color:' + (a ? UI.accent : 'var(--faint)') + ';transition:background 0.2s,color 0.2s;">' +
           iconFn(a) +
         '</div>' +
@@ -214,7 +213,7 @@
         '<div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">' +
           (rightActionHtml || '') +
           (u.avatar_url
-            ? '<button onclick="App.tab(\'profile\')" style="width:30px;height:30px;border-radius:' + UI.pill + ';border:none;cursor:pointer;padding:0;overflow:hidden;flex-shrink:0;"><img src="' + safeHtml(u.avatar_url) + '" style="width:100%;height:100%;object-fit:cover;" /></button>'
+            ? '<button onclick="App.tab(\'profile\')" style="width:30px;height:30px;border-radius:' + UI.pill + ';border:none;cursor:pointer;padding:0;overflow:hidden;flex-shrink:0;"><img src="' + safeUrl(u.avatar_url) + '" style="width:100%;height:100%;object-fit:cover;" /></button>'
             : '<button onclick="App.tab(\'profile\')" style="width:30px;height:30px;border-radius:' + UI.pill + ';background:' + (u.avatar_color||UI.accent) + ';border:none;cursor:pointer;color:#FFF;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;">' + initial + '</button>') +
         '</div>' +
       '</div>' +
@@ -243,7 +242,7 @@
           iconBtn('App.openCreate()', '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="' + UI.muted + '" stroke-width="1.9" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>', 0) +
           '<button onclick="App.tab(\'profile\')" style="width:44px;height:44px;border-radius:' + UI.pill + ';background:none;border:none;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;flex-shrink:0;touch-action:manipulation;">' +
             (u.avatar_url
-              ? '<img src="' + safeHtml(u.avatar_url) + '" style="width:32px;height:32px;border-radius:' + UI.pill + ';object-fit:cover;" />'
+              ? '<img src="' + safeUrl(u.avatar_url) + '" style="width:32px;height:32px;border-radius:' + UI.pill + ';object-fit:cover;" />'
               : '<span style="width:32px;height:32px;border-radius:' + UI.pill + ';background:' + UI.accent + ';color:#FFF;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;">' + initial + '</span>') +
           '</button>' +
         '</div>' +
@@ -258,7 +257,7 @@
         '<span style="display:inline-flex;align-items:center;gap:4px;font-size:10.5px;color:' + UI.faint + ';white-space:nowrap;flex-shrink:0;">' + ico('flame', 13, UI.faint) + 'Tendances</span>' +
         trends.map(function(t) {
           var active = S.q.toLowerCase() === t.toLowerCase();
-          return '<button onclick="App.filterTag(\'' + encodeURIComponent(t) + '\')" style="flex-shrink:0;display:flex;align-items:center;min-height:44px;background:' + (active ? UI.accent : UI.tile) + ';color:' + (active ? '#FFF' : UI.muted) + ';border:none;padding:5px 12px;border-radius:' + UI.pill + ';font-size:12px;font-weight:500;cursor:pointer;">' + t + '</button>';
+          return '<button onclick="App.filterTag(\'' + jsArg(encodeURIComponent(t)) + '\')" style="flex-shrink:0;display:flex;align-items:center;min-height:44px;background:' + (active ? UI.accent : UI.tile) + ';color:' + (active ? '#FFF' : UI.muted) + ';border:none;padding:5px 12px;border-radius:' + UI.pill + ';font-size:12px;font-weight:500;cursor:pointer;">' + t + '</button>';
         }).join('') +
         '</div></div>';
     }
@@ -277,7 +276,7 @@
         // principal : sinon il compte des publications invisibles (programmées,
         // ciblées sur d'autres pôles…) et affiche des badges mensongers.
         var cnt = lastSeen === null ? 0 : allPostsForCount.filter(function(p){ return p.sectionId === s.id && (p.timestamp||0) > lastSeen && publicationVisiblePour(p, u); }).length;
-        return '<div onclick="App.story(\'' + s.id + '\')" style="display:flex;flex-direction:column;align-items:center;cursor:pointer;min-width:64px;gap:6px;flex-shrink:0;">' +
+        return '<div onclick="App.story(\'' + jsArg(s.id) + '\')" style="display:flex;flex-direction:column;align-items:center;cursor:pointer;min-width:64px;gap:6px;flex-shrink:0;">' +
           '<div style="position:relative;width:54px;height:54px;">' +
             '<div style="width:54px;height:54px;border-radius:50%;background:' + (sel ? sc + '1A' : UI.tile) + ';border:1.5px solid ' + (sel ? sc : 'transparent') + ';display:flex;align-items:center;justify-content:center;font-size:22px;transition:all 0.2s;">' +
               s.emoji +
@@ -464,7 +463,7 @@
       // height fixe plutôt que auto : sans hauteur connue, l'affiche occupait zéro
       // pixel jusqu'à son arrivée, puis faisait grandir la carte d'un coup. Le
       // recalage du carrousel est déclenché à son chargement.
-      ? '<img src="' + safeHtml(post.eventImage) + '" loading="lazy" onload="App.recalerCarrousels()" onerror="App.mediaEchoue(this)" onclick="event.stopPropagation();App.openImageViewer(\'' + safeHtml(String(post.eventImage)).replace(/'/g,"\\'") + '\')" style="display:block;width:100%;height:200px;object-fit:cover;border-radius:' + UI.r1 + ';margin-bottom:14px;background:#000;cursor:pointer;" />'
+      ? '<img src="' + safeUrl(post.eventImage) + '" loading="lazy" onload="App.recalerCarrousels()" onerror="App.mediaEchoue(this)" onclick="event.stopPropagation();App.openImageViewer(\'' + jsArg(urlSure(String(post.eventImage))) + '\')" style="display:block;width:100%;height:200px;object-fit:cover;border-radius:' + UI.r1 + ';margin-bottom:14px;background:#000;cursor:pointer;" />'
       : '';
 
     // Vert profond + or : identité réservée aux événements, pour qu'ils se
@@ -508,7 +507,7 @@
                       '<span style="font-size:11px;color:' + UI.evMuted + ';">échéance ' + formatDeadline(a.deadline) + '</span>' +
                     '</div>' +
                     (isMeAssigned
-                      ? '<button onclick="event.stopPropagation();App.toggleTaskDone(\'' + post.id + '\')" style="margin-top:8px;width:100%;background:' + (ts.done ? 'rgba(255,255,255,0.10)' : UI.evGold) + ';color:' + (ts.done ? UI.evInk : '#20160A') + ';border:none;border-radius:' + UI.r1 + ';padding:9px;font-size:12.5px;font-weight:800;cursor:pointer;">' +
+                      ? '<button onclick="event.stopPropagation();App.toggleTaskDone(\'' + jsArg(post.id) + '\')" style="margin-top:8px;width:100%;background:' + (ts.done ? 'rgba(255,255,255,0.10)' : UI.evGold) + ';color:' + (ts.done ? UI.evInk : '#20160A') + ';border:none;border-radius:' + UI.r1 + ';padding:9px;font-size:12.5px;font-weight:800;cursor:pointer;">' +
                           (ts.done ? '↩︎ Remettre à faire' : '✓ Marquer comme fait') +
                         '</button>'
                       : '');
@@ -578,14 +577,14 @@
       // des événements porte une affiche et l'autre non, le volet court laissait
       // dessous un vide blanc de plusieurs centaines de pixels — vide qui grandissait
       // encore au chargement de l'image, et repoussait tout le fil vers le bas.
-      '<div id="' + carId + '" data-carrousel-ev="1" onscroll="App.eventGroupScroll(\'' + dateIso + '\',\'' + carId + '\',this)" style="display:flex;align-items:flex-start;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;gap:0;transition:height 0.18s ease;">' +
+      '<div id="' + carId + '" data-carrousel-ev="1" onscroll="App.eventGroupScroll(\'' + jsArg(dateIso) + '\',\'' + jsArg(carId) + '\',this)" style="display:flex;align-items:flex-start;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;gap:0;transition:height 0.18s ease;">' +
         events.map(function(ev) {
           // La carte entière ouvre l'événement dans le Planning, à la bonne date :
           // sans cela il fallait quitter le fil et le retrouver à la main.
           return '<div style="flex:0 0 100%;scroll-snap-align:start;padding:0 16px 4px;box-sizing:border-box;">' +
             '<div style="position:relative;">' +
-              '<div onclick="App.goToEvent(\'' + ev.id + '\')" style="cursor:pointer;">' + renderEventCardInner(ev) + '</div>' +
-              '<button onclick="event.stopPropagation();App.openOptions(\'' + ev.id + '\')" style="position:absolute;top:8px;right:8px;background:rgba(255,255,255,0.92);border:none;width:44px;height:44px;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.08);">' + SVG.dots + '</button>' +
+              '<div onclick="App.goToEvent(\'' + jsArg(ev.id) + '\')" style="cursor:pointer;">' + renderEventCardInner(ev) + '</div>' +
+              '<button onclick="event.stopPropagation();App.openOptions(\'' + jsArg(ev.id) + '\')" style="position:absolute;top:8px;right:8px;background:rgba(255,255,255,0.92);border:none;width:44px;height:44px;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.08);">' + SVG.dots + '</button>' +
             '</div>' +
           '</div>';
         }).join('') +
@@ -683,7 +682,7 @@
       evBadge +
       '<div style="position:relative;">' +
         '<div style="position:absolute;top:10px;right:10px;z-index:3;background:rgba(15,23,42,0.72);color:#FFF;font-size:11.5px;font-weight:800;padding:4px 10px;border-radius:12px;" id="evalBadge-' + post.id + '">' + (curIdx+1) + '/' + evals.length + '</div>' +
-        '<div id="evalCar-' + post.id + '" onscroll="App.evalCarScroll(\'' + post.id + '\', this)" style="display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;gap:0;">' +
+        '<div id="evalCar-' + post.id + '" onscroll="App.evalCarScroll(\'' + jsArg(post.id) + '\', this)" style="display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;gap:0;">' +
           evals.map(function(ev) {
             return '<div style="flex:0 0 100%;scroll-snap-align:start;box-sizing:border-box;' + boxStyle + '">' + renderEvaluationSlide(ev) + '</div>';
           }).join('') +
@@ -736,7 +735,7 @@
     var starCol = stars === null ? 'var(--faint)' : stars >= 4 ? '#0E9F6E' : stars >= 2 ? '#D98A0B' : '#E2445C';
 
     var confirmBtn = isAuthor
-      ? '<div style="margin-top:6px;"><button onclick="App.confirmPresence(\'' + post.id + '\')"' + (S.geoCapturing ? ' disabled' : '') + ' style="background:var(--accent-soft);color:#0B63F6;border:none;border-radius:10px;padding:7px 12px;font-size:12px;font-weight:800;cursor:pointer;">📍 Confirmer ma présence</button></div>'
+      ? '<div style="margin-top:6px;"><button onclick="App.confirmPresence(\'' + jsArg(post.id) + '\')"' + (S.geoCapturing ? ' disabled' : '') + ' style="background:var(--accent-soft);color:#0B63F6;border:none;border-radius:10px;padding:7px 12px;font-size:12px;font-weight:800;cursor:pointer;">📍 Confirmer ma présence</button></div>'
       : '';
 
     // Bloc position selon l'état de présence.
@@ -835,7 +834,7 @@
     if (!S.viewerImage) return '';
     return '<div onclick="App.closeImageViewer()" class="safe-top" style="position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,0.94);display:flex;align-items:center;justify-content:center;padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom));animation:fadeIn 0.18s ease-out;">' +
       '<button onclick="event.stopPropagation();App.closeImageViewer()" aria-label="Fermer" style="position:absolute;top:10px;right:10px;background:rgba(255,255,255,0.16);border:none;border-radius:50%;width:44px;height:44px;color:#FFF;font-size:20px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;touch-action:manipulation;">×</button>' +
-      '<img src="' + safeHtml(S.viewerImage) + '" onclick="event.stopPropagation()" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:' + UI.r1 + ';" />' +
+      '<img src="' + safeUrl(S.viewerImage) + '" onclick="event.stopPropagation()" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:' + UI.r1 + ';" />' +
     '</div>';
   }
 
@@ -847,7 +846,7 @@
     var domain = pv.siteName || linkDomain(pv.url);
     var titre = pv.title || domain;
     var img = pv.image
-      ? '<img src="' + safeHtml(pv.image) + '" loading="lazy" onerror="this.style.display=\'none\'" style="display:block;width:100%;height:' + (opts.compact ? '120px' : '170px') + ';object-fit:cover;background:' + UI.tile + ';" />'
+      ? '<img src="' + safeUrl(pv.image) + '" loading="lazy" onerror="this.style.display=\'none\'" style="display:block;width:100%;height:' + (opts.compact ? '120px' : '170px') + ';object-fit:cover;background:' + UI.tile + ';" />'
       : '';
     var inner =
       img +
@@ -861,7 +860,7 @@
 
     var box = '<div style="border:0.5px solid ' + UI.line2 + ';border-radius:' + UI.r1 + ';overflow:hidden;background:' + UI.card + ';">' + inner + '</div>';
     if (opts.noLink) return box;
-    return '<a href="' + safeHtml(pv.url) + '" target="_blank" rel="noopener noreferrer" style="text-decoration:none;display:block;">' + box + '</a>';
+    return '<a href="' + safeUrl(pv.url) + '" target="_blank" rel="noopener noreferrer" style="text-decoration:none;display:block;">' + box + '</a>';
   }
 
   // Sondage optionnel attaché à une publication : question + options cliquables.
@@ -880,7 +879,7 @@
       poll.options.map(function(opt, idx) {
         var pct = pollOptionPct(poll, idx);
         var mine = myVote === idx;
-        return '<div onclick="App.votePoll(\'' + post.id + '\', ' + idx + ')" style="position:relative;margin-bottom:7px;border-radius:12px;overflow:hidden;background:var(--card);border:1.5px solid ' + (mine?'var(--ok-ink)':'var(--line)') + ';cursor:pointer;">' +
+        return '<div onclick="App.votePoll(\'' + jsArg(post.id) + '\', ' + idx + ')" style="position:relative;margin-bottom:7px;border-radius:12px;overflow:hidden;background:var(--card);border:1.5px solid ' + (mine?'var(--ok-ink)':'var(--line)') + ';cursor:pointer;">' +
           (hasVoted ? '<div style="position:absolute;top:0;left:0;bottom:0;width:' + pct + '%;background:' + (mine?'var(--ok-soft)':'var(--tile)') + ';transition:width 0.3s;"></div>' : '') +
           '<div style="position:relative;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;">' +
             '<span style="font-size:13px;font-weight:' + (mine?'800':'600') + ';color:' + (mine?'var(--ok-ink)':'var(--ink)') + ';">' + (mine ? '✓ ' : '') + safeHtml(opt) + '</span>' +
@@ -945,11 +944,11 @@
     var needsTruncate = fullCaption.length > 120 || lines.length > 3;
     if (!expanded && needsTruncate) {
       var short = sliceSafe(fullCaption, 120);
-      captionHtml = hashtagify(short) + '... <span onclick="App.expandCaption(\'' + post.id + '\')" style="color:var(--faint);cursor:pointer;font-weight:600;">plus</span>';
+      captionHtml = hashtagify(short) + '... <span onclick="App.expandCaption(\'' + jsArg(post.id) + '\')" style="color:var(--faint);cursor:pointer;font-weight:600;">plus</span>';
     } else {
       captionHtml = hashtagify(fullCaption);
       if (needsTruncate && expanded) {
-        captionHtml += ' <span onclick="App.expandCaption(\'' + post.id + '\')" style="color:var(--faint);cursor:pointer;font-weight:600;">moins</span>';
+        captionHtml += ' <span onclick="App.expandCaption(\'' + jsArg(post.id) + '\')" style="color:var(--faint);cursor:pointer;font-weight:600;">moins</span>';
       }
     }
 
@@ -959,7 +958,7 @@
       var isMulti = post.mediaUrls.length > 1;
       mediaZone = '<div style="position:relative;background:#000;">' +
         (isMulti ? '<div id="badge-'+post.id+'" style="position:absolute;top:12px;right:12px;background:rgba(0,0,0,0.6);color:#FFF;font-size:12px;font-weight:700;padding:4px 10px;border-radius:20px;z-index:10;">' + (curIdx+1) + '/' + post.mediaUrls.length + '</div>' : '') +
-        '<div id="car-'+post.id+'" onscroll="App.carScroll(\''+post.id+'\',this)" ondblclick="App.doubleTapLike(\''+post.id+'\')" style="display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;">' +
+        '<div id="car-'+post.id+'" onscroll="App.carScroll(\''+jsArg(post.id)+'\',this)" ondblclick="App.doubleTapLike(\''+jsArg(post.id)+'\')" style="display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;">' +
           post.mediaUrls.map(function(url) {
             // Les dimensions réelles du média sont conservées (pas de recadrage forcé en
             // carré) : width/height:auto + object-fit:contain, limité par max-height pour
@@ -969,8 +968,8 @@
               // on force le navigateur à afficher la première image plutôt qu'un écran noir.
               // onerror : URL expirée/supprimée = encart « Média indisponible »
               // (voir App.mediaEchoue) au lieu d'un média cassé définitif.
-              ? '<video src="'+url+'"' + (post.videoPoster ? ' poster="'+post.videoPoster+'"' : '') + ' controls playsinline preload="auto" onloadedmetadata="App.mediaCharge(this,\''+url+'\')" onloadeddata="App.primeVideoFrame(this)" onerror="App.mediaEchoue(this)" style="display:block;width:auto;height:auto;max-width:100%;max-height:640px;object-fit:contain;margin:0 auto;background:#000;"></video>'
-              : '<img src="'+url+'" loading="lazy" onload="App.mediaCharge(this,\''+url+'\')" onerror="App.mediaEchoue(this)" onclick="App.openImageViewer(\''+url+'\')" style="display:block;width:auto;height:auto;max-width:100%;max-height:640px;object-fit:contain;margin:0 auto;cursor:pointer;"/>';
+              ? '<video src="'+safeUrl(url)+'"' + (post.videoPoster ? ' poster="'+safeUrl(post.videoPoster)+'"' : '') + ' controls playsinline preload="auto" onloadedmetadata="App.mediaCharge(this,\''+jsArg(url)+'\')" onloadeddata="App.primeVideoFrame(this)" onerror="App.mediaEchoue(this)" style="display:block;width:auto;height:auto;max-width:100%;max-height:640px;object-fit:contain;margin:0 auto;background:#000;"></video>'
+              : '<img src="'+safeUrl(url)+'" loading="lazy" onload="App.mediaCharge(this,\''+jsArg(url)+'\')" onerror="App.mediaEchoue(this)" onclick="App.openImageViewer(\''+jsArg(url)+'\')" style="display:block;width:auto;height:auto;max-width:100%;max-height:640px;object-fit:contain;margin:0 auto;cursor:pointer;"/>';
             // Réservation de la hauteur AVANT que le média n'arrive : avec sa
             // proportion connue, la place est exacte et rien ne bouge ; sinon on
             // réserve une hauteur raisonnable, ce qui évite déjà que la carte soit
@@ -998,14 +997,14 @@
           : 'background:' + safeHtml(post.postBg) + ';';
         var captionForBg = post.caption || '';
         var fontSize = captionForBg.length > 100 ? '18px' : captionForBg.length > 60 ? '22px' : '26px';
-        mediaZone = '<div ondblclick="App.doubleTapLike(\''+post.id+'\')" style="position:relative;' + bgStyle + 'min-height:220px;display:flex;align-items:center;justify-content:center;padding:28px 20px;text-align:center;overflow:hidden;">' +
+        mediaZone = '<div ondblclick="App.doubleTapLike(\''+jsArg(post.id)+'\')" style="position:relative;' + bgStyle + 'min-height:220px;display:flex;align-items:center;justify-content:center;padding:28px 20px;text-align:center;overflow:hidden;">' +
           '<div style="position:absolute;inset:0;background:rgba(0,0,0,0.08);"></div>' +
           '<p style="position:relative;z-index:1;font-size:' + fontSize + ';font-weight:900;color:#FFF;margin:0;line-height:1.4;text-shadow:0 2px 16px rgba(0,0,0,0.4);word-break:break-word;">' + hashtagify(captionForBg) + '</p>' +
         '</div>';
         // Don't show caption again below for bg posts (it's in the card)
         captionHtml = '';
       } else if (post.isVedette || post.scoreText) {
-        mediaZone = '<div ondblclick="App.doubleTapLike(\''+post.id+'\')" style="background:linear-gradient(135deg,#1A1A2E,#2D2D44);min-height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;text-align:center;position:relative;">' +
+        mediaZone = '<div ondblclick="App.doubleTapLike(\''+jsArg(post.id)+'\')" style="background:linear-gradient(135deg,#1A1A2E,#2D2D44);min-height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;text-align:center;position:relative;">' +
           '<div style="width:44px;height:44px;border-radius:22px;background:rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center;margin-bottom:8px;font-size:22px;">' + sec.emoji + '</div>' +
           (post.isVedette ? '<div style="background:linear-gradient(135deg,#FFD700,#D98A0B);color:#5D3A00;font-size:10px;font-weight:900;padding:4px 12px;border-radius:20px;letter-spacing:0.8px;margin-bottom:6px;">SECTION VEDETTE</div>' : '') +
           (post.scoreText ? '<div style="background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);padding:5px 12px;border-radius:12px;position:absolute;bottom:12px;right:12px;"><strong style="font-size:13px;color:var(--ink);">★ ' + post.scoreText + '</strong></div>' : '') +
@@ -1022,7 +1021,7 @@
       // Handle new-format EVENT posts (created by saveEvent)
       if (post.type === 'EVENT' && post.eventTitle) {
          // Cliquer sur l'événement dans le fil l'ouvre dans le Planning, à sa date.
-         contentZone = '<div onclick="App.goToEvent(\'' + post.id + '\')" style="margin:0 16px 14px;cursor:pointer;">' + renderEventCardInner(post) + '</div>';
+         contentZone = '<div onclick="App.goToEvent(\'' + jsArg(post.id) + '\')" style="margin:0 16px 14px;cursor:pointer;">' + renderEventCardInner(post) + '</div>';
       } else if (post.type === 'EVENT' && post.metadata) {
          var participants = Object.keys(post.metadata.participations || {}).filter(function(k) { return post.metadata.participations[k] === 'yes'; });
          var partAvatars = '';
@@ -1066,8 +1065,8 @@
           '</div>' +
 
           '<div style="display:flex;gap:10px;">' +
-            '<button onclick="App.toggleParticipation(\''+post.id+'\',\'yes\')" style="flex:1;padding:12px;border-radius:12px;font-size:14px;font-weight:800;border:none;cursor:pointer;background:'+((post.metadata.participations||{})[(S.user||{}).id]==='yes'?'#0E9F6E':'var(--card)')+';color:'+((post.metadata.participations||{})[(S.user||{}).id]==='yes'?'#FFF':'var(--ink)')+';box-shadow:'+((post.metadata.participations||{})[(S.user||{}).id]==='yes'?'0 4px 12px rgba(52,199,89,0.3)':'0 2px 6px rgba(0,0,0,0.05)')+';transition:all 0.2s;">' + ((post.metadata.participations||{})[(S.user||{}).id]==='yes' ? ico('thumb',14,'#FFF') + ' Confirmé' : ico('thumb',14,'currentColor') + ' Je participe') + '</button>' +
-            '<button onclick="App.toggleParticipation(\''+post.id+'\',\'no\')" style="flex:1;padding:12px;border-radius:12px;font-size:14px;font-weight:800;border:none;cursor:pointer;background:'+((post.metadata.participations||{})[(S.user||{}).id]==='no'?'linear-gradient(135deg,#E2445C,#E2445C)':'var(--card)')+';color:'+((post.metadata.participations||{})[(S.user||{}).id]==='no'?'#FFF':'var(--ink)')+';box-shadow:'+((post.metadata.participations||{})[(S.user||{}).id]==='no'?'0 4px 12px rgba(255,59,48,0.3)':'0 2px 6px rgba(0,0,0,0.05)')+';transition:all 0.2s;">' + ((post.metadata.participations||{})[(S.user||{}).id]==='no' ? '❌ Indisponible' : '❌ Non dispo') + '</button>' +
+            '<button onclick="App.toggleParticipation(\''+jsArg(post.id)+'\',\'yes\')" style="flex:1;padding:12px;border-radius:12px;font-size:14px;font-weight:800;border:none;cursor:pointer;background:'+((post.metadata.participations||{})[(S.user||{}).id]==='yes'?'#0E9F6E':'var(--card)')+';color:'+((post.metadata.participations||{})[(S.user||{}).id]==='yes'?'#FFF':'var(--ink)')+';box-shadow:'+((post.metadata.participations||{})[(S.user||{}).id]==='yes'?'0 4px 12px rgba(52,199,89,0.3)':'0 2px 6px rgba(0,0,0,0.05)')+';transition:all 0.2s;">' + ((post.metadata.participations||{})[(S.user||{}).id]==='yes' ? ico('thumb',14,'#FFF') + ' Confirmé' : ico('thumb',14,'currentColor') + ' Je participe') + '</button>' +
+            '<button onclick="App.toggleParticipation(\''+jsArg(post.id)+'\',\'no\')" style="flex:1;padding:12px;border-radius:12px;font-size:14px;font-weight:800;border:none;cursor:pointer;background:'+((post.metadata.participations||{})[(S.user||{}).id]==='no'?'linear-gradient(135deg,#E2445C,#E2445C)':'var(--card)')+';color:'+((post.metadata.participations||{})[(S.user||{}).id]==='no'?'#FFF':'var(--ink)')+';box-shadow:'+((post.metadata.participations||{})[(S.user||{}).id]==='no'?'0 4px 12px rgba(255,59,48,0.3)':'0 2px 6px rgba(0,0,0,0.05)')+';transition:all 0.2s;">' + ((post.metadata.participations||{})[(S.user||{}).id]==='no' ? '❌ Indisponible' : '❌ Non dispo') + '</button>' +
           '</div>' +
         '</div>';
       } else if (post.type === 'EVALUATION' && post.metadata && (post.metadata.evaluations || post.metadata.teamName)) {
@@ -1081,14 +1080,14 @@
            var origMedia = post.originalMediaUrls || [];
            // Toucher le contenu repris ramène à la publication d'origine.
            var goOrig = post.originalPostId
-             ? ' onclick="event.stopPropagation();App.goToOriginalPost(\'' + post.originalPostId + '\')" style="cursor:pointer;"'
+             ? ' onclick="event.stopPropagation();App.goToOriginalPost(\'' + jsArg(post.originalPostId) + '\')" style="cursor:pointer;"'
              : '';
            if (origMedia.length > 0) {
               contentZone = '<div' + goOrig + '>' + origMedia.map(function(url){
                 // onerror : même repli « Média indisponible » que les cartes normales.
                 return isVideoUrl(url)
-                  ? '<video src="' + url + '"' + (post.originalVideoPoster ? ' poster="'+post.originalVideoPoster+'"' : '') + ' controls playsinline preload="metadata" onerror="App.mediaEchoue(this)" style="width:100%;display:block;background:#000;"></video>'
-                  : '<img src="' + url + '" onerror="App.mediaEchoue(this)" style="width:100%;display:block;" />';
+                  ? '<video src="' + safeUrl(url) + '"' + (post.originalVideoPoster ? ' poster="'+safeUrl(post.originalVideoPoster)+'"' : '') + ' controls playsinline preload="metadata" onerror="App.mediaEchoue(this)" style="width:100%;display:block;background:#000;"></video>'
+                  : '<img src="' + safeUrl(url) + '" onerror="App.mediaEchoue(this)" style="width:100%;display:block;" />';
               }).join('') + '</div>';
            } else if (post.originalPostBg) {
               contentZone = '<div' + (goOrig ? goOrig.replace('style="cursor:pointer;"', '') : '') + ' style="background:' + safeHtml(post.originalPostBg) + ';min-height:200px;display:flex;align-items:center;justify-content:center;padding:30px;' + (goOrig ? 'cursor:pointer;' : '') + '"><p style="color:#FFF;font-size:20px;font-weight:800;text-align:center;text-shadow:0 2px 8px rgba(0,0,0,0.3);margin:0;line-height:1.4;">' + safeHtml(post.originalCaption || '') + '</p></div>';
@@ -1101,7 +1100,7 @@
       // Le bandeau lui-même ramène à la publication d'origine : c'est l'endroit
       // que l'on touche naturellement quand on veut « voir l'original ».
       var bannerClick = post.originalPostId
-        ? ' onclick="App.goToOriginalPost(\'' + post.originalPostId + '\')" style="padding:12px 16px 0;display:flex;align-items:center;gap:7px;color:' + UI.faint + ';font-size:12.5px;cursor:pointer;"'
+        ? ' onclick="App.goToOriginalPost(\'' + jsArg(post.originalPostId) + '\')" style="padding:12px 16px 0;display:flex;align-items:center;gap:7px;color:' + UI.faint + ';font-size:12.5px;cursor:pointer;"'
         : ' style="padding:12px 16px 0;display:flex;align-items:center;gap:7px;color:' + UI.faint + ';font-size:12.5px;"';
       repostBanner = '<div' + bannerClick + '>' +
         '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="' + UI.faint + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>' +
@@ -1124,7 +1123,7 @@
       : 'Ajouter un commentaire…';
     var metaFooterBlock =
       '<div style="padding:' + (post.postBg ? '2px' : '0') + ' 16px 12px;">' +
-        '<button onclick="App.openComments(\'' + post.id + '\')" style="background:none;border:none;padding:0;font-size:13px;color:' + UI.faint + ';cursor:pointer;">' + commentsLinkLabel + '</button>' +
+        '<button onclick="App.openComments(\'' + jsArg(post.id) + '\')" style="background:none;border:none;padding:0;font-size:13px;color:' + UI.faint + ';cursor:pointer;">' + commentsLinkLabel + '</button>' +
       '</div>';
 
     // Carte blanche détachée sur le fond gris de l'écran : c'est ce qui donne
@@ -1144,10 +1143,10 @@
           var pName = (pAuthor && pAuthor.prenom && pAuthor.nom) ? (pAuthor.prenom + ' ' + pAuthor.nom) : (post.author || 'Membre');
 
           var avatarNode = pAvatarUrl
-            ? '<img src="' + safeHtml(pAvatarUrl) + '" style="width:36px;height:36px;border-radius:' + UI.pill + ';object-fit:cover;flex-shrink:0;" />'
+            ? '<img src="' + safeUrl(pAvatarUrl) + '" style="width:36px;height:36px;border-radius:' + UI.pill + ';object-fit:cover;flex-shrink:0;" />'
             : '<div style="width:36px;height:36px;border-radius:' + UI.pill + ';background:' + pColor + ';color:#FFF;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + pInitial + '</div>';
 
-          return '<div onclick="App.openUserProfile(\'' + post.userId + '\')" style="display:flex;align-items:center;gap:10px;cursor:pointer;min-width:0;">' +
+          return '<div onclick="App.openUserProfile(\'' + jsArg(post.userId) + '\')" style="display:flex;align-items:center;gap:10px;cursor:pointer;min-width:0;">' +
             avatarNode +
             '<div style="min-width:0;">' +
               '<div style="font-size:14px;font-weight:700;letter-spacing:-0.1px;color:' + UI.ink + ';">' + safeHtml(pName) + '</div>';
@@ -1161,7 +1160,7 @@
             '</div>' +
           '</div>' +
         '</div>' +
-        '<button onclick="App.openOptions(\'' + post.id + '\')" style="background:var(--tile);border:none;width:44px;height:44px;border-radius:12px;margin:-6px -6px -6px 0;cursor:pointer;display:flex;align-items:center;justify-content:center;">' + SVG.dots + '</button>' +
+        '<button onclick="App.openOptions(\'' + jsArg(post.id) + '\')" style="background:var(--tile);border:none;width:44px;height:44px;border-radius:12px;margin:-6px -6px -6px 0;cursor:pointer;display:flex;align-items:center;justify-content:center;">' + SVG.dots + '</button>' +
       '</div>' +
       (function(){
         if (!post.aboutEventId) return '';
@@ -1169,7 +1168,7 @@
         if (!aboutEv) return '';
         var aEvDate = aboutEv.eventDate ? new Date(aboutEv.eventDate + 'T00:00:00') : null;
         var aEvDateStr = aEvDate ? aEvDate.toLocaleDateString('fr-FR', {weekday:'short', day:'numeric', month:'short'}) : '';
-        return '<div onclick="App.goToEvent(\''+aboutEv.id+'\')" style="margin:0 14px 10px;padding:10px 12px;background:var(--accent-soft);border-radius:14px;border:1px solid var(--line2);display:flex;align-items:center;gap:10px;cursor:pointer;">' +
+        return '<div onclick="App.goToEvent(\''+jsArg(aboutEv.id)+'\')" style="margin:0 14px 10px;padding:10px 12px;background:var(--accent-soft);border-radius:14px;border:1px solid var(--line2);display:flex;align-items:center;gap:10px;cursor:pointer;">' +
           '<span style="font-size:18px;">🗓️</span>' +
           '<div style="flex:1;min-width:0;">' +
             '<div style="font-size:10px;font-weight:800;color:#0B63F6;text-transform:uppercase;letter-spacing:0.5px;">À propos de cet événement</div>' +
@@ -1187,20 +1186,20 @@
       // Barre d'engagement : icône + compteur sur une seule ligne, séparée du
       // contenu par un filet. Le compteur de j'aime n'a plus sa propre ligne.
       '<div style="display:flex;align-items:center;gap:18px;padding:11px 16px;border-top:0.5px solid ' + UI.line + ';color:' + UI.muted + ';font-size:12.5px;font-family:' + UI.fontMono + ';">' +
-        '<button id="likeBtn-'+post.id+'" onclick="App.like(\''+post.id+'\')" style="background:none;border:none;padding:0;cursor:pointer;display:flex;align-items:center;gap:6px;color:inherit;font-size:inherit;transition:transform 0.1s;" onmousedown="this.style.transform=\'scale(0.9)\'" onmouseup="this.style.transform=\'scale(1)\'">' +
+        '<button id="likeBtn-'+post.id+'" onclick="App.like(\''+jsArg(post.id)+'\')" style="background:none;border:none;padding:0;cursor:pointer;display:flex;align-items:center;gap:6px;color:inherit;font-size:inherit;transition:transform 0.1s;" onmousedown="this.style.transform=\'scale(0.9)\'" onmouseup="this.style.transform=\'scale(1)\'">' +
           '<svg width="18" height="18" viewBox="0 0 24 24" fill="' + (iLiked ? UI.bad : 'none') + '" stroke="' + (iLiked ? UI.bad : UI.muted) + '" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>' +
           '<span id="likeCount-'+post.id+'" style="color:' + (iLiked ? UI.bad : UI.muted) + ';">' + likeCount + '</span>' +
         '</button>' +
-        '<button onclick="App.openComments(\''+post.id+'\')" style="background:none;border:none;padding:0;cursor:pointer;display:flex;align-items:center;gap:6px;color:inherit;font-size:inherit;">' +
+        '<button onclick="App.openComments(\''+jsArg(post.id)+'\')" style="background:none;border:none;padding:0;cursor:pointer;display:flex;align-items:center;gap:6px;color:inherit;font-size:inherit;">' +
           ico('message', 18, UI.muted) + '<span>' + (post.comments || []).length + '</span>' +
         '</button>' +
-        '<button onclick="App.openRepostModal(\''+post.id+'\')" style="background:none;border:none;padding:0;cursor:pointer;display:flex;align-items:center;color:inherit;">' +
+        '<button onclick="App.openRepostModal(\''+jsArg(post.id)+'\')" style="background:none;border:none;padding:0;cursor:pointer;display:flex;align-items:center;color:inherit;">' +
           '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="' + UI.muted + '" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>' +
         '</button>' +
-        '<button onclick="App.openViewers(\''+post.id+'\')" title="Vues" style="background:none;border:none;padding:0;cursor:pointer;display:flex;align-items:center;gap:6px;color:inherit;font-size:inherit;">' +
+        '<button onclick="App.openViewers(\''+jsArg(post.id)+'\')" title="Vues" style="background:none;border:none;padding:0;cursor:pointer;display:flex;align-items:center;gap:6px;color:inherit;font-size:inherit;">' +
           ico('eye', 18, UI.muted) + '<span id="viewCount-'+post.id+'">' + viewCount + '</span>' +
         '</button>' +
-        '<button id="saveBtn-'+post.id+'" onclick="App.save(\''+post.id+'\')" style="background:none;border:none;padding:0;cursor:pointer;display:flex;align-items:center;margin-left:auto;">' +
+        '<button id="saveBtn-'+post.id+'" onclick="App.save(\''+jsArg(post.id)+'\')" style="background:none;border:none;padding:0;cursor:pointer;display:flex;align-items:center;margin-left:auto;">' +
           '<svg width="18" height="18" viewBox="0 0 24 24" fill="' + (iSaved ? UI.ink : 'none') + '" stroke="' + (iSaved ? UI.ink : UI.muted) + '" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>' +
         '</button>' +
       '</div>' +
@@ -1277,10 +1276,10 @@
         var teinte = (expediteur && expediteur.avatar_color) || n.senderColor || '#0B63F6';
 
         var avatarHtml = photo
-          ? '<img src="' + safeHtml(photo) + '" style="width:44px;height:44px;border-radius:22px;object-fit:cover;flex-shrink:0;" />'
+          ? '<img src="' + safeUrl(photo) + '" style="width:44px;height:44px;border-radius:22px;object-fit:cover;flex-shrink:0;" />'
           : '<div style="width:44px;height:44px;border-radius:22px;background:' + teinte + ';color:#FFF;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + (n.senderName||'S').charAt(0).toUpperCase() + '</div>';
 
-        return '<div onclick="App.clickNotification(\'' + n.id + '\', \'' + (n.targetId||'') + '\')" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:0.5px solid var(--tile);background:' + (isUnread ? 'var(--accent-soft)' : 'var(--card)') + ';cursor:pointer;transition:background 0.2s;position:relative;">' +
+        return '<div onclick="App.clickNotification(\'' + jsArg(n.id) + '\', \'' + jsArg((n.targetId||'')) + '\')" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:0.5px solid var(--tile);background:' + (isUnread ? 'var(--accent-soft)' : 'var(--card)') + ';cursor:pointer;transition:background 0.2s;position:relative;">' +
           '<div style="position:relative;flex-shrink:0;">' +
             avatarHtml +
             '<div style="position:absolute;bottom:-2px;right:-2px;width:19px;height:19px;border-radius:' + UI.pill + ';background:' + bgIcon + ';display:flex;align-items:center;justify-content:center;border:1.5px solid ' + UI.card + ';">' + icon + '</div>' +
@@ -1441,7 +1440,7 @@
           '</div>'
         : (S.eventImage
           ? '<div style="position:relative;border-radius:14px;overflow:hidden;background:#000;">' +
-              '<img src="' + S.eventImage + '" style="display:block;width:100%;height:auto;max-height:260px;object-fit:contain;background:#000;" />' +
+              '<img src="' + safeUrl(S.eventImage) + '" style="display:block;width:100%;height:auto;max-height:260px;object-fit:contain;background:#000;" />' +
               '<button type="button" onclick="App.editEventImage()" style="position:absolute;top:8px;left:8px;background:rgba(0,0,0,0.72);border:none;border-radius:10px;padding:6px 12px;color:#FFF;font-size:12.5px;font-weight:800;cursor:pointer;">Modifier</button>' +
               '<button type="button" onclick="App.removeEventImage()" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.72);border:none;border-radius:14px;width:32px;height:32px;color:#FFF;font-size:15px;font-weight:900;cursor:pointer;">×</button>' +
             '</div>'
@@ -1634,7 +1633,7 @@
     var hashHtml = '<div id="hashSugg" style="display:none;flex-wrap:wrap;gap:6px;background:var(--accent-soft);border:1px solid var(--line2);border-radius:14px;padding:10px;margin-bottom:12px;">' +
       '<div style="font-size:11px;font-weight:800;color:#0B63F6;width:100%;margin-bottom:4px;">Hashtags suggérés :</div>' +
       HASHTAGS.map(function(h) {
-        return '<button type="button" onclick="App.insertTag(\''+h+'\')" style="display:inline-flex;align-items:center;min-height:36px;background:#0B63F6;color:#FFF;border:none;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;">'+h+'</button>';
+        return '<button type="button" onclick="App.insertTag(\''+jsArg(h)+'\')" style="display:inline-flex;align-items:center;min-height:36px;background:#0B63F6;color:#FFF;border:none;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;">'+h+'</button>';
       }).join('') +
     '</div>';
 
@@ -1648,7 +1647,7 @@
         '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px 12px;">' +
           '<span onclick="App.closeEditPost()" style="font-size:14.5px;color:var(--muted);cursor:pointer;font-weight:700;padding:8px 4px;">Annuler</span>' +
           '<h3 style="font-size:16px;font-weight:800;margin:0;color:var(--ink);letter-spacing:-0.2px;">Modifier la publication</h3>' +
-          '<button type="button" onclick="App.saveEditPost(\'' + post.id + '\')" style="font-size:14px;color:#FFF;font-weight:800;background:#0B63F6;border:none;border-radius:20px;padding:8px 18px;cursor:pointer;box-shadow:0 4px 12px rgba(11,99,246,0.3);">Enregistrer</button>' +
+          '<button type="button" onclick="App.saveEditPost(\'' + jsArg(post.id) + '\')" style="font-size:14px;color:#FFF;font-weight:800;background:#0B63F6;border:none;border-radius:20px;padding:8px 18px;cursor:pointer;box-shadow:0 4px 12px rgba(11,99,246,0.3);">Enregistrer</button>' +
         '</div>' +
 
         '<div style="overflow-y:auto;flex:1;padding:4px 16px 16px;">' +
@@ -1781,7 +1780,7 @@
     var hashHtml = '<div id="hashSugg" style="display:none;flex-wrap:wrap;gap:6px;background:var(--accent-soft);border:1px solid var(--line2);border-radius:14px;padding:10px;margin-bottom:12px;">' +
       '<div style="font-size:11px;font-weight:800;color:#0B63F6;width:100%;margin-bottom:4px;">Hashtags suggérés :</div>' +
       HASHTAGS.map(function(h) {
-        return '<button type="button" onclick="App.insertTag(\''+h+'\')" style="display:inline-flex;align-items:center;min-height:36px;background:#0B63F6;color:#FFF;border:none;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;">'+h+'</button>';
+        return '<button type="button" onclick="App.insertTag(\''+jsArg(h)+'\')" style="display:inline-flex;align-items:center;min-height:36px;background:#0B63F6;color:#FFF;border:none;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;">'+h+'</button>';
       }).join('') +
     '</div>';
 
@@ -1809,8 +1808,8 @@
             '</div>' +
             (previewMedia
               ? (isVideoUrl(previewMedia)
-                  ? '<video src="'+previewMedia+'"' + (post.videoPoster ? ' poster="'+post.videoPoster+'"' : '') + ' muted preload="metadata" style="width:100%;max-height:220px;object-fit:cover;display:block;background:#000;"></video>'
-                  : '<img src="'+previewMedia+'" style="width:100%;max-height:220px;object-fit:cover;display:block;">')
+                  ? '<video src="'+safeUrl(previewMedia)+'"' + (post.videoPoster ? ' poster="'+safeUrl(post.videoPoster)+'"' : '') + ' muted preload="metadata" style="width:100%;max-height:220px;object-fit:cover;display:block;background:#000;"></video>'
+                  : '<img src="'+safeUrl(previewMedia)+'" style="width:100%;max-height:220px;object-fit:cover;display:block;">')
               : (post.postBg
                   ? '<div style="min-height:100px;display:flex;align-items:center;justify-content:center;padding:20px;background:' + safeHtml(post.postBg) + ';"><p style="color:#FFF;font-size:15px;font-weight:800;text-align:center;margin:0;">' + safeHtml(previewCaption.slice(0,140)) + '</p></div>'
                   : '<p style="font-size:13.5px;color:var(--ink2);margin:0;padding:12px;line-height:1.4;">' + safeHtml(previewCaption.slice(0,200)) + '</p>')
@@ -1830,7 +1829,7 @@
     var evMonth = evDate ? evDate.toLocaleDateString('fr-FR', {month:'short'}).toUpperCase() : '';
     var evDay = evDate ? evDate.getDate() : '';
     var isSel = S.postAboutEventId === ev.id;
-    return '<button type="button" onclick="App.selectAboutEvent(\''+ev.id+'\')" style="width:100%;display:flex;align-items:center;gap:12px;background:' + (isSel?'var(--accent-soft)':'#F8F8FA') + ';border:1.5px solid ' + (isSel?'#0B63F6':'transparent') + ';border-radius:16px;padding:12px;margin-bottom:10px;cursor:pointer;text-align:left;">' +
+    return '<button type="button" onclick="App.selectAboutEvent(\''+jsArg(ev.id)+'\')" style="width:100%;display:flex;align-items:center;gap:12px;background:' + (isSel?'var(--accent-soft)':'#F8F8FA') + ';border:1.5px solid ' + (isSel?'#0B63F6':'transparent') + ';border-radius:16px;padding:12px;margin-bottom:10px;cursor:pointer;text-align:left;">' +
       '<div style="background:var(--card);border-radius:10px;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,0.06);width:44px;text-align:center;flex-shrink:0;">' +
         '<div style="background:#0B63F6;color:#FFF;font-size:8.5px;font-weight:900;text-transform:uppercase;padding:3px 0;letter-spacing:0.5px;">' + evMonth + '</div>' +
         '<div style="font-size:18px;font-weight:900;color:var(--ink);padding:3px 0;">' + evDay + '</div>' +
@@ -1921,7 +1920,7 @@
       // — l'utilisateur voit tout de suite quelle vidéo est en cours d'ajout.
       if (S.pendingVideoPoster) {
         return '<div style="position:relative;margin-bottom:12px;border-radius:18px;overflow:hidden;background:#000;">' +
-          '<img src="' + S.pendingVideoPoster + '" style="width:100%;max-height:300px;object-fit:contain;display:block;background:#000;" />' +
+          '<img src="' + safeUrl(S.pendingVideoPoster) + '" style="width:100%;max-height:300px;object-fit:contain;display:block;background:#000;" />' +
           '<div style="position:absolute;inset:0;background:rgba(0,0,0,0.35);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;">' +
             '<div style="width:26px;height:26px;border:3px solid rgba(255,255,255,0.35);border-top-color:#FFF;border-radius:50%;animation:spin 0.8s linear infinite;"></div>' +
             '<span style="font-size:12px;font-weight:700;color:#FFF;text-align:center;padding:0 16px;">' + (S.reduceVideoQuality ? 'Traitement de la vidéo (HD)…' : 'Traitement de la vidéo…') + '</span>' +
@@ -1938,7 +1937,7 @@
     var videoUrl = S.pendingMedia.find(function(m){ return isVideoUrl(m); });
     if (videoUrl) {
       return '<div style="position:relative;margin-bottom:12px;border-radius:18px;overflow:hidden;background:#000;">' +
-        '<video src="' + videoUrl + '"' + (S.pendingVideoPoster ? ' poster="' + S.pendingVideoPoster + '"' : '') +
+        '<video src="' + safeUrl(videoUrl) + '"' + (S.pendingVideoPoster ? ' poster="' + safeUrl(S.pendingVideoPoster) + '"' : '') +
           ' controls playsinline preload="auto" onloadeddata="App.primeVideoFrame(this)" style="width:100%;max-height:300px;display:block;background:#000;"></video>' +
           '<button type="button" onclick="App.removeMedia(0)" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.65);border:none;border-radius:14px;width:44px;height:44px;color:#FFF;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:900;z-index:2;">×</button>' +
       '</div>';
@@ -1949,7 +1948,7 @@
     return '<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:12px;">' +
       S.pendingMedia.map(function(url, i) {
         return '<div style="position:relative;border-radius:14px;overflow:hidden;background:#000;">' +
-          '<img src="'+url+'" style="display:block;width:100%;height:auto;max-height:420px;object-fit:contain;background:#000;">' +
+          '<img src="'+safeUrl(url)+'" style="display:block;width:100%;height:auto;max-height:420px;object-fit:contain;background:#000;">' +
           '<button type="button" onclick="App.editPendingMedia('+i+')" style="position:absolute;top:8px;left:8px;background:rgba(0,0,0,0.72);border:none;border-radius:10px;padding:6px 12px;color:#FFF;font-size:12.5px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:6px;z-index:2;">' +
             '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>' +
             'Modifier' +
@@ -2002,7 +2001,7 @@
         var dl = st ? Math.round((now - st) / 60000) : 0;
         var sc = starsForDelay(dl);
         var c = sc >= 4 ? '#0E9F6E' : sc >= 2 ? '#D98A0B' : '#E2445C';
-        return '<button type="button" onclick="App.setCheckInEvent(\'' + ev.id + '\')" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--card);border:1px solid #F0E0BC;border-radius:12px;padding:10px 12px;margin-bottom:6px;cursor:pointer;text-align:left;">' +
+        return '<button type="button" onclick="App.setCheckInEvent(\'' + jsArg(ev.id) + '\')" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--card);border:1px solid #F0E0BC;border-radius:12px;padding:10px 12px;margin-bottom:6px;cursor:pointer;text-align:left;">' +
           '<span style="min-width:0;">' +
             '<span style="display:block;font-size:13px;font-weight:800;color:var(--ink);overflow-wrap:anywhere;">' + safeHtml(ev.eventTitle || 'Événement') + '</span>' +
             '<span style="display:block;font-size:11px;color:var(--faint);">' + safeHtml(ev.eventStart || '') + (dl > 0 ? ' · retard de ' + dl + ' min' : ' · à l\'heure') + '</span>' +
@@ -2020,7 +2019,7 @@
     var hashHtml = '<div id="hashSugg" style="display:none;flex-wrap:wrap;gap:6px;background:var(--accent-soft);border:1px solid var(--line2);border-radius:14px;padding:10px;margin-bottom:12px;">' +
       '<div style="font-size:11px;font-weight:800;color:#0B63F6;width:100%;margin-bottom:4px;">Hashtags suggérés :</div>' +
       HASHTAGS.map(function(h) {
-        return '<button type="button" onclick="App.insertTag(\''+h+'\')" style="display:inline-flex;align-items:center;min-height:36px;background:#0B63F6;color:#FFF;border:none;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;">'+h+'</button>';
+        return '<button type="button" onclick="App.insertTag(\''+jsArg(h)+'\')" style="display:inline-flex;align-items:center;min-height:36px;background:#0B63F6;color:#FFF;border:none;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;">'+h+'</button>';
       }).join('') +
     '</div>';
 
@@ -2040,7 +2039,7 @@
         '<div style="overflow-y:auto;flex:1;padding:4px 16px 16px;">' +
           '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">' +
             ((u && u.avatar_url)
-              ? '<img src="' + safeHtml(u.avatar_url) + '" style="width:42px;height:42px;border-radius:21px;object-fit:cover;flex-shrink:0;box-shadow:0 3px 8px rgba(0,0,0,0.12);" />'
+              ? '<img src="' + safeUrl(u.avatar_url) + '" style="width:42px;height:42px;border-radius:21px;object-fit:cover;flex-shrink:0;box-shadow:0 3px 8px rgba(0,0,0,0.12);" />'
               : '<div style="width:42px;height:42px;border-radius:21px;background:linear-gradient(135deg,' + ((u||{}).avatar_color||'#0B63F6') + ',#0B63F6);color:#FFF;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 3px 8px rgba(0,0,0,0.12);">' + ((u&&u.prenom||'M').charAt(0)) + '</div>') +
             '<div>' +
               '<div style="font-size:14.5px;font-weight:800;color:var(--ink);">' + safeHtml((u&&u.prenom||'') + ' ' + (u&&u.nom||'')) + '</div>' +
@@ -2236,11 +2235,11 @@
         var initial = (vu && vu.prenom ? vu.prenom.charAt(0) : 'M').toUpperCase();
         var color = (vu && vu.avatar_color) || '#0B63F6';
         var avatarNode = (vu && vu.avatar_url)
-          ? '<img src="' + vu.avatar_url + '" style="width:40px;height:40px;border-radius:20px;object-fit:cover;flex-shrink:0;" />'
+          ? '<img src="' + safeUrl(vu.avatar_url) + '" style="width:40px;height:40px;border-radius:20px;object-fit:cover;flex-shrink:0;" />'
           : '<div style="width:40px;height:40px;border-radius:20px;background:' + color + ';color:#FFF;font-size:15px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + initial + '</div>';
         var secs = getUserSections(vu);
         var secLabel = secs.length > 0 ? secs.map(function(s){ return secNom(s); }).join(' · ') : '';
-        return '<div onclick="App.closeViewers();App.openUserProfile(\'' + uid + '\')" style="display:flex;align-items:center;gap:12px;padding:10px 4px;cursor:pointer;">' +
+        return '<div onclick="App.closeViewers();App.openUserProfile(\'' + jsArg(uid) + '\')" style="display:flex;align-items:center;gap:12px;padding:10px 4px;cursor:pointer;">' +
           avatarNode +
           '<div style="flex:1;min-width:0;">' +
             '<div style="font-size:14px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(nom) + '</div>' +

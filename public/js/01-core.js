@@ -33,6 +33,76 @@
     return url.length > 500 ? null : url;
   }
 
+  // Une erreur Supabase vient-elle du réseau (à retenter) ou d'un refus du
+  // serveur (droits, données invalides : inutile de retenter) ? Les refus
+  // portent un code PostgreSQL / PostgREST ('42501', 'PGRST116'...) ; une
+  // requête qui n'a pas abouti n'en a pas.
+  function estErreurReseau(e) {
+    return !(e && typeof e.code === 'string' && e.code.length > 0);
+  }
+
+  // Adresse d'un média ou d'un lien venue des données : refuse les schémas
+  // exécutables (javascript:, data: autre qu'image/vidéo...) et renvoie
+  // l'adresse brute, ou '' si elle est refusée.
+  function urlSure(u) {
+    if (typeof u !== 'string' || !u) return '';
+    var debut = u.slice(0, 40).replace(/[\s\u0000-\u001f]/g, '').toLowerCase();
+    if (/^(javascript|vbscript|file):/.test(debut)) return '';
+    if (debut.indexOf('data:') === 0 && !/^data:(image|video)\//.test(debut)) return '';
+    return u;
+  }
+  // Couleur venue des données (avatar, fond...) placée dans un attribut style :
+  // une valeur libre pourrait refermer l'attribut. Seules les formes simples
+  // passent, sinon la couleur de repli.
+  function couleurSure(c, repli) {
+    if (typeof c === 'string' && /^(#[0-9a-f]{3,8}|rgba?\([\d\s.,%]+\)|[a-z]{3,20})$/i.test(c.trim())) return c.trim();
+    return repli || '#0B63F6';
+  }
+
+  // Fond de publication (couleur unie ou dégradé) : mêmes précautions, sans
+  // guillemets, point-virgule ni url().
+  function fondSur(f) {
+    if (typeof f !== 'string' || !f) return null;
+    return (/^[#\w\s(),.%-]+$/.test(f) && !/url\s*\(/i.test(f) && !/expression/i.test(f)) ? f : null;
+  }
+
+  // Assainissement À LA RÉCEPTION des champs que le rendu insère tels quels
+  // dans des attributs (style, src) : un membre peut écrire n'importe quoi dans
+  // sa fiche ou ses publications via l'API, et le rendu concatène du HTML. On
+  // neutralise ici, une fois pour toutes, plutôt qu'à chacun des dizaines
+  // d'endroits qui les affichent.
+  function assainirAuteur(o, champsCouleur, champsUrl) {
+    if (!o || typeof o !== 'object') return o;
+    champsCouleur.forEach(function(k) {
+      if (o[k] !== undefined && o[k] !== null) o[k] = couleurSure(o[k], '#0B63F6');
+    });
+    champsUrl.forEach(function(k) {
+      if (typeof o[k] === 'string') o[k] = urlSure(o[k]) || null;
+    });
+    return o;
+  }
+  function assainirProfil(r) {
+    assainirAuteur(r, ['avatar_color'], ['avatar_url', 'cover_url']);
+    if (r && Array.isArray(r.notifications)) {
+      r.notifications.forEach(function(n){ assainirAuteur(n, ['senderColor'], ['senderAvatar']); });
+    }
+    return r;
+  }
+  function assainirPost(p) {
+    if (!p || typeof p !== 'object') return p;
+    assainirAuteur(p, ['avatarColor', 'avatar_color'], ['avatar_url', 'videoPoster', 'originalVideoPoster', 'eventImage']);
+    ['postBg', 'originalPostBg'].forEach(function(k) {
+      if (p[k] !== undefined && p[k] !== null) p[k] = fondSur(p[k]);
+    });
+    ['mediaUrls', 'originalMediaUrls'].forEach(function(k) {
+      if (Array.isArray(p[k])) p[k] = p[k].map(function(u){ return urlSure(u); }).filter(Boolean);
+    });
+    if (Array.isArray(p.comments)) {
+      p.comments.forEach(function(c){ assainirAuteur(c, ['avatarColor'], ['avatar_url', 'imageUrl']); });
+    }
+    return p;
+  }
+
   // Copie de profil SANS secrets pour toute écriture vers Supabase : le hash
   // legacy du mot de passe et les réponses aux questions de sécurité n'ont
   // rien à faire sur un serveur partagé (l'authentification passe désormais
@@ -80,6 +150,10 @@
         if (!brut || brut.length < 50000) return;
         var propre = parseProfileItem(item);
         if (!propre || !propre.id) return;
+        // Depuis la migration 06, le serveur n'accepte de modifier les
+        // notifications existantes que sur SA propre fiche : réécrire celle des
+        // autres ne ferait que consommer du réseau pour rien.
+        if (!S.user || propre.id !== S.user.id) return;
         var allegees = allegerNotifications(propre.notifications);
         var copie = Object.assign({}, propre, { notifications: allegees });
         supabase.from('kun_com_profiles').upsert({ id: propre.id, content: copie }, { onConflict: 'id' })
@@ -528,6 +602,48 @@
     try { sauverSession(S.user); } catch(e){}
   }
 
+  // Lien de réinitialisation reçu par e-mail : saisie du nouveau mot de passe.
+  // Fenêtre injectée directement dans la page (comme le toast), indépendante
+  // de render() : elle doit fonctionner quel que soit l'écran affiché. Remplace
+  // window.prompt, qui affichait le mot de passe en clair, n'offrait aucune
+  // confirmation et est bloqué dans certaines applis installées (iOS).
+  function demanderNouveauMotDePasse() {
+    if (document.getElementById('_kcNouveauMdp')) return;
+    var fond = document.createElement('div');
+    fond.id = '_kcNouveauMdp';
+    fond.style.cssText = 'position:fixed;inset:0;z-index:9999998;background:rgba(15,15,20,0.65);display:flex;align-items:center;justify-content:center;padding:16px;';
+    fond.innerHTML =
+      '<form style="width:100%;max-width:340px;background:var(--card,#FFF);color:var(--ink,#0B0D12);border-radius:24px;padding:24px;font-family:var(--font-body,sans-serif);">' +
+        '<h3 style="font-size:17px;font-weight:800;margin:0 0 6px;text-align:center;">Nouveau mot de passe</h3>' +
+        '<p style="font-size:13px;color:var(--muted,#6B7280);margin:0 0 14px;text-align:center;">8 caractères minimum.</p>' +
+        '<input name="mdp1" type="password" autocomplete="new-password" placeholder="Nouveau mot de passe" style="width:100%;min-height:44px;padding:10px 12px;border:1px solid var(--line,#DDD);border-radius:12px;font-size:16px;margin-bottom:8px;background:var(--tile,#F4F5F7);color:inherit;">' +
+        '<input name="mdp2" type="password" autocomplete="new-password" placeholder="Confirmer" style="width:100%;min-height:44px;padding:10px 12px;border:1px solid var(--line,#DDD);border-radius:12px;font-size:16px;background:var(--tile,#F4F5F7);color:inherit;">' +
+        '<div data-erreur style="color:#E2445C;font-size:12.5px;font-weight:700;text-align:center;min-height:18px;margin-top:8px;"></div>' +
+        '<button type="submit" style="width:100%;min-height:44px;margin-top:6px;background:#0B63F6;color:#FFF;border:none;border-radius:14px;font-size:15px;font-weight:800;">Enregistrer</button>' +
+        '<button type="button" data-annuler style="width:100%;min-height:44px;margin-top:8px;background:none;color:inherit;border:none;font-size:14px;font-weight:600;">Annuler</button>' +
+      '</form>';
+    document.body.appendChild(fond);
+    var form = fond.querySelector('form');
+    var erreur = fond.querySelector('[data-erreur]');
+    fond.querySelector('[data-annuler]').onclick = function() { fond.remove(); };
+    form.onsubmit = function(ev) {
+      ev.preventDefault();
+      var a = form.mdp1.value, b = form.mdp2.value;
+      if (a.length < 8) { erreur.textContent = 'Trop court (8 caractères minimum).'; return; }
+      if (a !== b) { erreur.textContent = 'Les deux saisies ne correspondent pas.'; return; }
+      erreur.textContent = '';
+      supabase.auth.updateUser({ password: a }).then(function(r) {
+        if (r && r.error) { erreur.textContent = 'Échec : ' + r.error.message; return; }
+        fond.remove();
+        toast('Mot de passe mis à jour.', 'success');
+      }, function(errUpd) {
+        console.warn('updateUser error:', errUpd);
+        erreur.textContent = 'Réinitialisation impossible pour le moment.';
+      });
+    };
+    setTimeout(function(){ try { form.mdp1.focus(); } catch(e){} }, 50);
+  }
+
   async function initAuthSession() {
     if (!supabase || !supabase.auth) { S.auth = 'login'; return; }
     try {
@@ -546,18 +662,7 @@
         supabase._kcAuthListenerAttache = true;
         supabase.auth.onAuthStateChange(function(event, sess){
           if (event === 'PASSWORD_RECOVERY') {
-            var np = window.prompt('Choisissez un nouveau mot de passe (8 caractères min.) :');
-            if (np && np.length >= 8) {
-              supabase.auth.updateUser({ password: np }).then(function(r){
-                if (r && r.error) toast('Échec de la réinitialisation : ' + r.error.message, 'error');
-                else toast('Mot de passe mis à jour. ', 'success');
-              }, function(errUpd){
-                console.warn('updateUser error:', errUpd);
-                toast('Réinitialisation impossible pour le moment.', 'error');
-              });
-            } else if (np !== null) {
-              toast('Mot de passe trop court (8 caractères minimum).', 'error');
-            }
+            demanderNouveauMotDePasse();
             return;
           }
           if (sess && sess.user) applyAuthUser(sess.user);
@@ -566,26 +671,6 @@
         });
       }
     } catch(e){}
-  }
-
-  // Password hashing utility (SHA-256)
-  async function hashPassword(pwd) {
-    try {
-      var encoder = new TextEncoder();
-      var data = encoder.encode(pwd + '_kun_salt_2026');
-      var hash = await crypto.subtle.digest('SHA-256', data);
-      var arr = Array.from(new Uint8Array(hash));
-      return arr.map(function(b){ return b.toString(16).padStart(2, '0'); }).join('');
-    } catch(e) {
-      // Fallback: simple hash for older browsers
-      var h = 0;
-      for (var i = 0; i < pwd.length; i++) {
-        var c = pwd.charCodeAt(i);
-        h = ((h << 5) - h) + c;
-        h |= 0;
-      }
-      return 'h_' + Math.abs(h).toString(36);
-    }
   }
 
   // Identifiants des comptes créés sur CET appareil. Sert de garde-fou : tant qu'un
@@ -712,7 +797,7 @@
     if (!r || typeof r !== 'object') return null;
     if (!r.id && item.id) r.id = item.id;
     if (!r.id && r.email) r.id = 'u_' + String(r.email).toLowerCase().replace(/[^a-z0-9]/gi, '_');
-    return r;
+    return assainirProfil(r);
   }
 
   function parsePostItem(item) {
@@ -734,7 +819,7 @@
     // inline (mentions de profil). Un identifiant au format inattendu est
     // rejeté à l'ingestion plutôt que propagé jusqu'au rendu.
     if (p.id && !/^[A-Za-z0-9_\-]{1,64}$/.test(String(p.id))) return null;
-    return p;
+    return assainirPost(p);
   }
 
   function mergeProfilesWithLocal(remoteData) {
@@ -1707,11 +1792,6 @@
     bulkDeleteConfirmOpen: false,
     bulkDeleteBusy: false,
     viewersPostId: null,
-    // Panneau admin (stockage Supabase) — accessible depuis le profil via un code
-    adminGateOpen: false,
-    adminCodeInput: '',
-    adminCodeError: false,
-    adminUnlocked: false,
     // Panneau « Gérer les rôles » (Admin) — voir renderRolesModal.
     rolesPanelOpen: false,
     // Thème sombre (voir applyTheme / App.toggleTheme).
@@ -1778,18 +1858,6 @@
     dmLoading: false
   };
 
-  // Code d'accès au panneau admin (stockage). Volontairement en clair côté client
-  // (comme le reste de cette app) — protège juste contre un accès accidentel, pas
-  // contre quelqu'un qui inspecte le code source.
-  var ADMIN_ACCESS_CODE = 'AZ7887';
-  // Ancien code du champ "Autre" à l'inscription (désormais retiré du formulaire) :
-  // promeut le compte connecté au rôle Admin, saisi dans le même champ
-  // que ADMIN_ACCESS_CODE ci-dessus.
-  var GRAND_RESPONSABLE_CODE = 'ADMIN78';
-  // Même principe, un cran en dessous : promeut le compte connecté au rôle
-  // Responsable de pôle. Saisi dans le même champ que les deux codes ci-dessus.
-  var RESP_SECTION_CODE = 'RP787';
-
   // ============================================================
   // LIEN PROFOND VERS UNE PUBLICATION (?post=ID)
   // Utilisé quand quelqu'un ouvre un lien copié/partagé (ex: WhatsApp) via
@@ -1853,7 +1921,7 @@
     // Restore saved posts
     S.savedPosts = db(SK.SAVED, {});
     // Panneau admin déjà déverrouillé sur cet appareil (pas besoin de retaper le code)
-    try { S.adminUnlocked = localStorage.getItem('kc_admin_unlocked') === '1'; } catch(e) {}
+    try { localStorage.removeItem('kc_admin_unlocked'); } catch(e) {}
   })();
 
   // ============================================================

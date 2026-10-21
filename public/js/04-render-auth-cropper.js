@@ -40,7 +40,7 @@
         // faut jamais laisser le diffing DOM (morphdom) toucher ce sous-arbre, sous
         // peine de détruire l'instance de recadrage en cours à chaque re-render.
         '<div id="cropperStage" data-no-morph="true" style="position:absolute;top:12px;right:12px;bottom:12px;left:12px;overflow:hidden;">' +
-          '<img id="cropperTargetImage" src="' + S.cropperDataUrl + '" style="display:block;max-width:100%;" />' +
+          '<img id="cropperTargetImage" src="' + safeUrl(S.cropperDataUrl) + '" style="display:block;max-width:100%;" />' +
         '</div>' +
       '</div>' +
       toolbar +
@@ -160,14 +160,14 @@
     var memberRow = function(u){
       var initial = (u.prenom||'M').charAt(0).toUpperCase();
       var avatarImg = u.avatar_url
-        ? '<img src="' + safeHtml(u.avatar_url) + '" style="width:48px;height:48px;border-radius:24px;object-fit:cover;" />'
+        ? '<img src="' + safeUrl(u.avatar_url) + '" style="width:48px;height:48px;border-radius:24px;object-fit:cover;" />'
         : '<div style="width:48px;height:48px;border-radius:24px;background:' + safeHtml(u.avatar_color||'#0B63F6') + ';color:#FFF;font-size:18px;font-weight:800;display:flex;align-items:center;justify-content:center;">' + initial + '</div>';
       var avatarNode = '<div style="position:relative;flex-shrink:0;">' + avatarImg +
         (estEnLigne(u) ? '<span style="position:absolute;bottom:1px;right:1px;width:12px;height:12px;border-radius:50%;background:#22C55E;border:2.5px solid var(--card);"></span>' : '') +
       '</div>';
       var secs = getUserSections(u).filter(function(s){ return SECTIONS.some(function(x){ return x.id === s; }); }).map(function(s){ return secNom(s); }).join(' · ');
       var t = roleTint(u.role);
-      return '<div onclick="App.closeMembersList();App.openUserProfile(\'' + u.id + '\');" style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:0.5px solid var(--tile);cursor:pointer;">' +
+      return '<div onclick="App.closeMembersList();App.openUserProfile(\'' + jsArg(u.id) + '\');" style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:0.5px solid var(--tile);cursor:pointer;">' +
         avatarNode +
         '<div style="flex:1;min-width:0;">' +
           '<div style="font-size:14.5px;font-weight:800;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + safeHtml((u.prenom||'') + ' ' + (u.nom||'')) + '</div>' +
@@ -178,7 +178,7 @@
     };
     var eventRow = function(ev){
       var d = ev.eventDate ? new Date(ev.eventDate + 'T00:00:00') : null;
-      return '<div onclick="App.closeMembersList();App.goToEvent(\'' + ev.id + '\');" style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:0.5px solid var(--tile);cursor:pointer;">' +
+      return '<div onclick="App.closeMembersList();App.goToEvent(\'' + jsArg(ev.id) + '\');" style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:0.5px solid var(--tile);cursor:pointer;">' +
         '<div style="width:46px;height:46px;border-radius:12px;background:var(--tile);display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;">' +
           (d ? '<div style="font-family:' + UI.fontMono + ';font-size:8px;color:var(--faint);letter-spacing:0.5px;">' + d.toLocaleDateString('fr-FR',{month:'short'}).toUpperCase() + '</div><div style="font-family:' + UI.fontMono + ';font-size:16px;font-weight:700;color:var(--ink);line-height:1;">' + d.getDate() + '</div>' : ico('calendar',18,'var(--faint)')) +
         '</div>' +
@@ -192,7 +192,7 @@
     var postRow = function(p){
       var snippet = (p.caption || '').replace(/\s+/g,' ').trim();
       if (snippet.length > 80) snippet = snippet.slice(0,80) + '…';
-      return '<div onclick="App.closeMembersList();App.goToPost(\'' + p.id + '\');" style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:0.5px solid var(--tile);cursor:pointer;">' +
+      return '<div onclick="App.closeMembersList();App.goToPost(\'' + jsArg(p.id) + '\');" style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:0.5px solid var(--tile);cursor:pointer;">' +
         '<div style="width:46px;height:46px;border-radius:12px;background:var(--tile);display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + ico('message',18,'var(--faint)') + '</div>' +
         '<div style="flex:1;min-width:0;">' +
           '<div style="font-size:14px;font-weight:700;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (snippet ? safeHtml(snippet) : 'Publication') + '</div>' +
@@ -370,11 +370,11 @@
     var html = '<div style="flex:1;">' +
       '<label style="font-size:12px;font-weight:700;color:var(--ink2);display:block;margin-bottom:5px;">' + label + '</label>' +
       (estMdp ? '<div style="position:relative;">' : '') +
-      '<input id="' + id + '" type="' + type + '" value="' + safeHtml(valeur) + '" oninput="App.saisieAuth(\'' + id + '\', this.value)"' + ' placeholder="' + placeholder + '" autocomplete="' + (autocomplete||'off') + '" required ' +
+      '<input id="' + id + '" type="' + type + '" value="' + safeHtml(valeur) + '" oninput="App.saisieAuth(\'' + jsArg(id) + '\', this.value)"' + ' placeholder="' + placeholder + '" autocomplete="' + (autocomplete||'off') + '" required ' +
       'style="' + styleChamp + '" ' +
       'onfocus="this.style.borderColor=\'#0B63F6\'" onblur="this.style.borderColor=\'var(--line)\'">';
     if (estMdp) {
-      html += '<button type="button" onclick="basculerVisibiliteMdp(\'' + id + '\', this)" aria-label="Afficher ou masquer le mot de passe" style="position:absolute;top:50%;right:4px;transform:translateY(-50%);width:44px;height:44px;background:transparent;border:none;padding:0;display:flex;align-items:center;justify-content:center;cursor:pointer;">' + OEIL_MDP_OUVERT + '</button>' +
+      html += '<button type="button" onclick="basculerVisibiliteMdp(\'' + jsArg(id) + '\', this)" aria-label="Afficher ou masquer le mot de passe" style="position:absolute;top:50%;right:4px;transform:translateY(-50%);width:44px;height:44px;background:transparent;border:none;padding:0;display:flex;align-items:center;justify-content:center;cursor:pointer;">' + OEIL_MDP_OUVERT + '</button>' +
         '</div>';
     }
     return html + '</div>';
@@ -394,7 +394,7 @@
       '<label style="font-size:12px;font-weight:700;color:var(--ink2);display:block;margin-bottom:5px;">' + label + '</label>' +
       '<div style="display:flex;align-items:center;height:50px;border-radius:14px;border:1.5px solid var(--line);background:var(--tile);overflow:hidden;transition:border-color 0.2s;" id="' + id + 'Wrap">' +
         '<span style="display:flex;align-items:center;gap:5px;padding:0 12px;height:100%;font-family:' + UI.fontMono + ';font-size:14px;font-weight:600;color:var(--muted);border-right:1.5px solid var(--line);background:var(--card);">🇨🇮 +225</span>' +
-        '<input id="' + id + '" type="tel" inputmode="numeric" value="' + safeHtml(valeur) + '" oninput="App.saisieAuth(\'' + id + '\', this.value)" placeholder="07 07 07 07 07" autocomplete="' + (autocomplete || 'tel') + '" required ' +
+        '<input id="' + id + '" type="tel" inputmode="numeric" value="' + safeHtml(valeur) + '" oninput="App.saisieAuth(\'' + jsArg(id) + '\', this.value)" placeholder="07 07 07 07 07" autocomplete="' + (autocomplete || 'tel') + '" required ' +
         'style="flex:1;height:100%;border:none;background:transparent;padding:0 14px;font-family:' + UI.fontMono + ';font-size:15px;letter-spacing:0.5px;color:var(--ink);box-sizing:border-box;outline:none;" ' +
         'onfocus="var w=document.getElementById(\'' + id + 'Wrap\');if(w)w.style.borderColor=\'#0B63F6\'" onblur="var w=document.getElementById(\'' + id + 'Wrap\');if(w)w.style.borderColor=\'var(--line)\'">' +
       '</div>' +
