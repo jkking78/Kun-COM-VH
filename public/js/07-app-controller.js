@@ -1083,7 +1083,7 @@
       var date = ((document.getElementById('indispoDate') || {}).value || '').trim();
       var motif = ((document.getElementById('indispoMotif') || {}).value || '').trim().slice(0, 80);
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { toast('Choisis une date.', 'error'); return; }
-      var auj = new Date().toISOString().split('T')[0];
+      var auj = isoLocal();
       if (date < auj) { toast('Cette date est déjà passée.', 'error'); return; }
       // Les dates passées sont retirées au passage : la liste reste courte.
       var liste = (S.user.indisponibilites || []).filter(function(x){ return x && x.date >= auj && x.date !== date; });
@@ -3318,7 +3318,7 @@
       var posts = db(SK.POSTS, []);
       var ev = posts.find(function(p){ return p.id === eventId && p.type === 'EVENT'; });
       if (!ev) { toast('Cet événement n\'existe plus.', 'error'); return; }
-      var todayIso = new Date().toISOString().split('T')[0];
+      var todayIso = isoLocal();
       // On bascule sur l'onglet où l'événement se trouve réellement : un culte
       // terminé ce matin est dans l'Historique, pas dans « À venir ».
       S.planningMode = isEventPast(ev) ? 'history' : 'upcoming';
