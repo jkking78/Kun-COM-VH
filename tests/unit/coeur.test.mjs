@@ -1,4 +1,4 @@
-// Logique centrale du client (01-core.js, 02-media.js), chargée hors navigateur
+// Logique centrale du client (modules 01a à 01e, 02-media.js), chargée hors navigateur
 // dans un contexte isolé : fusions, échappements, heures d'Abidjan, ponctualité.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -24,8 +24,9 @@ function chargerCoeur() {
   };
   ctx.window = ctx; ctx.self = ctx;
   vm.createContext(ctx);
-  for (const f of ['01-core', '02-media']) {
-    vm.runInContext(fs.readFileSync(`public/js/${f}.js`, 'utf8'), ctx, { filename: `${f}.js` });
+  const modules = fs.readdirSync('public/js').filter((f) => /^0[12]/.test(f)).sort();
+  for (const f of modules) {
+    vm.runInContext(fs.readFileSync(`public/js/${f}`, 'utf8'), ctx, { filename: f });
   }
   return ctx;
 }

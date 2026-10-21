@@ -68,7 +68,7 @@ test('les fonctions Vercel se chargent', async () => {
 });
 
 test('les questions de sécurité de l\'app et de la fonction de récupération sont les mêmes', () => {
-  const app = lire('public/js/01-core.js');
+  const app = lire('public/js/01e-bilans-outils.js');
   const fn = lire('migration/functions/password-recovery/index.ts');
   const extraire = (src, debut) => [...src.slice(src.indexOf(debut), src.indexOf('];', src.indexOf(debut))).matchAll(/"([^"]+)"/g)].map((m) => m[1]);
   const a = extraire(app, 'var SECURITY_QUESTIONS = [');
