@@ -39,6 +39,18 @@
     return true;
   }
 
+  // Fil d'un pôle : la publication y figure si son auteur en fait partie
+  // (sectionId), si elle tague ce pôle (« Sections ciblées ») ou, pour un
+  // événement, s'il le concerne. Une publication taguée sur plusieurs pôles
+  // apparaît dans le fil de chacun ; une publication modifiée après coup
+  // pour taguer un pôle y apparaît aussitôt.
+  function publicationDansPole(p, poleId) {
+    if (!p || !poleId) return false;
+    if (p.sectionId === poleId) return true;
+    if (p.visibility === 'sections' && Array.isArray(p.targetSections) && p.targetSections.indexOf(poleId) !== -1) return true;
+    return p.type === 'EVENT' && Array.isArray(p.eventSections) && p.eventSections.indexOf(poleId) !== -1;
+  }
+
   function renderApp() {
     var u = S.user || {};
     if (compteEnAttente(u)) return renderAttenteValidation(u);
@@ -56,7 +68,7 @@
         // compteur de non-lus des pôles.
         if (!publicationVisiblePour(p, u)) return false;
 
-        if (S.story !== 'all' && p.sectionId !== S.story) return false;
+        if (S.story !== 'all' && !publicationDansPole(p, S.story)) return false;
         if (S.q.trim()) {
           var q = S.q.toLowerCase();
           return (p.caption||'').toLowerCase().indexOf(q) !== -1 ||
@@ -483,9 +495,9 @@
       '</div>' +
     '</header>';
 
-    // Tendances
+    // Tendances : seulement dans le fil « Tous », pas dans celui d'un pôle.
     var trendsHtml = '';
-    if (trends.length > 0) {
+    if (trends.length > 0 && (!S.story || S.story === 'all')) {
       trendsHtml = '<div style="background:' + UI.card + ';border-bottom:0.5px solid ' + UI.line + ';padding:9px 16px;">' +
         '<div style="display:flex;gap:7px;overflow-x:auto;align-items:center;-webkit-overflow-scrolling:touch;">' +
         '<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:' + UI.faint + ';white-space:nowrap;flex-shrink:0;">' + ico('flame', 13, UI.faint) + 'Tendances</span>' +
@@ -508,7 +520,7 @@
         // Le compteur applique le MÊME prédicat de visibilité que le fil
         // principal : sinon il compte des publications invisibles (programmées,
         // ciblées sur d'autres pôles…) et affiche des badges mensongers.
-        var cnt = lastSeen === null ? 0 : allPostsForCount.filter(function(p){ return p.sectionId === s.id && (p.timestamp||0) > lastSeen && publicationVisiblePour(p, u); }).length;
+        var cnt = lastSeen === null ? 0 : allPostsForCount.filter(function(p){ return publicationDansPole(p, s.id) && (p.timestamp||0) > lastSeen && publicationVisiblePour(p, u); }).length;
         return '<div onclick="App.story(\'' + jsArg(s.id) + '\')" style="display:flex;flex-direction:column;align-items:center;cursor:pointer;min-width:64px;gap:6px;flex-shrink:0;">' +
           '<div style="position:relative;width:54px;height:54px;">' +
             '<div style="width:54px;height:54px;border-radius:50%;background:' + (sel ? sc + '1A' : UI.tile) + ';border:1.5px solid ' + (sel ? sc : 'transparent') + ';display:flex;align-items:center;justify-content:center;font-size:22px;transition:all 0.2s;">' +

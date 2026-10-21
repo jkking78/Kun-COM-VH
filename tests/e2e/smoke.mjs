@@ -628,6 +628,31 @@ try {
     await contexte.close();
   });
 
+  await cas('fil des pôles : une publication taguée apparaît dans chaque pôle, tendances dans « Tous » seulement', async () => {
+    const { page, erreurs, contexte } = await nouvellePage(nav, base, sessionPour('GRAND_RESPONSABLE'));
+    await page.waitForSelector('#post-p_piege', { timeout: 15000 });
+    const vu = (pole) => page.evaluate((pole) => {
+      const posts = db(SK.POSTS, []);
+      if (!posts.some((p) => p.id === 'p_tag')) {
+        const base = { userId: 'x', author: 'X', sectionId: 'web', likedBy: [], comments: [], mediaUrls: [], hashtags: ['#Culte'] };
+        posts.push(Object.assign({ id: 'p_tag', caption: 'Tag #Culte', timestamp: Date.now() - 5e6, visibility: 'sections', targetSections: ['cadrage', 'photo'] }, base));
+        posts.push(Object.assign({ id: 'p_web', caption: 'Web #Culte', timestamp: Date.now() - 6e6, visibility: 'all', targetSections: ['regie'] }, base));
+        dbSet(SK.POSTS, posts);
+      }
+      App.story(pole);
+      return ['p_tag', 'p_web'].filter((id) => document.getElementById('post-' + id));
+    }, pole);
+    assert.deepEqual(await vu('cadrage'), ['p_tag'], 'tagué Cadrage');
+    assert.deepEqual(await vu('photo'), ['p_tag'], 'tagué aussi Photo');
+    assert.deepEqual(await vu('web'), ['p_tag', 'p_web'], 'pôle de l\'auteur');
+    assert.deepEqual(await vu('regie'), [], 'un tag resté sous « Tout le monde » ne compte pas');
+    assert.equal(await page.evaluate(() => document.body.textContent.includes('Tendances')), false, 'pas de tendances dans un pôle');
+    await vu('all');
+    assert.ok(await page.evaluate(() => trendingTags().length > 0 && document.body.textContent.includes('Tendances')), 'tendances dans « Tous »');
+    assert.deepEqual(erreurs, []);
+    await contexte.close();
+  });
+
   await cas('un membre consulte le plan de préparation sans pouvoir le modifier', async () => {
     const { page, erreurs, contexte } = await nouvellePage(nav, base, sessionPour('MEMBRE'));
     await page.waitForSelector('#post-p_piege', { timeout: 15000 });
