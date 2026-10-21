@@ -5,13 +5,16 @@
 // même stratégie de cache, juste plus de fichiers listés ci-dessous.
 // ============================================================
 
-const CACHE_NAME = 'kun-com-pwa-v167';
+const CACHE_NAME = 'kun-com-pwa-v168';
 // Numéro de version seul ('102'), tel qu'il apparaît dans les ?v=… de index.html.
 const NUM_V = CACHE_NAME.split('-v')[1];
 const JS_FILES = [
   '01a-stockage-notifications', '01b-supabase-synchro', '01c-etat-session', '01d-ponctualite-assignations', '01e-bilans-outils',
-  '02-media', '03-render-engine', '04-render-auth-cropper',
-  '05-render-feed', '06-render-panels',
+  '02-media',
+  '03-render-engine',
+  '04-render-auth-cropper',
+  '05a-render-accueil', '05b-render-cartes', '05c-render-creation',
+  '06a-render-evenement', '06b-render-messagerie-planning', '06c-render-profil', '06d-render-reglages-admin',
   '07a-app-evenements', '07b-app-membres', '07c-app-session', '07d-app-publications', '07e-app-commentaires-bilans',
   '08-bootstrap'
 ];
