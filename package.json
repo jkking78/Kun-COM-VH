@@ -1,7 +1,7 @@
 {
   "name": "kun-com-vh",
   "version": "1.0.0",
-  "appVersion": 165,
+  "appVersion": 166,
   "private": true,
   "description": "Commit VH — application web & PWA du Département Communication, Église Vase d'Honneur",
   "scripts": {

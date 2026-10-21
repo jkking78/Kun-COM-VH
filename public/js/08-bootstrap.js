@@ -85,7 +85,7 @@
   // comporte de façon inexplicable. On vérifie donc que les briques essentielles
   // sont bien là avant de démarrer, et on recharge UNE fois en contournant le
   // cache si ce n'est pas le cas.
-  var APP_VERSION = 'v165'; window.APP_VERSION = APP_VERSION; // Exposé pour l'écran Paramètres (ligne « Version »).
+  var APP_VERSION = 'v166'; window.APP_VERSION = APP_VERSION; // Exposé pour l'écran Paramètres (ligne « Version »).
   // Nom du cache tenu par le service worker pour CETTE version. Doit rester
   // aligné sur CACHE_NAME dans sw.js.
   var CACHE_COURANT = 'kun-com-pwa-' + APP_VERSION;
@@ -195,7 +195,13 @@
     try {
       var releverMessages = function() {
         if (!S.user || compteEnAttente(S.user) || document.hidden) return;
-        App._chargerMessages().then(function(nouveau){ if (nouveau && !saisieEnCours()) render(); });
+        // P2 : seulement les messages récents (5 min de marge), plus les 300 derniers.
+        // La première relève est complète : elle retire aussi les messages supprimés.
+        var dernier = releverMessages.faite ? db(SK.DMS, []).reduce(function(m, x){ return Math.max(m, (x && x.timestamp) || 0); }, 0) : 0;
+        releverMessages.faite = true;
+        var requete = (dernier && supabase) ? supabase.from('kun_com_dms').select('*')
+          .gt('sent_at', new Date(dernier - 300000).toISOString()).order('sent_at', { ascending: false }).limit(300) : undefined;
+        App._chargerMessages(requete).then(function(nouveau){ if (nouveau && !saisieEnCours()) render(); });
       };
       setTimeout(releverMessages, 3000);
       setInterval(releverMessages, 60000);

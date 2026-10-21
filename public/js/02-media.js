@@ -443,7 +443,13 @@
             } catch(e3){}
             render();
           };
-          if (supabase) {
+          // P4 : la vignette part dans Storage ; seule son adresse est écrite
+          // dans la publication. Échec de l'envoi : elle reste sur ce téléphone,
+          // jamais de base64 dans la base.
+          if (supabase) uploadMediaToStorage(poster, function(urlVignette) {
+            if (!urlVignette) return;
+            poster = urlVignette;
+            target = Object.assign({}, target, { videoPoster: urlVignette });
             try {
               // On relit D'ABORD le contenu frais du serveur : renvoyer le post
               // entier depuis le cache local écraserait les commentaires/likes
@@ -465,7 +471,7 @@
                 render();
               }, fallbackLocal);
             } catch(e2) { fallbackLocal(); }
-          }
+          });
         }
       }
       processPosterBackfillQueue();
@@ -480,6 +486,14 @@
   var _viewObserver = null;
   var _viewMarkedThisSession = {};
 
+  var _sauvegardePostsTimer = null;
+  function planifierSauvegardePosts() {
+    if (_sauvegardePostsTimer) return;
+    _sauvegardePostsTimer = setTimeout(function() {
+      _sauvegardePostsTimer = null;
+      try { dbSet(SK.POSTS, db(SK.POSTS, [])); } catch(e) {}
+    }, 1500);
+  }
   function markPostViewed(postId) {
     if (!S.user || !S.user.id) return;
     if (_viewMarkedThisSession[postId]) return;
@@ -493,7 +507,10 @@
     if (post.viewedBy.indexOf(S.user.id) !== -1) return;
 
     post.viewedBy.push(S.user.id);
-    dbSet(SK.POSTS, posts);
+    // P6 : le cache en mémoire est déjà à jour ; l'écriture sur le disque (qui
+    // sérialise TOUT le cache) est regroupée au lieu d'avoir lieu à chaque
+    // carte qui défile.
+    planifierSauvegardePosts();
     // PAS d'upsert vers Supabase ici : cette fonction est déclenchée au simple
     // DÉFILEMENT, et renvoyer le post ENTIER depuis le cache local écraserait
     // les commentaires/likes ajoutés entre-temps par d'autres membres. Le champ
@@ -615,7 +632,11 @@
     html = html.replace(/\x00(\d+)\x00/g, function(m, i) {
       var u = urls[parseInt(i, 10)];
       if (typeof u !== 'string') return '';
-      return '<a href="' + safeUrl(u) + '" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" style="color:var(--lien);font-weight:600;text-decoration:underline;word-break:break-all;">' + u + '</a>';
+      // u vient du texte DÉJÀ échappé : on le désescape avant safeUrl, qui
+      // échappe à son tour (sinon « & » devenait « &amp;amp; » et les liens à
+      // paramètres ne marchaient plus, C11).
+      var brut = u.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, '&');
+      return '<a href="' + safeUrl(brut) + '" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()" style="color:var(--lien);font-weight:600;text-decoration:underline;word-break:break-all;">' + u + '</a>';
     });
 
     return html.replace(/\n/g, '<br>');

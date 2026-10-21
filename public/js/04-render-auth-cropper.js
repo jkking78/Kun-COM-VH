@@ -163,7 +163,7 @@
         ? '<img src="' + safeUrl(u.avatar_url) + '" style="width:48px;height:48px;border-radius:20px;object-fit:cover;" />'
         : '<div style="width:48px;height:48px;border-radius:20px;background:' + couleurSure(u.avatar_color) + ';color:#FFF;font-size:17px;font-weight:800;display:flex;align-items:center;justify-content:center;">' + initial + '</div>';
       var avatarNode = '<div style="position:relative;flex-shrink:0;">' + avatarImg +
-        (estEnLigne(u) ? '<span style="position:absolute;bottom:1px;right:1px;width:12px;height:12px;border-radius:50%;background:#22C55E;border:2.5px solid var(--card);"></span>' : '') +
+        (estEnLigne(u) ? '<span role="img" aria-label="En ligne" title="En ligne" style="position:absolute;bottom:1px;right:1px;width:12px;height:12px;border-radius:50%;background:#22C55E;border:2.5px solid var(--card);"></span>' : '') +
       '</div>';
       var secs = getUserSections(u).filter(function(s){ return SECTIONS.some(function(x){ return x.id === s; }); }).map(function(s){ return secNom(s); }).join(' · ');
       var t = roleTint(u.role);

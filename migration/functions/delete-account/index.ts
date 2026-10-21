@@ -42,14 +42,28 @@ Deno.serve(async (req) => {
     if (caller.error || !caller.data.user) return json({ error: "Non authentifié" }, 401);
     const userId = caller.data.user.id;
 
+    // S16 : l'application ne doit jamais se retrouver sans Admin.
+    if (caller.data.user.app_metadata?.role === "GRAND_RESPONSABLE") {
+      const comptes = await admin.auth.admin.listUsers({ perPage: 1000 });
+      const admins = (comptes.data?.users ?? []).filter((u: { app_metadata?: { role?: string } }) => u.app_metadata?.role === "GRAND_RESPONSABLE");
+      if (admins.length <= 1)
+        return json({ error: "Tu es le dernier Admin : nomme d'abord un autre Admin, puis supprime ton compte." }, 409);
+    }
+
+    // Ce qui n'est pas relié au compte par la base : téléphones abonnés aux
+    // notifications et questions de sécurité (S16).
+    await admin.from("kun_com_push_abonnements").delete().eq("user_id", userId);
+    await admin.from("kun_com_secrets").delete().eq("user_id", userId);
+
     // 2) Supprimer le compte dans auth.users. La ligne kun_com_profiles est
     //    supprimée par le client juste avant l'appel ; si elle subsiste (échec
     //    réseau, policy), le nettoyage SQL des comptes fantômes s'en charge.
     const del = await admin.auth.admin.deleteUser(userId);
-    if (del.error) return json({ error: del.error.message }, 500);
+    if (del.error) { console.error(del.error); return json({ error: "Suppression impossible." }, 500); }
 
     return json({ ok: true });
   } catch (e) {
-    return json({ error: String(e) }, 500);
+    console.error(e);
+    return json({ error: "Erreur interne" }, 500);
   }
 });

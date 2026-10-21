@@ -578,7 +578,11 @@
       var reste = regroupe ? filtered.filter(function(p){ return !isPinnedNow(p); }) : filtered;
 
       var elements = groupSameDayEvents(reste);
-      var cartes = elements.map(function(item) {
+      // P5 : seules les 25 premières cartes sont dessinées (puis 25 de plus à
+      // chaque « Afficher plus ») ; tout le cache l'était à chaque rendu.
+      var limite = S.filLimite || 25;
+      var masques = Math.max(0, elements.length - limite);
+      var cartes = elements.slice(0, limite).map(function(item) {
         if (item.kind === 'post') return renderPostCard(item.post);
         if (item.events.length === 1) return renderPostCard(item.events[0]);
         return renderEventGroupCard(item.date, item.events);
@@ -599,7 +603,11 @@
       // Le pied ne paraît que si la synchronisation est finie ET qu'au moins une
       // carte est réellement rendue, et toujours APRÈS elles.
       var canLoadMore = S.story === 'all' && !S.q && !S.postsAllLoaded;
-      if (!chargementEnCours && elements.length > 0 && canLoadMore) {
+      if (masques > 0) {
+        footerHtml = '<div style="padding:20px;text-align:center;">' +
+          '<button type="button" onclick="App.afficherPlusFil()" style="background:var(--card);color:var(--ink);border:none;border-radius:16px;padding:12px 22px;font-size:13px;font-weight:800;cursor:pointer;">Afficher plus (' + masques + ')</button>' +
+        '</div>';
+      } else if (!chargementEnCours && elements.length > 0 && canLoadMore) {
         footerHtml = '<div style="padding:20px;text-align:center;background:var(--card);margin-top:8px;">' +
           (S.loadingMorePosts
             ? '<div style="display:flex;justify-content:center;padding:10px;"><div style="width:22px;height:22px;border:2.5px solid var(--line);border-top-color:#0B5FE0;border-radius:50%;animation:spin 0.7s linear infinite;"></div></div>'
@@ -1430,20 +1438,20 @@
       // Barre d'engagement : icône + compteur sur une seule ligne, séparée du
       // contenu par un filet. Le compteur de j'aime n'a plus sa propre ligne.
       '<div style="display:flex;align-items:center;gap:18px;padding:11px 16px;border-top:0.5px solid ' + UI.line + ';color:' + UI.muted + ';font-size:13px;font-family:' + UI.fontMono + ';">' +
-        '<button id="likeBtn-'+post.id+'" onclick="App.like(\''+jsArg(post.id)+'\')" style="background:none;border:none;padding:0;cursor:pointer;display:flex;align-items:center;gap:6px;color:inherit;font-size:inherit;transition:transform 0.1s;" onmousedown="this.style.transform=\'scale(0.9)\'" onmouseup="this.style.transform=\'scale(1)\'">' +
+        '<button id="likeBtn-'+post.id+'" onclick="App.like(\''+jsArg(post.id)+'\')" aria-pressed="' + (iLiked ? 'true' : 'false') + '" aria-label="J\'aime · ' + likeCount + '" style="background:none;border:none;padding:0;cursor:pointer;display:flex;align-items:center;gap:6px;color:inherit;font-size:inherit;transition:transform 0.1s;" onmousedown="this.style.transform=\'scale(0.9)\'" onmouseup="this.style.transform=\'scale(1)\'">' +
           '<svg width="18" height="18" viewBox="0 0 24 24" fill="' + (iLiked ? UI.bad : 'none') + '" stroke="' + (iLiked ? UI.bad : UI.muted) + '" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>' +
           '<span id="likeCount-'+post.id+'" style="color:' + (iLiked ? UI.bad : UI.muted) + ';">' + likeCount + '</span>' +
         '</button>' +
-        '<button onclick="App.openComments(\''+jsArg(post.id)+'\')" style="background:none;border:none;padding:0;cursor:pointer;display:flex;align-items:center;gap:6px;color:inherit;font-size:inherit;">' +
+        '<button onclick="App.openComments(\''+jsArg(post.id)+'\')" aria-label="Commentaires · ' + (post.comments || []).length + '" style="background:none;border:none;padding:0;cursor:pointer;display:flex;align-items:center;gap:6px;color:inherit;font-size:inherit;">' +
           ico('message', 18, UI.muted) + '<span>' + (post.comments || []).length + '</span>' +
         '</button>' +
-        '<button onclick="App.openRepostModal(\''+jsArg(post.id)+'\')" style="background:none;border:none;padding:0;cursor:pointer;display:flex;align-items:center;color:inherit;">' +
+        '<button onclick="App.openRepostModal(\''+jsArg(post.id)+'\')" aria-label="Repartager" style="background:none;border:none;padding:0;cursor:pointer;display:flex;align-items:center;color:inherit;">' +
           '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="' + UI.muted + '" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>' +
         '</button>' +
-        '<button onclick="App.openViewers(\''+jsArg(post.id)+'\')" title="Vues" style="background:none;border:none;padding:0;cursor:pointer;display:flex;align-items:center;gap:6px;color:inherit;font-size:inherit;">' +
+        '<button onclick="App.openViewers(\''+jsArg(post.id)+'\')" title="Vues" aria-label="Vues · ' + viewCount + '" style="background:none;border:none;padding:0;cursor:pointer;display:flex;align-items:center;gap:6px;color:inherit;font-size:inherit;">' +
           ico('eye', 18, UI.muted) + '<span id="viewCount-'+post.id+'">' + viewCount + '</span>' +
         '</button>' +
-        '<button id="saveBtn-'+post.id+'" onclick="App.save(\''+jsArg(post.id)+'\')" style="background:none;border:none;padding:0;cursor:pointer;display:flex;align-items:center;margin-left:auto;">' +
+        '<button id="saveBtn-'+post.id+'" onclick="App.save(\''+jsArg(post.id)+'\')" aria-pressed="' + (iSaved ? 'true' : 'false') + '" aria-label="Enregistrer" style="background:none;border:none;padding:0;cursor:pointer;display:flex;align-items:center;margin-left:auto;">' +
           '<svg width="18" height="18" viewBox="0 0 24 24" fill="' + (iSaved ? UI.ink : 'none') + '" stroke="' + (iSaved ? UI.ink : UI.muted) + '" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>' +
         '</button>' +
       '</div>' +
