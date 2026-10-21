@@ -37,6 +37,7 @@
     var infos = ligne(svg('<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>'), 'Église', 'Vase d\'Honneur · Abidjan') +
       (uSecs.length ? ligne(svg('<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>'), 'Pôle', uSecs.map(function(s){ return secNom(s); }).join(' · ')) : '') +
       (freshU.phone ? ligne(svg('<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/>'), 'Numéro', '<span style="font-family:' + UI.fontMono + ';">' + safeHtml(freshU.phone) + '</span>') : '') +
+      ligne(svg('<path d="M2 4h6a4 4 0 0 1 4 4v13a3 3 0 0 0-3-3H2z"/><path d="M22 4h-6a4 4 0 0 0-4 4v13a3 3 0 0 1 3-3h7z"/>'), 'Guide d\'utilisation', '›', 'ouvrirGuide()') +
       ligne(svg('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/>'), 'Conditions d\'utilisation', '›', 'ouvrirConditions()') +
       ligne(svg('<circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/>'), 'Revoir la visite guidée', '›', 'App.closeSettings();ouvrirVisite()') +
       ligne(svg('<rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/>'), 'Installer sur mon téléphone', '›', 'ouvrirAideInstallation()') +
@@ -320,7 +321,7 @@
   // de render() ni de l'écran affiché.
   // Toute modification du texte doit faire avancer CONDITIONS_VERSION.
   // ============================================================
-  var CONDITIONS_VERSION = '21 octobre 2026';
+  var CONDITIONS_VERSION = '21 octobre 2026 (révisée)';
   var CONDITIONS_SECTIONS = [
     ['Objet',
      '<p>Commit VH est l\'application interne du Département Communication de l\'Église Vase d\'Honneur (Abidjan). Elle sert à organiser les services (planning, convocations, pointage), à partager le travail de l\'équipe et à suivre l\'engagement de chacun.</p>' +
@@ -345,17 +346,16 @@
      '<li>Elle sert uniquement à vérifier que vous êtes sur place (dans un rayon de 500 m du lieu). La distance au lieu est visible des autres membres.</li>' +
      '<li>L\'heure d\'arrivée est contrôlée par le serveur et ne peut plus être modifiée ensuite.</li>' +
      '<li>Pointer à distance, ou refuser la localisation, compte comme une absence.</li></ul>'],
-    ['Notes et engagement',
-     '<p>La note se calcule par cycle de 15 jours (du 1er au 15, du 16 à la fin du mois), sur 30 points :</p>' +
-     '<ul><li>Service : de +5 (à l\'heure) à −2 (retard de plus d\'1 h 30, absence ou pointage hors du lieu).</li>' +
-     '<li>Tâche à livrer : +5 à temps, +2 en retard, −2 si elle n\'est jamais livrée.</li>' +
-     '<li>Les bilans de pôle sont publiés par l\'Admin après les services.</li></ul>' +
-     '<p>Ces notes servent à encourager et à organiser l\'équipe, pas à juger les personnes.</p>'],
+    ['Engagement et bilans',
+     '<p>Votre niveau d\'engagement (Engagé, Fiable, Exemplaire) se calcule sur vos 10 derniers services et tâches :</p>' +
+     '<ul><li>Un engagement est tenu quand vous arrivez à l\'heure ou que vous livrez votre tâche à temps. Un retard, une absence ou un pointage hors du lieu ne compte pas comme tenu, sans rien retirer.</li>' +
+     '<li>Les bilans de pôle sont publiés par l\'Admin après les services ; la ponctualité y est calculée automatiquement.</li></ul>' +
+     '<p>Ces informations servent à encourager et à organiser l\'équipe, pas à juger les personnes.</p>'],
     ['Messages privés',
      '<p>Un message privé n\'est lisible que par vous et votre interlocuteur. Les règles de publication s\'y appliquent aussi.</p>'],
     ['Vos données',
-     '<ul><li>Sont enregistrés : vos nom, prénom, numéro de téléphone, pôles, photo, bio, vos publications, commentaires, messages, pointages (heure et distance au lieu) et notes.</li>' +
-     '<li>Les membres connectés voient votre fiche, vos publications et vos notes. Sans compte, on ne peut rien consulter, sauf l\'aperçu d\'un lien partagé.</li>' +
+     '<ul><li>Sont enregistrés : vos nom, prénom, numéro de téléphone, pôles, photo, bio, vos publications, commentaires, messages, pointages (heure et distance au lieu) et votre niveau d\'engagement.</li>' +
+     '<li>Les membres connectés voient votre fiche, vos publications et votre niveau d\'engagement. Sans compte, on ne peut rien consulter, sauf l\'aperçu d\'un lien partagé.</li>' +
      '<li>Les photos et vidéos sont stockées à une adresse longue et impossible à deviner, mais toute personne qui obtient cette adresse peut les voir.</li>' +
      '<li>Les données sont hébergées par Supabase (serveurs en Irlande, Union européenne) et l\'application par Vercel. Elles ne sont ni vendues ni utilisées à des fins publicitaires.</li>' +
      '<li>Vous pouvez modifier votre fiche à tout moment, et supprimer définitivement votre compte depuis Paramètres → Supprimer mon compte.</li></ul>'],
@@ -366,37 +366,45 @@
      '<p>Pour toute question : <b>07 99 44 24 02</b> (Département Communication).</p>']
   ];
 
-  function ouvrirConditions() {
-    if (document.getElementById('_kcConditions')) return;
+  // Fenêtre de lecture plein écran (conditions, guide) : en-tête avec retour,
+  // sections en cartes. pliable = sections repliées, à ouvrir une par une.
+  function ouvrirDocument(id, titre, sousTitre, sections, pliable) {
+    if (document.getElementById(id)) return null;
     var fond = document.createElement('div');
-    fond.id = '_kcConditions';
+    fond.id = id;
     fond.setAttribute('role', 'dialog');
     fond.setAttribute('aria-modal', 'true');
-    fond.setAttribute('aria-label', 'Conditions d\'utilisation');
+    fond.setAttribute('aria-label', titre);
     fond.className = 'safe-top';
     fond.style.cssText = 'position:fixed;inset:0;z-index:9999990;background:var(--page,#F5F6F8);color:var(--ink,#0C1116);display:flex;flex-direction:column;animation:slideUp 0.28s cubic-bezier(0.22,1,0.36,1);font-family:var(--font-body,sans-serif);';
-    var sommaire = CONDITIONS_SECTIONS.map(function(s, i) {
-      return '<section style="background:var(--card,#FFF);border:1px solid var(--line,#E4E7EC);border-radius:12px;padding:16px;margin-bottom:12px;">' +
-        '<h2 style="font-family:var(--font-display,sans-serif);font-size:17px;font-weight:700;margin:0 0 8px;">' + (i + 1) + '. ' + s[0] + '</h2>' +
-        '<div class="kc-conditions" style="font-size:15px;line-height:1.55;color:var(--ink2,#2A313B);">' + s[1] + '</div>' +
+    var carte = 'background:var(--card,#FFF);border:1px solid var(--line,#E4E7EC);border-radius:12px;margin-bottom:12px;';
+    var corps = sections.map(function(s, i) {
+      var texte = '<div class="kc-conditions" style="font-size:15px;line-height:1.55;color:var(--ink2,#2A313B);">' + s[1] + '</div>';
+      if (pliable) {
+        return '<details style="' + carte + 'padding:0 16px;">' +
+          '<summary style="list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:56px;font-family:var(--font-display,sans-serif);font-size:17px;font-weight:700;">' +
+            '<span>' + s[0] + '</span><span aria-hidden="true" class="kc-chevron" style="color:var(--faint,#8A93A0);font-size:20px;transition:transform 0.2s;">›</span>' +
+          '</summary>' +
+          '<div style="padding:0 0 16px;">' + texte + '</div>' +
+        '</details>';
+      }
+      return '<section style="' + carte + 'padding:16px;">' +
+        '<h2 style="font-family:var(--font-display,sans-serif);font-size:17px;font-weight:700;margin:0 0 8px;">' + (i + 1) + '. ' + s[0] + '</h2>' + texte +
       '</section>';
     }).join('');
     fond.innerHTML =
+      '<style>#' + id + ' details[open] .kc-chevron{transform:rotate(90deg);}#' + id + ' summary::-webkit-details-marker{display:none;}</style>' +
       '<div style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--card,#FFF);border-bottom:1px solid var(--line,#E4E7EC);">' +
         '<button type="button" data-fermer aria-label="Fermer" style="background:var(--tile,#EFF1F5);border:none;width:44px;height:44px;flex-shrink:0;border-radius:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;">' +
           '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>' +
         '</button>' +
         '<div style="min-width:0;">' +
-          '<h1 style="font-family:var(--font-display,sans-serif);font-size:22px;font-weight:700;margin:0;">Conditions d\'utilisation</h1>' +
-          '<div style="font-size:13px;color:var(--faint,#8A93A0);margin-top:2px;">Version du ' + CONDITIONS_VERSION + '</div>' +
+          '<h1 style="font-family:var(--font-display,sans-serif);font-size:22px;font-weight:700;margin:0;">' + titre + '</h1>' +
+          '<div style="font-size:13px;color:var(--faint,#8A93A0);margin-top:2px;">' + sousTitre + '</div>' +
         '</div>' +
       '</div>' +
-      '<div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 16px 40px;">' + sommaire + '</div>';
+      '<div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 16px 40px;">' + corps + '</div>';
     document.body.appendChild(fond);
-    // Coche « Lire les conditions » de Bien démarrer (version lue retenue).
-    if (S.user && S.auth === 'app' && S.user.conditionsLues !== CONDITIONS_VERSION && window.App && App._majMonProfil) {
-      App._majMonProfil({ conditionsLues: CONDITIONS_VERSION });
-    }
     var fermer = function() {
       fond.remove();
       document.removeEventListener('keydown', echap);
@@ -409,6 +417,112 @@
     fond.tabIndex = -1;
     fond.style.outline = 'none';
     try { fond.focus(); } catch(e) {}
+    return fond;
+  }
+
+  function ouvrirConditions() {
+    if (!ouvrirDocument('_kcConditions', 'Conditions d\'utilisation', 'Version du ' + CONDITIONS_VERSION, CONDITIONS_SECTIONS, false)) return;
+    // Coche « Lire les conditions » de Bien démarrer (version lue retenue).
+    if (S.user && S.auth === 'app' && S.user.conditionsLues !== CONDITIONS_VERSION && window.App && App._majMonProfil) {
+      App._majMonProfil({ conditionsLues: CONDITIONS_VERSION });
+    }
+  }
+
+  // ============================================================
+  // GUIDE D'UTILISATION
+  // Chaque écran et chaque fonction expliqués simplement, section par
+  // section (repliées). À tenir à jour quand une règle change.
+  // ============================================================
+  var GUIDE_SECTIONS = [
+    ['L\'application en bref',
+     '<p>Commit réunit le planning des services, les convocations, le pointage et la vie de l\'équipe du Département Communication.</p>' +
+     '<ul><li><b>Accueil</b>&nbsp;: le fil d\'actualité, ta prochaine mission et la liste « Bien démarrer ».</li>' +
+     '<li><b>Planning</b>&nbsp;: les services à venir, tes convocations et tes indisponibilités.</li>' +
+     '<li><b>Publier</b> (le bouton + au centre) : partager une photo, une vidéo, un texte ou un sondage.</li>' +
+     '<li><b>Bilans</b>&nbsp;: l\'évaluation des pôles après les services.</li>' +
+     '<li><b>Profil</b>&nbsp;: tes engagements, tes badges, tes services et tes publications.</li></ul>' +
+     '<p>En haut de l\'Accueil : la loupe pour chercher un membre, la bulle pour tes messages, la cloche pour tes notifications.</p>'],
+    ['Le fil d\'actualité',
+     '<ul><li>« <b>Tous</b> » montre toutes les publications. Touche l\'icône d\'un pôle pour ne voir que son fil : les publications de ses membres, celles qui ont tagué ce pôle et ses événements. Un chiffre sur l\'icône indique les nouveautés.</li>' +
+     '<li>Les <b>tendances</b> (les #mots les plus utilisés) apparaissent dans « Tous ». Touche-en une pour filtrer le fil.</li>' +
+     '<li><b>J\'aime</b>&nbsp;: touche le cœur, ou touche deux fois la photo.</li>' +
+     '<li><b>Commentaires</b>&nbsp;: réponds à un commentaire, ajoute une image, tape @ pour citer un membre. L\'auteur d\'un commentaire, celui de la publication et l\'Admin peuvent le supprimer (glisse-le vers la gauche).</li>' +
+     '<li><b>Enregistrer</b> une publication pour la retrouver dans ton profil, onglet « Enregistrées ».</li>' +
+     '<li><b>Partager</b> ou <b>Copier le lien</b>&nbsp;: le lien montre l\'auteur, la légende et une image à qui l\'ouvre.</li>' +
+     '<li>Le fil affiche 25 publications ; « Afficher plus » charge la suite.</li></ul>'],
+    ['Publier',
+     '<ul><li>Touche le <b>+</b>&nbsp;: écris ton texte, ajoute des photos ou une vidéo, ou choisis un fond coloré pour un texte seul.</li>' +
+     '<li>Tape <b>@</b> pour citer un membre (il est prévenu), et <b>#</b> pour un mot-clé.</li>' +
+     '<li>Les options permettent d\'ajouter un <b>sondage</b>, de relier la publication à un événement (« À propos ») et de choisir <b>qui peut la voir</b>.</li>' +
+     '<li><b>Sections ciblées</b>&nbsp;: choisis un ou plusieurs pôles. La publication n\'est visible que de leurs membres, et apparaît dans le fil de chacun de ces pôles. Tu peux taguer un pôle après coup en modifiant la publication.</li>' +
+     '<li>Tu peux modifier ou supprimer tes publications avec le bouton ⋯ de la carte.</li></ul>'],
+    ['Planning et convocations',
+     '<ul><li>« <b>Mes services</b> » montre les services où tu es convoqué, « <b>Tous</b> » tout le planning.</li>' +
+     '<li>Quand un responsable te convoque, réponds « <b>Je confirme</b> » ou « <b>Je ne peux pas</b> » en donnant la raison. Ta mission apparaît aussi en haut de l\'Accueil, avec ta tâche, l\'heure et l\'itinéraire.</li>' +
+     '<li><b>Mes indispos</b>&nbsp;: indique à l\'avance les jours où tu n\'es pas disponible ; les responsables le voient au moment de convoquer.</li>' +
+     '<li><b>Mon agenda</b>&nbsp;: ajoute le service à l\'agenda de ton téléphone, avec un rappel la veille et 2 h avant.</li>' +
+     '<li><b>Itinéraire</b>&nbsp;: ouvre le trajet jusqu\'au lieu.</li>' +
+     '<li><b>Échanger un service</b>&nbsp;: « Proposer ma place » la propose aux membres de ton pôle ; l\'un d\'eux touche « Je la reprends », puis l\'organisateur ou le responsable valide l\'échange. Tant que ce n\'est pas validé, tu restes de service.</li></ul>'],
+    ['Pointer ton arrivée',
+     '<ul><li>Le bouton « <b>Je suis arrivé</b> » s\'ouvre 3 h avant le début du service et reste disponible jusqu\'à 3 h après la fin.</li>' +
+     '<li>Ta position est relevée une seule fois, à ce moment-là : tu dois être à moins de 500 m du lieu. L\'application fait jusqu\'à 3 essais pendant une minute.</li>' +
+     '<li>Tu peux aussi « <b>Pointer avec une photo</b> »&nbsp;: ta publication sert alors de pointage.</li>' +
+     '<li>L\'heure d\'arrivée est fixée par le serveur et ne se modifie plus. Arriver en avance est parfait.</li>' +
+     '<li>Un pointage loin du lieu, ou sans position, n\'est pas validé : il ne compte pas comme un engagement tenu.</li></ul>'],
+    ['Tâches et plan de préparation',
+     '<ul><li>Un responsable peut te confier une <b>tâche</b> avec une date limite. Coche-la quand elle est faite : livrée à temps, elle compte comme un engagement tenu.</li>' +
+     '<li>Le <b>plan de préparation</b> d\'un événement (bouton « Préparation ») liste, pôle par pôle, les tâches et les étapes datées à faire avant le jour J. Tout le monde peut suivre l\'avancement ; le responsable du pôle et l\'Admin le modifient.</li>' +
+     '<li>Une étape non cochée est rappelée la veille de sa date, puis signalée en retard.</li></ul>'],
+    ['Mes engagements et badges',
+     '<ul><li>Ton <b>niveau</b> se calcule sur tes 10 derniers services et tâches : <b>Engagé</b>, puis <b>Fiable</b> à partir de 6 engagements tenus, puis <b>Exemplaire</b> à partir de 9.</li>' +
+     '<li>Un engagement est <b>tenu</b> quand tu arrives à l\'heure ou que tu livres ta tâche à temps. Un retard ou un oubli ne retire rien : il ne compte simplement pas. Un mauvais jour s\'efface donc au fil des services suivants.</li>' +
+     '<li>La carte montre ce qu\'il te manque pour le niveau suivant, et tes 10 derniers engagements en pastilles : vert tenu, orange en retard, gris manqué.</li>' +
+     '<li>Les <b>badges</b> s\'obtiennent tout seuls d\'après tes services : premier service, 10 services, série de 5 à l\'heure, cycle à l\'heure, tâche livrée à temps, 25 services.</li>' +
+     '<li>L\'<b>historique des services</b> détaille chaque service et chaque tâche.</li></ul>'],
+    ['Bilans',
+     '<ul><li>Après les services, l\'Admin évalue chaque pôle sur trois critères : Technique, Réactivité et Esprit d\'équipe. La <b>ponctualité</b> s\'ajoute automatiquement, d\'après les pointages.</li>' +
+     '<li>« <b>Suivi</b> » montre l\'évolution de chaque pôle, sur le cycle en cours (15 jours) ou depuis le début.</li>' +
+     '<li>« <b>Mon pôle</b> » rassemble les bilans de ton pôle.</li></ul>'],
+    ['Messages',
+     '<ul><li>La bulle en haut de l\'Accueil ouvre tes <b>conversations</b>.</li>' +
+     '<li>Un <b>message privé</b> n\'est lisible que par toi et ton interlocuteur. Écris à un membre depuis son profil (« Message ») ou depuis la liste des membres.</li>' +
+     '<li>Chaque pôle a son <b>canal</b>, pour la logistique : matériel, horaires, consignes du jour J. Tu fais partie des canaux de tes pôles.</li>' +
+     '<li>Un message parti sans réseau est marqué « Non envoyé »&nbsp;: renvoie-le une fois connecté.</li></ul>'],
+    ['Notifications et rappels',
+     '<ul><li>La <b>cloche</b> regroupe tes notifications : convocations, mentions, commentaires, messages, bilans.</li>' +
+     '<li>Pour être prévenu sur ton téléphone, active les notifications dans <b>Paramètres → Notifications</b>, puis choisis ce que tu veux recevoir : rappels de service, messages, mentions, commentaires, J\'aime, le reste.</li>' +
+     '<li><b>Rappels automatiques</b>&nbsp;: la veille d\'un service, 2 h avant, si tu as oublié de pointer, à l\'approche d\'une date limite de tâche, et pour les étapes de préparation.</li>' +
+     '<li>Sur iPhone, les notifications ne marchent que si Commit est installé sur l\'écran d\'accueil.</li></ul>'],
+    ['Profil et paramètres',
+     '<ul><li><b>Modifier le profil</b>&nbsp;: photo, couverture, présentation, savoir-faire.</li>' +
+     '<li>Les <b>Paramètres</b> (roue dentée de ton profil) regroupent : tes informations, l\'apparence (mode sombre), les notifications, la visite guidée, l\'installation sur ton téléphone, le cache, les conditions et la suppression du compte.</li>' +
+     '<li><b>Installer sur mon téléphone</b>&nbsp;: Commit s\'ouvre alors comme une vraie application, plus vite, même avec un réseau faible.</li>' +
+     '<li>Sans réseau, tes publications et commentaires sont gardés et envoyés au retour de la connexion.</li>' +
+     '<li><b>Supprimer mon compte</b> efface définitivement ton compte. Le dernier Admin doit d\'abord nommer un autre Admin.</li></ul>'],
+    ['Compte et mot de passe',
+     '<ul><li>Tu te connectes avec ton <b>numéro de téléphone</b> et ton mot de passe.</li>' +
+     '<li>À l\'inscription, ton compte attend la <b>validation d\'un Admin</b> avant de donner accès à l\'application.</li>' +
+     '<li><b>Mot de passe oublié ?</b> Réponds aux deux questions de sécurité choisies à l\'inscription pour en définir un nouveau. Sinon, un Admin peut te donner un mot de passe provisoire.</li>' +
+     '<li>Ne communique jamais ton mot de passe ni tes réponses, même à un responsable.</li></ul>'],
+    ['Pour les responsables de pôle',
+     '<ul><li><b>Créer un événement</b>&nbsp;: le + de l\'onglet Planning. Indique la date, les heures, le lieu (« Utiliser ma position actuelle » sur place, ou un lieu déjà enregistré) et les pôles concernés.</li>' +
+     '<li><b>Convoquer</b>&nbsp;: choisis les membres de ton pôle (ou le pôle entier) et précise leur tâche, avec une date limite si c\'est un travail à livrer. Les membres indisponibles sont signalés.</li>' +
+     '<li>Suis les <b>réponses</b> des convoqués et relance ceux qui n\'ont pas répondu.</li>' +
+     '<li>Valide les <b>échanges de service</b> proposés dans ton pôle.</li>' +
+     '<li>Remplis le <b>plan de préparation</b> de ton pôle : tâches et étapes datées.</li>' +
+     '<li>Tu peux <b>épingler</b> tes événements en haut du fil.</li></ul>'],
+    ['Pour l\'Admin',
+     '<ul><li><b>Demandes d\'inscription</b>&nbsp;: valide les nouveaux comptes depuis l\'Accueil.</li>' +
+     '<li><b>Gérer les rôles</b> (Paramètres) : nomme les responsables et les Admin, et attribue les pôles de chacun.</li>' +
+     '<li><b>Tableau de bord</b>&nbsp;: vue d\'ensemble des services, des réponses et des sous-effectifs.</li>' +
+     '<li><b>Bilans</b>&nbsp;: note chaque pôle après les services.</li>' +
+     '<li><b>Lieux enregistrés</b>&nbsp;: retire un lieu mal placé ou en double.</li>' +
+     '<li><b>Modération</b>&nbsp;: supprime tout contenu contraire aux conditions d\'utilisation.</li></ul>' +
+     '<p>Une question ? Département Communication : <b>07 99 44 24 02</b>.</p>']
+  ];
+
+  function ouvrirGuide() {
+    ouvrirDocument('_kcGuide', 'Guide d\'utilisation', 'Touche une rubrique pour l\'ouvrir', GUIDE_SECTIONS, true);
   }
 
   // ============================================================
@@ -424,10 +538,10 @@
       texte: 'Quand un responsable te convoque, ta mission apparaît en haut de l\'Accueil avec ta tâche, l\'heure et l\'itinéraire. Tout le calendrier est dans l\'onglet Planning.',
       icone: '<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M9 16l2 2 4-4"/>' },
     { couleur: '#D98A0B', titre: 'Pointe ton arrivée',
-      texte: 'Le bouton « Je suis arrivé » s\'ouvre 3 h avant le début. Ta position est vérifiée dans un rayon de 500 m autour du lieu. Arriver à l\'heure rapporte +5.',
+      texte: 'Le bouton « Je suis arrivé » s\'ouvre 3 h avant le début. Ta position est vérifiée dans un rayon de 500 m autour du lieu. Arriver à l\'heure, c\'est un engagement tenu.',
       icone: '<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>' },
-    { couleur: '#AF52DE', titre: 'Suis ta note',
-      texte: 'Tous les 15 jours, tes services et tes tâches s\'additionnent sur 30 points. Ta jauge est dans ton Profil, les bilans des pôles dans l\'onglet Bilans.',
+    { couleur: '#AF52DE', titre: 'Monte en niveau',
+      texte: 'Sur tes 10 derniers services, chaque engagement tenu te rapproche de Fiable puis Exemplaire. Ton niveau est dans ton Profil, le guide complet aussi.',
       icone: '<line x1="4" y1="20" x2="20" y2="20"/><rect x="5.5" y="11" width="3" height="6" rx="1"/><rect x="10.5" y="6" width="3" height="11" rx="1"/><rect x="15.5" y="9" width="3" height="8" rx="1"/>' }
   ];
 

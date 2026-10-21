@@ -294,10 +294,13 @@
       renderBadges(freshU) +
       renderHistoriqueServices(freshU) +
       '<div style="margin-top:12px;">' + renderEngagementsCard(freshU) + '</div>' +
-      // Accès direct aux conditions d'utilisation depuis son propre profil.
-      (isMe ? '<button type="button" onclick="ouvrirConditions()" style="display:flex;align-items:center;justify-content:space-between;width:100%;min-height:44px;margin-top:4px;padding:12px 16px;background:' + UI.card + ';border:1px solid ' + UI.line + ';border-radius:999px;font-size:15px;font-weight:600;color:' + UI.ink + ';cursor:pointer;text-align:left;">' +
-        '<span>Conditions d\'utilisation</span><span style="color:' + UI.faint + ';">›</span>' +
-      '</button>' : '') +
+      // Accès direct au guide et aux conditions d'utilisation depuis son propre profil.
+      (isMe ? ['Guide d\'utilisation|ouvrirGuide()', 'Conditions d\'utilisation|ouvrirConditions()'].map(function(x, i) {
+        var t = x.split('|');
+        return '<button type="button" onclick="' + t[1] + '" style="display:flex;align-items:center;justify-content:space-between;width:100%;min-height:44px;margin-top:' + (i ? 8 : 4) + 'px;padding:12px 16px;background:' + UI.card + ';border:1px solid ' + UI.line + ';border-radius:999px;font-size:15px;font-weight:600;color:' + UI.ink + ';cursor:pointer;text-align:left;">' +
+          '<span>' + t[0] + '</span><span style="color:' + UI.faint + ';">›</span>' +
+        '</button>';
+      }).join('') : '') +
     '</div>';
 
     // ---- Continuous scroll (no tabs) ----

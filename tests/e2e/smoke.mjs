@@ -653,6 +653,29 @@ try {
     await contexte.close();
   });
 
+  await cas('guide d\'utilisation : depuis le profil, rubriques repliées, Échap ferme', async () => {
+    const { page, erreurs, contexte } = await nouvellePage(nav, base, sessionPour('MEMBRE'));
+    await page.waitForSelector('#post-p_piege', { timeout: 15000 });
+    await page.evaluate('App.tab(\'profile\')');
+    await page.click('text=Guide d\'utilisation');
+    await page.waitForSelector('#_kcGuide[role="dialog"]');
+    const etat = await page.evaluate(() => ({
+      rubriques: document.querySelectorAll('#_kcGuide details').length,
+      ouvertes: document.querySelectorAll('#_kcGuide details[open]').length,
+    }));
+    assert.ok(etat.rubriques >= 12, 'rubriques : ' + etat.rubriques);
+    assert.equal(etat.ouvertes, 0);
+    await page.click('#_kcGuide summary >> text=Pointer ton arrivée');
+    assert.ok(await page.isVisible('#_kcGuide >> text=moins de 500 m'));
+    await page.keyboard.press('Escape');
+    assert.equal(await page.$('#_kcGuide'), null);
+    // Les conditions s'ouvrent toujours, sans note sur 30.
+    await page.click('text=Conditions d\'utilisation');
+    assert.equal(await page.evaluate(() => document.getElementById('_kcConditions').textContent.includes('30 points')), false);
+    assert.deepEqual(erreurs, []);
+    await contexte.close();
+  });
+
   await cas('un membre consulte le plan de préparation sans pouvoir le modifier', async () => {
     const { page, erreurs, contexte } = await nouvellePage(nav, base, sessionPour('MEMBRE'));
     await page.waitForSelector('#post-p_piege', { timeout: 15000 });
