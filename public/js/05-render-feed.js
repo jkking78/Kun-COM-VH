@@ -1744,7 +1744,7 @@
   }
 
   function renderCreateEventModal() {
-    var today = new Date().toISOString().split('T')[0];
+    var today = isoLocal();
     var cData = S.createEventData || {};
     var isEdit = !!S.editEventId;
     var titleVal = cData.title !== undefined ? cData.title : '';
@@ -1964,7 +1964,7 @@
     var schedTimeVal = '';
     if (post.scheduled_at) {
       var d = new Date(post.scheduled_at);
-      schedDateVal = d.toISOString().split('T')[0];
+      schedDateVal = isoLocal(d);
       schedTimeVal = d.toTimeString().split(' ')[0].slice(0, 5);
     }
 
@@ -2186,7 +2186,7 @@
   // récap d'un événement déjà passé), filtrée par la recherche en cours.
   function renderAboutEventListHtml() {
     var allPosts = db(SK.POSTS, []);
-    var todayIso = new Date().toISOString().split('T')[0];
+    var todayIso = isoLocal();
     var q = (S.aboutEventSearch || '').trim().toLowerCase();
     var all = allPosts.filter(function(p){
       if (p.type !== 'EVENT' || !p.eventTitle) return false;
@@ -2306,7 +2306,7 @@
     if (!S.user) return '';
     var posts = db(SK.POSTS, []);
     var now = Date.now();
-    var today = new Date().toISOString().split('T')[0];
+    var today = isoLocal();
 
     var selectedId = S.postCheckInEventId;
     if (!selectedId) return '';

@@ -1007,7 +1007,7 @@
   }
 
   function renderPlanning() {
-    if (!S.selectedDate) S.selectedDate = new Date().toISOString().split('T')[0];
+    if (!S.selectedDate) S.selectedDate = isoLocal();
     if (!S.planningMode) S.planningMode = 'upcoming';
     
     var canCreate = S.user && (S.user.role === 'RESP_SECTION' || S.user.role === 'GRAND_RESPONSABLE');
@@ -1018,7 +1018,7 @@
     }).length;
     var moisCourant = new Date().toLocaleDateString('fr-FR', { month: 'long' });
     var mesIndispos = ((db(SK.USERS, []).find(function(x){ return S.user && x.id === S.user.id; }) || S.user || {}).indisponibilites || [])
-      .filter(function(x){ return x && x.date >= new Date().toISOString().split('T')[0]; });
+      .filter(function(x){ return x && x.date >= isoLocal(); });
     // Ligne 1 : grand titre à gauche, cloche et « + » à droite.
     // Ligne 2 : le résumé du mois et « Mes indisponibilités », qui passent
     // l'un sous l'autre si l'écran est étroit au lieu d'écraser le titre.
@@ -1049,7 +1049,7 @@
     '</div>';
 
     var allPosts = db(SK.POSTS, []);
-    var todayIso = new Date().toISOString().split('T')[0];
+    var todayIso = isoLocal();
 
     if (S.planningMode === 'history') {
       // Un événement bascule ici dès qu'il est terminé (heure de fin dépassée),
@@ -1075,13 +1075,13 @@
     }
 
     var baseDate = new Date();
-    var todayIso = baseDate.toISOString().split('T')[0];
+    var todayIso = isoLocal(baseDate);
     var dateMap = {};
     // Add today + next 6 days automatically
     for(var i = 0; i < 7; i++) {
       var d = new Date(baseDate);
       d.setDate(baseDate.getDate() + i);
-      dateMap[d.toISOString().split('T')[0]] = d;
+      dateMap[isoLocal(d)] = d;
     }
     
     // Add any future dates that have events
@@ -1098,7 +1098,7 @@
     var monId = S.user ? S.user.id : '';
     var frise = '<div role="list" aria-label="Sept prochains jours" style="display:flex;gap:6px;padding:4px 16px 10px;background:' + UI.page + ';">' +
       dates.slice(0, 7).map(function(d) {
-        var iso = d.toISOString().split('T')[0];
+        var iso = isoLocal(d);
         var estAuj = iso === todayIso;
         var aMoi = allPosts.some(function(p){ return p.type === 'EVENT' && p.eventDate === iso && !isEventPast(p, nowTsSlider) && (p.assignments || []).some(function(a){ return a && a.userId === monId; }); });
         var aDesEv = allPosts.some(function(p){ return p.type === 'EVENT' && p.eventDate === iso && !isEventPast(p, nowTsSlider); });
@@ -3139,7 +3139,7 @@
   // ============================================================
   function renderIndisposModal() {
     var moi = db(SK.USERS, []).find(function(x){ return S.user && x.id === S.user.id; }) || S.user || {};
-    var auj = new Date().toISOString().split('T')[0];
+    var auj = isoLocal();
     var liste = (moi.indisponibilites || []).filter(function(x){ return x && x.date >= auj; })
       .sort(function(a, b){ return a.date < b.date ? -1 : 1; });
     return '<div onclick="App.fermerIndispos()" style="position:fixed;inset:0;background:rgba(15,15,20,0.55);z-index:10000;display:flex;justify-content:center;align-items:flex-end;">' +

@@ -1291,7 +1291,7 @@
       //    l'équipe. Les événements passés restent visibles pour ceux qui les ont
       //    déjà en cache (leur propre historique).
       //  - les profils
-      var _todayIso = new Date().toISOString().split('T')[0];
+      var _todayIso = isoLocal();
       var _results = await Promise.all([
         supabase.from('kun_com_posts').select('*').order('created_at', { ascending: false }).range(0, POSTS_PAGE_SIZE - 1),
         supabase.from('kun_com_profiles').select('*'),
@@ -2660,7 +2660,7 @@
     var endTs = eventEndTimestamp(ev);
     if (endTs) return endTs < now;
     // Sans heure de fin exploitable, on retombe sur la comparaison de dates.
-    return ev.eventDate < new Date(now).toISOString().split('T')[0];
+    return ev.eventDate < isoLocal(new Date(now));
   }
 
   // Horodatage de début d'un événement (eventDate + eventStart). null si inconnu.
