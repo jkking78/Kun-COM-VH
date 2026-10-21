@@ -1822,7 +1822,7 @@
                     '<div style="font-size:12px;color:var(--faint);line-height:1.4;margin:6px 4px 10px;">Tu es sur le lieu ? Ta position devient celle du lieu, et il sera proposé la prochaine fois.</div>' +
                     '<div style="display:flex;align-items:center;gap:8px;height:52px;padding:0 16px;border:1.5px solid var(--line2);border-radius:26px;background:var(--card);box-sizing:border-box;">' +
                       ico('search', 18, UI.faint) +
-                      '<input type="text" id="eventPlaceInput" value="' + safeHtml(S.eventPlaceQuery || '') + '" oninput="App.onEventPlaceInput(this.value)" autocomplete="off" placeholder="Ou cherche : Église Vase d\'Honneur, Cocody" style="flex:1;border:none;background:transparent;font-size:15px;color:var(--ink);outline:none;min-width:0;" />' +
+                      '<input type="text" id="eventPlaceInput" value="' + safeHtml(S.eventPlaceQuery || '') + '" oninput="App.onEventPlaceInput(this.value)" autocomplete="off" placeholder="Ou cherche une adresse" style="flex:1;border:none;background:transparent;font-size:15px;color:var(--ink);outline:none;min-width:0;" />' +
                       '<span style="font-size:11px;font-weight:800;color:var(--faint);background:var(--line);padding:2px 7px;border-radius:8px;flex-shrink:0;">CI</span>' +
                       (S.eventPlaceSearching
                         ? '<div style="width:15px;height:15px;border:2.5px solid var(--line2);border-top-color:#0B5FE0;border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0;"></div>'

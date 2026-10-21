@@ -500,7 +500,9 @@
     var st = statsPreparation(prep, pid);
     var couleur = secColor(pid);
     var auteur = e.maj_par ? db(SK.USERS, []).find(function(x){ return x && x.id === e.maj_par; }) : null;
-    var maj = e.maj_le ? 'mis à jour ' + (auteur ? 'par ' + (auteur.prenom || 'un membre') + ' ' : '') + 'il y a ' + timeAgo(e.maj_le).replace('À l\'instant', 'un instant') : '';
+    var depuis = !e.maj_le ? '' : (Date.now() - e.maj_le < 60e3) ? 'à l\'instant'
+      : (Date.now() - e.maj_le < 7 * 864e5) ? 'il y a ' + timeAgo(e.maj_le) : 'le ' + timeAgo(e.maj_le);
+    var maj = e.maj_le ? 'mis à jour ' + (auteur ? 'par ' + (auteur.prenom || 'un membre') + ' ' : '') + depuis : '';
     // Tâches déjà confiées aux membres de ce pôle sur l'événement.
     var titres = e.taches.map(function(t){ return t.titre.toLowerCase(); });
     var assignees = [];
@@ -553,7 +555,7 @@
         '<div style="flex:1;min-width:0;">' +
           '<div style="font-size:17px;font-weight:800;color:var(--ink);">' + safeHtml(secNom(pid)) + '</div>' +
           '<div style="font-size:12px;color:var(--muted);line-height:1.35;">' +
-            (st.total ? st.faites + '/' + st.total + ' étape' + (st.total > 1 ? 's' : '') + ' faite' + (st.faites > 1 ? 's' : '') : (e.taches.length ? e.taches.length + ' tâche' + (e.taches.length > 1 ? 's' : '') : 'Rien de prévu pour l\'instant')) +
+            (st.total ? st.faites + '/' + st.total + (st.total > 1 ? ' étapes faites' : ' étape faite') : (e.taches.length ? e.taches.length + ' tâche' + (e.taches.length > 1 ? 's' : '') : 'Rien de prévu pour l\'instant')) +
             (st.enRetard ? ' · <span style="color:var(--bad-ink);font-weight:700;">' + st.enRetard + ' en retard</span>' : '') +
             (maj ? ' · ' + safeHtml(maj) : '') +
           '</div>' +
@@ -645,7 +647,7 @@
           (st.total
             ? '<div style="display:flex;align-items:baseline;gap:8px;">' +
                 '<span style="font-size:28px;font-weight:800;color:var(--ink);letter-spacing:-0.5px;">' + st.faites + '<span style="color:var(--faint);font-size:20px;">/' + st.total + '</span></span>' +
-                '<span style="font-size:14px;color:var(--muted);">étape' + (st.total > 1 ? 's' : '') + ' faite' + (st.faites > 1 ? 's' : '') + '</span>' +
+                '<span style="font-size:14px;color:var(--muted);">' + (st.total > 1 ? 'étapes faites' : 'étape faite') + '</span>' +
                 (st.enRetard ? '<span style="margin-left:auto;font-size:13px;font-weight:700;color:var(--bad-ink);background:var(--bad-soft);border-radius:8px;padding:2px 8px;">' + st.enRetard + ' en retard</span>' : '') +
               '</div>' +
               '<div role="progressbar" aria-label="Avancement de la préparation" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pct + '" style="height:8px;border-radius:4px;background:var(--tile);margin:10px 0;overflow:hidden;">' +

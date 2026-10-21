@@ -468,10 +468,11 @@
       dbSet(SK.POSTS, posts);
       var versionEnvoyee = null;
       App.ecrirePostFrais(evId, function(ev) { versionEnvoyee = appliquer(ev); }, function(retenu) {
-        // Version refusée : quelqu'un a modifié ce plan au même moment.
+        // Version refusée (modifiée au même moment par quelqu'un d'autre, ou
+        // trop volumineuse) : l'écran reprend la version enregistrée.
         var e = assainirPreparation(retenu.preparation)[pole];
         if (versionEnvoyee && (!e || e.v < versionEnvoyee)) {
-          toast('Ce plan vient d\'être modifié par quelqu\'un d\'autre : vérifie-le et recommence.', 'info');
+          toast('Modification non enregistrée : le plan a sans doute changé entre-temps. Vérifie-le et recommence.', 'info');
         }
         if (S.preparationId === evId || S.tab === 'planning') render();
       });

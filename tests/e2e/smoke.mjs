@@ -88,6 +88,13 @@ const publications = [
 // Messages privés servis par le faux serveur (le scénario « sécurité » en ajoute).
 let MESSAGES = [];
 
+// Lieux enregistrés (migration 11) et appels de mémorisation reçus.
+const LIEUX = [
+  { id: '11111111-0000-4000-8000-000000000001', nom: "Église Vase d'Honneur", adresse: '', lat: 5.3712, lng: -3.9871, precision_m: 9, utilisations: 12 },
+  { id: '11111111-0000-4000-8000-000000000002', nom: 'Salle ' + PIEGE_HTML, adresse: 'Cocody', lat: 5.36, lng: -3.99, precision_m: null, utilisations: 3 },
+];
+const LIEUX_MEMORISES = [];
+
 function jetonFactice(sub) {
   const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url');
   return b64({ alg: 'HS256', typ: 'JWT' }) + '.' + b64({
@@ -110,6 +117,11 @@ async function intercepterSupabase(page) {
       return p ? json(p) : json({ message: 'introuvable' }, 406);
     }
     if (url.pathname.startsWith('/rest/v1/kun_com_dms')) return json(MESSAGES);
+    if (url.pathname.startsWith('/rest/v1/kun_com_lieux')) return json(LIEUX);
+    if (url.pathname.startsWith('/rest/v1/rpc/kc_memoriser_lieu')) {
+      LIEUX_MEMORISES.push(JSON.parse(route.request().postData() || '{}'));
+      return json('22222222-0000-4000-8000-000000000009');
+    }
     if (url.pathname.startsWith('/rest/v1/')) return json([]);
     if (url.pathname.startsWith('/auth/v1/user')) return json({ id: MOI, aud: 'authenticated', app_metadata: { role: 'MEMBRE' } });
     if (url.pathname.startsWith('/auth/v1/')) return json({}, 400);
@@ -490,6 +502,101 @@ try {
     await contexte.close();
   });
 
+  await cas('lieux enregistrés et plan de préparation par pôle', async () => {
+    const { page, erreurs, contexte } = await nouvellePage(nav, base, sessionPour('RESP_SECTION'));
+    await contexte.grantPermissions(['geolocation']);
+    await contexte.setGeolocation({ latitude: 5.37125, longitude: -3.98705, accuracy: 11 });
+    await page.waitForSelector('#post-p_piege', { timeout: 15000 });
+    // Recherche dans les lieux : « l'église » trouve « Église Vase d'Honneur ».
+    const trouves = await page.evaluate(() => lieuxCorrespondants("l'église", db(SK.LIEUX, []).length ? db(SK.LIEUX, []) : [
+      { id: 'a', nom: "Église Vase d'Honneur", lat: 5, lng: -4, utilisations: 1 }, { id: 'b', nom: 'Salle polyvalente', lat: 5, lng: -4, utilisations: 9 }]).map((l) => l.nom));
+    assert.deepEqual(trouves, ["Église Vase d'Honneur"]);
+    // Plan piégé reçu du serveur : pôle inconnu et date invalide écartés, titres affichés comme du texte.
+    await page.evaluate(([piege]) => {
+      S.user.sections = ['cadrage'];
+      const posts = db(SK.POSTS, []);
+      const ev = posts.find((p) => p.id === 'ev_mission');
+      ev.preparation = assainirPreparation({
+        cadrage: { v: 1, taches: [{ id: 't1', titre: 'Tâche ' + piege, etapes: [{ id: 'e1', titre: 'Étape ' + piege, date: '2026-01-01");alert(1)//', fait: false }] }] },
+        regie: { v: 2, taches: [{ id: 't2', titre: 'Sonorisation', etapes: [{ id: 'e2', titre: 'Tester la console', date: '2020-01-01', fait: false }] }] },
+        pirate: { v: 1, taches: [{ id: 't3', titre: 'Intrus', etapes: [] }] },
+      });
+      dbSet(SK.POSTS, posts);
+      App.tab('planning');
+    }, [PIEGE_HTML]);
+    assert.ok((await page.textContent('body')).includes('Préparation · 0/2'), 'le lien Préparation résume l\'avancement');
+    await page.click('text=Préparation · 0/2');
+    const plan = await page.textContent('#preparation');
+    assert.ok(plan.includes('Tâche <img src=x') && plan.includes('Sans date') && !plan.includes('Intrus'), plan);
+    assert.ok(plan.includes('1 en retard'), 'l\'étape passée de la régie est en retard');
+    assert.equal(await page.$('#preparation img[src="x"]'), null);
+    // Le responsable du cadrage ajoute une tâche et une étape, puis la coche ;
+    // il ne peut pas toucher au plan de la régie.
+    await page.click('#preparation section[aria-label="Pôle Cadrage"] >> text=Ajouter une tâche');
+    await page.fill('#prepTitre', 'Communication');
+    await page.press('#prepTitre', 'Enter');
+    await page.fill('#prepTitre', 'Affiches imprimées');
+    await page.press('#prepTitre', 'Enter');
+    await page.click('#prepFormulaire >> text=Terminé');
+    await page.click('[aria-label="Marquer comme faite : Affiches imprimées"]');
+    const cadrage = await page.evaluate(() => db(SK.POSTS, []).find((p) => p.id === 'ev_mission').preparation.cadrage);
+    assert.equal(cadrage.taches[1].titre, 'Communication');
+    assert.equal(cadrage.taches[1].etapes[0].fait, true);
+    assert.ok(cadrage.v >= 2 && cadrage.maj_par === MOI);
+    assert.equal(await page.$$eval('#preparation section[aria-label="Pôle Régie"] button[aria-pressed]', (b) => b.length), 0);
+    assert.equal(await page.$('#preparation section[aria-label="Pôle Régie"] >> text=Ajouter une tâche'), null);
+    await page.evaluate("App.prepChoisirVue('dates')");
+    assert.ok((await page.textContent('#preparation')).includes('En retard'));
+    await page.evaluate('App.fermerPreparation()');
+    // Formulaire d'événement : lieux enregistrés proposés, position relevée sur place.
+    await page.evaluate('App.openCreateEvent()');
+    await page.waitForFunction(() => db(SK.LIEUX, []).length === 2);
+    await page.evaluate('render()');
+    assert.ok((await page.textContent('#eventLieuxProposes')).includes("Église Vase d'Honneur"));
+    assert.equal(await page.$('#eventLieuxProposes img[src="x"]'), null);
+    await page.fill('#eventLocation', "l'eglise");
+    await page.evaluate("App.onEventLocationInput(\"l'eglise\")");
+    await page.click("#eventLieuxProposes >> text=Église Vase d'Honneur");
+    assert.equal(await page.evaluate(() => S.createEventData.lat), 5.3712);
+    await page.click('text=Changer');
+    await page.fill('#eventLocation', 'Grande salle');
+    await page.click('text=Utiliser ma position actuelle');
+    await page.waitForFunction(() => S.createEventData && S.createEventData.accuracy === 11, null, { timeout: 15000 });
+    await page.fill('#eventTitle', 'Veillée');
+    await page.evaluate('App.saveEvent(null)');
+    await page.waitForFunction(() => !S.createEventOpen);
+    const ev = await page.evaluate(() => db(SK.POSTS, []).find((p) => p.eventTitle === 'Veillée'));
+    assert.equal(ev.eventPlaceName, 'Grande salle');
+    assert.equal(ev.eventGeoAccuracy, 11);
+    await page.waitForTimeout(300);
+    assert.deepEqual(LIEUX_MEMORISES.at(-1), { p_nom: 'Grande salle', p_adresse: '', p_lat: 5.37125, p_lng: -3.98705, p_precision: 11 });
+    assert.deepEqual(erreurs, []);
+    assert.equal(await page.evaluate(() => window.__xss), undefined);
+    await contexte.close();
+  });
+
+  await cas('un membre consulte le plan de préparation sans pouvoir le modifier', async () => {
+    const { page, erreurs, contexte } = await nouvellePage(nav, base, sessionPour('MEMBRE'));
+    await page.waitForSelector('#post-p_piege', { timeout: 15000 });
+    await page.evaluate(() => {
+      const posts = db(SK.POSTS, []);
+      posts.find((p) => p.id === 'ev_mission').preparation = { cadrage: { v: 1, taches: [{ id: 't1', titre: 'Caméras', etapes: [{ id: 'e1', titre: 'Charger les batteries', date: '', fait: false }] }] } };
+      dbSet(SK.POSTS, posts);
+      App.tab('planning');
+    });
+    await page.click('text=Préparation · 0/1');
+    const plan = await page.textContent('#preparation');
+    assert.ok(plan.includes('Caméras') && plan.includes('Charger les batteries'));
+    assert.equal(await page.$('#preparation button[aria-pressed]'), null);
+    assert.equal(await page.$('#preparation >> text=Ajouter une tâche'), null);
+    assert.equal(await page.$('#preparation >> text=Ajouter une étape'), null);
+    // L'action est refusée même appelée directement.
+    await page.evaluate("App.prepBasculer('cadrage', 't1', 'e1')");
+    assert.equal(await page.evaluate(() => db(SK.POSTS, []).find((p) => p.id === 'ev_mission').preparation.cadrage.taches[0].etapes[0].fait), false);
+    assert.deepEqual(erreurs, []);
+    await contexte.close();
+  });
+
   // Tour de tous les écrans et panneaux : aucune erreur JavaScript, aucun
   // écran « Une erreur est survenue ». Fait pour un membre et pour l'Admin
   // (qui voit davantage de panneaux).
@@ -512,12 +619,15 @@ try {
         "App.openUserProfile('" + AUTRE + "')", "App.tab('home')",
         'App.ouvrirIndispos()', 'App.fermerIndispos()',
         'App.ouvrirBoite()', 'App.fermerBoite()',
+        "App.tab('planning')", "App.ouvrirPreparation('ev_mission')", "App.prepChoisirVue('dates')", "App.prepChoisirVue('poles')", 'App.fermerPreparation()',
       ];
       if (role === 'GRAND_RESPONSABLE') {
         etapes.push('App.openCreateEvent()', 'App.closeCreateEvent && App.closeCreateEvent()',
                     'App.openRolesPanel()', 'App.closeRolesPanel && App.closeRolesPanel()',
                     'App.openStorageStats()', 'App.closeStorageStats()',
-                    'App.ouvrirTableauDeBord()', 'App.fermerTableauDeBord()');
+                    'App.ouvrirTableauDeBord()', 'App.fermerTableauDeBord()',
+                    'App.ouvrirLieux()', 'App.fermerLieux()',
+                    "App.ouvrirPreparation('ev_mission')", "App.prepAjouterPole('photo')", 'App.fermerPreparation()');
       }
       etapes.push('ouvrirVisite()', "document.querySelector('#_kcVisite [data-passer]').click()",
                   'ouvrirAideInstallation()', "document.querySelector('#_kcInstallation [data-fermer]').click()");
