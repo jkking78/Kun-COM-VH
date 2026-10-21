@@ -79,7 +79,7 @@
   // comporte de façon inexplicable. On vérifie donc que les briques essentielles
   // sont bien là avant de démarrer, et on recharge UNE fois en contournant le
   // cache si ce n'est pas le cas.
-  var APP_VERSION = 'v153'; window.APP_VERSION = APP_VERSION; // Exposé pour l'écran Paramètres (ligne « Version »).
+  var APP_VERSION = 'v154'; window.APP_VERSION = APP_VERSION; // Exposé pour l'écran Paramètres (ligne « Version »).
   // Nom du cache tenu par le service worker pour CETTE version. Doit rester
   // aligné sur CACHE_NAME dans sw.js.
   var CACHE_COURANT = 'kun-com-pwa-' + APP_VERSION;
@@ -172,6 +172,28 @@
     rendreProtege();
     try { syncSupabaseToLocal(); } catch(e) { console.warn("syncSupabaseToLocal init error:", e); }
     try { tryOpenDeepLinkedPost(); } catch(e){}
+    // Notification touchée sur le téléphone : ouverture sur l'écran concerné,
+    // depuis l'adresse (?kc=…, application fermée) ou par message du service
+    // worker (application déjà ouverte).
+    try {
+      var kc = new URLSearchParams(location.search).get('kc');
+      if (kc) {
+        history.replaceState(null, '', location.pathname);
+        if (S.user) App.ouvrirCible(kc);
+      }
+      if (navigator.serviceWorker) navigator.serviceWorker.addEventListener('message', function(ev) {
+        if (ev.data && ev.data.type === 'kc-ouvrir' && S.user) App.ouvrirCible(ev.data.cible);
+      });
+    } catch(e) {}
+    // Messages : relève régulière pour la pastille de la boîte de réception.
+    try {
+      var releverMessages = function() {
+        if (!S.user || compteEnAttente(S.user) || document.hidden) return;
+        App._chargerMessages().then(function(nouveau){ if (nouveau && !saisieEnCours()) render(); });
+      };
+      setTimeout(releverMessages, 3000);
+      setInterval(releverMessages, 60000);
+    } catch(e) {}
     // Visite guidée au premier lancement.
     try { proposerVisiteSiNouvelle(); } catch(e) {}
     // Présence : battement périodique tant que l'app est au premier plan.

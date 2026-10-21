@@ -189,6 +189,42 @@
     }, function(e){ console.warn('pushNotificationToProfile error:', e); });
   }
 
+  // ============================================================
+  // NOTIFICATIONS SUR LE TÉLÉPHONE (Web Push, Edge Function « push »)
+  // ============================================================
+  function notifierTelephone(destinataire, notifId) {
+    try {
+      if (!supabase || !supabase.functions || !destinataire || !notifId) return;
+      supabase.functions.invoke('push', { body: { action: 'notifier', destinataire: destinataire, notifId: notifId } })
+        .then(function(){}, function(){});
+    } catch(e) {}
+  }
+  function pushDisponible() {
+    return 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+  }
+  // Préférences par type (Paramètres). Les convocations ne se coupent pas ;
+  // les J'aime sont coupés par défaut (même règle côté serveur).
+  var PREFS_NOTIF = [
+    { id: 'rappels', libelle: 'Rappels de service', desc: 'La veille, 2 h avant, oubli de pointage' },
+    { id: 'messages', libelle: 'Messages', desc: 'Messages privés et canaux de pôle' },
+    { id: 'mentions', libelle: 'Mentions', desc: 'Quand on te cite avec @' },
+    { id: 'commentaires', libelle: 'Commentaires', desc: 'Sur tes publications' },
+    { id: 'jaime', libelle: 'J\'aime', desc: 'Sur tes publications' },
+    { id: 'autres', libelle: 'Le reste', desc: 'Nouveaux membres, publications de pôle, bilans' }
+  ];
+  function prefNotifActive(u, id) {
+    var p = (u && u.preferencesNotif) || {};
+    if (Object.prototype.hasOwnProperty.call(p, id)) return p[id] !== false;
+    return id !== 'jaime';
+  }
+  function cleEnOctets(b64) {
+    var b = String(b64).replace(/-/g, '+').replace(/_/g, '/');
+    var bin = atob(b + '==='.slice((b.length + 3) % 4));
+    var out = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  }
+
   function sendNotificationToUser(targetUserId, notifData) {
     if (!targetUserId) return;
     var allUsers = db(SK.USERS, []);
@@ -242,7 +278,11 @@
       sauverSession(targetUser);
     }
     
-    pushNotificationToProfile(targetUserId, newNotif, targetUser).then(function(){}, function(e){ console.warn('sendNotificationToUser push error:', e); });
+    pushNotificationToProfile(targetUserId, newNotif, targetUser).then(function(r){
+      // Une fois la notification enregistrée dans la fiche du destinataire, le
+      // serveur peut la relayer sur son téléphone (il vérifie qu'elle y est).
+      if (!(r && r.error) && !(S.user && S.user.id === targetUserId)) notifierTelephone(targetUserId, newNotif.id);
+    }, function(e){ console.warn('sendNotificationToUser push error:', e); });
 
     if (S.user && S.user.id === targetUserId) {
       toast('🔔 ' + notifData.title + ': ' + notifData.text, 'info');
@@ -352,7 +392,9 @@
     // propre version serveur fraîche avant d'y ajouter la notification, au lieu
     // d'écraser tout le monde avec cette copie locale potentiellement périmée.
     touched.forEach(function(u) {
-      pushNotificationToProfile(u.id, Object.assign({}, notif), u).then(function(){}, function(e){ console.warn('Annonce nouveau membre :', e); });
+      pushNotificationToProfile(u.id, Object.assign({}, notif), u).then(function(r){
+        if (!(r && r.error)) notifierTelephone(u.id, notif.id);
+      }, function(e){ console.warn('Annonce nouveau membre :', e); });
     });
   }
 

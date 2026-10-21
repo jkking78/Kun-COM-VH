@@ -854,6 +854,74 @@
       }
       toast(statut === 'confirme' ? 'Présence confirmée.' : 'Réponse envoyée à l\'organisateur.', 'success');
     },
+    // ---- Échange de service ----
+    _majCleEvenement: function(eventId, champ, valeur) {
+      var uid = S.user.id;
+      var applique = function(p) {
+        p[champ] = Object.assign({}, p[champ] || {});
+        if (valeur) p[champ][uid] = valeur; else delete p[champ][uid];
+      };
+      var posts = db(SK.POSTS, []);
+      var local = posts.find(function(p){ return p.id === eventId; });
+      if (local) { applique(local); dbSet(SK.POSTS, posts); }
+      render();
+      App.ecrirePostFrais(eventId, applique);
+      return local;
+    },
+    proposerEchange: function(eventId) {
+      if (!S.user) return;
+      var ev = db(SK.POSTS, []).find(function(p){ return p.id === eventId; });
+      var a = ev && (ev.assignments || []).find(function(x){ return x && x.userId === S.user.id; });
+      if (!a) return;
+      App._majCleEvenement(eventId, 'echanges', { tache: a.task || '', le: Date.now() });
+      // Prévenir les membres qui peuvent reprendre la place.
+      var e = { uid: S.user.id, assignation: a };
+      db(SK.USERS, []).forEach(function(m) {
+        if (!peutReprendre(m, ev, e)) return;
+        sendNotificationToUser(m.id, {
+          type: 'ECHANGE', title: 'Place à reprendre',
+          text: 'propose sa place' + (a.task ? ' (' + a.task + ')' : '') + ' pour « ' + (ev.eventTitle || 'un service') + ' ».',
+          targetId: eventId
+        });
+      });
+      toast('Ta place est proposée aux membres du pôle.', 'success');
+    },
+    retirerEchange: function(eventId) { if (S.user) App._majCleEvenement(eventId, 'echanges', null); },
+    reprendreEchange: function(eventId, pour) {
+      if (!S.user) return;
+      var ev = App._majCleEvenement(eventId, 'reprises', { pour: pour, le: Date.now() });
+      // Le responsable doit valider ; le membre remplacé est prévenu.
+      var titre = (ev && ev.eventTitle) || 'un service';
+      var aPrevenir = [pour];
+      if (ev && ev.userId) aPrevenir.push(ev.userId);
+      aPrevenir.filter(function(id, i, t){ return id && id !== S.user.id && t.indexOf(id) === i; }).forEach(function(id) {
+        sendNotificationToUser(id, { type: 'ECHANGE', title: 'Échange de service', text: 'propose de reprendre une place pour « ' + titre + ' ». À valider.', targetId: eventId });
+      });
+      toast('Proposition envoyée. Le responsable doit la valider.', 'success');
+    },
+    annulerReprise: function(eventId) { if (S.user) App._majCleEvenement(eventId, 'reprises', null); },
+    validerEchange: function(eventId, pour, repreneur) {
+      var ev = db(SK.POSTS, []).find(function(p){ return p.id === eventId; });
+      if (!ev || !(ev.userId === S.user.id || canManageEventAssignments(ev, S.user))) { toast('Seul l\'organisateur valide un échange.', 'error'); return; }
+      var r = db(SK.USERS, []).find(function(x){ return x.id === repreneur; });
+      if (!r) { toast('Membre introuvable.', 'error'); return; }
+      var remplacer = function(p) {
+        p.assignments = (p.assignments || []).map(function(a) {
+          if (!a || a.userId !== pour) return a;
+          return Object.assign({}, a, { userId: repreneur, userName: (r.prenom + ' ' + (r.nom || '')).trim() });
+        });
+        p.assignmentsUpdatedAt = Date.now();
+      };
+      var posts = db(SK.POSTS, []);
+      var local = posts.find(function(p){ return p.id === eventId; });
+      if (local) { remplacer(local); dbSet(SK.POSTS, posts); }
+      render();
+      App.ecrirePostFrais(eventId, remplacer);
+      var titre = ev.eventTitle || 'le service';
+      sendNotificationToUser(repreneur, { type: 'EVENT_ASSIGNED', title: 'Échange validé', text: 'Tu remplaces ' + nomCourt(pour) + ' pour « ' + titre + ' ».', targetId: eventId });
+      sendNotificationToUser(pour, { type: 'ECHANGE', title: 'Échange validé', text: nomCourt(repreneur) + ' te remplace pour « ' + titre + ' ».', targetId: eventId });
+      toast('Échange validé.', 'success');
+    },
     annulerReponseConvocation: function(eventId) {
       if (!S.user) return;
       var uid = S.user.id;
@@ -1028,40 +1096,74 @@
     // ============================================================
     // MESSAGERIE PRIVÉE (simple, 1-à-1)
     // ============================================================
+    // Boîte de réception : toutes ses conversations (canaux de pôle compris).
+    ouvrirBoite: async function() {
+      if (!S.user) return;
+      S.boiteOpen = true; render();
+      await App._chargerMessages();
+      if (S.boiteOpen) render();
+    },
+    fermerBoite: function() { S.boiteOpen = false; render(); },
+    ouvrirTableauDeBord: function() { if (isGrandResponsable(S.user)) { S.tableauOpen = true; render(); } },
+    fermerTableauDeBord: function() { S.tableauOpen = false; render(); },
+    relancerConvocation: function(eventId, userId) {
+      var ev = db(SK.POSTS, []).find(function(p){ return p.id === eventId; });
+      if (!ev) return;
+      sendNotificationToUser(userId, {
+        type: 'CONVOCATION', title: 'Ta réponse est attendue',
+        text: 'Peux-tu confirmer ta présence pour « ' + (ev.eventTitle || 'le service') + ' » ?',
+        targetId: eventId
+      });
+      toast('Relance envoyée à ' + nomCourt(userId) + '.', 'success');
+    },
+    // Relit les messages récents visibles (les siens et ceux de ses pôles :
+    // c'est la base qui filtre) et les fusionne au cache local.
+    _chargerMessages: async function(requete) {
+      if (!supabase || !S.user) return false;
+      try {
+        var res = await (requete || supabase.from('kun_com_dms').select('*').order('sent_at', { ascending: false }).limit(300));
+        if (!res || !res.data) return false;
+        var byId = {};
+        db(SK.DMS, []).forEach(function(m){ if (m && m.id) byId[m.id] = m; });
+        var nouveau = false;
+        res.data.forEach(function(row) {
+          var m = row.content;
+          if (m && m.id) { if (!byId[m.id]) nouveau = true; byId[m.id] = m; }
+        });
+        dbSet(SK.DMS, Object.keys(byId).map(function(k){ return byId[k]; }));
+        return nouveau;
+      } catch(e) { console.warn('Erreur chargement messages:', e); return false; }
+    },
+    _requeteConversation: function(autre) {
+      var q = supabase.from('kun_com_dms').select('*');
+      q = estCanal(autre) ? q.eq('to_id', autre)
+        : q.or('and(from_id.eq.' + S.user.id + ',to_id.eq.' + autre + '),and(from_id.eq.' + autre + ',to_id.eq.' + S.user.id + ')');
+      return q.order('sent_at', { ascending: true });
+    },
+    _messagesConversation: function(autre) {
+      return db(SK.DMS, []).filter(function(m){ return dansConversation(m, autre); })
+        .sort(function(a,b){ return a.timestamp - b.timestamp; });
+    },
+
+    // ============================================================
+    // MESSAGERIE : privée (1-à-1) ou canal de pôle (« pole:<id> »)
+    // ============================================================
     openDirectMessage: async function(userId) {
       if (!S.user || !userId || userId === S.user.id) return;
+      if (estCanal(userId) && mesCanaux(S.user).indexOf(userId) === -1) { toast('Ce canal est réservé aux membres du pôle.', 'info'); return; }
       S.dmOpen = true;
       S.dmWithUserId = userId;
       S.dmLoading = true;
-      var local = db(SK.DMS, []);
-      S.dmMessages = local.filter(function(m) {
-        return (m.fromId === S.user.id && m.toId === userId) || (m.fromId === userId && m.toId === S.user.id);
-      }).sort(function(a,b){ return a.timestamp - b.timestamp; });
+      S.dmMessages = App._messagesConversation(userId);
+      marquerConversationLue(userId);
       render();
       setTimeout(function(){ var el = document.getElementById('dmMessagesList'); if (el) el.scrollTop = el.scrollHeight; }, 50);
 
       if (supabase) {
-        try {
-          var res = await supabase.from('kun_com_dms')
-            .select('*')
-            .or('and(from_id.eq.' + S.user.id + ',to_id.eq.' + userId + '),and(from_id.eq.' + userId + ',to_id.eq.' + S.user.id + ')')
-            .order('sent_at', { ascending: true });
-          if (res && res.data) {
-            var all = db(SK.DMS, []);
-            var byId = {};
-            all.forEach(function(m){ byId[m.id] = m; });
-            res.data.forEach(function(row) {
-              var m = row.content;
-              if (m && m.id) byId[m.id] = m;
-            });
-            var merged = Object.keys(byId).map(function(k){ return byId[k]; });
-            dbSet(SK.DMS, merged);
-            S.dmMessages = merged.filter(function(m) {
-              return (m.fromId === S.user.id && m.toId === userId) || (m.fromId === userId && m.toId === S.user.id);
-            }).sort(function(a,b){ return a.timestamp - b.timestamp; });
-          }
-        } catch(e) { console.warn('Erreur chargement messages:', e); }
+        await App._chargerMessages(App._requeteConversation(userId));
+        if (S.dmWithUserId === userId) S.dmMessages = App._messagesConversation(userId);
       }
+      marquerConversationLue(userId);
       S.dmLoading = false;
       render();
       setTimeout(function(){ var el = document.getElementById('dmMessagesList'); if (el) el.scrollTop = el.scrollHeight; }, 50);
@@ -1079,37 +1181,17 @@
       if (!supabase) return;
       window._dmPollInterval = setInterval(async function() {
         if (!S.dmOpen || !S.dmWithUserId || !S.user) return;
-        var otherId = S.dmWithUserId;
-        try {
-          var res = await supabase.from('kun_com_dms')
-            .select('*')
-            .or('and(from_id.eq.' + S.user.id + ',to_id.eq.' + otherId + '),and(from_id.eq.' + otherId + ',to_id.eq.' + S.user.id + ')')
-            .order('sent_at', { ascending: true });
-          if (res && res.data) {
-            var all = db(SK.DMS, []);
-            var byId = {};
-            all.forEach(function(m){ byId[m.id] = m; });
-            var hadNew = false;
-            res.data.forEach(function(row) {
-              var m = row.content;
-              if (m && m.id && !byId[m.id]) hadNew = true;
-              if (m && m.id) byId[m.id] = m;
-            });
-            if (hadNew) {
-              var merged = Object.keys(byId).map(function(k){ return byId[k]; });
-              dbSet(SK.DMS, merged);
-              S.dmMessages = merged.filter(function(m) {
-                return (m.fromId === S.user.id && m.toId === otherId) || (m.fromId === otherId && m.toId === S.user.id);
-              }).sort(function(a,b){ return a.timestamp - b.timestamp; });
-              var list = document.getElementById('dmMessagesList');
-              if (list) {
-                var wasAtBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 60;
-                list.innerHTML = S.dmMessages.map(function(m){ return renderDmBubble(m); }).join('');
-                if (wasAtBottom) list.scrollTop = list.scrollHeight;
-              }
-            }
-          }
-        } catch(e) { /* silencieux : nouvelle tentative au prochain cycle */ }
+        var autre = S.dmWithUserId;
+        var nouveau = await App._chargerMessages(App._requeteConversation(autre));
+        if (!nouveau || S.dmWithUserId !== autre) return;
+        S.dmMessages = App._messagesConversation(autre);
+        marquerConversationLue(autre);
+        var list = document.getElementById('dmMessagesList');
+        if (list) {
+          var wasAtBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 60;
+          list.innerHTML = S.dmMessages.map(function(m){ return renderDmBubble(m); }).join('');
+          if (wasAtBottom) list.scrollTop = list.scrollHeight;
+        }
       }, 4000);
     },
     _stopDmPolling: function() {
@@ -1120,27 +1202,48 @@
       var input = document.getElementById('dmInput');
       var txt = input ? input.value.trim() : '';
       if (!txt || !S.user || !S.dmWithUserId) return;
-      var newMsg = { id: 'dm' + Date.now() + Math.floor(Math.random()*1000), fromId: S.user.id, toId: S.dmWithUserId, text: txt, timestamp: Date.now() };
+      var autre = S.dmWithUserId;
+      var newMsg = { id: 'dm' + Date.now() + Math.floor(Math.random()*1000), fromId: S.user.id, toId: autre, text: txt, timestamp: Date.now() };
       var all = db(SK.DMS, []);
       all.push(newMsg);
       dbSet(SK.DMS, all);
       S.dmMessages.push(newMsg);
+      marquerConversationLue(autre);
       if (supabase) {
         supabase.from('kun_com_dms').upsert({ id: newMsg.id, from_id: newMsg.fromId, to_id: newMsg.toId, content: newMsg, sent_at: new Date(newMsg.timestamp).toISOString() }, { onConflict: 'id' }).then(function(){}, function(e){ console.warn('Erreur envoi message:', e); });
       }
-      // targetId = l'ID du MESSAGE (unique), pas celui de l'expéditeur : le
-      // garde-fou anti-doublon de sendNotificationToUser compare type+targetId+
-      // senderId, et un targetId constant (l'expéditeur) pour toute la
-      // conversation faisait passer le 2e message et les suivants pour des
-      // doublons du premier — ils étaient donc silencieusement ignorés. Le clic
-      // sur une notif MESSAGE ouvre la conversation via notif.senderId, jamais
-      // via targetId : ce changement ne touche donc pas la navigation.
-      sendNotificationToUser(S.dmWithUserId, {
-        type: 'MESSAGE',
-        title: 'Nouveau message',
-        text: (S.user.prenom || 'Quelqu\'un') + ' : "' + txt.slice(0, 40) + (txt.length > 40 ? '…' : '') + '"',
-        targetId: newMsg.id
-      });
+      var extrait = txt.slice(0, 40) + (txt.length > 40 ? '…' : '');
+      if (estCanal(autre)) {
+        // Canal : une notification par membre du pôle, et une seule tant qu'il
+        // n'a pas lu la précédente (pas de rafale pendant une discussion).
+        var pole = poleDuCanal(autre);
+        db(SK.USERS, []).forEach(function(m) {
+          if (!m || m.id === S.user.id || compteEnAttente(m)) return;
+          if (getUserSections(m).indexOf(autre.slice(5)) === -1) return;
+          var dejaNonLue = (m.notifications || []).some(function(n){ return n.type === 'CANAL' && !n.read && String(n.targetId || '').indexOf(autre + '#') === 0; });
+          if (dejaNonLue) return;
+          sendNotificationToUser(m.id, {
+            type: 'CANAL',
+            title: 'Canal ' + (pole ? pole.nom : 'du pôle'),
+            text: (S.user.prenom || 'Quelqu\'un') + ' : "' + extrait + '"',
+            targetId: autre + '#' + newMsg.id
+          });
+        });
+      } else {
+        // targetId = l'ID du MESSAGE (unique), pas celui de l'expéditeur : le
+        // garde-fou anti-doublon de sendNotificationToUser compare type+targetId+
+        // senderId, et un targetId constant (l'expéditeur) pour toute la
+        // conversation faisait passer le 2e message et les suivants pour des
+        // doublons du premier — ils étaient donc silencieusement ignorés. Le clic
+        // sur une notif MESSAGE ouvre la conversation via notif.senderId, jamais
+        // via targetId : ce changement ne touche donc pas la navigation.
+        sendNotificationToUser(autre, {
+          type: 'MESSAGE',
+          title: 'Nouveau message',
+          text: (S.user.prenom || 'Quelqu\'un') + ' : "' + extrait + '"',
+          targetId: newMsg.id
+        });
+      }
       if (input) input.value = '';
       var list = document.getElementById('dmMessagesList');
       if (list) {
@@ -1487,6 +1590,10 @@
 
       if (notif && (notif.type === 'MESSAGE')) {
         App.openDirectMessage(notif.senderId);
+        return;
+      }
+      if (notif && notif.type === 'CANAL') {
+        App.openDirectMessage(String(notif.targetId || '').split('#')[0]);
         return;
       }
       if (notif && (notif.type === 'FOLLOW' || notif.type === 'NEW_MEMBER')) {
@@ -1879,6 +1986,11 @@
       // Déconnexion RÉELLE : couper la session Supabase (sinon getSession() au
       // rechargement reconnecte automatiquement). onAuthStateChange remettra
       // l'écran de connexion.
+      // Ce téléphone ne doit plus recevoir les notifications du compte quitté.
+      try {
+        var subPush = await App._abonnementPush();
+        if (subPush && supabase) await supabase.from('kun_com_push_abonnements').delete().eq('id', subPush.endpoint);
+      } catch(e) {}
       try { if (supabase && supabase.auth) await supabase.auth.signOut(); } catch(e) { console.warn('signOut:', e); }
       localStorage.removeItem(SK.SESS); sessionStorage.removeItem(SK.SESS);
       S.user=null; S.jwtRole=null; S.jwtApprouve=false; S.auth='login'; S.tab='home'; render();
@@ -2258,8 +2370,69 @@
       } catch(e) { toast('Échec de la réinitialisation.', 'error'); }
     },
     closeAdminReset: function() { S.adminResetResult = null; render(); },
-    openSettings: function() { S.settingsOpen = true; render(); },
+    openSettings: function() { S.settingsOpen = true; render(); App.verifierEtatPush(); },
     closeSettings: function() { S.settingsOpen = false; render(); },
+
+    // ---- Notifications sur le téléphone ----
+    _abonnementPush: async function() {
+      if (!pushDisponible()) return null;
+      var reg = await navigator.serviceWorker.getRegistration();
+      return reg ? await reg.pushManager.getSubscription() : null;
+    },
+    verifierEtatPush: async function() {
+      try {
+        var sub = await App._abonnementPush();
+        var etat = sub ? 'actif' : 'inactif';
+        if (S.pushEtat !== etat) { S.pushEtat = etat; render(); }
+      } catch(e) {}
+    },
+    activerPush: async function() {
+      if (!pushDisponible() || !S.user || !supabase) { toast('Notifications indisponibles sur cet appareil.', 'error'); return; }
+      S.pushEtat = 'encours'; render();
+      try {
+        var permission = await Notification.requestPermission();
+        if (permission !== 'granted') { S.pushEtat = 'inactif'; render(); toast('Autorisation refusée : rien ne sera envoyé sur ce téléphone.', 'info'); return; }
+        var cle = await supabase.functions.invoke('push', { body: { action: 'cle' } });
+        if (!cle || cle.error || !cle.data || !cle.data.publique) throw new Error('clé indisponible');
+        var reg = await navigator.serviceWorker.ready;
+        var sub = await reg.pushManager.getSubscription() ||
+          await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: cleEnOctets(cle.data.publique) });
+        var res = await supabase.from('kun_com_push_abonnements')
+          .upsert({ id: sub.endpoint, user_id: S.user.id, abonnement: sub.toJSON() }, { onConflict: 'id' });
+        if (res && res.error) throw res.error;
+        S.pushEtat = 'actif'; render();
+        toast('Notifications activées sur ce téléphone.', 'success');
+      } catch(e) {
+        console.warn('activerPush :', e);
+        S.pushEtat = 'inactif'; render();
+        toast('Activation impossible pour le moment. Réessaie plus tard.', 'error');
+      }
+    },
+    desactiverPush: async function() {
+      try {
+        var sub = await App._abonnementPush();
+        if (sub) {
+          if (supabase) await supabase.from('kun_com_push_abonnements').delete().eq('id', sub.endpoint);
+          await sub.unsubscribe();
+        }
+      } catch(e) { console.warn('desactiverPush :', e); }
+      S.pushEtat = 'inactif'; render();
+      toast('Notifications coupées sur ce téléphone.', 'success');
+    },
+    basculerPrefNotif: function(id) {
+      if (!S.user) return;
+      var prefs = Object.assign({}, S.user.preferencesNotif || {});
+      prefs[id] = !prefNotifActive(S.user, id);
+      App._majMonProfil({ preferencesNotif: prefs });
+    },
+    // Écran ouvert par le toucher d'une notification (voir sw.js).
+    ouvrirCible: function(cible) {
+      cible = String(cible || '');
+      if (cible.indexOf('dm:') === 0) { App.openDirectMessage(cible.slice(3)); return; }
+      if (cible.indexOf('pole:') === 0) { App.openDirectMessage(cible); return; }
+      if (cible === 'planning') { App.tab('planning'); return; }
+      App.openNotifications();
+    },
     copyAdminResetPw: function() {
       var r = S.adminResetResult; if (!r) return;
       try {
@@ -2343,7 +2516,7 @@
       S.postOptionsOpen=false; S.selectedPostId=null; S.createEventOpen=false; S.editPostId=null;
       S.cropperOpen=false; S.membersListOpen=false; S.repostPostId=null; S.aboutEventPickerOpen=false;
       S.deleteAccountOpen=false; S.bulkDeleteConfirmOpen=false; S.viewersPostId=null; S.indisposOpen=false; S.declinerEvId=null;
-      S.storageStatsOpen=false; S.dmOpen=false; S.dmWithUserId=null; S.assignManagerId=null; S.viewerImage=null;
+      S.storageStatsOpen=false; S.dmOpen=false; S.dmWithUserId=null; S.boiteOpen=false; S.tableauOpen=false; S.assignManagerId=null; S.viewerImage=null;
       // Quitter un écran via la barre détruit proprement ce qui y vivait :
       // l'instance Cropper (canvas + listeners, sinon détachée du DOM mais
       // vivante) et l'interval de polling de la messagerie (sinon orphelin à
