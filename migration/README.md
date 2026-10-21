@@ -230,6 +230,14 @@ sur l'écran d'accueil (iOS 16.4 ou plus récent).
    qui n'envoie ni lieu ni plan).
 2. **Déployer le client v161.**
 
+**Rappels des étapes (v162)** : la fonction `push` (appelée toutes les 10 min,
+comme les autres rappels) prévient les responsables du pôle la veille d'une
+étape non cochée (à partir de 8 h) puis, une seule fois, le lendemain de sa
+date si elle est en retard ; à défaut de responsable, l'auteur du plan. Un
+message par événement et par pôle, qui renvoie au plan. Préférence
+« Rappels de service ». Rien à exécuter en SQL : redéployer `push` (avec
+`etapes.ts`).
+
 ## Limites restantes (connues)
 - La **position GPS** d'un pointage est fournie par le téléphone : le serveur
   borne l'heure, mais ne peut pas prouver la présence physique.

@@ -2735,6 +2735,13 @@
       if (cible.indexOf('dm:') === 0) { App.openDirectMessage(cible.slice(3)); return; }
       if (cible.indexOf('pole:') === 0) { App.openDirectMessage(cible); return; }
       if (cible === 'planning') { App.tab('planning'); return; }
+      // Rappel d'étape : le plan de préparation de l'événement.
+      if (cible.indexOf('prep:') === 0) {
+        App.tab('planning');
+        var evId = cible.slice(5);
+        if (db(SK.POSTS, []).some(function(p){ return p.id === evId; })) App.ouvrirPreparation(evId);
+        return;
+      }
       App.openNotifications();
     },
     copyAdminResetPw: function() {

@@ -214,7 +214,7 @@
   // Préférences par type (Paramètres). Les convocations ne se coupent pas ;
   // les J'aime sont coupés par défaut (même règle côté serveur).
   var PREFS_NOTIF = [
-    { id: 'rappels', libelle: 'Rappels de service', desc: 'La veille, 2 h avant, oubli de pointage' },
+    { id: 'rappels', libelle: 'Rappels de service', desc: 'La veille, 2 h avant, oubli de pointage, étapes à préparer' },
     { id: 'messages', libelle: 'Messages', desc: 'Messages privés et canaux de pôle' },
     { id: 'mentions', libelle: 'Mentions', desc: 'Quand on te cite avec @' },
     { id: 'commentaires', libelle: 'Commentaires', desc: 'Sur tes publications' },
