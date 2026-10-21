@@ -331,8 +331,13 @@
           '<p style="font-size:11.5px;color:var(--faint);margin:0 0 12px;line-height:1.4;">Elles servent à récupérer votre mot de passe sans e-mail. Notez bien vos réponses.</p>' +
           renderSecurityQAFields('signup', '', '') +
         '</div>' +
+        // Acceptation des conditions d'utilisation, obligatoire. L'état est gardé
+        // dans S.signupConditions : un re-rendu (choix d'un pôle) décochait sinon la case.
+        '<label style="display:flex;align-items:flex-start;gap:10px;font-size:13.5px;color:var(--ink2);line-height:1.45;cursor:pointer;margin-top:4px;">' +
+          '<input type="checkbox" id="signupConditions"' + (S.signupConditions ? ' checked' : '') + ' onchange="S.signupConditions=this.checked" style="width:22px;height:22px;margin:0;flex-shrink:0;accent-color:#0B63F6;-webkit-appearance:checkbox;appearance:auto;">' +
+          '<span>J\'ai lu et j\'accepte les <button type="button" onclick="ouvrirConditions()" style="background:none;border:none;padding:2px;margin:-2px 0;font:inherit;font-weight:700;color:#0B63F6;cursor:pointer;">conditions d\'utilisation</button>.</span>' +
+        '</label>' +
         '<button type="submit" style="' + btnStyle('#0B63F6') + 'margin-top:6px;">Créer mon compte</button>' +
-        '<p style="font-size:12.5px;color:var(--muted);text-align:center;line-height:1.5;margin:10px 0 0;">En créant un compte, vous acceptez les <button type="button" onclick="ouvrirConditions()" style="background:none;border:none;padding:4px 2px;margin:-4px 0;font:inherit;font-weight:700;color:#0B63F6;cursor:pointer;">conditions d\'utilisation</button>.</p>' +
       '</form>' +
 
       '<p style="text-align:center;font-size:13.5px;color:var(--faint);margin-top:20px;">' +

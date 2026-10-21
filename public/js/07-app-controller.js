@@ -1650,6 +1650,8 @@
       if (!prenom || !nom || !email || !pwd) { toast('Veuillez remplir tous les champs (numéro compris).', 'error'); return; }
       if (pwd.length < 8) { toast('Le mot de passe doit contenir au moins 8 caractères.', 'error'); return; }
       if (S.signupSections.length === 0) { toast('Veuillez choisir au moins 1 section.', 'error'); return; }
+      var accepte = (document.getElementById('signupConditions') || {}).checked;
+      if (!accepte) { toast('Pour créer un compte, coche « J\'accepte les conditions d\'utilisation ».', 'error'); return; }
       // Questions de sécurité obligatoires : c'est le seul moyen de récupération.
       var secQA = readSecurityQA('signup', true);
       if (!secQA) return;
@@ -1689,7 +1691,9 @@
           sections: userSecs, section_id: userSecs[0], role: 'MEMBRE', is_online: true,
           last_seen_at: new Date().toISOString(), last_action: 'Inscription',
           avatar_color: ['#0B63F6','#FF2D55','#0E9F6E','#D98A0B','#0B63F6','#AF52DE'][Math.floor(Math.random()*6)],
-          welcomeStars: 5, joined_at: Date.now() };   // bonus 5★ + date d'inscription
+          welcomeStars: 5, joined_at: Date.now(),   // bonus 5★ + date d'inscription
+          // Trace de l'acceptation des conditions (version et date).
+          conditionsAcceptees: { version: CONDITIONS_VERSION, le: Date.now() }, conditionsLues: CONDITIONS_VERSION };
 
         // Écrit le profil (SANS aucun secret : ni mot de passe, ni question de
         // sécurité). Autorisé par la policy RLS car id = auth.uid().

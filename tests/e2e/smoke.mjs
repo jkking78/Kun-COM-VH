@@ -145,9 +145,11 @@ try {
     const { page, erreurs, contexte } = await nouvellePage(nav, base, null);
     await page.waitForSelector('#loginSubmitBtn', { timeout: 15000 });
     await page.evaluate("App.nav('signup')");
+    assert.ok(await page.$('#signupConditions'), 'la case d\'acceptation doit être présente');
     await page.click('text=conditions d\'utilisation');
     await page.waitForSelector('#_kcConditions');
-    assert.ok((await page.textContent('#_kcConditions')).includes('Droit à l\'image'));
+    const texteConditions = await page.textContent('#_kcConditions');
+    assert.ok(texteConditions.includes('Droit à l\'image') && texteConditions.includes('07 99 44 24 02'));
     await page.click('#_kcConditions [data-fermer]');
     assert.equal(await page.$('#_kcConditions'), null, 'la fenêtre doit se fermer');
     assert.deepEqual(erreurs, []);
