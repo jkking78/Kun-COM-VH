@@ -36,7 +36,8 @@ create table public.kun_com_posts (
 );
 create table public.kun_com_profiles (
   id text primary key,
-  content jsonb
+  content jsonb,
+  created_at timestamptz default now()
 );
 create table public.kun_com_dms (
   id text primary key,
@@ -51,18 +52,21 @@ grant all on all tables in schema public to anon, authenticated;
 grant all on storage.objects to anon, authenticated;
 grant select on auth.users to authenticated;
 
--- Politiques telles que laissées par les migrations 01 et 04.
+-- Politiques telles que relevées sur la base de production (octobre 2026).
 alter table public.kun_com_posts enable row level security;
 alter table public.kun_com_profiles enable row level security;
 create policy "posts_select_public" on public.kun_com_posts for select to public using (true);
 create policy "posts_insert_auteur" on public.kun_com_posts for insert to authenticated
   with check (content ->> 'userId' = auth.uid()::text);
-create policy "posts_update_membres" on public.kun_com_posts for update to authenticated using (true) with check (true);
+create policy "posts_update_auteur_ou_admin" on public.kun_com_posts for update to authenticated
+  using (content ->> 'userId' = auth.uid()::text or (auth.jwt() -> 'app_metadata' ->> 'role') = 'GRAND_RESPONSABLE')
+  with check (content ->> 'userId' = auth.uid()::text or (auth.jwt() -> 'app_metadata' ->> 'role') = 'GRAND_RESPONSABLE');
 create policy "posts_delete_auteur_ou_admin" on public.kun_com_posts for delete to authenticated
   using (content ->> 'userId' = auth.uid()::text or (auth.jwt() -> 'app_metadata' ->> 'role') = 'GRAND_RESPONSABLE');
 create policy "profils_select_authentifie" on public.kun_com_profiles for select to authenticated using (true);
 create policy "profils_insert_proprietaire" on public.kun_com_profiles for insert to authenticated with check (id = auth.uid()::text);
-create policy "profils_update_membres" on public.kun_com_profiles for update to authenticated using (true) with check (true);
+create policy "profils_update_proprietaire" on public.kun_com_profiles for update to authenticated
+  using (id = auth.uid()::text) with check (id = auth.uid()::text);
 create policy p_storage_read on storage.objects for select using (bucket_id in ('avatars','post-media'));
 create policy p_storage_write on storage.objects for insert to authenticated with check (bucket_id in ('avatars','post-media'));
 create policy p_storage_update on storage.objects for update to authenticated using (bucket_id in ('avatars','post-media'));

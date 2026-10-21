@@ -519,6 +519,9 @@ create policy "profils_insert_proprietaire"
 -- Modification : reste ouverte aux membres connectés (J'aime, commentaires...)
 -- mais le déclencheur kc_posts_avant_maj filtre désormais le contenu.
 drop policy if exists "posts_update_membres" on public.kun_com_posts;
+-- Ancienne règle stricte (auteur ou Admin) réellement en place en production :
+-- elle bloquait tout J'aime / commentaire sur la publication d'un autre.
+drop policy if exists "posts_update_auteur_ou_admin" on public.kun_com_posts;
 create policy "posts_update_membres"
   on public.kun_com_posts for update
   to authenticated
@@ -528,6 +531,8 @@ create policy "posts_update_membres"
 -- Même principe pour les profils (notifications), filtrés par
 -- kc_profils_avant_ecriture.
 drop policy if exists "profils_update_membres" on public.kun_com_profiles;
+-- Ancienne règle stricte (propriétaire seul) : bloquait l'envoi de notifications.
+drop policy if exists "profils_update_proprietaire" on public.kun_com_profiles;
 create policy "profils_update_membres"
   on public.kun_com_profiles for update
   to authenticated
