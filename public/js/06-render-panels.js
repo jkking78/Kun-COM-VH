@@ -89,7 +89,7 @@
     var canManagePost = u.role === 'GRAND_RESPONSABLE' || post.userId === u.id;
     var commentItems = (post.comments || []).length > 0
       ? renderCommentsList(post.comments, post.id, canManagePost)
-      : '<div style="display:flex;flex-direction:column;align-items:center;padding:44px 20px;text-align:center;"><div style="font-size:44px;margin-bottom:10px;">💬</div><strong style="font-size:15px;color:var(--ink);">Aucun commentaire</strong><p style="font-size:13px;color:var(--faint);margin:4px 0 0;">Soyez le premier à commenter !</p></div>';
+      : '<div style="display:flex;flex-direction:column;align-items:center;padding:44px 20px;text-align:center;"><div style="margin-bottom:10px;display:flex;justify-content:center;">' + ico('message', 40, UI.faint, 1.6) + '</div><strong style="font-size:15px;color:var(--ink);">Aucun commentaire</strong><p style="font-size:13px;color:var(--faint);margin:4px 0 0;">Sois le premier à commenter.</p></div>';
 
     var emojis = ['❤️','👏','🔥','🙌','😍','😂','😮','💪'];
 
@@ -265,7 +265,7 @@
     if (S.declinerEvId === ev.id) {
       return '<div class="kc-apparait" style="background:var(--tile);border-radius:12px;padding:12px;margin-bottom:10px;">' +
         '<label for="motifDecline" style="display:block;font-size:13px;font-weight:700;color:var(--ink);margin-bottom:6px;">Pourquoi ne peux-tu pas venir&nbsp;?</label>' +
-        '<input id="motifDecline" type="text" maxlength="120" placeholder="Ex. voyage, examen, maladie" style="width:100%;min-height:44px;border:1px solid var(--line);border-radius:12px;padding:0 12px;background:var(--card);color:var(--ink);font-size:15px;box-sizing:border-box;">' +
+        '<input id="motifDecline" type="text" maxlength="120" placeholder="Ex. voyage, examen, maladie" class="kc-champ" style="' + styleChamp() + '">' +
         '<div style="display:flex;gap:8px;margin-top:8px;">' +
           bouton('App.annulerDecliner()', 'Annuler', 'var(--card)', 'var(--ink)') +
           bouton('App.repondreConvocation(\'' + jsArg(ev.id) + '\',\'decline\')', 'Envoyer', UI.bad, '#FFF') +
@@ -311,6 +311,7 @@
       }
     });
     var puce = function(n, libelle, fond, couleur) {
+      if (!n) { fond = 'var(--tile)'; couleur = 'var(--muted)'; }   // un zéro n'alerte pas
       return '<span style="font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px;background:' + fond + ';color:' + couleur + ';">' + n + ' ' + libelle + '</span>';
     };
     return '<div style="border-top:1px solid var(--line);margin-top:4px;padding-top:10px;margin-bottom:10px;">' +
@@ -441,7 +442,7 @@
       var bd = p.stars >= 4 ? 'var(--ok-line)' : p.stars >= 2 ? 'var(--warn-line)' : 'var(--bad-line)';
       return '<div style="background:' + bg + ';border:1px solid ' + bd + ';border-radius:12px;padding:10px 12px;margin-bottom:10px;">' +
         '<div style="font-size:13px;font-weight:800;color:' + c + ';">' +
-          (p.offsite ? '⛔ Pointage non validé · ' : 'Arrivée enregistrée · ') + (p.stars>0?'+':'') + p.stars + '★' +
+          (p.offsite ? 'Pointage non validé · ' : 'Arrivée enregistrée · ') + (p.stars>0?'+':'') + p.stars + '★' +
         '</div>' +
         '<div style="font-size:11px;color:var(--muted);margin-top:2px;line-height:1.4;">' +
           (p.delayMinutes <= 0 ? "À l'heure" : 'Retard de ' + p.delayMinutes + ' min') +
@@ -449,7 +450,7 @@
         '</div>' +
         (p.offsite
           ? '<div style="font-size:11px;color:var(--bad-ink);font-weight:700;margin-top:4px;line-height:1.4;">' +
-              'Pointage hors zone : vous deviez être à moins de ' + formatDistance(ON_SITE_RADIUS_M) + ' du lieu.' +
+              'Pointage hors zone : tu devais être à moins de ' + formatDistance(ON_SITE_RADIUS_M) + ' du lieu.' +
             '</div>'
           : '') +
       '</div>';
@@ -461,12 +462,12 @@
 
     if (now < startTs - CHECKIN_EARLY_WINDOW_MS) {
       return '<div style="background:var(--tile);border-radius:12px;padding:10px 12px;margin-bottom:10px;font-size:12px;color:var(--muted);line-height:1.4;">' +
-        'Vous êtes de service. Le pointage s\'ouvrira 3 h avant le début.' +
+        'Tu es de service. Le pointage s\'ouvrira 3 h avant le début.' +
       '</div>';
     }
     if (now > endTs + CHECKIN_LATE_WINDOW_MS) {
       return '<div style="background:var(--bad-soft);border:1px solid var(--bad-line);border-radius:12px;padding:10px 12px;margin-bottom:10px;font-size:12px;color:var(--bad-ink);font-weight:700;line-height:1.4;">' +
-        'Vous étiez de service et n\'avez pas enregistré votre arrivée.' +
+        'Tu étais de service et tu n\'as pas enregistré ton arrivée.' +
       '</div>';
     }
 
@@ -502,13 +503,9 @@
     var u = S.user || {};
     var evDate = post.eventDate ? new Date(post.eventDate + 'T00:00:00').toLocaleDateString('fr-FR', {weekday:'long', day:'numeric', month:'long'}) : '';
 
-    return '<div class="safe-top" style="position:fixed;inset:0;background:var(--card);z-index:10001;display:flex;flex-direction:column;animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
-      '<header style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--line);">' +
-        '<button onclick="App.closeAssignManager()" style="background:none;border:none;font-size:15px;color:var(--ink);cursor:pointer;">Annuler</button>' +
-        '<div style="font-weight:700;font-size:15px;">Assignations</div>' +
-        '<button onclick="App.saveAssignManager(this)" style="background:none;border:none;font-size:15px;font-weight:700;color:var(--lien);cursor:pointer;">Enregistrer</button>' +
-      '</header>' +
-      '<div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px;background:var(--tile);">' +
+    return '<div class="safe-top" style="position:fixed;inset:0;background:' + UI.page + ';z-index:10001;display:flex;flex-direction:column;animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
+      enTetePleinEcran('Assignations', 'App.closeAssignManager()', boutonEnTete('Enregistrer', 'App.saveAssignManager(this)')) +
+      '<div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:8px 16px 16px;background:' + UI.page + ';">' +
 
         '<div style="background:var(--accent-soft);border:1px solid var(--line2);border-radius:16px;padding:14px;margin-bottom:16px;">' +
           '<div style="font-size:11px;font-weight:800;color:var(--lien);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px;">Événement</div>' +
@@ -516,23 +513,23 @@
           '<div style="font-size:13px;color:var(--muted);margin-top:2px;">' + safeHtml(evDate) + (post.eventStart ? ' · ' + safeHtml(post.eventStart) : '') + (post.eventLocation ? ' · ' + safeHtml(post.eventLocation) : '') + '</div>' +
         '</div>' +
 
-        '<div style="background:var(--card);border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);">' +
+        '<div style="background:var(--card);border-radius:20px;padding:16px;">' +
           '<label style="font-size:15px;font-weight:700;color:var(--ink);display:block;margin-bottom:4px;">Qui est de service ?</label>' +
           '<div style="font-size:12px;color:var(--faint);margin-bottom:12px;line-height:1.4;">' +
             (isGrandResponsable(u)
-              ? 'Vous pouvez assigner n\'importe quel membre ou confier une tâche à un pôle entier.'
-              : 'Vous gérez les membres de votre pôle. Les assignations des autres pôles sont verrouillées (🔒) et resteront intactes.') +
+              ? 'Tu peux assigner n\'importe quel membre ou confier une tâche à un pôle entier.'
+              : 'Tu gères les membres de ton pôle. Les assignations des autres pôles sont verrouillées (' + ico('lock', 12, 'currentColor') + ') et resteront intactes.') +
           '</div>' +
           '<div id="eventAssignmentsList">' + App.renderAssignmentsList() + '</div>' +
           '<div style="display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);padding-top:12px;">' +
-            '<select id="assignUserSelect" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--line);font-size:15px;outline:none;background:var(--tile);">' +
+            '<select id="assignUserSelect" class="kc-champ" style="' + styleSelect() + '">' +
               '<option value="">Sélectionner un membre…</option>' +
               renderAssignSelectOptions(u, post.eventDate) +
             '</select>' +
-            '<input type="text" id="assignTaskInput" placeholder="Tâche / travail à faire..." style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--line);font-size:15px;outline:none;background:var(--tile);box-sizing:border-box;" />' +
+            '<input type="text" id="assignTaskInput" class="kc-champ" placeholder="Tâche à confier…" style="' + styleChamp() + '" />' +
             '<div style="display:flex;gap:8px;">' +
-              '<input type="datetime-local" id="assignDeadlineInput" style="flex:1;min-width:0;padding:10px;border-radius:8px;border:1px solid var(--line);font-size:15px;outline:none;background:var(--tile);" />' +
-              '<button onclick="App.addAssignment()" style="background:#0B5FE0;color:#FFF;border:none;border-radius:8px;padding:0 16px;font-weight:700;cursor:pointer;white-space:nowrap;">Ajouter</button>' +
+              '<input type="datetime-local" id="assignDeadlineInput" class="kc-champ" style="' + styleChamp() + 'flex:1;min-width:0;" />' +
+              '<button type="button" onclick="App.addAssignment()" style="background:' + UI.accent + ';color:#FFF;border:none;border-radius:999px;min-height:52px;padding:0 18px;font-size:15px;font-weight:700;cursor:pointer;white-space:nowrap;">Ajouter</button>' +
             '</div>' +
             '<div style="font-size:11px;color:var(--faint);line-height:1.4;">Avec une échéance, l\'assignation devient une <strong>tâche à livrer</strong> comptée dans les services du membre (à temps +5, en retard +2, non livrée −2).</div>' +
           '</div>' +
@@ -611,8 +608,8 @@
   function avatarConversation(autre, taille) {
     var t = taille || 44;
     if (estCanal(autre)) {
-      var p = poleDuCanal(autre) || { emoji: '💬', color: '#0B5FE0' };
-      return '<div style="width:' + t + 'px;height:' + t + 'px;border-radius:' + (t / 2) + 'px;background:' + p.color + '22;display:flex;align-items:center;justify-content:center;font-size:' + Math.round(t * 0.45) + 'px;flex-shrink:0;">' + p.emoji + '</div>';
+      var p = poleDuCanal(autre) || { id: '', color: '#0B5FE0' };
+      return '<div style="width:' + t + 'px;height:' + t + 'px;border-radius:' + (t / 2) + 'px;background:' + p.color + '1F;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + (p.id ? icoPole(p.id, Math.round(t * 0.46)) : ico('message', Math.round(t * 0.46), p.color)) + '</div>';
     }
     var o = db(SK.USERS, []).find(function(u){ return u.id === autre; }) || {};
     return o.avatar_url
@@ -654,13 +651,7 @@
     var lignes = groupe('Canaux de pôle', liste.filter(function(c){ return estCanal(c.autre); })) +
       groupe('Conversations', liste.filter(function(c){ return !estCanal(c.autre); }));
     return '<div class="safe-top" style="position:fixed;inset:0;z-index:9500;background:' + UI.page + ';display:flex;flex-direction:column;animation:fadeIn 0.2s ease-out;">' +
-      '<div style="display:flex;align-items:center;gap:12px;padding:20px 16px 8px;background:' + UI.page + ';">' +
-        '<button onclick="App.fermerBoite()" aria-label="Retour" style="background:' + UI.card + ';border:none;width:44px;height:44px;flex-shrink:0;border-radius:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
-          '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="' + UI.ink + '" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>' +
-        '</button>' +
-        '<h1 style="flex:1;font-family:' + UI.fontDisplay + ';font-size:28px;font-weight:800;letter-spacing:-0.5px;color:' + UI.ink + ';margin:0;">Messages</h1>' +
-        '<button onclick="App.fermerBoite();App.openMembersList()" style="min-height:40px;padding:0 14px;background:' + UI.accent + ';color:#FFF;border:none;border-radius:999px;font-size:13px;font-weight:700;cursor:pointer;">Nouveau</button>' +
-      '</div>' +
+      enTetePleinEcran('Messages', 'App.fermerBoite()', boutonEnTete('Nouveau', 'App.fermerBoite();App.openMembersList()')) +
       '<div id="boiteListe" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;background:' + UI.page + ';padding-bottom:24px;">' +
         (lignes || '<div style="padding:50px 24px;text-align:center;color:' + UI.faint + ';font-size:15px;">Aucune conversation. Ouvre le profil d\'un membre et touche « Message ».</div>') +
       '</div>' +
@@ -693,8 +684,8 @@
       ? '<div style="padding:40px 20px;text-align:center;color:var(--faint);font-size:13px;">Chargement…</div>'
       : (S.dmMessages.length > 0
           ? S.dmMessages.map(function(m){ return renderDmBubble(m); }).join('')
-          : '<div style="display:flex;flex-direction:column;align-items:center;padding:44px 20px;text-align:center;"><div style="font-size:40px;margin-bottom:8px;">💬</div><strong style="font-size:15px;color:var(--ink);">Aucun message</strong><p style="font-size:13px;color:var(--faint);margin:4px 0 0;">' +
-              (canal ? 'Lance la discussion du pôle : matériel, horaires, consignes du jour J.' : 'Envoyez le premier message à ' + safeHtml(nomCourt(autre)) + '.') + '</p></div>');
+          : '<div style="display:flex;flex-direction:column;align-items:center;padding:44px 20px;text-align:center;"><div style="margin-bottom:8px;display:flex;justify-content:center;">' + ico('message', 36, UI.faint, 1.6) + '</div><strong style="font-size:15px;color:var(--ink);">Aucun message</strong><p style="font-size:13px;color:var(--faint);margin:4px 0 0;">' +
+              (canal ? 'Lance la discussion du pôle : matériel, horaires, consignes du jour J.' : 'Envoie le premier message à ' + safeHtml(nomCourt(autre)) + '.') + '</p></div>');
 
     return '<div onclick="App.closeDirectMessage()" style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:10000;display:flex;justify-content:center;align-items:flex-end;">' +
       '<div onclick="event.stopPropagation()" style="width:100%;max-width:460px;background:var(--card);border-top-left-radius:28px;border-top-right-radius:28px;height:82vh;display:flex;flex-direction:column;animation:slideUp 0.3s;">' +
@@ -963,7 +954,7 @@
                 if (status === 'closed') {
                   return '<button disabled style="width:100%;background:var(--tile);color:var(--faint);border:none;border-radius:999px;padding:11px;font-size:13px;font-weight:700;">Terminé (' + count + ' participants)</button>';
                 }
-                return '<button onclick="App.toggleEventParticipation(\'' + jsArg(ev.id) + '\')" style="width:100%;background:' + (isPart ? '#0E9F6E' : '#0B5FE0') + ';color:#FFF;border:none;border-radius:999px;padding:11px;font-size:13px;font-weight:800;cursor:pointer;box-shadow:' + (isPart ? '0 4px 12px rgba(52,199,89,0.3)' : '0 4px 12px rgba(11,95,224,0.3)') + ';">' + (isPart ? '✓ Participation Confirmée (' + count + ')' : '+ Je participe 👍 (' + count + ')') + '</button>';
+                return '<button onclick="App.toggleEventParticipation(\'' + jsArg(ev.id) + '\')" style="width:100%;background:' + (isPart ? '#0E9F6E' : '#0B5FE0') + ';color:#FFF;border:none;border-radius:999px;padding:11px;font-size:13px;font-weight:800;cursor:pointer;box-shadow:' + (isPart ? '0 4px 12px rgba(52,199,89,0.3)' : '0 4px 12px rgba(11,95,224,0.3)') + ';">' + (isPart ? '✓ Participation confirmée (' + count + ')' : '+ Je participe (' + count + ')') + '</button>';
               })() +
             '</div>' +
           '</div>' +
@@ -1021,10 +1012,10 @@
       ]) +
     '</div>';
 
-    var emptyMsg = '<div style="font-size:13px;line-height:1.5;">' + (canEvaluate ? 'Publiez un bilan depuis l\'onglet « Noter » : les moyennes et l\'évolution de chaque pôle apparaîtront ici.' : 'Dès qu\'un Admin publiera un bilan, les moyennes et l\'évolution de chaque pôle apparaîtront ici.') + '</div>';
+    var emptyMsg = '<div style="font-size:13px;line-height:1.5;">' + (canEvaluate ? 'Publie un bilan depuis l\'onglet « Noter » : les moyennes et l\'évolution de chaque pôle apparaîtront ici.' : 'Dès qu\'un Admin publiera un bilan, les moyennes et l\'évolution de chaque pôle apparaîtront ici.') + '</div>';
     var emptyBlock = function(title) {
       return '<div style="padding:50px 24px;text-align:center;color:var(--faint);">' +
-          '<div style="font-size:44px;margin-bottom:12px;">📊</div>' +
+          '<div style="margin-bottom:12px;display:flex;justify-content:center;">' + ico('chart', 40, UI.faint, 1.6) + '</div>' +
           '<div style="font-size:17px;font-weight:800;color:var(--ink);margin-bottom:6px;">' + title + '</div>' +
           emptyMsg +
         '</div>';
@@ -1169,7 +1160,7 @@
     return '<div style="background:var(--card);border-radius:20px;margin-bottom:10px;border:1px solid var(--line);box-shadow:0 2px 8px rgba(0,0,0,0.04);overflow:hidden;">' +
       '<div onclick="App.toggleScoreboardSection(\'' + jsArg(key) + '\')" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:16px;cursor:pointer;">' +
         '<div style="display:flex;align-items:center;gap:10px;min-width:0;">' +
-          '<div style="width:42px;height:42px;border-radius:20px;background:linear-gradient(135deg,' + sec.color + '20,' + sec.color + '10);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;">' + sec.emoji + '</div>' +
+          '<div style="width:42px;height:42px;border-radius:20px;background:linear-gradient(135deg,' + sec.color + '20,' + sec.color + '10);display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + icoPole(sec.id, 22) + '</div>' +
           '<div style="min-width:0;">' +
             '<strong style="font-size:15px;color:var(--ink);display:block;">' + safeHtml(sec.nom) + '</strong>' +
             '<span style="font-size:12px;color:var(--faint);">' + (has ? board.count + ' bilan' + (board.count>1?'s':'') : 'Jamais évalué') + '</span>' +
@@ -1198,13 +1189,13 @@
     return '' +
 
       '<div style="padding:16px;">' +
-        '<p style="font-size:13px;color:var(--faint);margin:0 0 16px;line-height:1.5;">Notez les performances des pôles pour un événement, critère par critère. Si vous avez déjà publié un bilan pour cet événement, il sera mis à jour.</p>' +
+        '<p style="font-size:13px;color:var(--faint);margin:0 0 16px;line-height:1.5;">Note les performances des pôles pour un événement, critère par critère. Si tu as déjà publié un bilan pour cet événement, il sera mis à jour.</p>' +
 
         (function(){
           var eventPosts = db(SK.POSTS, []).filter(function(p){ return p.type === 'EVENT'; });
           return '<div style="background:var(--card);border-radius:20px;padding:16px;margin-bottom:14px;border:1px solid var(--line);box-shadow:0 2px 8px rgba(0,0,0,0.04);">' +
             '<label style="font-size:13px;font-weight:800;color:var(--ink);display:block;margin-bottom:8px;">Événement concerné <span style="color:#D92D20;">*</span></label>' +
-            '<select id="evalEventSelect" onchange="App.selectEvalEvent(this.value)" style="width:100%;height:44px;border-radius:12px;border:1.5px solid var(--line);background:var(--tile);padding:0 12px;font-size:15px;color:var(--ink);outline:none;font-weight:600;">' +
+            '<select id="evalEventSelect" onchange="App.selectEvalEvent(this.value)" class="kc-champ" style="' + styleSelect() + 'font-weight:600;">' +
               '<option value="">Sélectionner l\'événement à évaluer...</option>' +
               eventPosts.map(function(ev){
                 var evTitle = ev.eventTitle || (ev.metadata && ev.metadata.title) || 'Événement';
@@ -1215,7 +1206,7 @@
               }).join('') +
             '</select>' +
             (S.evalEventId && findOwnBilan(S.evalEventId)
-              ? '<div style="margin-top:10px;background:var(--warn-soft);border:1px solid var(--warn-line);border-radius:12px;padding:10px 12px;font-size:13px;color:var(--warn-ink);font-weight:600;line-height:1.45;">Vous avez déjà publié un bilan pour cet événement. Vos notes sont pré-remplies — valider mettra à jour cette publication.</div>'
+              ? '<div style="margin-top:10px;background:var(--warn-soft);border:1px solid var(--warn-line);border-radius:12px;padding:10px 12px;font-size:13px;color:var(--warn-ink);font-weight:600;line-height:1.45;">Tu as déjà publié un bilan pour cet événement. Tes notes sont pré-remplies : publier mettra à jour ce bilan.</div>'
               : '') +
           '</div>';
         })() +
@@ -1224,7 +1215,7 @@
 
           // padding-bottom généreux : la barre de navigation du bas est en position
           // fixe et recouvrait la moitié du bouton (on ne pouvait pas l'atteindre).
-          '<button id="publishBilanBtn" onclick="App.publishBilan()" style="width:100%;background:' + UI.okPlein + ';color:#FFF;border:none;border-radius:999px;padding:15px;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 4px 14px rgba(52,199,89,0.3);">' + (S.evalEventId && findOwnBilan(S.evalEventId) ? 'Mettre à jour le Bilan ✓' : 'Valider &amp; Publier le Bilan ✓') + '</button>' +
+          '<button id="publishBilanBtn" onclick="App.publishBilan()" style="width:100%;background:' + UI.accent + ';color:#FFF;border:none;border-radius:999px;padding:15px;font-size:15px;font-weight:800;cursor:pointer;">' + (S.evalEventId && findOwnBilan(S.evalEventId) ? 'Mettre à jour le bilan' : 'Publier le bilan') + '</button>' +
           '<div style="height:96px;"></div>' +
         '</div>' +
 
@@ -1342,7 +1333,7 @@
     // Phrase de synthèse sous la jauge (maquette).
     // Phrase alignée sur le TOTAL de points du cycle (même seuils que l'étiquette).
     var verdict = !h.count
-      ? (estMoi ? 'Votre note de départ, en attendant votre premier service.' : 'Note de départ, en attendant son premier service.')
+      ? (estMoi ? 'Ta note de départ, en attendant ton premier service.' : 'Note de départ, en attendant son premier service.')
       : (score >= NOTE_MAX ? 'Cycle au maximum : rien à redire.'
         : score >= 24 ? 'Performance exceptionnelle ce cycle.'
         : score >= 15 ? 'Bon rythme : continuez à cumuler des points.'
@@ -1396,7 +1387,7 @@
           ? '<div style="font-size:12px;color:' + UI.muted + ';text-align:center;margin-top:8px;border-top:0.5px solid ' + UI.line + ';padding-top:10px;">Retard moyen de <strong style="color:' + UI.warn + ';">' + h.avgDelay + ' min</strong> sur les services concernés.</div>'
           : '');
     } else {
-      onTimeChart = donut + empty('Aucun service pointé sur ce cycle.<br>La répartition apparaîtra dès ' + (estMoi ? 'votre' : 'son') + ' premier pointage.');
+      onTimeChart = donut + empty('Aucun service pointé sur ce cycle.<br>La répartition apparaîtra dès ' + (estMoi ? 'ton' : 'son') + ' premier pointage.');
     }
 
     // ============================================================
@@ -1432,7 +1423,7 @@
           '<div><div style="font-family:' + UI.fontMono + ';font-size:17px;font-weight:700;color:' + col + ';">' + score + '</div><div style="font-size:11px;color:' + UI.faint + ';">Points</div></div>' +
         '</div>';
     } else {
-      servicesChart = empty('Aucun service sur ce cycle.<br>' + (estMoi ? 'Vos' : 'Ses') + ' services assurés s\'afficheront ici, notés étoile par étoile.');
+      servicesChart = empty('Aucun service sur ce cycle.<br>' + (estMoi ? 'Tes' : 'Ses') + ' services assurés s\'afficheront ici, notés étoile par étoile.');
     }
 
     var body = chart === 'ontime' ? onTimeChart : chart === 'services' ? servicesChart : noteChart;
@@ -1450,7 +1441,7 @@
               ico('alert', 16, UI.bad) +
               '<div style="min-width:0;">' +
                 '<div style="font-size:13px;font-weight:600;color:var(--bad-ink);margin-bottom:2px;">Rattrapage requis : ' + h.debt + ' étoiles</div>' +
-                '<div style="font-size:12px;color:' + UI.muted + ';line-height:1.45;">Soyez à l\'heure aux prochains services pour revenir au positif.</div>' +
+                '<div style="font-size:12px;color:' + UI.muted + ';line-height:1.45;">Sois à l\'heure aux prochains services pour revenir au positif.</div>' +
               '</div>' +
             '</div>'
           : '') +
@@ -1546,11 +1537,11 @@
     return '<div style="background:var(--card);border-radius:20px;margin-bottom:10px;border:1px solid var(--line);box-shadow:0 2px 8px rgba(0,0,0,0.04);overflow:hidden;">' +
       '<div onclick="App.toggleEvalSection(\'' + jsArg(sec.id) + '\')" style="display:flex;align-items:center;justify-content:space-between;padding:16px;cursor:pointer;">' +
         '<div style="display:flex;align-items:center;gap:10px;">' +
-          '<div style="width:42px;height:42px;border-radius:20px;background:linear-gradient(135deg,' + sec.color + '20,' + sec.color + '10);display:flex;align-items:center;justify-content:center;font-size:22px;">' + sec.emoji + '</div>' +
+          '<div style="width:42px;height:42px;border-radius:20px;background:linear-gradient(135deg,' + sec.color + '20,' + sec.color + '10);display:flex;align-items:center;justify-content:center;">' + icoPole(sec.id, 22) + '</div>' +
           '<div><strong style="font-size:15px;color:var(--ink);display:block;">' + sec.nom +
-            (isOwn ? ' <span style="font-size:11px;font-weight:800;color:var(--lien);background:var(--accent-soft);padding:2px 7px;border-radius:8px;vertical-align:middle;">Votre pôle</span>' : '') +
+            (isOwn ? ' <span style="font-size:11px;font-weight:800;color:var(--lien);background:var(--accent-soft);padding:2px 7px;border-radius:8px;vertical-align:middle;">Ton pôle</span>' : '') +
           '</strong>' +
-          '<span id="evalsub-' + sec.id + '" style="font-size:12px;color:var(--faint);">' + (ratedCount > 0 ? ratedCount + '/' + EVAL_CRITERIA.length + ' critères notés' : 'Appuyez pour noter les critères') + '</span></div>' +
+          '<span id="evalsub-' + sec.id + '" style="font-size:12px;color:var(--faint);">' + (ratedCount > 0 ? ratedCount + '/' + EVAL_CRITERIA.length + ' critères notés' : 'Touche pour noter les critères') + '</span></div>' +
         '</div>' +
         '<div style="display:flex;align-items:center;gap:8px;">' +
           '<div id="evalavg-' + sec.id + '" style="font-family:' + UI.fontMono + ';font-size:22px;font-weight:700;color:' + scoreColor + ';">' + (avg > 0 ? avg+'/5' : '—') + '</div>' +
@@ -1561,7 +1552,7 @@
         ? '<div style="padding:0 16px 16px;">' +
             criteriaHtml +
             '<input type="text" value="' + safeHtml(r.comment||'') + '" onchange="App.rateComment(\'' + jsArg(sec.id) + '\',this.value)" placeholder="Ajouter une observation..." ' +
-            'style="width:100%;height:40px;border:1.5px solid var(--line);border-radius:12px;padding:0 12px;font-size:13px;color:var(--ink);box-sizing:border-box;outline:none;background:var(--tile);margin-top:12px;" ' +
+            'class="kc-champ" style="' + styleChamp() + 'margin-top:12px;" ' +
             'onfocus="this.style.borderColor=\'#0B5FE0\'" onblur="this.style.borderColor=\'var(--line)\'">' +
           '</div>'
         : '') +
@@ -1940,7 +1931,7 @@
     if (filteredPosts.length === 0) {
       feed += '<div style="padding:44px 20px;text-align:center;background:' + UI.page + ';">' +
         '<div style="font-size:15px;font-weight:600;color:' + UI.ink + ';margin-bottom:4px;">' + (gridTab === 'saved' ? 'Aucune publication enregistrée' : 'Aucune publication') + '</div>' +
-        '<div style="font-size:13px;color:' + UI.faint + ';">' + (gridTab === 'saved' ? 'Le signet sur une publication l\'ajoute ici.' : 'Vos publications apparaîtront ici.') + '</div>' +
+        '<div style="font-size:13px;color:' + UI.faint + ';">' + (gridTab === 'saved' ? 'Le signet sur une publication l\'ajoute ici.' : 'Tes publications apparaîtront ici.') + '</div>' +
       '</div>';
     } else {
       // GRILLE de vignettes carrées, 2 colonnes (maquette). Une publication sans
@@ -1969,7 +1960,7 @@
             // Un événement sans image se reconnaît d'un coup d'œil (icône + date).
             : (isEvent
                 ? '<div style="width:100%;height:100%;padding:14px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:6px;background:linear-gradient(160deg, rgba(11,95,224,0.12), rgba(11,95,224,0.04));">' +
-                    '<span style="font-size:22px;line-height:1;">🗓️</span>' +
+                    ico('calendar', 22, UI.lien) +
                     '<p style="margin:0;color:' + UI.ink + ';font-size:13px;font-weight:800;line-height:1.35;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;">' + safeHtml(String(p.eventTitle || 'Événement').slice(0, 60)) + '</p>' +
                     (p.eventDate ? '<span style="font-size:11px;font-weight:700;color:' + UI.lien + ';">' + new Date(p.eventDate + 'T00:00:00').toLocaleDateString('fr-FR', {day:'numeric', month:'short'}) + '</span>' : '') +
                   '</div>'
@@ -2034,16 +2025,16 @@
 
       return '<div onclick="' + (busy?'':'App.closeDeleteAccount()') + '" style="position:fixed;inset:0;background:rgba(15,15,20,0.65);backdrop-filter:blur(2px);z-index:10002;display:flex;justify-content:center;align-items:center;padding:24px;">' +
         '<div onclick="event.stopPropagation()" style="width:100%;max-width:380px;background:var(--card);border-radius:20px;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
-          '<div style="width:52px;height:52px;border-radius:26px;background:var(--bad-soft);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:28px;">⚠️</div>' +
-          '<h3 style="font-size:17px;font-weight:800;color:var(--ink);margin:0 0 8px;text-align:center;">Supprimer définitivement votre compte ?</h3>' +
+          '<div style="width:52px;height:52px;border-radius:26px;background:var(--bad-soft);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">' + ico('alert', 26, UI.bad) + '</div>' +
+          '<h3 style="font-size:17px;font-weight:800;color:var(--ink);margin:0 0 8px;text-align:center;">Supprimer définitivement ton compte ?</h3>' +
           '<p style="font-size:13px;color:var(--muted);line-height:1.5;margin:0 0 4px;text-align:center;">' +
-            'Cette action est <strong>irréversible</strong>. Votre profil ainsi que ' +
-            (myPostsCount > 0 ? '<strong>' + myPostsCount + ' publication' + (myPostsCount>1?'s':'') + '</strong>' : 'toutes vos publications') +
-            ' seront supprimés définitivement. Vous ne pourrez pas les récupérer.' +
+            'Cette action est <strong>irréversible</strong>. Ton profil ainsi que ' +
+            (myPostsCount > 0 ? '<strong>' + myPostsCount + ' publication' + (myPostsCount>1?'s':'') + '</strong>' : 'toutes tes publications') +
+            ' seront supprimés définitivement. Tu ne pourras pas les récupérer.' +
           '</p>' +
           '<div style="background:var(--tile);border-radius:16px;padding:12px;margin:16px 0 10px;">' +
-            '<label style="font-size:12px;font-weight:700;color:var(--muted);display:block;margin-bottom:6px;">Tapez <strong style="color:#D92D20;">SUPPRIMER</strong> pour confirmer</label>' +
-            '<input id="deleteAccountConfirmInput" type="text" placeholder="SUPPRIMER" ' + (busy?'disabled':'') + ' style="width:100%;height:40px;border-radius:12px;border:1.5px solid var(--line);background:var(--card);padding:0 12px;font-size:15px;font-weight:700;outline:none;box-sizing:border-box;text-transform:uppercase;" />' +
+            '<label style="font-size:12px;font-weight:700;color:var(--muted);display:block;margin-bottom:6px;">Tape <strong style="color:#D92D20;">SUPPRIMER</strong> pour confirmer</label>' +
+            '<input id="deleteAccountConfirmInput" type="text" placeholder="SUPPRIMER" ' + (busy?'disabled':'') + ' class="kc-champ" style="' + styleChamp() + 'font-weight:700;text-transform:uppercase;" />' +
           '</div>' +
           '<div style="display:flex;flex-direction:column;gap:8px;margin-top:8px;">' +
             '<button type="button" onclick="App.confirmDeleteAccount()" ' + (busy?'disabled':'') + ' style="width:100%;background:#D92D20;color:#FFF;border:none;border-radius:999px;padding:13px;font-size:15px;font-weight:800;cursor:pointer;opacity:' + (busy?'0.6':'1') + ';">' + (busy ? 'Suppression en cours…' : 'Supprimer définitivement') + '</button>' +
@@ -2061,7 +2052,7 @@
       var busy = S.bulkDeleteBusy;
       return '<div onclick="' + (busy?'':'App.closeBulkDeleteConfirm()') + '" style="position:fixed;inset:0;background:rgba(15,15,20,0.65);backdrop-filter:blur(2px);z-index:10003;display:flex;justify-content:center;align-items:center;padding:24px;">' +
         '<div onclick="event.stopPropagation()" style="width:100%;max-width:380px;background:var(--card);border-radius:20px;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
-          '<div style="width:52px;height:52px;border-radius:26px;background:var(--bad-soft);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:28px;">🗑️</div>' +
+          '<div style="width:52px;height:52px;border-radius:26px;background:var(--bad-soft);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;">' + ico('trash', 26, UI.bad) + '</div>' +
           '<h3 style="font-size:17px;font-weight:800;color:var(--ink);margin:0 0 8px;text-align:center;">Supprimer ' + count + ' publication' + (count>1?'s':'') + ' ?</h3>' +
           '<p style="font-size:13px;color:var(--muted);line-height:1.5;margin:0;text-align:center;">' +
             'Cette action est <strong>irréversible</strong>. Les publications et leurs photos/vidéos seront supprimées définitivement.' +
@@ -2106,7 +2097,7 @@
           '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">' +
             '<div style="width:36px;height:36px;border-radius:20px;background:' + color + ';color:#FFF;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:15px;">' + initial + '</div>' +
             '<div style="min-width:0;flex:1;">' +
-              '<div style="font-size:15px;font-weight:800;color:var(--ink);">' + name + (isMe ? ' <span style="font-size:11px;color:var(--faint);font-weight:700;">(vous)</span>' : '') + '</div>' +
+              '<div style="font-size:15px;font-weight:800;color:var(--ink);">' + name + (isMe ? ' <span style="font-size:11px;color:var(--faint);font-weight:700;">(toi)</span>' : '') + '</div>' +
               '<div style="font-family:' + UI.fontMono + ';font-size:12px;color:var(--faint);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(m.phone || m.email || '') + '</div>' +
             '</div>' +
           '</div>' +
@@ -2117,7 +2108,7 @@
             roleBtn(m, 'GRAND_RESPONSABLE', 'Admin') +
           '</div>' +
           (isMe ? '' :
-            '<button onclick="App.adminResetPassword(\'' + jsArg(m.id) + '\',\'' + jsArg(((m.prenom||'') + ' ' + (m.nom||'')).trim() || 'Membre') + '\')" style="margin-top:8px;width:100%;min-height:44px;box-sizing:border-box;background:none;border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:10px 12px;font-size:12px;font-weight:700;cursor:pointer;">🔑 Réinitialiser le mot de passe</button>') +
+            '<button onclick="App.adminResetPassword(\'' + jsArg(m.id) + '\',\'' + jsArg(((m.prenom||'') + ' ' + (m.nom||'')).trim() || 'Membre') + '\')" style="margin-top:8px;width:100%;min-height:44px;box-sizing:border-box;background:none;border:1px solid var(--line);color:var(--muted);border-radius:999px;padding:10px 12px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;">' + ico('key', 14, 'currentColor') + 'Réinitialiser le mot de passe</button>') +
         '</div>';
       }).join('');
 
@@ -2125,7 +2116,7 @@
         '<div onclick="event.stopPropagation()" style="width:100%;max-width:460px;background:var(--card);border-top-left-radius:28px;border-top-right-radius:28px;max-height:88vh;overflow-y:auto;box-shadow:0 -8px 40px rgba(0,0,0,0.18);animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
           '<div style="display:flex;justify-content:center;padding:10px 0 0;cursor:pointer;" onclick="App.closeRolesPanel()"><div style="width:38px;height:5px;background:var(--line2);border-radius:3px;"></div></div>' +
           '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px 4px;">' +
-            '<h3 style="font-family:' + UI.fontDisplay + ';font-size:17px;font-weight:800;letter-spacing:-0.3px;margin:0;color:var(--ink);">👑 Gérer les rôles</h3>' +
+            '<h3 style="font-family:' + UI.fontDisplay + ';font-size:17px;font-weight:800;letter-spacing:-0.3px;margin:0;color:var(--ink);">Gérer les rôles</h3>' +
             '<button onclick="App.closeRolesPanel()" style="background:var(--tile);border:none;border-radius:16px;width:44px;height:44px;flex-shrink:0;touch-action:manipulation;font-size:15px;cursor:pointer;">✕</button>' +
           '</div>' +
           '<p style="font-size:12px;color:var(--faint);padding:2px 20px 8px;margin:0;line-height:1.4;">Choisis un rôle pour chaque membre. La personne devra se <b>déconnecter puis reconnecter</b> pour que son nouveau rôle prenne effet.</p>' +
@@ -2141,9 +2132,9 @@
       if (!r) return '';
       return '<div onclick="App.closeAdminReset()" style="position:fixed;inset:0;background:rgba(15,15,20,0.6);z-index:10006;display:flex;justify-content:center;align-items:center;padding:24px;">' +
         '<div onclick="event.stopPropagation()" style="width:100%;max-width:380px;background:var(--card);border-radius:20px;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,0.3);text-align:center;">' +
-          '<div style="font-size:36px;margin-bottom:8px;">🔑</div>' +
+          '<div style="margin-bottom:8px;display:flex;justify-content:center;">' + ico('key', 34, UI.accent, 1.6) + '</div>' +
           '<h3 style="font-size:17px;font-weight:800;color:var(--ink);margin:0 0 6px;">Mot de passe provisoire</h3>' +
-          '<p style="font-size:13px;color:var(--muted);margin:0 0 16px;line-height:1.5;">Communiquez-le à <strong>' + safeHtml(r.name) + '</strong>. Il pourra le changer dans « Modifier le profil ».</p>' +
+          '<p style="font-size:13px;color:var(--muted);margin:0 0 16px;line-height:1.5;">Communique-le à <strong>' + safeHtml(r.name) + '</strong>. Il pourra le changer dans « Modifier le profil ».</p>' +
           '<div style="display:flex;align-items:center;gap:8px;background:var(--tile);border-radius:12px;padding:14px;margin-bottom:16px;">' +
             '<code style="flex:1;font-size:17px;font-weight:800;letter-spacing:1px;color:var(--ink);word-break:break-all;">' + safeHtml(r.password) + '</code>' +
             '<button onclick="App.copyAdminResetPw()" style="background:' + UI.accent + ';color:#FFF;border:none;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:800;cursor:pointer;flex-shrink:0;">Copier</button>' +
@@ -2207,7 +2198,7 @@
               '<div style="font-size:11px;color:var(--faint);text-align:center;margin-top:16px;">Mis à jour ' + (S.storageStatsUpdatedAt ? timeAgo(S.storageStatsUpdatedAt) : '—') + '</div>'
             )) +
             '<div style="display:flex;gap:8px;margin-top:20px;">' +
-              '<button onclick="App.loadStorageStats()" ' + (loading?'disabled':'') + ' style="flex:1;background:var(--tile);color:var(--ink);border:none;border-radius:999px;padding:12px;font-size:13px;font-weight:700;cursor:pointer;">🔄 Actualiser</button>' +
+              '<button onclick="App.loadStorageStats()" ' + (loading?'disabled':'') + ' style="flex:1;background:var(--tile);color:var(--ink);border:none;border-radius:999px;padding:12px;font-size:13px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;">' + ico('refresh', 14, 'currentColor') + 'Actualiser</button>' +
               '<button onclick="App.closeStorageStats()" style="flex:1;background:var(--bad-soft);color:#D92D20;border:none;border-radius:999px;padding:12px;font-size:13px;font-weight:700;cursor:pointer;">Fermer</button>' +
             '</div>' +
           '</div>' +
@@ -2229,21 +2220,17 @@
       ? '<img src="' + safeUrl(displayCover) + '" style="width:100%;height:100%;object-fit:cover;" />'
       : '';
 
-    return '<div class="safe-top" style="position:fixed;inset:0;background:var(--card);z-index:10000;display:flex;flex-direction:column;animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
-      '<header style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--line);background:var(--card);z-index:2;">' +
-        '<button onclick="App.closeEditProfile()" style="background:none;border:none;font-size:15px;color:var(--ink);cursor:pointer;">Annuler</button>' +
-        '<div style="font-weight:700;font-size:15px;">Modifier le profil</div>' +
-        '<button onclick="App.saveProfile(this)" style="background:none;border:none;font-size:15px;font-weight:700;color:var(--lien);cursor:pointer;">Terminer</button>' +
-      '</header>' +
-      '<div style="flex:1;overflow-y:auto;background:var(--tile);">' +
+    return '<div class="safe-top" style="position:fixed;inset:0;background:' + UI.page + ';z-index:10000;display:flex;flex-direction:column;animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
+      enTetePleinEcran('Modifier le profil', 'App.closeEditProfile()', boutonEnTete('Terminer', 'App.saveProfile(this)')) +
+      '<div style="flex:1;overflow-y:auto;background:' + UI.page + ';">' +
         
         '<!-- Avatar Area -->' +
         '<div style="display:flex;justify-content:center;margin-top:24px;margin-bottom:20px;">' +
           '<div style="position:relative;">' +
-            '<div style="width:90px;height:90px;border-radius:45px;border:4px solid var(--tile);overflow:hidden;background:var(--card);">' +
+            '<div style="width:90px;height:90px;border-radius:45px;border:4px solid ' + UI.page + ';overflow:hidden;background:var(--card);">' +
                avatarContent +
             '</div>' +
-            '<label style="position:absolute;bottom:0;right:0;width:28px;height:28px;border-radius:16px;background:#0B5FE0;border:2px solid var(--tile);color:#FFF;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 5px rgba(0,0,0,0.2);">' +
+            '<label style="position:absolute;bottom:0;right:0;width:28px;height:28px;border-radius:16px;background:#0B5FE0;border:2px solid ' + UI.page + ';color:#FFF;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 5px rgba(0,0,0,0.2);">' +
               '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>' +
               '<input type="file" id="editAvatarInput" accept="image/*" style="display:none;" onchange="App.handleAvatarSelect(event)" />' +
             '</label>' +
@@ -2251,7 +2238,7 @@
         '</div>' +
 
         '<div style="padding:0 16px 30px;">' +
-          '<div style="background:var(--card);border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px;">' +
+          '<div style="background:var(--card);border-radius:20px;padding:16px;margin-bottom:16px;">' +
             '<div style="display:flex;flex-direction:column;gap:16px;">' +
               (function(){
                 var eData = S.editProfileData || {};
@@ -2259,52 +2246,52 @@
                 var nomVal = eData.nom !== undefined ? eData.nom : (freshU.nom||'');
                 var bioVal = eData.bio !== undefined ? eData.bio : (freshU.bio||'');
                 var skillsVal = eData.skills !== undefined ? eData.skills : (freshU.skills||'');
-                return '<div style="display:flex;flex-direction:column;gap:4px;">' +
-                  '<label style="font-size:13px;color:var(--faint);font-weight:600;">Prénom</label>' +
-                  '<input type="text" id="editPrenom" value="' + safeHtml(prenomVal) + '" style="border:none;border-bottom:1px solid var(--line);font-size:15px;outline:none;padding-bottom:8px;border-radius:0;" />' +
+                return '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
+                  '<div>' +
+                    '<label for="editPrenom" style="' + STYLE_LIBELLE + '">Prénom</label>' +
+                    '<input type="text" id="editPrenom" class="kc-champ" value="' + safeHtml(prenomVal) + '" style="' + styleChamp() + '" />' +
+                  '</div>' +
+                  '<div>' +
+                    '<label for="editNom" style="' + STYLE_LIBELLE + '">Nom</label>' +
+                    '<input type="text" id="editNom" class="kc-champ" value="' + safeHtml(nomVal) + '" style="' + styleChamp() + '" />' +
+                  '</div>' +
                 '</div>' +
-                '<div style="display:flex;flex-direction:column;gap:4px;">' +
-                  '<label style="font-size:13px;color:var(--faint);font-weight:600;">Nom</label>' +
-                  '<input type="text" id="editNom" value="' + safeHtml(nomVal) + '" style="border:none;border-bottom:1px solid var(--line);font-size:15px;outline:none;padding-bottom:8px;border-radius:0;" />' +
+                '<div>' +
+                  '<label for="editBio" style="' + STYLE_LIBELLE + '">Bio</label>' +
+                  '<textarea id="editBio" class="kc-champ" placeholder="Quelques mots sur toi" style="' + styleChamp(true) + '">' + safeHtml(bioVal) + '</textarea>' +
                 '</div>' +
-                '<div style="display:flex;flex-direction:column;gap:4px;">' +
-                  '<label style="font-size:13px;color:var(--faint);font-weight:600;">Bio</label>' +
-                  '<textarea id="editBio" style="border:none;font-size:15px;outline:none;resize:none;font-family:inherit;min-height:60px;background:var(--tile);padding:12px;border-radius:12px;">' + safeHtml(bioVal) + '</textarea>' +
-                '</div>' +
-                '<div style="display:flex;flex-direction:column;gap:4px;">' +
-                  '<label style="font-size:13px;color:var(--faint);font-weight:600;">Savoir-faire</label>' +
-                  '<textarea id="editSavoirFaire" placeholder="Ex. Montage vidéo, Cadrage, Éclairage, Son…" style="border:none;font-size:15px;outline:none;resize:none;font-family:inherit;min-height:50px;background:var(--tile);padding:12px;border-radius:12px;">' + safeHtml(skillsVal) + '</textarea>' +
+                '<div>' +
+                  '<label for="editSavoirFaire" style="' + STYLE_LIBELLE + '">Savoir-faire</label>' +
+                  '<textarea id="editSavoirFaire" class="kc-champ" placeholder="Ex. : montage vidéo, cadrage, éclairage, son…" style="' + styleChamp(true) + '">' + safeHtml(skillsVal) + '</textarea>' +
                 '</div>';
               })() +
             '</div>' +
           '</div>' +
 
-          '<div style="background:var(--card);border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);">' +
+          '<div style="background:var(--card);border-radius:20px;padding:16px;">' +
             '<label style="font-size:15px;font-weight:700;color:var(--ink);display:block;margin-bottom:12px;">Sections (2 max)</label>' +
             '<div id="editSectionBadgesContainer">' + App.renderSectionBadges(S.editSections, 'toggleEditSection') + '</div>' +
           '</div>' +
 
-          '<div style="background:var(--card);border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-top:16px;">' +
+          '<div style="background:var(--card);border-radius:20px;padding:16px;margin-top:16px;">' +
             '<label style="font-size:15px;font-weight:700;color:var(--ink);display:block;margin-bottom:12px;">Connexion</label>' +
             '<div style="display:flex;flex-direction:column;gap:16px;">' +
-              '<div style="display:flex;flex-direction:column;gap:4px;">' +
-                '<label style="font-size:13px;color:var(--faint);font-weight:600;">Numéro de téléphone</label>' +
-                '<div style="display:flex;align-items:center;gap:8px;padding-bottom:8px;border-bottom:1px solid var(--line);">' +
-                  '<span style="font-family:' + UI.fontMono + ';font-size:15px;color:var(--ink);">' + safeHtml(freshU.phone || '—') + '</span>' +
-                '</div>' +
-                '<span style="font-size:12px;color:var(--faint);margin-top:4px;">C\'est votre identifiant de connexion. Pour le changer, contactez un Admin.</span>' +
+              '<div>' +
+                '<span style="' + STYLE_LIBELLE + '">Numéro de téléphone</span>' +
+                '<div style="' + styleChamp() + 'display:flex;align-items:center;background:var(--tile);border-color:transparent;color:var(--muted);">' + safeHtml(freshU.phone || 'Non renseigné') + '</div>' +
+                '<span style="display:block;font-size:12px;color:var(--faint);margin-top:6px;">C\'est ton identifiant de connexion. Pour le changer, demande à un Admin.</span>' +
               '</div>' +
-              '<div style="display:flex;flex-direction:column;gap:4px;">' +
-                '<label style="font-size:13px;color:var(--faint);font-weight:600;">Nouveau mot de passe</label>' +
-                '<input type="password" id="editNewPwd" placeholder="Laisser vide pour ne pas changer" autocomplete="new-password" style="border:none;border-bottom:1px solid var(--line);font-size:15px;outline:none;padding-bottom:8px;border-radius:0;background:none;" />' +
-                '<span style="font-size:12px;color:var(--faint);margin-top:4px;">8 caractères minimum.</span>' +
+              '<div>' +
+                '<label for="editNewPwd" style="' + STYLE_LIBELLE + '">Nouveau mot de passe</label>' +
+                '<input type="password" id="editNewPwd" class="kc-champ" placeholder="Laisse vide pour ne pas changer" autocomplete="new-password" style="' + styleChamp() + '" />' +
+                '<span style="display:block;font-size:12px;color:var(--faint);margin-top:6px;">8 caractères minimum.</span>' +
               '</div>' +
             '</div>' +
           '</div>' +
 
-          '<div style="background:var(--card);border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-top:16px;">' +
+          '<div style="background:var(--card);border-radius:20px;padding:16px;margin-top:16px;">' +
             '<label style="font-size:15px;font-weight:700;color:var(--ink);display:block;margin-bottom:4px;">Questions de sécurité</label>' +
-            '<p style="font-size:12px;color:var(--faint);margin:0 0 14px;line-height:1.4;">Servent à récupérer votre mot de passe sans e-mail. Renseignez les deux pour les (re)définir ; laissez vide pour ne rien changer.</p>' +
+            '<p style="font-size:12px;color:var(--faint);margin:0 0 14px;line-height:1.4;">Elles servent à récupérer ton mot de passe sans e-mail. Renseigne les deux pour les (re)définir ; laisse vide pour ne rien changer.</p>' +
             renderSecurityQAFields('edit', '', '') +
           '</div>' +
         '</div>' +
@@ -2380,12 +2367,7 @@
       ligne('<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="' + UI.bad + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>', 'Supprimer mon compte', '', 'App.closeSettings();App.openDeleteAccount()', true);
 
     return '<div class="safe-top" style="position:fixed;inset:0;z-index:10005;background:' + UI.page + ';display:flex;flex-direction:column;animation:fadeIn 0.2s ease-out;">' +
-      '<div style="display:flex;align-items:center;gap:12px;padding:20px 16px 8px;background:' + UI.page + ';">' +
-        '<button onclick="App.closeSettings()" aria-label="Retour" style="background:' + UI.card + ';border:none;width:44px;height:44px;flex-shrink:0;border-radius:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
-          '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="' + UI.ink + '" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>' +
-        '</button>' +
-        '<h1 style="font-family:' + UI.fontDisplay + ';font-size:28px;font-weight:800;letter-spacing:-0.5px;color:' + UI.ink + ';margin:0;">Paramètres</h1>' +
-      '</div>' +
+      enTetePleinEcran('Paramètres', 'App.closeSettings()') +
       '<div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:20px 20px 40px;">' +
         section('Informations', infos) +
         section('Notifications', renderReglagesNotifications(freshU)) +
@@ -2456,7 +2438,8 @@
         actifs: users.length - inactifs.length, membres: users.length,
         sousEffectif: services.filter(function(s){ return s.sousEffectif; }).length,
         relances: relances.length,
-        taux: tousServices ? Math.round(tousALheure / tousServices * 100) : null
+        taux: tousServices ? Math.round(tousALheure / tousServices * 100) : null,
+        mesures: tousServices
       }
     };
   }
@@ -2483,7 +2466,9 @@
     var tuiles = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">' +
       chiffre(c.sousEffectif, 'service' + (c.sousEffectif > 1 ? 's' : '') + ' en sous-effectif (15 j)', c.sousEffectif > 0 ? '#B42318' : null) +
       chiffre(c.relances, 'réponse' + (c.relances > 1 ? 's' : '') + ' attendue' + (c.relances > 1 ? 's' : ''), c.relances > 0 ? '#C2410C' : null) +
-      chiffre(c.taux === null ? '—' : c.taux + ' %', 'à l\'heure sur 30 jours', c.taux !== null && c.taux < 70 ? '#B42318' : null) +
+      (c.mesures < 3
+        ? chiffre('—', 'à l\'heure sur 30 jours · trop peu de services', null)
+        : chiffre(c.taux + ' %', 'à l\'heure sur 30 jours', c.taux < 70 ? '#B42318' : null)) +
       chiffre(c.actifs + '/' + c.membres, 'membres actifs ce mois-ci', null) +
     '</div>';
 
@@ -2492,7 +2477,10 @@
       return '<div onclick="App.fermerTableauDeBord();App.goToPost(\'' + jsArg(s.ev.id) + '\')" style="display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid ' + UI.tile + ';cursor:pointer;">' +
         '<div style="flex:1;min-width:0;">' +
           '<div style="font-size:13px;font-weight:700;color:' + UI.ink + ';overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + safeHtml(s.ev.eventTitle || 'Événement') + '</div>' +
-          '<div style="font-size:12px;color:' + UI.faint + ';">' + date + ' · ' + s.convoques + ' convoqué' + (s.convoques > 1 ? 's' : '') + ' · ' + s.confirmes + ' ✓ · ' + s.enAttente.length + ' ? · ' + s.indisponibles + ' ✕</div>' +
+          '<div style="font-size:12px;color:' + UI.faint + ';">' + date + ' · ' + [s.convoques + ' convoqué' + (s.convoques > 1 ? 's' : '')]
+            .concat(s.confirmes ? [s.confirmes + ' confirmé' + (s.confirmes > 1 ? 's' : '')] : [])
+            .concat(s.enAttente.length ? [s.enAttente.length + ' sans réponse'] : [])
+            .concat(s.indisponibles ? [s.indisponibles + ' indisponible' + (s.indisponibles > 1 ? 's' : '')] : []).join(' · ') + '</div>' +
         '</div>' +
         (s.sousEffectif ? '<span style="font-size:11px;font-weight:800;padding:3px 8px;border-radius:8px;background:var(--bad-soft);color:var(--bad-ink);white-space:nowrap;">Sous-effectif</span>' : '<span style="font-size:11px;font-weight:800;padding:3px 8px;border-radius:8px;background:var(--ok-soft);color:var(--ok-ink);">OK</span>') +
       '</div>';
@@ -2509,7 +2497,7 @@
       var col = p.taux === null ? UI.line : p.taux >= 80 ? UI.ok : p.taux >= 60 ? UI.warn : UI.bad;
       return '<div style="padding:8px 0;border-top:1px solid ' + UI.tile + ';">' +
         '<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;color:' + UI.ink + ';margin-bottom:5px;">' +
-          '<span>' + p.sec.emoji + ' ' + safeHtml(p.sec.nom) + '</span>' +
+          '<span style="display:inline-flex;align-items:center;gap:6px;">' + icoPole(p.sec.id, 15) + safeHtml(p.sec.nom) + '</span>' +
           '<span style="color:' + (p.taux === null ? UI.faint : UI.ink) + ';">' + (p.taux === null ? 'aucun service' : p.taux + ' % · ' + p.total + ' service' + (p.total > 1 ? 's' : '')) + '</span>' +
         '</div>' +
         '<div style="height:8px;background:' + UI.tile + ';border-radius:4px;overflow:hidden;"><div class="kc-progression" style="height:100%;width:' + (p.taux || 0) + '%;background:' + col + ';border-radius:4px;"></div></div>' +
@@ -2527,12 +2515,7 @@
     }).join('');
 
     return '<div id="tableauDeBord" class="safe-top" style="position:fixed;inset:0;z-index:9500;background:' + UI.page + ';display:flex;flex-direction:column;animation:fadeIn 0.2s ease-out;">' +
-      '<div style="display:flex;align-items:center;gap:12px;padding:20px 16px 8px;background:' + UI.page + ';">' +
-        '<button onclick="App.fermerTableauDeBord()" aria-label="Retour" style="background:' + UI.card + ';border:none;width:44px;height:44px;flex-shrink:0;border-radius:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
-          '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="' + UI.ink + '" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>' +
-        '</button>' +
-        '<h1 style="font-family:' + UI.fontDisplay + ';font-size:28px;font-weight:800;letter-spacing:-0.5px;color:' + UI.ink + ';margin:0;">Tableau de bord</h1>' +
-      '</div>' +
+      enTetePleinEcran('Tableau de bord', 'App.fermerTableauDeBord()') +
       '<div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 16px 40px;">' +
         tuiles +
         carte('Services des 15 prochains jours', services || vide('Aucun service prévu.'), d.services.length) +
@@ -2872,9 +2855,9 @@
         '<p style="font-size:13px;color:var(--muted);line-height:1.5;margin:0 0 14px;">Les responsables les voient quand ils convoquent l\'équipe.</p>' +
         '<div style="display:flex;flex-direction:column;gap:8px;background:var(--tile);border-radius:16px;padding:12px;">' +
           '<label for="indispoDate" style="font-size:13px;font-weight:700;color:var(--ink);">Date</label>' +
-          '<input id="indispoDate" type="date" min="' + auj + '" style="min-height:44px;border:1px solid var(--line);border-radius:12px;padding:0 12px;background:var(--card);color:var(--ink);font-size:15px;">' +
+          '<input id="indispoDate" type="date" min="' + auj + '" class="kc-champ" style="' + styleChamp() + '">' +
           '<label for="indispoMotif" style="font-size:13px;font-weight:700;color:var(--ink);">Motif <span style="font-weight:500;color:var(--faint);">(facultatif)</span></label>' +
-          '<input id="indispoMotif" type="text" maxlength="80" placeholder="Ex. voyage, examen" style="min-height:44px;border:1px solid var(--line);border-radius:12px;padding:0 12px;background:var(--card);color:var(--ink);font-size:15px;">' +
+          '<input id="indispoMotif" type="text" maxlength="80" placeholder="Ex. voyage, examen" class="kc-champ" style="' + styleChamp() + '">' +
           '<button type="button" onclick="App.ajouterIndispo()" style="min-height:44px;background:#0B5FE0;color:#FFF;border:none;border-radius:12px;font-size:15px;font-weight:800;cursor:pointer;margin-top:4px;">Ajouter cette date</button>' +
         '</div>' +
         '<div style="margin-top:14px;">' +

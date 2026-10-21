@@ -202,7 +202,7 @@
       '</div>';
     };
     var emptyState = function(txt){
-      return '<div style="padding:60px 24px;text-align:center;color:var(--faint);"><div style="font-size:44px;margin-bottom:12px;">🔍</div><div style="font-size:15px;font-weight:700;">' + safeHtml(txt) + '</div></div>';
+      return '<div style="padding:60px 24px;text-align:center;color:var(--faint);"><div style="margin-bottom:12px;display:flex;justify-content:center;">' + ico('search', 40, UI.faint, 1.6) + '</div><div style="font-size:15px;font-weight:700;">' + safeHtml(txt) + '</div></div>';
     };
 
     var body = '';
@@ -266,35 +266,35 @@
 
   function renderForgot() {
     if (!S.forgotUser) {
-      return '<div style="flex:1;min-height:0;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:28px 24px 40px;box-sizing:border-box;background:var(--card);">' +
+      return '<div style="flex:1;min-height:0;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;align-items:center;padding:20px 16px 40px;box-sizing:border-box;background:' + UI.page + ';">' +
         '<div style="width:100%;max-width:360px;">' +
           '<div style="display:flex;align-items:center;gap:12px;margin-bottom:28px;">' +
-            '<button onclick="App.nav(\'login\')" style="background:var(--tile);border:none;width:44px;height:44px;flex-shrink:0;touch-action:manipulation;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
+            '<button type="button" onclick="App.nav(\'login\')" aria-label="Retour" style="background:' + UI.card + ';border:none;width:44px;height:44px;flex-shrink:0;touch-action:manipulation;border-radius:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
               '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2.2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>' +
             '</button>' +
-            '<div><h1 style="font-size:22px;font-weight:800;color:var(--ink);margin:0;">Mot de passe oublié</h1></div>' +
+            '<h1 style="font-size:28px;font-weight:800;letter-spacing:-0.5px;color:var(--ink);margin:0;">Mot de passe oublié</h1>' +
           '</div>' +
-          '<p style="font-size:15px;color:var(--faint);margin-bottom:24px;">Saisissez votre numéro : vos questions de sécurité s\'afficheront pour définir un nouveau mot de passe.</p>' +
+          '<p style="font-size:15px;color:var(--faint);margin-bottom:24px;">Saisis ton numéro : tes questions de sécurité s\'afficheront pour définir un nouveau mot de passe.</p>' +
           '<form onsubmit="event.preventDefault(); App.checkForgotEmail(event);" style="display:flex;flex-direction:column;gap:14px;">' +
             renderPhoneField('forgotPhone', 'Numéro de téléphone', 'tel') +
             '<button type="submit" style="' + btnStyle('#0B5FE0') + '">Continuer</button>' +
           '</form>' +
         '</div></div>';
     } else {
-      return '<div style="flex:1;min-height:0;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:28px 24px 40px;box-sizing:border-box;background:var(--card);">' +
+      return '<div style="flex:1;min-height:0;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;align-items:center;padding:20px 16px 40px;box-sizing:border-box;background:' + UI.page + ';">' +
         '<div style="width:100%;max-width:360px;">' +
           '<div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">' +
-            '<button onclick="S.forgotUser=null;render();" style="background:var(--tile);border:none;width:44px;height:44px;flex-shrink:0;touch-action:manipulation;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
+            '<button type="button" onclick="S.forgotUser=null;render();" aria-label="Retour" style="background:' + UI.card + ';border:none;width:44px;height:44px;flex-shrink:0;touch-action:manipulation;border-radius:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
               '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2.2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>' +
             '</button>' +
-            '<div><h1 style="font-size:22px;font-weight:800;color:var(--ink);margin:0;">Réinitialisation</h1></div>' +
+            '<h1 style="font-size:28px;font-weight:800;letter-spacing:-0.5px;color:var(--ink);margin:0;">Réinitialisation</h1>' +
           '</div>' +
-          '<p style="font-size:15px;color:var(--faint);margin-bottom:20px;">Répondez aux deux questions de sécurité que vous avez définies lors de votre inscription.</p>' +
+          '<p style="font-size:15px;color:var(--faint);margin-bottom:20px;">Réponds aux deux questions de sécurité définies à ton inscription.</p>' +
           '<form onsubmit="event.preventDefault(); App.resetPassword(event);" style="display:flex;flex-direction:column;gap:14px;">' +
-            '<div><label style="font-size:12px;font-weight:700;color:var(--ink2);display:block;margin-bottom:5px;">Q1: ' + safeHtml(S.forgotUser.sec_q1||'Question 1') + '</label>' +
-            '<input id="forgotA1" type="text" placeholder="Votre réponse secrète" required autocomplete="off" autocapitalize="off" spellcheck="false" style="width:100%;height:50px;border-radius:16px;border:1.5px solid var(--line);background:var(--tile);padding:0 16px;font-size:15px;color:var(--ink);box-sizing:border-box;outline:none;transition:border-color 0.2s;" onfocus="this.style.borderColor=\'#0B5FE0\'" onblur="this.style.borderColor=\'var(--line)\'" /></div>' +
-            '<div><label style="font-size:12px;font-weight:700;color:var(--ink2);display:block;margin-bottom:5px;">Q2: ' + safeHtml(S.forgotUser.sec_q2||'Question 2') + '</label>' +
-            '<input id="forgotA2" type="text" placeholder="Votre réponse secrète" required autocomplete="off" autocapitalize="off" spellcheck="false" style="width:100%;height:50px;border-radius:16px;border:1.5px solid var(--line);background:var(--tile);padding:0 16px;font-size:15px;color:var(--ink);box-sizing:border-box;outline:none;transition:border-color 0.2s;" onfocus="this.style.borderColor=\'#0B5FE0\'" onblur="this.style.borderColor=\'var(--line)\'" /></div>' +
+            '<div><label style="' + STYLE_LIBELLE + '">Q1: ' + safeHtml(S.forgotUser.sec_q1||'Question 1') + '</label>' +
+            '<input id="forgotA1" type="text" placeholder="Ta réponse secrète" required autocomplete="off" autocapitalize="off" spellcheck="false" class="kc-champ" style="' + styleChamp() + '" onfocus="this.style.borderColor=\'#0B5FE0\'" onblur="this.style.borderColor=\'var(--line)\'" /></div>' +
+            '<div><label style="' + STYLE_LIBELLE + '">Q2: ' + safeHtml(S.forgotUser.sec_q2||'Question 2') + '</label>' +
+            '<input id="forgotA2" type="text" placeholder="Ta réponse secrète" required autocomplete="off" autocapitalize="off" spellcheck="false" class="kc-champ" style="' + styleChamp() + '" onfocus="this.style.borderColor=\'#0B5FE0\'" onblur="this.style.borderColor=\'var(--line)\'" /></div>' +
             '<div style="margin-top:10px;">' + renderField('forgotPwd', 'password', 'Nouveau mot de passe', '8 caractères minimum', 'new-password') + '</div>' +
             '<button type="submit" style="' + btnStyle('#0B5FE0') + 'margin-top:6px;">Réinitialiser le mot de passe</button>' +
           '</form>' +
@@ -303,15 +303,14 @@
   }
 
   function renderSignup() {
-    return '<div style="flex:1;min-height:0;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;align-items:center;padding:28px 24px 40px;box-sizing:border-box;background:var(--card);">' +
+    return '<div style="flex:1;min-height:0;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;align-items:center;padding:20px 16px 40px;box-sizing:border-box;background:' + UI.page + ';">' +
     '<div style="width:100%;max-width:360px;">' +
 
       '<div style="display:flex;align-items:center;gap:12px;margin-bottom:28px;">' +
-        '<button onclick="App.nav(\'login\')" style="background:var(--tile);border:none;width:44px;height:44px;flex-shrink:0;touch-action:manipulation;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
+        '<button type="button" onclick="App.nav(\'login\')" aria-label="Retour" style="background:' + UI.card + ';border:none;width:44px;height:44px;flex-shrink:0;touch-action:manipulation;border-radius:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
           '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2.2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>' +
         '</button>' +
-        '<div><p style="font-size:11px;font-weight:800;color:var(--lien);text-transform:uppercase;letter-spacing:1.5px;margin:0;">Créer un compte</p>' +
-        '<h1 style="font-size:22px;font-weight:800;color:var(--ink);margin:0;">Rejoindre Commit</h1></div>' +
+        '<h1 style="font-size:28px;font-weight:800;letter-spacing:-0.5px;color:var(--ink);margin:0;">Rejoindre Commit</h1>' +
       '</div>' +
 
       '<form onsubmit="event.preventDefault(); App.signup(event);" style="display:flex;flex-direction:column;gap:12px;">' +
@@ -320,7 +319,7 @@
           renderField('signupNom', 'text', 'Nom', 'Dupont', 'family-name') +
         '</div>' +
         renderPhoneField('signupPhone', 'Numéro de téléphone', 'tel') +
-        '<div><label style="font-size:12px;font-weight:700;color:var(--ink2);display:block;margin-bottom:8px;">Sections / Pôles (1 à 2 max) <span style="color:var(--bad-ink);">*</span></label>' +
+        '<div><label style="' + STYLE_LIBELLE + 'margin-bottom:8px;">Sections / Pôles (1 à 2 max) <span style="color:var(--bad-ink);">*</span></label>' +
           '<div id="signupSectionBadgesContainer">' +
             App.renderSectionBadges(S.signupSections, 'toggleSignupSection') +
           '</div>' +
@@ -328,7 +327,7 @@
         renderField('signupPwd', 'password', 'Mot de passe', '8 caractères minimum', 'new-password') +
         '<div style="border-top:1px solid var(--line);margin-top:6px;padding-top:14px;">' +
           '<label style="font-size:12px;font-weight:800;color:var(--ink2);display:block;margin-bottom:4px;">Questions de sécurité</label>' +
-          '<p style="font-size:12px;color:var(--faint);margin:0 0 12px;line-height:1.4;">Elles servent à récupérer votre mot de passe sans e-mail. Notez bien vos réponses.</p>' +
+          '<p style="font-size:12px;color:var(--faint);margin:0 0 12px;line-height:1.4;">Elles servent à récupérer ton mot de passe sans e-mail. Note bien tes réponses.</p>' +
           renderSecurityQAFields('signup', '', '') +
         '</div>' +
         // Acceptation des conditions d'utilisation, obligatoire. L'état est gardé
@@ -372,13 +371,12 @@
     var estMdp = (type === 'password');
     // Mot de passe : l'input vit dans un conteneur relatif avec le bouton œil
     // (44×44, cible tactile) posé à droite ; le padding-right libère cette zone.
-    var styleChamp = 'width:100%;height:52px;border-radius:26px;border:1.5px solid var(--line2);background:var(--card);padding:' + (estMdp ? '0 48px 0 16px' : '0 16px') + ';font-size:15px;color:var(--ink);box-sizing:border-box;outline:none;transition:border-color 0.2s;';
+    var style = styleChamp() + (estMdp ? 'padding-right:48px;' : '');
     var html = '<div style="flex:1;">' +
-      '<label style="font-size:12px;font-weight:700;color:var(--ink2);display:block;margin-bottom:5px;">' + label + '</label>' +
+      '<label for="' + id + '" style="' + STYLE_LIBELLE + '">' + label + '</label>' +
       (estMdp ? '<div style="position:relative;">' : '') +
       '<input id="' + id + '" type="' + type + '" value="' + safeHtml(valeur) + '" oninput="App.saisieAuth(\'' + jsArg(id) + '\', this.value)"' + ' placeholder="' + placeholder + '" autocomplete="' + (autocomplete||'off') + '" required ' +
-      'style="' + styleChamp + '" ' +
-      'onfocus="this.style.borderColor=\'#0B5FE0\'" onblur="this.style.borderColor=\'var(--line)\'">';
+      'class="kc-champ" style="' + style + '">';
     if (estMdp) {
       html += '<button type="button" onclick="basculerVisibiliteMdp(\'' + jsArg(id) + '\', this)" aria-label="Afficher ou masquer le mot de passe" style="position:absolute;top:50%;right:4px;transform:translateY(-50%);width:44px;height:44px;background:transparent;border:none;padding:0;display:flex;align-items:center;justify-content:center;cursor:pointer;">' + OEIL_MDP_OUVERT + '</button>' +
         '</div>';
@@ -397,12 +395,12 @@
   function renderPhoneField(id, label, autocomplete) {
     var valeur = (S.champsAuth && S.champsAuth[id]) ? S.champsAuth[id] : '';
     return '<div style="flex:1;">' +
-      '<label style="font-size:12px;font-weight:700;color:var(--ink2);display:block;margin-bottom:5px;">' + label + '</label>' +
+      '<label for="' + id + '" style="' + STYLE_LIBELLE + '">' + label + '</label>' +
       '<div style="display:flex;align-items:center;height:52px;border-radius:26px;border:1.5px solid var(--line2);background:var(--card);overflow:hidden;transition:border-color 0.2s;" id="' + id + 'Wrap">' +
         '<span style="display:flex;align-items:center;gap:5px;padding:0 12px;height:100%;white-space:nowrap;flex-shrink:0;font-size:15px;font-weight:700;color:var(--ink);border-right:1.5px solid var(--line);background:var(--card);">🇨🇮 +225</span>' +
         '<input id="' + id + '" type="tel" inputmode="numeric" value="' + safeHtml(valeur) + '" oninput="App.saisieAuth(\'' + jsArg(id) + '\', this.value)" placeholder="07 07 07 07 07" autocomplete="' + (autocomplete || 'tel') + '" required ' +
         'style="flex:1;height:100%;border:none;background:transparent;padding:0 14px;font-family:' + UI.fontMono + ';font-size:15px;letter-spacing:0.5px;color:var(--ink);box-sizing:border-box;outline:none;" ' +
-        'onfocus="var w=document.getElementById(\'' + id + 'Wrap\');if(w)w.style.borderColor=\'#0B5FE0\'" onblur="var w=document.getElementById(\'' + id + 'Wrap\');if(w)w.style.borderColor=\'var(--line)\'">' +
+        'onfocus="var w=document.getElementById(\'' + id + 'Wrap\');if(w)w.style.borderColor=\'#0B5FE0\'" onblur="var w=document.getElementById(\'' + id + 'Wrap\');if(w)w.style.borderColor=\'var(--line2)\'">' +
       '</div>' +
     '</div>';
   }

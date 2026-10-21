@@ -15,7 +15,7 @@
         S.eventAssignments.map(function(a, idx) {
           var mine = canTouchAssignment(a, me, allU);
           var label = a.isSection
-            ? (a.sectionEmoji ? a.sectionEmoji + ' ' : '') + safeHtml(a.sectionName || '') + ' <span style="font-size:11px;font-weight:800;color:var(--lien);background:var(--accent-soft);padding:1px 6px;border-radius:8px;">PÔLE</span>'
+            ? (a.sectionId ? icoPole(a.sectionId, 14) + ' ' : '') + safeHtml(a.sectionName || '') + ' <span style="font-size:11px;font-weight:800;color:var(--lien);background:var(--accent-soft);padding:1px 6px;border-radius:8px;">PÔLE</span>'
             : safeHtml(a.userName || '');
           var dl = a.deadline ? formatDeadline(a.deadline) : '';
           return '<div style="display:flex;align-items:center;justify-content:space-between;background:' + (a.isSection ? '#F5F5FF' : 'var(--tile)') + ';padding:8px 12px;border-radius:8px;">' +
@@ -29,7 +29,7 @@
             '</div>' +
             (mine
               ? '<button type="button" onclick="App.removeAssignment(' + idx + ')" style="background:none;border:none;color:#D92D20;font-size:15px;cursor:pointer;">&times;</button>'
-              : '<span title="Relève d\'un autre pôle" style="font-size:11px;color:var(--line);white-space:nowrap;">🔒</span>') +
+              : '<span title="Relève d\'un autre pôle" style="white-space:nowrap;">' + ico('lock', 13, UI.faint) + '</span>') +
           '</div>';
         }).join('') +
       '</div>';
@@ -38,7 +38,7 @@
       var select = document.getElementById('assignUserSelect');
       var taskInput = document.getElementById('assignTaskInput');
       if (!select || !select.value || !taskInput || !taskInput.value.trim()) {
-        toast('Choisissez un membre (ou un pôle) et indiquez la tâche.', 'error');
+        toast('Choisis un membre (ou un pôle) et indique la tâche.', 'error');
         return;
       }
       var task = taskInput.value.trim();
@@ -72,7 +72,7 @@
         // Un responsable de section ne peut assigner que ses propres membres.
         if (!isGrandResponsable(S.user)) {
           var allowed = assignableMembers(S.user, allU).some(function(x){ return x.id === u.id; });
-          if (!allowed) { toast('Vous ne pouvez assigner que les membres de votre pôle.', 'error'); return; }
+          if (!allowed) { toast('Tu ne peux assigner que les membres de ton pôle.', 'error'); return; }
         }
         var uSecs = getUserSections(u);
         var mineSecs = assignableSectionIds(S.user);
@@ -114,7 +114,7 @@
       var post = db(SK.POSTS, []).find(function(p){ return p.id === postId; });
       if (!post) { toast('Événement introuvable.', 'error'); return; }
       if (!canManageEventAssignments(post, S.user)) {
-        toast('Vous n\'avez pas le droit d\'assigner sur cet événement.', 'error');
+        toast('Tu n\'as pas le droit d\'assigner sur cet événement.', 'error');
         return;
       }
       S.optionsOpen = false; S.optionsPost = null; S.postOptionsOpen = false;
@@ -135,7 +135,7 @@
       if (idx === -1) { toast('Événement introuvable.', 'error'); return; }
       var post = posts[idx];
       if (!canManageEventAssignments(post, S.user)) {
-        toast('Vous n\'avez pas le droit d\'assigner sur cet événement.', 'error');
+        toast('Tu n\'as pas le droit d\'assigner sur cet événement.', 'error');
         return;
       }
       if (btn) { btn.textContent = 'Enregistrement…'; btn.disabled = true; }
@@ -165,7 +165,7 @@
         sendNotificationToUser(a.userId, {
           type: 'EVENT_ASSIGNED',
           title: 'Service assigné',
-          text: 'Vous êtes de service (' + a.task + ') pour ' + (post.eventTitle || 'un événement'),
+          text: 'Tu es de service (' + a.task + ') pour ' + (post.eventTitle || 'un événement'),
           targetId: post.id
         });
       });
@@ -173,7 +173,7 @@
       S.assignManagerId = null;
       S.eventAssignments = [];
       render();
-      toast('Assignations enregistrées ! ✅', 'success');
+      toast('Assignations enregistrées.', 'success');
     },
 
     syncCreateEventData: function() {
@@ -250,11 +250,11 @@
           // Double filet : on ne retient que ce qui tombe dans les frontières.
           return !isNaN(r.lat) && !isNaN(r.lng) && isInIvoryCoast(r.lat, r.lng);
         });
-        if (S.eventPlaceResults.length === 0) S.eventPlaceError = 'Aucun lieu trouvé en Côte d\'Ivoire. Essayez avec le quartier ou la commune.';
+        if (S.eventPlaceResults.length === 0) S.eventPlaceError = 'Aucun lieu trouvé en Côte d\'Ivoire. Essaie avec le quartier ou la commune.';
       } catch (e) {
         console.warn('Recherche de lieu :', e);
         S.eventPlaceResults = [];
-        S.eventPlaceError = 'Recherche indisponible. Vérifiez votre connexion et réessayez.';
+        S.eventPlaceError = 'Recherche indisponible. Vérifie ta connexion et réessaie.';
       }
       S.eventPlaceSearching = false;
       render();
@@ -286,7 +286,7 @@
       S.eventPlaceQuery = '';
       S.eventPlaceError = null;
       render();
-      toast('Lieu situé : ' + r.shortLabel + ' 📍', 'success');
+      toast('Lieu situé : ' + r.shortLabel + '.', 'success');
     },
     clearEventPosition: function() {
       App.syncCreateEventData();
@@ -670,21 +670,14 @@
       }
     },
     renderSectionBadges: function(selected, toggleFnName) {
-      var sections = [
-        {id:'cadrage', label:'Cadrage', icon:'🎥'},
-        {id:'regie', label:'Régie', icon:'🎛️'},
-        {id:'web', label:'Web', icon:'🌐'},
-        {id:'proj', label:'Projection', icon:'🖥️'},
-        {id:'prod', label:'Prod', icon:'🎬'},
-        {id:'photo', label:'Photo', icon:'📷'},
-        {id:'vente', label:'Vente', icon:'🛒'}
-      ];
+      // Une puce par pôle : son icône et sa couleur ; pleine quand elle est choisie.
       var html = '<div style="display:flex;flex-wrap:wrap;gap:8px;">';
-      sections.forEach(function(s) {
+      SECTIONS.forEach(function(s) {
         var isSel = selected.indexOf(s.id) !== -1;
-        var bg = isSel ? '#0B5FE0' : 'var(--tile)';
-        var color = isSel ? '#FFF' : 'var(--ink2)';
-        html += '<div onclick="App.' + toggleFnName + '(\'' + jsArg(s.id) + '\')" style="background:' + bg + ';color:' + color + ';padding:6px 12px;border-radius:16px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:4px;transition:0.2s;">' + s.icon + ' ' + s.label + '</div>';
+        html += '<button type="button" aria-pressed="' + isSel + '" onclick="App.' + toggleFnName + '(\'' + jsArg(s.id) + '\')" style="display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 14px;border-radius:999px;cursor:pointer;font:inherit;font-size:13px;font-weight:700;' +
+          (isSel ? 'background:' + s.color + ';color:#FFF;border:1.5px solid ' + s.color + ';' : 'background:var(--card);color:var(--ink2);border:1.5px solid var(--line2);') + '">' +
+          icoPole(s.id, 15, isSel ? '#FFF' : s.color) + safeHtml(s.nom) +
+        '</button>';
       });
       html += '</div>';
       return html;
@@ -695,21 +688,21 @@
       e && e.preventDefault();
       // Récupération au NUMÉRO (clé de recherche = chiffres canoniques).
       var phone = normalizePhone(((document.getElementById('forgotPhone')||{}).value||'').trim());
-      if (!phone) { toast('Veuillez saisir votre numéro de téléphone.', 'error'); return; }
+      if (!phone) { toast('Saisis ton numéro de téléphone.', 'error'); return; }
       if (!supabase || !supabase.functions) { toast('Service indisponible.', 'error'); return; }
       try {
         var res = await supabase.functions.invoke('password-recovery', { body: { action: 'questions', email: phone } });
         var data = res && res.data;
         if (!data || !data.found) {
-          toast('Aucune question de sécurité pour ce numéro. Demandez à un Admin de réinitialiser votre mot de passe.', 'error');
+          toast('Aucune question de sécurité pour ce numéro. Demande à un Admin de réinitialiser ton mot de passe.', 'error');
           return;
         }
-        if (data.locked) { toast('Trop de tentatives récentes. Réessayez dans quelques minutes.', 'error'); return; }
+        if (data.locked) { toast('Trop de tentatives récentes. Réessaie plus tard.', 'error'); return; }
         S.forgotUser = { phone: phone, sec_q1: data.q1, sec_q2: data.q2 };
         render();
       } catch(err) {
         console.warn('forgot questions error:', err);
-        toast('Impossible de récupérer vos questions. Réessayez.', 'error');
+        toast('Impossible de récupérer tes questions. Réessaie.', 'error');
       }
     },
     // Étape 2 : on envoie les réponses + le nouveau mot de passe. L'Edge Function
@@ -721,7 +714,7 @@
       var a1 = ((document.getElementById('forgotA1')||{}).value||'').trim();
       var a2 = ((document.getElementById('forgotA2')||{}).value||'').trim();
       var pwd = ((document.getElementById('forgotPwd')||{}).value||'').trim();
-      if (!a1 || !a2) { toast('Répondez aux deux questions.', 'error'); return; }
+      if (!a1 || !a2) { toast('Réponds aux deux questions.', 'error'); return; }
       if (pwd.length < 8) { toast('Le mot de passe doit contenir au moins 8 caractères.', 'error'); return; }
       if (!supabase || !supabase.functions) { toast('Service indisponible.', 'error'); return; }
       try {
@@ -736,14 +729,14 @@
           return;
         }
         if (!res || !res.data || !res.data.ok) { toast('Réponses incorrectes.', 'error'); return; }
-        toast('Mot de passe réinitialisé ! Connectez-vous avec le nouveau.', 'success');
+        toast('Mot de passe réinitialisé. Connecte-toi avec le nouveau.', 'success');
         // Purge les champs sensibles restés dans l'état (mot de passe fraîchement
         // utilisé, réponses aux questions) — même hygiène que login/signup.
         S.champsAuth = {};
         S.forgotUser = null; S.auth = 'login'; render();
       } catch(err) {
         console.warn('reset password error:', err);
-        toast('Réinitialisation impossible. Vérifiez vos réponses.', 'error');
+        toast('Réinitialisation impossible. Vérifie tes réponses.', 'error');
       }
     },
     // (Ancienne définition dupliquée de toggleParticipation supprimée : la clé
@@ -760,7 +753,7 @@
     // réponses dans metadata.participations ('yes' / 'no') au lieu de likedBy.
     // Ces boutons appelaient une méthode inexistante : ils ne faisaient rien.
     toggleParticipation: function(eventId, reponse) {
-      if (!S.user) { toast('Vous devez être connecté.', 'error'); return; }
+      if (!S.user) { toast('Tu dois être connecté.', 'error'); return; }
       var posts = db(SK.POSTS, []);
       var ev = posts.find(function(p){ return p.id === eventId && p.type === 'EVENT'; });
       if (!ev) { toast('Événement introuvable.', 'error'); return; }
@@ -786,7 +779,7 @@
         sendNotificationToUser(ev.userId, {
           type: 'EVENT_PARTICIPATION',
           title: 'Nouvelle participation',
-          text: (S.user.prenom || 'Quelqu\'un') + ' participera à « ' + ((ev.metadata && ev.metadata.title) || ev.eventTitle || 'votre événement') + ' ».',
+          text: (S.user.prenom || 'Quelqu\'un') + ' participera à « ' + ((ev.metadata && ev.metadata.title) || ev.eventTitle || 'ton événement') + ' ».',
           targetId: ev.id
         });
       }
@@ -981,7 +974,7 @@
     },
 
     toggleEventParticipation: function(eventId) {
-      if (!S.user) { toast('Vous devez être connecté.', 'error'); return; }
+      if (!S.user) { toast('Tu dois être connecté.', 'error'); return; }
       var posts = db(SK.POSTS, []);
       var ev = posts.find(function(p){ return p.id === eventId && p.type === 'EVENT'; });
       if (!ev) { toast('Événement introuvable.', 'error'); return; }
@@ -1003,13 +996,13 @@
       if (joining && ev.userId && ev.userId !== S.user.id) {
         sendNotificationToUser(ev.userId, {
           type: 'EVENT_PARTICIPATION',
-          title: '👍 Nouvelle participation',
-          text: (S.user.prenom || 'Quelqu\'un') + ' participera à « ' + (ev.eventTitle || 'votre événement') + ' ».',
+          title: 'Nouvelle participation',
+          text: (S.user.prenom || 'Quelqu\'un') + ' participera à « ' + (ev.eventTitle || 'ton événement') + ' ».',
           targetId: ev.id
         });
       }
       render();
-      toast(joining ? 'Participation confirmée ! 👍' : 'Participation retirée.', joining ? 'success' : 'info');
+      toast(joining ? 'Participation confirmée.' : 'Participation retirée.', joining ? 'success' : 'info');
     },
 
     openUserProfile: async function(userId) {
@@ -1096,8 +1089,8 @@
       if (nowFollowing) {
         sendNotificationToUser(targetUserId, {
           type: 'FOLLOW',
-          title: '👤 Nouvel abonné',
-          text: (S.user.prenom || 'Quelqu\'un') + ' a commencé à vous suivre.',
+          title: 'Nouvel abonné',
+          text: (S.user.prenom || 'Quelqu\'un') + ' a commencé à te suivre.',
           targetId: targetUserId
         });
       }
@@ -1400,7 +1393,7 @@
       var newPwd = ((document.getElementById('editNewPwd')||{}).value || '').trim();
 
       if (S.editSections.length === 0) {
-        toast('Veuillez sélectionner au moins 1 section.', 'error');
+        toast('Choisis au moins un pôle.', 'error');
         if (btn) { btn.innerHTML = 'Terminer'; btn.disabled = false; }
         return;
       }
@@ -1838,8 +1831,8 @@
       var phoneRaw = ((document.getElementById('loginPhone')||{}).value || '').trim();
       var email = phoneToEmail(phoneRaw);
       var pwd = ((document.getElementById('loginPwd')||{}).value || '').trim();
-      if (!email) { toast('Veuillez saisir votre numéro de téléphone.', 'error'); return; }
-      if (!pwd) { toast('Veuillez saisir votre mot de passe.', 'error'); return; }
+      if (!email) { toast('Saisis ton numéro de téléphone.', 'error'); return; }
+      if (!pwd) { toast('Saisis ton mot de passe.', 'error'); return; }
 
       App._loginEnCours = true;
       var btn = document.getElementById('loginSubmitBtn');
@@ -1891,9 +1884,9 @@
       var phoneDigits = normalizePhone(phoneRaw);
       var phoneDisplay = formatPhoneDisplay(phoneRaw);
       var pwd = ((document.getElementById('signupPwd')||{}).value||'').trim();
-      if (!prenom || !nom || !email || !pwd) { toast('Veuillez remplir tous les champs (numéro compris).', 'error'); return; }
+      if (!prenom || !nom || !email || !pwd) { toast('Remplis tous les champs, numéro compris.', 'error'); return; }
       if (pwd.length < 8) { toast('Le mot de passe doit contenir au moins 8 caractères.', 'error'); return; }
-      if (S.signupSections.length === 0) { toast('Veuillez choisir au moins 1 section.', 'error'); return; }
+      if (S.signupSections.length === 0) { toast('Choisis au moins un pôle.', 'error'); return; }
       var accepte = (document.getElementById('signupConditions') || {}).checked;
       if (!accepte) { toast('Pour créer un compte, coche « J\'accepte les conditions d\'utilisation ».', 'error'); return; }
       // Questions de sécurité obligatoires : c'est le seul moyen de récupération.
@@ -1925,7 +1918,7 @@
           // confirmée, via applyAuthUser. On mémorise les sections choisies pour
           // qu'elles soient conservées à ce moment-là.
           try { localStorage.setItem('kc_pending_signup', JSON.stringify({ email: email, phone: phoneDisplay, prenom: prenom, nom: nom, sections: userSecs, section_id: userSecs[0] })); } catch(e){}
-          toast('Compte créé ! Connectez-vous avec votre numéro.', 'success');
+          toast('Compte créé. Connecte-toi avec ton numéro.', 'success');
           S.auth = 'login'; S.signupSections = []; S.signupRole = 'MEMBRE'; S.champsAuth = {};
           render();
           return;
@@ -1973,7 +1966,7 @@
         try { syncSupabaseToLocal(); } catch(e){}
       } catch(err) {
         console.warn('signup error:', err);
-        toast('Inscription impossible. Réessayez.', 'error');
+        toast('Inscription impossible. Réessaie.', 'error');
       } finally {
         App._signupEnCours = false;
       }
@@ -2175,7 +2168,7 @@
         console.warn('confirmBulkDelete error:', e);
         S.bulkDeleteBusy = false;
         render();
-        toast('Une erreur est survenue. Réessayez.', 'error');
+        toast('Une erreur est survenue. Réessaie.', 'error');
       }
     },
 
@@ -2185,7 +2178,7 @@
       if (S.deleteAccountBusy) return;
       var input = document.getElementById('deleteAccountConfirmInput');
       var val = (input ? input.value : '').trim().toUpperCase();
-      if (val !== 'SUPPRIMER') { toast('Tapez SUPPRIMER pour confirmer.', 'error'); return; }
+      if (val !== 'SUPPRIMER') { toast('Tape SUPPRIMER pour confirmer.', 'error'); return; }
       if (!S.user) return;
       var userId = S.user.id;
 
@@ -2288,12 +2281,12 @@
         S.deleteAccountOpen = false;
         S.deleteAccountBusy = false;
         render();
-        toast('Votre compte et vos publications ont été supprimés.', 'success');
+        toast('Ton compte et tes publications ont été supprimés.', 'success');
       } catch(e) {
         console.warn('confirmDeleteAccount error:', e);
         S.deleteAccountBusy = false;
         render();
-        toast('Une erreur est survenue. Réessayez.', 'error');
+        toast('Une erreur est survenue. Réessaie.', 'error');
       }
     },
 
@@ -2324,7 +2317,7 @@
           if (sess && sess.data && sess.data.user) applyAuthUser(sess.data.user);
         } catch(e) {}
         render();
-        toast('Rôle Admin retiré — vous êtes de nouveau Membre.', 'success');
+        toast('Rôle Admin retiré : tu es de nouveau Membre.', 'success');
       } catch(e) {
         toast('Échec : le rôle n\'a pas été modifié.', 'error');
       }
@@ -2356,7 +2349,7 @@
       // S.user.role : ce dernier vient d'un JSON stocké en localStorage,
       // modifiable — adminResetPassword utilise déjà le JWT, on s'aligne.
       if (!S.user || S.jwtRole !== 'GRAND_RESPONSABLE') { toast('Réservé au Admin.', 'error'); return; }
-      if (userId === S.user.id) { toast('Vous ne pouvez pas modifier votre propre rôle ici (évite de te verrouiller dehors). Passe par un autre Admin.', 'info'); return; }
+      if (userId === S.user.id) { toast('Tu ne peux pas modifier ton propre rôle ici (pour ne pas te verrouiller dehors). Passe par un autre Admin.', 'info'); return; }
       if (!supabase || !supabase.functions) { toast('Service indisponible.', 'error'); return; }
       var LABELS = { STAGIAIRE: 'Stagiaire', MEMBRE: 'Membre', RESP_SECTION: 'Responsable de pôle', GRAND_RESPONSABLE: 'Admin' };
       S.roleUpdatingId = userId; render();
@@ -2651,7 +2644,7 @@
       var ev = posts.find(function(p){ return p.id === eventId && isEventLike(p); });
       if (!ev) { toast('Événement introuvable.', 'error'); return; }
       var mine = (ev.assignments || []).find(function(a){ return a && a.userId === S.user.id; });
-      if (!mine || !mine.deadline) { toast('Aucune tâche à livrer pour vous ici.', 'error'); return; }
+      if (!mine || !mine.deadline) { toast('Aucune tâche à livrer pour toi ici.', 'error'); return; }
 
       var existing = posts.find(function(p){
         return p.type === 'TASK_DONE' && p.userId === S.user.id && p.taskEventId === eventId;
@@ -2732,8 +2725,8 @@
       if (nowLiked && post.userId && post.userId !== S.user.id) {
         sendNotificationToUser(post.userId, {
           type: 'LIKE',
-          title: "❤️ Nouveau J'aime",
-          text: (S.user.prenom + ' ' + (S.user.nom||'')) + ' a aimé votre publication.',
+          title: "Nouveau J'aime",
+          text: (S.user.prenom + ' ' + (S.user.nom||'')) + ' a aimé ta publication.',
           targetId: post.id
         });
       }
@@ -2774,7 +2767,7 @@
       var post = posts.find(function(p){ return p.id===postId; });
       if (!post) return;
       var alreadyReposted = posts.some(function(p){ return p.type === 'REPOST' && p.originalPostId === postId && p.userId === S.user.id; });
-      if (alreadyReposted) { toast('Vous avez déjà partagé cette publication.', 'error'); return; }
+      if (alreadyReposted) { toast('Tu as déjà partagé cette publication.', 'error'); return; }
       S.repostPostId = postId;
       S.postText = '';
       render();
@@ -2820,7 +2813,7 @@
       S.repostPostId = null;
       S.postText = '';
       render();
-      toast('Publication partagée sur votre mur ! 🔄', 'success');
+      toast('Publication partagée sur ton mur.', 'success');
     },
     // Force l'affichage de la première image d'une vidéo sans vignette (poster).
     // Sans cela, un <video> non lu reste noir sur mobile. On avance très légèrement
@@ -2856,7 +2849,7 @@
     },
     copyPostLink: function(postId) {
       var url = App.postShareUrl(postId);
-      function done(ok) { toast(ok ? 'Lien copié ! Collez-le sur WhatsApp ou ailleurs.' : 'Impossible de copier le lien.', ok ? 'success' : 'error'); }
+      function done(ok) { toast(ok ? 'Lien copié. Colle-le sur WhatsApp ou ailleurs.' : 'Impossible de copier le lien.', ok ? 'success' : 'error'); }
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(url).then(function(){ done(true); }, function(){ done(false); });
       } else {
@@ -3089,10 +3082,10 @@
       render();
     },
     saveEditPost: async function(postId) {
-      if (S.videoProcessing) { toast('Patientez, la vidéo est en cours de traitement…', 'warning'); return; }
+      if (S.videoProcessing) { toast('Patiente, la vidéo est en cours de traitement…', 'warning'); return; }
       var ta = document.getElementById('editPostText');
       var txt = (ta ? ta.value : (S.postText||'')).trim();
-      if (!txt && S.pendingMedia.length === 0) { toast('Ajoutez du texte ou une photo.', 'error'); return; }
+      if (!txt && S.pendingMedia.length === 0) { toast('Ajoute du texte ou une photo.', 'error'); return; }
       var posts = db(SK.POSTS, []);
       var post = posts.find(function(p){ return p.id === postId; });
       if (!post) return;
@@ -3127,7 +3120,7 @@
         post.checkInAt = Date.now();
         post.checkInByEdit = true;
         if (!post.geo) {
-          toast('Enregistrement de votre position…', 'info');
+          toast('Enregistrement de ta position…', 'info');
           try { post.geo = await capturePosition(12000); }
           catch (err) { post.geo = { available: false, reason: 'unavailable' }; }
         }
@@ -3277,7 +3270,7 @@
     // Vote sur un sondage publié : une seule réponse par membre, recliquer son
     // choix actuel le retire (permet de s'abstenir après coup).
     votePoll: function(postId, optionIdx) {
-      if (!S.user) { toast('Vous devez être connecté.', 'error'); return; }
+      if (!S.user) { toast('Tu dois être connecté.', 'error'); return; }
       var posts = db(SK.POSTS, []);
       var post = posts.find(function(p){ return p.id === postId; });
       if (!post || !post.poll || !Array.isArray(post.poll.options)) return;
@@ -3357,11 +3350,11 @@
 
       var collective = '';
       if (!q || 'tous'.indexOf(q) === 0 || 'all'.indexOf(q) === 0) {
-        collective += '<button type="button" onclick="App.' + insertFn + '(\'@tous \')" style="background:var(--accent-soft);color:var(--lien);border:none;padding:5px 10px;border-radius:12px;font-size:12px;font-weight:800;cursor:pointer;">📣 Tous les membres</button>';
+        collective += '<button type="button" onclick="App.' + insertFn + '(\'@tous \')" style="background:var(--accent-soft);color:var(--lien);border:none;padding:5px 10px;border-radius:12px;font-size:12px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:5px;">' + ico('megaphone', 13, 'currentColor') + 'Tous les membres</button>';
       }
       SECTIONS.forEach(function(s) {
         if (q && s.nom.toLowerCase().indexOf(q) !== 0 && s.id.toLowerCase().indexOf(q) !== 0) return;
-        collective += '<button type="button" onclick="App.' + insertFn + '(\'@' + jsArg(s.nom.replace(/\s+/g,'')) + ' \')" style="background:var(--accent-soft);color:var(--lien);border:none;padding:5px 10px;border-radius:12px;font-size:12px;font-weight:700;cursor:pointer;">' + s.emoji + ' Pôle ' + safeHtml(s.nom) + '</button>';
+        collective += '<button type="button" onclick="App.' + insertFn + '(\'@' + jsArg(s.nom.replace(/\s+/g,'')) + ' \')" style="background:var(--accent-soft);color:var(--lien);border:none;padding:5px 10px;border-radius:12px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:5px;">' + icoPole(s.id, 13) + 'Pôle ' + safeHtml(s.nom) + '</button>';
       });
       if (collective) {
         out += '<div style="font-size:11px;font-weight:800;color:var(--lien);width:100%;margin-bottom:4px;">Mentionner un groupe :</div>' + collective;
@@ -3374,7 +3367,7 @@
       if (users.length > 0) {
         out += '<div style="font-size:11px;font-weight:800;color:var(--lien);width:100%;margin:6px 0 4px;">Membres :</div>' +
           users.map(function(u) {
-            return '<button type="button" onclick="App.' + insertFn + '(\'@' + jsArg((u.prenom||'') + (u.nom||'')) + ' \')" style="background:var(--accent-soft);color:var(--lien);border:none;padding:5px 10px;border-radius:12px;font-size:12px;font-weight:700;cursor:pointer;">👤 ' + safeHtml((u.prenom||'') + ' ' + (u.nom||'')) + '</button>';
+            return '<button type="button" onclick="App.' + insertFn + '(\'@' + jsArg((u.prenom||'') + (u.nom||'')) + ' \')" style="background:var(--accent-soft);color:var(--lien);border:none;padding:5px 10px;border-radius:12px;font-size:12px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:5px;">' + ico('user', 13, 'currentColor') + safeHtml((u.prenom||'') + ' ' + (u.nom||'')) + '</button>';
           }).join('');
       }
       return out;
@@ -3398,12 +3391,12 @@
       // Vidéo : format libre (aucun recadrage), un seul média vidéo par publication, façon Facebook
       if (videoFile) {
         if (S.pendingMedia.length > 0 && !hasVideoPending) {
-          toast('Impossible de mélanger une vidéo avec des photos dans la même publication. Retirez d\'abord les photos.', 'error');
+          toast('Impossible de mélanger une vidéo avec des photos dans la même publication. Retire d\'abord les photos.', 'error');
           return;
         }
         var maxVideoBytes = 60 * 1024 * 1024;
         if (videoFile.size > maxVideoBytes) {
-          toast('Vidéo trop volumineuse (max 60 Mo). Choisissez une vidéo plus courte ou plus légère.', 'error');
+          toast('Vidéo trop volumineuse (60 Mo au plus). Choisis une vidéo plus courte ou plus légère.', 'error');
           return;
         }
         S.pendingMedia = [];
@@ -3449,7 +3442,7 @@
       }
 
       if (hasVideoPending) {
-        toast('Une vidéo est déjà sélectionnée. Retirez-la pour ajouter des photos.', 'error');
+        toast('Une vidéo est déjà sélectionnée. Retire-la pour ajouter des photos.', 'error');
         return;
       }
 
@@ -3542,10 +3535,10 @@
     },
     submitPost: async function(e) {
       e && e.preventDefault();
-      if (S.videoProcessing) { toast('Patientez, la vidéo est en cours de traitement…', 'warning'); return; }
+      if (S.videoProcessing) { toast('Patiente, la vidéo est en cours de traitement…', 'warning'); return; }
       var txt = ((document.getElementById('newPostText')||{}).value||'').trim();
-      if (!txt && S.pendingMedia.length===0 && !S.pollOpen) { toast('Ajoutez du texte, une photo ou un sondage.', 'error'); return; }
-      if (!S.user) { toast('Vous devez être connecté.', 'error'); return; }
+      if (!txt && S.pendingMedia.length===0 && !S.pollOpen) { toast('Ajoute du texte, une photo ou un sondage.', 'error'); return; }
+      if (!S.user) { toast('Tu dois être connecté.', 'error'); return; }
 
       // Ne jamais enregistrer un média en base64 : si un envoi vers Storage est
       // encore en cours, on met « Publier » en attente (« Envoi du média… ») et on
@@ -3559,7 +3552,7 @@
       if (S.pollOpen) {
         var pQuestion = (S.pollQuestion || '').trim();
         var pOptions = (S.pollOptions || []).map(function(o){ return (o||'').trim(); }).filter(function(o){ return o.length > 0; });
-        if (!pQuestion) { toast('Ajoutez une question à votre sondage.', 'error'); return; }
+        if (!pQuestion) { toast('Ajoute une question à ton sondage.', 'error'); return; }
         if (pOptions.length < 2) { toast('Le sondage doit avoir au moins 2 options.', 'error'); return; }
         pollData = { question: pQuestion, options: pOptions, votes: {} };
       }
@@ -3845,7 +3838,7 @@
         sendNotificationToUser(parentComment.userId, {
           type: 'REPLY',
           title: 'Nouvelle réponse',
-          text: S.user.prenom + ' a répondu à votre commentaire : "' + (txt ? txt.slice(0, 40) : 'Photo') + '"',
+          text: S.user.prenom + ' a répondu à ton commentaire : "' + (txt ? txt.slice(0, 40) : 'Photo') + '"',
           targetId: post.id,
           // Sans cet identifiant, on retombait sur la publication et il fallait
           // retrouver soi-même le commentaire concerné dans toute la discussion.
@@ -4127,7 +4120,7 @@
       var eventSelect = document.getElementById('evalEventSelect');
       var eventId = S.evalEventId || (eventSelect ? eventSelect.value : '');
       if (!eventId) {
-        toast("Veuillez sélectionner l'événement à évaluer.", 'error');
+        toast("Choisis l'événement à évaluer.", 'error');
         return;
       }
       var posts = db(SK.POSTS, []);
@@ -4175,7 +4168,7 @@
       });
 
       if (evaluations.length === 0) {
-        toast('Notez au moins un critère dans une section.', 'error');
+        toast('Note au moins un critère dans un pôle.', 'error');
         return;
       }
 
@@ -4230,7 +4223,7 @@
       S.q = '';
       render();
       setTimeout(function() { window.scrollTo({ top: 0, behavior: 'smooth' }); }, 50);
-      toast(existing ? 'Bilan mis à jour ! ✏️' : 'Bilan publié avec succès ! ', 'success');
+      toast(existing ? 'Bilan mis à jour.' : 'Bilan publié.', 'success');
     },
 
     // Changement d'événement dans l'écran Notation : si un bilan a déjà été publié
@@ -4257,7 +4250,7 @@
           });
           S.ratings[secId] = { criteria: crit, comment: ev.comment || '' };
         });
-        toast('Bilan existant chargé — vos modifications le mettront à jour.', 'info');
+        toast('Bilan existant chargé : tes modifications le mettront à jour.', 'info');
       }
       render();
     }
