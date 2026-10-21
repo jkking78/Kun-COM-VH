@@ -251,12 +251,12 @@
       '<form onsubmit="event.preventDefault(); App.login(event);" style="display:flex;flex-direction:column;gap:14px;">' +
         renderPhoneField('loginPhone', 'Numéro de téléphone', 'tel') +
         renderField('loginPwd', 'password', 'Mot de passe', '••••••••', 'current-password') +
-        '<div style="text-align:right;margin-top:-6px;"><span role="button" onclick="App.nav(\'forgot\')" style="display:inline-block;padding:12px 8px;margin:-12px 0;line-height:20px;color:#0B5FE0;font-size:13px;font-weight:700;cursor:pointer;">Mot de passe oublié ?</span></div>' +
+        '<div style="text-align:right;margin-top:-6px;"><span role="button" onclick="App.nav(\'forgot\')" style="display:inline-block;padding:12px 8px;margin:-12px 0;line-height:20px;color:var(--lien);font-size:13px;font-weight:700;cursor:pointer;">Mot de passe oublié ?</span></div>' +
         '<button type="submit" id="loginSubmitBtn" style="' + btnStyle('#0B5FE0') + '">Se connecter</button>' +
       '</form>' +
 
       '<p style="text-align:center;font-size:13px;color:var(--faint);margin-top:22px;">' +
-        'Pas encore de compte ? <span role="button" onclick="App.nav(\'signup\')" style="display:inline-block;padding:12px 8px;margin:-12px 0;line-height:20px;color:#0B5FE0;font-weight:700;cursor:pointer;">Rejoindre l\'équipe</span>' +
+        'Pas encore de compte ? <span role="button" onclick="App.nav(\'signup\')" style="display:inline-block;padding:12px 8px;margin:-12px 0;line-height:20px;color:var(--lien);font-weight:700;cursor:pointer;">Rejoindre l\'équipe</span>' +
       '</p>' +
 
 
@@ -310,7 +310,7 @@
         '<button onclick="App.nav(\'login\')" style="background:var(--tile);border:none;width:44px;height:44px;flex-shrink:0;touch-action:manipulation;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
           '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2.2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>' +
         '</button>' +
-        '<div><p style="font-size:11px;font-weight:800;color:#0B5FE0;text-transform:uppercase;letter-spacing:1.5px;margin:0;">Créer un compte</p>' +
+        '<div><p style="font-size:11px;font-weight:800;color:var(--lien);text-transform:uppercase;letter-spacing:1.5px;margin:0;">Créer un compte</p>' +
         '<h1 style="font-size:22px;font-weight:800;color:var(--ink);margin:0;">Rejoindre Commit</h1></div>' +
       '</div>' +
 
@@ -335,13 +335,13 @@
         // dans S.signupConditions : un re-rendu (choix d'un pôle) décochait sinon la case.
         '<label style="display:flex;align-items:flex-start;gap:10px;font-size:13px;color:var(--ink2);line-height:1.45;cursor:pointer;margin-top:4px;">' +
           '<input type="checkbox" id="signupConditions"' + (S.signupConditions ? ' checked' : '') + ' onchange="S.signupConditions=this.checked" style="width:22px;height:22px;margin:0;flex-shrink:0;accent-color:#0B5FE0;-webkit-appearance:checkbox;appearance:auto;">' +
-          '<span>J\'ai lu et j\'accepte les <button type="button" onclick="ouvrirConditions()" style="background:none;border:none;padding:2px;margin:-2px 0;font:inherit;font-weight:700;color:#0B5FE0;cursor:pointer;">conditions d\'utilisation</button>.</span>' +
+          '<span>J\'ai lu et j\'accepte les <button type="button" onclick="ouvrirConditions()" style="background:none;border:none;padding:2px;margin:-2px 0;font:inherit;font-weight:700;color:var(--lien);cursor:pointer;">conditions d\'utilisation</button>.</span>' +
         '</label>' +
         '<button type="submit" style="' + btnStyle('#0B5FE0') + 'margin-top:6px;">Créer mon compte</button>' +
       '</form>' +
 
       '<p style="text-align:center;font-size:13px;color:var(--faint);margin-top:20px;">' +
-        'Déjà inscrit ? <span role="button" onclick="App.nav(\'login\')" style="display:inline-block;padding:12px 8px;margin:-12px 0;line-height:20px;color:#0B5FE0;font-weight:700;cursor:pointer;">Se connecter</span>' +
+        'Déjà inscrit ? <span role="button" onclick="App.nav(\'login\')" style="display:inline-block;padding:12px 8px;margin:-12px 0;line-height:20px;color:var(--lien);font-weight:700;cursor:pointer;">Se connecter</span>' +
       '</p>' +
     '</div></div>';
   }

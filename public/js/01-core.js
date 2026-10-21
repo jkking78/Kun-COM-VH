@@ -1995,6 +1995,7 @@
     accent:     '#0B5FE0',   // l'unique couleur d'action de l'app (identique clair/sombre)
     accentSoft: 'var(--accent-soft)',
     accentInk:  'var(--accent-ink)',   // texte lisible sur accentSoft
+    lien:       'var(--lien)',   // liens et textes bleus : accent en clair, plus lumineux en sombre
 
     ink:   'var(--ink)',     // titres
     ink2:  'var(--ink2)',    // corps de texte
@@ -2019,6 +2020,9 @@
     evGoldLine: 'rgba(203,163,92,0.40)',
 
     ok: '#0E9F6E', warn: '#D98A0B', bad: '#D92D20',
+    // Fonds pleins sous un texte blanc : assez foncés pour 4,5:1 (le vert et
+    // l'orange ci-dessus n'atteignent que 3,4 et 2,8).
+    okPlein: '#047857', warnPlein: '#B45309',
 
     r1: '12px', r2: '16px', r3: '20px', pill: '999px',
     sh:  'var(--sh)',

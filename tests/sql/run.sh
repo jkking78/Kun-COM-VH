@@ -37,3 +37,6 @@ lancer() {
 lancer tests/sql/test_06_durcissement.sql migration/06_durcissement_ecritures.sql
 lancer tests/sql/test_07_convocations_validation.sql migration/06_durcissement_ecritures.sql migration/07_convocations_et_validation.sql
 lancer tests/sql/test_08_temps_reel.sql migration/06_durcissement_ecritures.sql migration/07_convocations_et_validation.sql migration/08_temps_reel.sql
+# La 09 ne change aucun droit : test_08 doit passer à l'identique par-dessus.
+lancer tests/sql/test_08_temps_reel.sql migration/06_durcissement_ecritures.sql migration/07_convocations_et_validation.sql migration/08_temps_reel.sql migration/09_performances_rls.sql
+lancer tests/sql/test_09_performances_rls.sql migration/06_durcissement_ecritures.sql migration/07_convocations_et_validation.sql migration/08_temps_reel.sql migration/09_performances_rls.sql

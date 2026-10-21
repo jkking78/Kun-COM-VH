@@ -298,12 +298,12 @@
       return '<span title="' + safeHtml((p.prenom || '') + ' ' + (p.nom || '')) + '" style="width:28px;height:28px;border-radius:14px;border:2px solid ' + UI.card + ';' + (i ? 'margin-left:-8px;' : '') + 'background:' + (p.avatar_color || UI.accent) + ';color:#FFF;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">' +
         (p.avatar_url ? '<img src="' + safeUrl(p.avatar_url) + '" alt="" style="width:100%;height:100%;object-fit:cover;">' : safeHtml((p.prenom || 'M').charAt(0).toUpperCase())) + '</span>';
     }).join('');
-    var lien = 'font-size:13px;font-weight:700;color:' + UI.accent + ';text-decoration:none;background:none;border:none;padding:0;cursor:pointer;min-height:32px;display:inline-flex;align-items:center;';
+    var lien = 'font-size:13px;font-weight:700;color:' + UI.lien + ';text-decoration:none;background:none;border:none;padding:0;cursor:pointer;min-height:32px;display:inline-flex;align-items:center;';
 
     return '<section aria-label="Ma prochaine mission" style="padding:4px 16px;">' +
       '<div class="kc-apparait" style="background:' + UI.card + ';border-radius:20px;box-shadow:' + UI.sh2 + ';padding:18px;">' +
         '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">' +
-          '<span style="font-size:12px;font-weight:700;color:' + UI.accent + ';">Prochaine mission</span>' +
+          '<span style="font-size:12px;font-weight:700;color:' + UI.lien + ';">Prochaine mission</span>' +
           '<span data-compte-a-rebours="' + debut + '" data-fin="' + fin + '" style="font-size:12px;font-weight:700;padding:4px 10px;border-radius:12px;background:' + (enCours ? 'var(--ok-soft)' : 'var(--accent-soft)') + ';color:' + (enCours ? 'var(--ok-ink)' : UI.accentInk) + ';white-space:nowrap;">' + etat + '</span>' +
         '</div>' +
         '<h2 style="font-size:22px;font-weight:800;letter-spacing:-0.3px;color:' + UI.ink + ';margin:8px 0 4px;line-height:1.2;overflow-wrap:anywhere;">' + safeHtml(ev.eventTitle || 'Événement') + '</h2>' +
@@ -424,7 +424,7 @@
               '<div style="font-size:12px;color:' + UI.faint + ';overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + safeHtml([m.phone, poles, quand].filter(Boolean).join(' · ')) + '</div>' +
             '</div>' +
             '<button type="button" onclick="App.validerInscription(\'' + jsArg(m.id) + '\', false)" style="min-height:40px;padding:0 12px;background:' + UI.tile + ';color:' + UI.ink + ';border:none;border-radius:999px;font-size:13px;font-weight:700;cursor:pointer;">Refuser</button>' +
-            '<button type="button" onclick="App.validerInscription(\'' + jsArg(m.id) + '\', true)" style="min-height:40px;padding:0 14px;background:' + UI.ok + ';color:#FFF;border:none;border-radius:999px;font-size:13px;font-weight:700;cursor:pointer;">Valider</button>' +
+            '<button type="button" onclick="App.validerInscription(\'' + jsArg(m.id) + '\', true)" style="min-height:40px;padding:0 14px;background:' + UI.okPlein + ';color:#FFF;border:none;border-radius:999px;font-size:13px;font-weight:700;cursor:pointer;">Valider</button>' +
           '</div>';
         }).join('') +
       '</div>' +
@@ -794,7 +794,7 @@
           '<div style="font-size:15px;font-weight:800;color:var(--ink);text-transform:capitalize;">' + safeHtml(dateLabel) + '</div>' +
           '<div style="font-size:12px;color:var(--faint);font-weight:600;margin-top:2px;">' + events.length + ' événements · faites défiler</div>' +
         '</div>' +
-        '<div id="evgrpBadge-' + carId + '" style="background:var(--accent-soft);color:#0B5FE0;font-size:12px;font-weight:800;padding:4px 10px;border-radius:20px;flex-shrink:0;">' + (curIdx + 1) + '/' + events.length + '</div>' +
+        '<div id="evgrpBadge-' + carId + '" style="background:var(--accent-soft);color:var(--lien);font-size:12px;font-weight:800;padding:4px 10px;border-radius:20px;flex-shrink:0;">' + (curIdx + 1) + '/' + events.length + '</div>' +
       '</div>' +
       // align-items:flex-start + hauteur pilotée en JS (voir App.recalerCarrousels) :
       // une rangée flex prend sinon la hauteur de son PLUS GRAND volet. Quand l'un
@@ -825,7 +825,7 @@
   // Bloc visuel d'UNE section évaluée (utilisé seul ou dans le carrousel).
   function renderEvaluationSlide(ev) {
     var score = ev.globalScore;
-    var badgeBg = score>=4 ? '#0E9F6E' : score>=2 ? '#D98A0B' : '#D92D20';
+    var badgeBg = score>=4 ? UI.okPlein : score>=2 ? UI.warnPlein : UI.bad;
     var badgeShadow = score>=4 ? 'rgba(34,197,94,0.3)' : score>=2 ? 'rgba(245,158,11,0.3)' : 'rgba(239,68,68,0.3)';
     var crit = ev.criteria || {};
     return '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">' +
@@ -882,7 +882,7 @@
   function renderEvaluationContent(post) {
     var meta = post.metadata || {};
     var evBadge = meta.eventTitle
-      ? '<div style="font-size:13px;font-weight:800;color:#0B5FE0;background:rgba(88,86,214,0.08);padding:6px 12px;border-radius:12px;margin-bottom:12px;display:flex;align-items:center;gap:6px;"><span>Événement :</span> <span>' + safeHtml(meta.eventTitle) + '</span></div>'
+      ? '<div style="font-size:13px;font-weight:800;color:var(--lien);background:rgba(88,86,214,0.08);padding:6px 12px;border-radius:12px;margin-bottom:12px;display:flex;align-items:center;gap:6px;"><span>Événement :</span> <span>' + safeHtml(meta.eventTitle) + '</span></div>'
       : '';
 
     // Ancien format (une seule section, publications déjà en base) ramené au
@@ -959,7 +959,7 @@
     var starCol = stars === null ? 'var(--faint)' : stars >= 4 ? '#0E9F6E' : stars >= 2 ? '#D98A0B' : '#D92D20';
 
     var confirmBtn = isAuthor
-      ? '<div style="margin-top:6px;"><button onclick="App.confirmPresence(\'' + jsArg(post.id) + '\')"' + (S.geoCapturing ? ' disabled' : '') + ' style="background:var(--accent-soft);color:#0B5FE0;border:none;border-radius:12px;padding:7px 12px;font-size:12px;font-weight:800;cursor:pointer;">📍 Confirmer ma présence</button></div>'
+      ? '<div style="margin-top:6px;"><button onclick="App.confirmPresence(\'' + jsArg(post.id) + '\')"' + (S.geoCapturing ? ' disabled' : '') + ' style="background:var(--accent-soft);color:var(--lien);border:none;border-radius:12px;padding:7px 12px;font-size:12px;font-weight:800;cursor:pointer;">📍 Confirmer ma présence</button></div>'
       : '';
 
     // Bloc position selon l'état de présence.
@@ -1188,11 +1188,13 @@
             // carré) : width/height:auto + object-fit:contain, limité par max-height pour
             // ne pas laisser une vidéo très verticale envahir tout l'écran.
             var mediaTag = isVideoUrl(url)
-              // preload="auto" + onloadeddata : si aucune vignette n'a pu être générée,
-              // on force le navigateur à afficher la première image plutôt qu'un écran noir.
+              // Avec une vignette, preload="metadata" : la vidéo n'est téléchargée
+              // qu'à la lecture (jusqu'à 19 Mo, sur données mobiles). Sans vignette,
+              // preload="auto" + onloadeddata : on force le navigateur à afficher la
+              // première image plutôt qu'un écran noir.
               // onerror : URL expirée/supprimée = encart « Média indisponible »
               // (voir App.mediaEchoue) au lieu d'un média cassé définitif.
-              ? '<video src="'+safeUrl(url)+'"' + (post.videoPoster ? ' poster="'+safeUrl(post.videoPoster)+'"' : '') + ' controls playsinline preload="auto" onloadedmetadata="App.mediaCharge(this,\''+jsArg(url)+'\')" onloadeddata="App.primeVideoFrame(this)" onerror="App.mediaEchoue(this)" style="display:block;width:auto;height:auto;max-width:100%;max-height:640px;object-fit:contain;margin:0 auto;background:#000;"></video>'
+              ? '<video src="'+safeUrl(url)+'"' + (post.videoPoster ? ' poster="'+safeUrl(post.videoPoster)+'" preload="metadata"' : ' preload="auto"') + ' controls playsinline onloadedmetadata="App.mediaCharge(this,\''+jsArg(url)+'\')" onloadeddata="App.primeVideoFrame(this)" onerror="App.mediaEchoue(this)" style="display:block;width:auto;height:auto;max-width:100%;max-height:640px;object-fit:contain;margin:0 auto;background:#000;"></video>'
               : '<img src="'+safeUrl(url)+'" loading="lazy" onload="App.mediaCharge(this,\''+jsArg(url)+'\')" onerror="App.mediaEchoue(this)" onclick="App.openImageViewer(\''+jsArg(url)+'\')" style="display:block;width:auto;height:auto;max-width:100%;max-height:640px;object-fit:contain;margin:0 auto;cursor:pointer;"/>';
             // Réservation de la hauteur AVANT que le média n'arrive : avec sa
             // proportion connue, la place est exacte et rien ne bouge ; sinon on
@@ -1263,7 +1265,7 @@
          contentZone = '<div style="margin:10px 14px;padding:20px;background:var(--tile);border-radius:20px;border-left:5px solid #0B5FE0;box-shadow:0 4px 12px rgba(0,0,0,0.03);position:relative;overflow:hidden;">' +
           '<div style="position:absolute;top:0;right:0;width:100px;height:100px;background:radial-gradient(circle, rgba(88,86,214,0.05) 0%, rgba(255,255,255,0) 70%);border-radius:50%;transform:translate(30%,-30%);"></div>' +
           
-          '<div style="display:inline-block;background:rgba(88,86,214,0.1);color:#0B5FE0;padding:4px 10px;border-radius:8px;font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin-bottom:16px;">Événement Planning</div>' +
+          '<div style="display:inline-block;background:rgba(88,86,214,0.1);color:var(--lien);padding:4px 10px;border-radius:8px;font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin-bottom:16px;">Événement Planning</div>' +
           
           '<div style="display:flex;gap:16px;align-items:center;margin-bottom:16px;">' +
             '<div style="background:var(--card);border-radius:16px;overflow:hidden;box-shadow:0 6px 16px rgba(0,0,0,0.08);width:70px;text-align:center;flex-shrink:0;border:1px solid var(--line);">' +
@@ -1273,7 +1275,7 @@
             '<div style="flex:1;">' +
               '<h3 style="margin:0 0 8px;font-size:17px;font-weight:800;color:var(--ink);line-height:1.2;letter-spacing:-0.3px;">' + safeHtml(post.metadata.title||'') + '</h3>' +
               '<div style="display:flex;flex-wrap:wrap;gap:10px;">' +
-                '<div style="font-size:13px;color:#0B5FE0;display:flex;align-items:center;gap:4px;font-weight:600;background:rgba(88,86,214,0.08);padding:4px 8px;border-radius:8px;"><span style="font-size:15px;">🕒</span> ' + safeHtml(post.metadata.time||'') + '</div>' +
+                '<div style="font-size:13px;color:var(--lien);display:flex;align-items:center;gap:4px;font-weight:600;background:rgba(88,86,214,0.08);padding:4px 8px;border-radius:8px;"><span style="font-size:15px;">🕒</span> ' + safeHtml(post.metadata.time||'') + '</div>' +
                 '<div style="font-size:13px;color:var(--faint);display:flex;align-items:center;gap:4px;font-weight:600;background:var(--tile);padding:4px 8px;border-radius:8px;"><span style="font-size:15px;">📍</span> ' + safeHtml(post.metadata.location||'') + '</div>' +
               '</div>' +
             '</div>' +
@@ -1289,7 +1291,7 @@
           '</div>' +
 
           '<div style="display:flex;gap:10px;">' +
-            '<button onclick="App.toggleParticipation(\''+jsArg(post.id)+'\',\'yes\')" style="flex:1;padding:12px;border-radius:999px;font-size:15px;font-weight:800;border:none;cursor:pointer;background:'+((post.metadata.participations||{})[(S.user||{}).id]==='yes'?'#0E9F6E':'var(--card)')+';color:'+((post.metadata.participations||{})[(S.user||{}).id]==='yes'?'#FFF':'var(--ink)')+';box-shadow:'+((post.metadata.participations||{})[(S.user||{}).id]==='yes'?'0 4px 12px rgba(52,199,89,0.3)':'0 2px 6px rgba(0,0,0,0.05)')+';transition:all 0.2s;">' + ((post.metadata.participations||{})[(S.user||{}).id]==='yes' ? ico('thumb',14,'#FFF') + ' Confirmé' : ico('thumb',14,'currentColor') + ' Je participe') + '</button>' +
+            '<button onclick="App.toggleParticipation(\''+jsArg(post.id)+'\',\'yes\')" style="flex:1;padding:12px;border-radius:999px;font-size:15px;font-weight:800;border:none;cursor:pointer;background:'+((post.metadata.participations||{})[(S.user||{}).id]==='yes'?UI.okPlein:'var(--card)')+';color:'+((post.metadata.participations||{})[(S.user||{}).id]==='yes'?'#FFF':'var(--ink)')+';box-shadow:'+((post.metadata.participations||{})[(S.user||{}).id]==='yes'?'0 4px 12px rgba(52,199,89,0.3)':'0 2px 6px rgba(0,0,0,0.05)')+';transition:all 0.2s;">' + ((post.metadata.participations||{})[(S.user||{}).id]==='yes' ? ico('thumb',14,'#FFF') + ' Confirmé' : ico('thumb',14,'currentColor') + ' Je participe') + '</button>' +
             '<button onclick="App.toggleParticipation(\''+jsArg(post.id)+'\',\'no\')" style="flex:1;padding:12px;border-radius:999px;font-size:15px;font-weight:800;border:none;cursor:pointer;background:'+((post.metadata.participations||{})[(S.user||{}).id]==='no'?'linear-gradient(135deg,#D92D20,#D92D20)':'var(--card)')+';color:'+((post.metadata.participations||{})[(S.user||{}).id]==='no'?'#FFF':'var(--ink)')+';box-shadow:'+((post.metadata.participations||{})[(S.user||{}).id]==='no'?'0 4px 12px rgba(255,59,48,0.3)':'0 2px 6px rgba(0,0,0,0.05)')+';transition:all 0.2s;">' + ((post.metadata.participations||{})[(S.user||{}).id]==='no' ? '❌ Indisponible' : '❌ Non dispo') + '</button>' +
           '</div>' +
         '</div>';
@@ -1395,7 +1397,7 @@
         return '<div onclick="App.goToEvent(\''+jsArg(aboutEv.id)+'\')" style="margin:0 14px 10px;padding:10px 12px;background:var(--accent-soft);border-radius:16px;border:1px solid var(--line2);display:flex;align-items:center;gap:10px;cursor:pointer;">' +
           '<span style="font-size:17px;">🗓️</span>' +
           '<div style="flex:1;min-width:0;">' +
-            '<div style="font-size:11px;font-weight:800;color:#0B5FE0;text-transform:uppercase;letter-spacing:0.5px;">À propos de cet événement</div>' +
+            '<div style="font-size:11px;font-weight:800;color:var(--lien);text-transform:uppercase;letter-spacing:0.5px;">À propos de cet événement</div>' +
             '<div style="font-size:13px;font-weight:800;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(aboutEv.eventTitle||'') + (aEvDateStr ? ' · ' + aEvDateStr : '') + (aboutEv.eventStart ? ' à ' + aboutEv.eventStart : '') + '</div>' +
           '</div>' +
           '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0B5FE0" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>' +
@@ -1487,7 +1489,7 @@
           : (n.type === 'FOLLOW' || n.type === 'NEW_MEMBER') ? 'users'
           : 'calendar';
         var icon = ico(iconName, 10, '#FFF', 2.4);
-        var bgIcon = n.type === 'LIKE' ? '#FF2D55' : (n.type === 'COMMENT' || n.type === 'REPLY') ? '#0B5FE0' : n.type === 'EVALUATION' ? '#D98A0B' : n.type === 'MENTION' ? '#D98A0B' : n.type === 'MESSAGE' ? '#0E9F6E' : n.type === 'FOLLOW' ? '#AF52DE' : n.type === 'NEW_MEMBER' ? '#0E9F6E' : '#0B5FE0';
+        var bgIcon = n.type === 'LIKE' ? '#FF2D55' : (n.type === 'COMMENT' || n.type === 'REPLY') ? '#0B5FE0' : n.type === 'EVALUATION' ? UI.warnPlein : n.type === 'MENTION' ? UI.warnPlein : n.type === 'MESSAGE' ? '#0E9F6E' : n.type === 'FOLLOW' ? '#AF52DE' : n.type === 'NEW_MEMBER' ? '#0E9F6E' : '#0B5FE0';
         var timeAgoStr = timeAgo(n.timestamp || Date.now());
         var isUnread = !n.read;
 
@@ -1552,7 +1554,7 @@
             (unreadCount > 0 ? '<span style="background:#D92D20;color:#FFF;font-size:11px;font-weight:800;padding:2px 8px;border-radius:12px;">' + unreadCount + '</span>' : '') +
           '</div>' +
           '<div style="display:flex;align-items:center;gap:2px;flex-shrink:0;">' +
-            (unreadCount > 0 ? '<button onclick="App.markAllNotificationsRead()" style="background:none;border:none;color:#0B5FE0;font-size:13px;font-weight:700;cursor:pointer;padding:0 8px;height:44px;">Tout lire</button>' : '') +
+            (unreadCount > 0 ? '<button onclick="App.markAllNotificationsRead()" style="background:none;border:none;color:var(--lien);font-size:13px;font-weight:700;cursor:pointer;padding:0 8px;height:44px;">Tout lire</button>' : '') +
             // Auparavant, la seule façon de fermer était de viser la fine bande grise
             // au-dessus de la feuille ou la petite poignée — difficile à atteindre à
             // une main sur un écran presque entièrement occupé par la liste. Un bouton
@@ -1643,7 +1645,7 @@
         '</button>' +
 
         '<button type="button" onclick="App.chooseEventSaveMode(\'duplicate\')" style="width:100%;background:var(--accent-soft);border:1px solid var(--line2);border-radius:999px;padding:14px;margin-bottom:14px;cursor:pointer;text-align:left;">' +
-          '<div style="font-size:15px;font-weight:800;color:#0B5FE0;margin-bottom:2px;">➕ Créer un nouvel événement</div>' +
+          '<div style="font-size:15px;font-weight:800;color:var(--lien);margin-bottom:2px;">➕ Créer un nouvel événement</div>' +
           '<div style="font-size:12px;color:#5A7BAA;line-height:1.4;">L\'ancien reste intact. Idéal pour répéter un événement : changez la date et dupliquez.</div>' +
         '</button>' +
 
@@ -1680,7 +1682,7 @@
               '<button type="button" onclick="App.editEventImage()" style="position:absolute;top:8px;left:8px;background:rgba(0,0,0,0.72);border:none;border-radius:12px;padding:6px 12px;color:#FFF;font-size:13px;font-weight:800;cursor:pointer;">Modifier</button>' +
               '<button type="button" onclick="App.removeEventImage()" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.72);border:none;border-radius:16px;width:32px;height:32px;color:#FFF;font-size:15px;font-weight:800;cursor:pointer;">×</button>' +
             '</div>'
-          : '<label style="display:flex;align-items:center;justify-content:center;gap:8px;border:1.5px dashed var(--line);border-radius:16px;padding:22px;cursor:pointer;color:#0B5FE0;font-size:15px;font-weight:700;">' +
+          : '<label style="display:flex;align-items:center;justify-content:center;gap:8px;border:1.5px dashed var(--line);border-radius:16px;padding:22px;cursor:pointer;color:var(--lien);font-size:15px;font-weight:700;">' +
               'Ajouter une image' +
               '<input type="file" accept="image/*" onchange="App.addEventImage(event)" style="display:none;" />' +
             '</label>')) +
@@ -1690,7 +1692,7 @@
       '<header style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--line);background:var(--card);z-index:2;">' +
         '<button onclick="App.closeCreateEvent()" style="background:none;border:none;font-size:15px;color:var(--ink);cursor:pointer;">Annuler</button>' +
         '<div style="font-weight:700;font-size:15px;color:var(--ink);">' + (isEdit ? 'Modifier l\'événement' : 'Nouvel Événement') + '</div>' +
-        '<button onclick="App.saveEvent(this)" style="background:none;border:none;font-size:15px;font-weight:700;color:#0B5FE0;cursor:pointer;">' + (isEdit ? 'Enregistrer' : 'Créer') + '</button>' +
+        '<button onclick="App.saveEvent(this)" style="background:none;border:none;font-size:15px;font-weight:700;color:var(--lien);cursor:pointer;">' + (isEdit ? 'Enregistrer' : 'Créer') + '</button>' +
       '</header>' +
       '<div style="flex:1;overflow-y:auto;background:var(--tile);padding:16px;">' +
         imageBlock +
@@ -1748,11 +1750,11 @@
           '<div style="display:flex;flex-direction:column;gap:16px;">' +
             '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding-bottom:12px;">' +
               '<label style="font-size:15px;color:var(--ink);font-weight:600;white-space:nowrap;">Date</label>' +
-              '<input type="date" id="eventDate" value="' + dateVal + '" style="border:none;font-size:15px;outline:none;background:transparent;color:#0B5FE0;font-weight:600;text-align:right;" />' +
+              '<input type="date" id="eventDate" value="' + dateVal + '" style="border:none;font-size:15px;outline:none;background:transparent;color:var(--lien);font-weight:600;text-align:right;" />' +
             '</div>' +
             '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding-bottom:12px;">' +
               '<label style="font-size:15px;color:var(--ink);font-weight:600;white-space:nowrap;">Heure de début</label>' +
-              '<input type="time" id="eventStart" value="' + startVal + '" oninput="App.onEventTimeChange()" style="border:none;font-size:15px;outline:none;background:transparent;color:#0B5FE0;font-weight:600;text-align:right;" />' +
+              '<input type="time" id="eventStart" value="' + startVal + '" oninput="App.onEventTimeChange()" style="border:none;font-size:15px;outline:none;background:transparent;color:var(--lien);font-weight:600;text-align:right;" />' +
             '</div>' +
             // Le message occupe sa PROPRE ligne sous le champ : placé dans la même
             // rangée que l'heure, il se superposait à la valeur et forçait le
@@ -1760,7 +1762,7 @@
             '<div>' +
               '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">' +
                 '<label style="font-size:15px;color:var(--ink);font-weight:600;white-space:nowrap;">Heure de fin</label>' +
-                '<input type="time" id="eventEnd" value="' + endVal + '" oninput="App.onEventTimeChange()" style="border:none;font-size:15px;outline:none;background:transparent;color:#0B5FE0;font-weight:600;text-align:right;" />' +
+                '<input type="time" id="eventEnd" value="' + endVal + '" oninput="App.onEventTimeChange()" style="border:none;font-size:15px;outline:none;background:transparent;color:var(--lien);font-weight:600;text-align:right;" />' +
               '</div>' +
               // État initial calculé au rendu : à la réouverture d'une veillée
               // déjà enregistrée, la mention doit être visible sans toucher au champ.
@@ -1867,7 +1869,7 @@
     var previewHtml = renderComposerMediaPreview();
 
     var hashHtml = '<div id="hashSugg" style="display:none;flex-wrap:wrap;gap:6px;background:var(--accent-soft);border:1px solid var(--line2);border-radius:16px;padding:10px;margin-bottom:12px;">' +
-      '<div style="font-size:11px;font-weight:800;color:#0B5FE0;width:100%;margin-bottom:4px;">Hashtags suggérés :</div>' +
+      '<div style="font-size:11px;font-weight:800;color:var(--lien);width:100%;margin-bottom:4px;">Hashtags suggérés :</div>' +
       HASHTAGS.map(function(h) {
         return '<button type="button" onclick="App.insertTag(\''+jsArg(h)+'\')" style="display:inline-flex;align-items:center;min-height:36px;background:#0B5FE0;color:#FFF;border:none;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;">'+h+'</button>';
       }).join('') +
@@ -1931,7 +1933,7 @@
             '</div>' +
             (function(){
               if (!S.postAboutEventId) {
-                return '<button type="button" onclick="App.openAboutEventPicker()" style="width:100%;background:var(--card);border:1px dashed var(--line);border-radius:999px;padding:10px;font-size:13px;font-weight:700;color:#0B5FE0;cursor:pointer;">+ Lier à un événement (ex : culte de dimanche)</button>';
+                return '<button type="button" onclick="App.openAboutEventPicker()" style="width:100%;background:var(--card);border:1px dashed var(--line);border-radius:999px;padding:10px;font-size:13px;font-weight:700;color:var(--lien);cursor:pointer;">+ Lier à un événement (ex : culte de dimanche)</button>';
               }
               var evAbout2 = db(SK.POSTS, []).find(function(p){ return p.id === S.postAboutEventId; });
               if (!evAbout2) return '';
@@ -1990,7 +1992,7 @@
             : ''
           ) +
           '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
-            '<label style="cursor:pointer;display:flex;align-items:center;gap:6px;color:#0B5FE0;font-size:13px;font-weight:800;background:var(--accent-soft);padding:9px 14px;border-radius:16px;">' +
+            '<label style="cursor:pointer;display:flex;align-items:center;gap:6px;color:var(--lien);font-size:13px;font-weight:800;background:var(--accent-soft);padding:9px 14px;border-radius:16px;">' +
               '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0B5FE0" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>' +
               'Photo / Vidéo' +
               '<input type="file" accept="image/*,video/*" multiple onchange="App.addMedia(event)" style="display:none;">' +
@@ -2014,7 +2016,7 @@
     var previewMedia = (post.mediaUrls && post.mediaUrls[0]) || null;
 
     var hashHtml = '<div id="hashSugg" style="display:none;flex-wrap:wrap;gap:6px;background:var(--accent-soft);border:1px solid var(--line2);border-radius:16px;padding:10px;margin-bottom:12px;">' +
-      '<div style="font-size:11px;font-weight:800;color:#0B5FE0;width:100%;margin-bottom:4px;">Hashtags suggérés :</div>' +
+      '<div style="font-size:11px;font-weight:800;color:var(--lien);width:100%;margin-bottom:4px;">Hashtags suggérés :</div>' +
       HASHTAGS.map(function(h) {
         return '<button type="button" onclick="App.insertTag(\''+jsArg(h)+'\')" style="display:inline-flex;align-items:center;min-height:36px;background:#0B5FE0;color:#FFF;border:none;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;">'+h+'</button>';
       }).join('') +
@@ -2074,7 +2076,7 @@
         '<div style="font-size:15px;font-weight:800;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(ev.eventTitle) + '</div>' +
         '<div style="font-size:12px;color:var(--faint);margin-top:2px;">' + (ev.eventStart ? '' + ev.eventStart + (ev.eventEnd ? ' — ' + ev.eventEnd : '') : '') + '</div>' +
       '</div>' +
-      (isSel ? '<span style="color:#0B5FE0;font-size:17px;">✓</span>' : '') +
+      (isSel ? '<span style="color:var(--lien);font-size:17px;">✓</span>' : '') +
     '</button>';
   }
 
@@ -2253,7 +2255,7 @@
     var previewHtml = renderComposerMediaPreview();
 
     var hashHtml = '<div id="hashSugg" style="display:none;flex-wrap:wrap;gap:6px;background:var(--accent-soft);border:1px solid var(--line2);border-radius:16px;padding:10px;margin-bottom:12px;">' +
-      '<div style="font-size:11px;font-weight:800;color:#0B5FE0;width:100%;margin-bottom:4px;">Hashtags suggérés :</div>' +
+      '<div style="font-size:11px;font-weight:800;color:var(--lien);width:100%;margin-bottom:4px;">Hashtags suggérés :</div>' +
       HASHTAGS.map(function(h) {
         return '<button type="button" onclick="App.insertTag(\''+jsArg(h)+'\')" style="display:inline-flex;align-items:center;min-height:36px;background:#0B5FE0;color:#FFF;border:none;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;">'+h+'</button>';
       }).join('') +
@@ -2279,7 +2281,7 @@
               : '<div style="width:42px;height:42px;border-radius:20px;background:linear-gradient(135deg,' + ((u||{}).avatar_color||'#0B5FE0') + ',#0B5FE0);color:#FFF;font-size:15px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 3px 8px rgba(0,0,0,0.12);">' + ((u&&u.prenom||'M').charAt(0)) + '</div>') +
             '<div>' +
               '<div style="font-size:15px;font-weight:800;color:var(--ink);">' + safeHtml((u&&u.prenom||'') + ' ' + (u&&u.nom||'')) + '</div>' +
-              '<div style="font-size:12px;color:#0B5FE0;font-weight:700;background:var(--accent-soft);display:inline-block;padding:2px 8px;border-radius:8px;margin-top:2px;">' + secNom((u&&u.section_id)||'cadrage') + ' · Tapez # pour les hashtags</div>' +
+              '<div style="font-size:12px;color:var(--lien);font-weight:700;background:var(--accent-soft);display:inline-block;padding:2px 8px;border-radius:8px;margin-top:2px;">' + secNom((u&&u.section_id)||'cadrage') + ' · Tapez # pour les hashtags</div>' +
             '</div>' +
           '</div>' +
 
@@ -2361,7 +2363,7 @@
             '</div>' +
             (function(){
               if (!S.postAboutEventId) {
-                return '<button type="button" onclick="App.openAboutEventPicker()" style="width:100%;background:var(--card);border:1px dashed var(--line);border-radius:999px;padding:10px;font-size:13px;font-weight:700;color:#0B5FE0;cursor:pointer;">+ Lier à un événement (ex : culte de dimanche)</button>';
+                return '<button type="button" onclick="App.openAboutEventPicker()" style="width:100%;background:var(--card);border:1px dashed var(--line);border-radius:999px;padding:10px;font-size:13px;font-weight:700;color:var(--lien);cursor:pointer;">+ Lier à un événement (ex : culte de dimanche)</button>';
               }
               var evAbout = db(SK.POSTS, []).find(function(p){ return p.id === S.postAboutEventId; });
               if (!evAbout) return '';
@@ -2389,7 +2391,7 @@
                     '</div>';
                   }).join('') +
                   (S.pollOptions.length < 5
-                    ? '<button type="button" onclick="App.addPollOption()" style="background:var(--card);border:1px dashed var(--line);border-radius:999px;padding:8px 12px;font-size:12px;font-weight:700;color:#0B5FE0;cursor:pointer;width:100%;margin-top:2px;">+ Ajouter une option</button>'
+                    ? '<button type="button" onclick="App.addPollOption()" style="background:var(--card);border:1px dashed var(--line);border-radius:999px;padding:8px 12px;font-size:12px;font-weight:700;color:var(--lien);cursor:pointer;width:100%;margin-top:2px;">+ Ajouter une option</button>'
                     : '') +
                   '<div style="font-size:11px;color:var(--faint);line-height:1.4;margin-top:6px;">Une seule réponse par membre. Question et au moins 2 options requises.</div>'
                 )
@@ -2447,7 +2449,7 @@
             : ''
           ) +
           '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
-            '<label style="cursor:pointer;display:flex;align-items:center;gap:6px;color:#0B5FE0;font-size:13px;font-weight:800;background:var(--accent-soft);padding:9px 14px;border-radius:16px;">' +
+            '<label style="cursor:pointer;display:flex;align-items:center;gap:6px;color:var(--lien);font-size:13px;font-weight:800;background:var(--accent-soft);padding:9px 14px;border-radius:16px;">' +
               '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0B5FE0" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>' +
               'Photo / Vidéo' +
               '<input type="file" accept="image/*,video/*" multiple onchange="App.addMedia(event)" style="display:none;">' +

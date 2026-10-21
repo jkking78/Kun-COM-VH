@@ -15,7 +15,7 @@
         S.eventAssignments.map(function(a, idx) {
           var mine = canTouchAssignment(a, me, allU);
           var label = a.isSection
-            ? (a.sectionEmoji ? a.sectionEmoji + ' ' : '') + safeHtml(a.sectionName || '') + ' <span style="font-size:11px;font-weight:800;color:#0B5FE0;background:#EEF0FF;padding:1px 6px;border-radius:8px;">PÔLE</span>'
+            ? (a.sectionEmoji ? a.sectionEmoji + ' ' : '') + safeHtml(a.sectionName || '') + ' <span style="font-size:11px;font-weight:800;color:var(--lien);background:var(--accent-soft);padding:1px 6px;border-radius:8px;">PÔLE</span>'
             : safeHtml(a.userName || '');
           var dl = a.deadline ? formatDeadline(a.deadline) : '';
           return '<div style="display:flex;align-items:center;justify-content:space-between;background:' + (a.isSection ? '#F5F5FF' : 'var(--tile)') + ';padding:8px 12px;border-radius:8px;">' +
@@ -403,8 +403,8 @@
         err.style.display = 'block';
       } else if (e.value < s.value) {
         err.textContent = 'Se termine le lendemain à ' + e.value + '.';
-        err.style.color = '#0B5FE0';
-        err.style.background = '#E8EEFB';
+        err.style.color = 'var(--lien)';
+        err.style.background = 'var(--accent-soft)';
         err.style.display = 'block';
       } else {
         err.style.display = 'none';
@@ -648,7 +648,7 @@
     setSignupRole: function(role) {
       S.signupRole = role;
       // Mise à jour ciblée du style (pas de render() complet pour ne pas effacer les champs déjà saisis)
-      var activeStyle = 'flex:1;height:44px;border-radius:12px;border:1.5px solid #0B5FE0;background:#E8EEFB;color:#0B5FE0;font-size:13px;font-weight:800;cursor:pointer;';
+      var activeStyle = 'flex:1;height:44px;border-radius:12px;border:1.5px solid #0B5FE0;background:var(--accent-soft);color:var(--lien);font-size:13px;font-weight:800;cursor:pointer;';
       var inactiveStyle = 'flex:1;height:44px;border-radius:12px;border:1.5px solid var(--line);background:var(--tile);color:var(--ink2);font-size:13px;font-weight:800;cursor:pointer;';
       var mBtn = document.getElementById('signupRoleMembre');
       var rBtn = document.getElementById('signupRoleResp');
@@ -3337,14 +3337,14 @@
 
       var collective = '';
       if (!q || 'tous'.indexOf(q) === 0 || 'all'.indexOf(q) === 0) {
-        collective += '<button type="button" onclick="App.' + insertFn + '(\'@tous \')" style="background:#E8EEFB;color:#0B5FE0;border:none;padding:5px 10px;border-radius:12px;font-size:12px;font-weight:800;cursor:pointer;">📣 Tous les membres</button>';
+        collective += '<button type="button" onclick="App.' + insertFn + '(\'@tous \')" style="background:var(--accent-soft);color:var(--lien);border:none;padding:5px 10px;border-radius:12px;font-size:12px;font-weight:800;cursor:pointer;">📣 Tous les membres</button>';
       }
       SECTIONS.forEach(function(s) {
         if (q && s.nom.toLowerCase().indexOf(q) !== 0 && s.id.toLowerCase().indexOf(q) !== 0) return;
-        collective += '<button type="button" onclick="App.' + insertFn + '(\'@' + safeHtml(s.nom.replace(/\s+/g,'')) + ' \')" style="background:#E8EEFB;color:#0B5FE0;border:none;padding:5px 10px;border-radius:12px;font-size:12px;font-weight:700;cursor:pointer;">' + s.emoji + ' Pôle ' + safeHtml(s.nom) + '</button>';
+        collective += '<button type="button" onclick="App.' + insertFn + '(\'@' + safeHtml(s.nom.replace(/\s+/g,'')) + ' \')" style="background:var(--accent-soft);color:var(--lien);border:none;padding:5px 10px;border-radius:12px;font-size:12px;font-weight:700;cursor:pointer;">' + s.emoji + ' Pôle ' + safeHtml(s.nom) + '</button>';
       });
       if (collective) {
-        out += '<div style="font-size:11px;font-weight:800;color:#0B5FE0;width:100%;margin-bottom:4px;">Mentionner un groupe :</div>' + collective;
+        out += '<div style="font-size:11px;font-weight:800;color:var(--lien);width:100%;margin-bottom:4px;">Mentionner un groupe :</div>' + collective;
       }
 
       var users = db(SK.USERS, []).filter(function(u) {
@@ -3352,9 +3352,9 @@
         return ((u.prenom||'') + ' ' + (u.nom||'')).toLowerCase().indexOf(q) !== -1;
       }).slice(0, 5);
       if (users.length > 0) {
-        out += '<div style="font-size:11px;font-weight:800;color:#0B5FE0;width:100%;margin:6px 0 4px;">Membres :</div>' +
+        out += '<div style="font-size:11px;font-weight:800;color:var(--lien);width:100%;margin:6px 0 4px;">Membres :</div>' +
           users.map(function(u) {
-            return '<button type="button" onclick="App.' + insertFn + '(\'@' + safeHtml((u.prenom||'') + (u.nom||'')) + ' \')" style="background:#EBF5FF;color:#0B5FE0;border:none;padding:5px 10px;border-radius:12px;font-size:12px;font-weight:700;cursor:pointer;">👤 ' + safeHtml((u.prenom||'') + ' ' + (u.nom||'')) + '</button>';
+            return '<button type="button" onclick="App.' + insertFn + '(\'@' + safeHtml((u.prenom||'') + (u.nom||'')) + ' \')" style="background:var(--accent-soft);color:var(--lien);border:none;padding:5px 10px;border-radius:12px;font-size:12px;font-weight:700;cursor:pointer;">👤 ' + safeHtml((u.prenom||'') + ' ' + (u.nom||'')) + '</button>';
           }).join('');
       }
       return out;

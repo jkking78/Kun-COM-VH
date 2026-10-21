@@ -100,9 +100,14 @@ async function rappels(admin: Admin): Promise<Record<string, number>> {
   const verrou = await admin.from("kun_com_push_envois").insert({ cle: tranche });
   if (verrou.error) return { ignore: 1 };
 
-  const evs = await admin.from("kun_com_posts").select("id, content").eq("content->>type", "EVENT");
-  const pointages = await admin.from("kun_com_posts").select("content").not("content->>checkInEventId", "is", null);
-  const livraisons = await admin.from("kun_com_posts").select("content").eq("content->>type", "TASK_DONE");
+  // Les trois lectures partent ensemble : en série, elles faisaient dépasser
+  // le délai de l'appel planifié.
+  const [evs, pointages, livraisons, cles] = await Promise.all([
+    admin.from("kun_com_posts").select("id, content").eq("content->>type", "EVENT"),
+    admin.from("kun_com_posts").select("content").not("content->>checkInEventId", "is", null),
+    admin.from("kun_com_posts").select("content").eq("content->>type", "TASK_DONE"),
+    clesVapid(admin),
+  ]);
   const aPointe = new Set((pointages.data ?? []).map((p: Admin) => p.content?.checkInEventId + "|" + p.content?.userId));
   const aLivre = new Set((livraisons.data ?? []).map((p: Admin) => p.content?.taskEventId + "|" + p.content?.userId));
 
@@ -141,7 +146,6 @@ async function rappels(admin: Admin): Promise<Record<string, number>> {
     }
   }
 
-  const cles = await clesVapid(admin);
   const prefsCache: Record<string, Record<string, boolean> | undefined> = {};
   let envoyes = 0, deja = 0;
   for (const r of aEnvoyer) {
