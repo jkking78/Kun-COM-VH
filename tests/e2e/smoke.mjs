@@ -337,6 +337,74 @@ try {
     await contexte.close();
   });
 
+  await cas('lot 3 : messages, canal de pôle, réglages de notifications, échange', async () => {
+    const { page, erreurs, contexte } = await nouvellePage(nav, base, sessionPour('MEMBRE'));
+    await page.waitForSelector('#post-p_piege', { timeout: 15000 });
+    // Un message privé non lu allume la boîte de réception.
+    await page.evaluate(([autre, moi]) => {
+      dbSet(SK.DMS, [{ id: 'dm1', fromId: autre, toId: moi, text: 'Salut', timestamp: Date.now() }]);
+      S.user.sections = ['cadrage'];
+      render();
+    }, [AUTRE, MOI]);
+    assert.ok((await page.getAttribute('#boiteMessages', 'aria-label')).includes('1 non lu'));
+    await page.click('#boiteMessages');
+    const boite = await page.textContent('body');
+    assert.ok(boite.includes('Canal Cadrage') && boite.includes('Salut'), 'la boîte liste le canal et la conversation');
+    // Canal du pôle : envoi d'un message.
+    await page.evaluate("App.openDirectMessage('pole:cadrage')");
+    await page.fill('#dmInput', 'Batteries chargées ?');
+    await page.press('#dmInput', 'Enter');
+    assert.ok((await page.textContent('#dmMessagesList')).includes('Batteries chargées ?'));
+    assert.equal(await page.evaluate(() => db(SK.DMS, []).filter((m) => m.toId === 'pole:cadrage').length), 1);
+    await page.evaluate('App.closeDirectMessage(); App.fermerBoite()');
+    // Un canal d'un autre pôle est refusé.
+    await page.evaluate("App.openDirectMessage('pole:photo')");
+    assert.equal(await page.evaluate(() => S.dmOpen), false);
+    // Paramètres : préférences de notifications.
+    await page.evaluate('App.openSettings()');
+    const reglages = await page.textContent('body');
+    assert.ok(reglages.includes('Rappels de service') && reglages.includes('Toujours envoyées'));
+    await page.click('text=J\'aime');
+    assert.equal(await page.evaluate(() => S.user.preferencesNotif.jaime), true);
+    await page.evaluate('App.closeSettings()');
+    // Échange de service : le convoqué propose sa place, puis la retire.
+    await page.evaluate("App.tab('planning')");
+    await page.click('text=Proposer ma place');
+    assert.ok(await page.evaluate((id) => !!db(SK.POSTS, []).find((p) => p.id === 'ev_mission').echanges[id], MOI));
+    assert.ok((await page.textContent('body')).includes('Ta place est proposée'));
+    await page.click('text=Retirer ma proposition');
+    assert.ok(await page.evaluate((id) => !db(SK.POSTS, []).find((p) => p.id === 'ev_mission').echanges[id], MOI));
+    // Toucher une notification « planning » ouvre le Planning.
+    await page.evaluate("App.tab('home'); App.ouvrirCible('planning')");
+    assert.equal(await page.evaluate(() => S.tab), 'planning');
+    assert.deepEqual(erreurs, []);
+    await contexte.close();
+  });
+
+  await cas('lot 3 : tableau de bord et validation d\'un échange (Admin)', async () => {
+    const { page, erreurs, contexte } = await nouvellePage(nav, base, sessionPour('GRAND_RESPONSABLE'));
+    await page.waitForSelector('#post-p_piege', { timeout: 15000 });
+    await page.evaluate('App.ouvrirTableauDeBord()');
+    const tdb = await page.textContent('#tableauDeBord');
+    assert.ok(tdb.includes('Services des 15 prochains jours') && tdb.includes('Culte du dimanche'), tdb);
+    assert.ok(tdb.includes('Convocations sans réponse') && tdb.includes('Awa Test'), tdb);
+    await page.click('#tableauDeBord >> text=Relancer');
+    await page.evaluate('App.fermerTableauDeBord()');
+    // Un échange proposé et repris : l'organisateur le valide d'un geste.
+    await page.evaluate(([moi, autre]) => {
+      const posts = db(SK.POSTS, []);
+      const ev = posts.find((p) => p.id === 'ev_mission');
+      ev.echanges = { [moi]: { tache: 'Caméra 2' } };
+      ev.reprises = { [autre]: { pour: moi } };
+      dbSet(SK.POSTS, posts);
+      App.tab('planning');
+    }, [MOI, AUTRE]);
+    await page.click('text=Valider l\'échange');
+    assert.equal(await page.evaluate(() => db(SK.POSTS, []).find((p) => p.id === 'ev_mission').assignments[0].userId), AUTRE);
+    assert.deepEqual(erreurs, []);
+    await contexte.close();
+  });
+
   // Tour de tous les écrans et panneaux : aucune erreur JavaScript, aucun
   // écran « Une erreur est survenue ». Fait pour un membre et pour l'Admin
   // (qui voit davantage de panneaux).
@@ -358,11 +426,13 @@ try {
         'App.openMembersList()', 'App.closeMembersList()',
         "App.openUserProfile('" + AUTRE + "')", "App.tab('home')",
         'App.ouvrirIndispos()', 'App.fermerIndispos()',
+        'App.ouvrirBoite()', 'App.fermerBoite()',
       ];
       if (role === 'GRAND_RESPONSABLE') {
         etapes.push('App.openCreateEvent()', 'App.closeCreateEvent && App.closeCreateEvent()',
                     'App.openRolesPanel()', 'App.closeRolesPanel && App.closeRolesPanel()',
-                    'App.openStorageStats()', 'App.closeStorageStats()');
+                    'App.openStorageStats()', 'App.closeStorageStats()',
+                    'App.ouvrirTableauDeBord()', 'App.fermerTableauDeBord()');
       }
       etapes.push('ouvrirVisite()', "document.querySelector('#_kcVisite [data-passer]').click()",
                   'ouvrirAideInstallation()', "document.querySelector('#_kcInstallation [data-fermer]').click()");

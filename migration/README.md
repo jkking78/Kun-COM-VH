@@ -140,6 +140,34 @@ applique la 06 deux fois, puis lance 50 vérifications (`tests/sql/test_06_durci
 `npm run test:sql` applique la 06 seule, puis la 06 + la 07, et lance les
 vérifications des deux (`tests/sql/test_07_convocations_validation.sql`).
 
+## Migration 08 — lot 3 « temps réel » (v154)
+
+- **Échange de service** : `echanges` (« je propose ma place ») et `reprises`
+  (« je reprends la place de… ») sont des champs collaboratifs de l'événement ;
+  chacun n'écrit que sa propre entrée. Le responsable valide en modifiant les
+  assignations (droit existant).
+- **Canaux de pôle** : un message adressé à `pole:<id>` est lisible et
+  inscriptible par les membres du pôle (d'après leur fiche) et par l'Admin.
+  Les messages privés restent visibles des deux seuls interlocuteurs.
+- **Notifications sur le téléphone** : table `kun_com_push_abonnements` (chacun
+  gère les siens), clés VAPID et journal des rappels réservés au serveur. Les
+  clés sont créées automatiquement par l'Edge Function `push` à sa première
+  utilisation : **aucun secret à saisir**.
+- **Rappels** (`08b_rappels_planifies.sql`) : toutes les 10 minutes, `pg_cron`
+  appelle `push` (veille, 2 h avant, oubli de pointage 10 min après le début,
+  échéance de tâche la veille). Chaque rappel n'est envoyé qu'une fois.
+
+### Ordre de mise en production
+1. **Exécuter `08_temps_reel.sql`**.
+2. **Déployer l'Edge Function `push`** (fichiers `index.ts` et `webpush.ts`,
+   *sans* vérification automatique du jeton : la fonction contrôle elle-même
+   l'appelant).
+3. **Exécuter `08b_rappels_planifies.sql`** (active `pg_cron` et `pg_net`).
+4. **Déployer le client v154.**
+
+Sur iPhone, les notifications ne fonctionnent qu'avec l'application installée
+sur l'écran d'accueil (iOS 16.4 ou plus récent).
+
 ## Limites restantes (connues)
 - La **position GPS** d'un pointage est fournie par le téléphone : le serveur
   borne l'heure, mais ne peut pas prouver la présence physique.

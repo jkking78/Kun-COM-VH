@@ -320,6 +320,90 @@
     '</div>';
   }
 
+  // ============================================================
+  // ÉCHANGE DE SERVICE (lot 3)
+  // Le convoqué propose sa place (ev.echanges[son id]) ; un membre du même
+  // pôle la reprend (ev.reprises[son id] = { pour }) ; le responsable valide,
+  // ce qui remplace l'assignation. Chacun n'écrit que son entrée (migration 08).
+  // ============================================================
+  function echangesOuverts(ev) {
+    var assignes = (ev.assignments || []).filter(function(a){ return a && a.userId; });
+    return Object.keys(ev.echanges || {}).map(function(uid) {
+      var a = assignes.find(function(x){ return x.userId === uid; });
+      if (!a) return null;                 // déjà remplacé : échange terminé
+      var repreneurs = Object.keys(ev.reprises || {}).filter(function(r) {
+        return ev.reprises[r] && ev.reprises[r].pour === uid && !assignes.some(function(x){ return x.userId === r; });
+      });
+      return { uid: uid, assignation: a, repreneurs: repreneurs };
+    }).filter(Boolean);
+  }
+  // Un membre peut-il reprendre cette place ? Même pôle, pas déjà de service.
+  function peutReprendre(u, ev, ech) {
+    if (!u || compteEnAttente(u) || u.id === ech.uid) return false;
+    if ((ev.assignments || []).some(function(a){ return a && a.userId === u.id; })) return false;
+    var mesPoles = getUserSections(u);
+    var poles = ech.assignation.sectionId ? [ech.assignation.sectionId]
+      : getUserSections(db(SK.USERS, []).find(function(x){ return x.id === ech.uid; }) || {});
+    return poles.some(function(p){ return mesPoles.indexOf(p) !== -1; });
+  }
+
+  function renderEchanges(ev) {
+    if (!S.user || !ev || ev.type !== 'EVENT' || isEventPast(ev)) return '';
+    var debut = eventStartTimestamp(ev);
+    if (debut && Date.now() > debut) return '';
+    var moi = S.user.id;
+    var ouverts = echangesOuverts(ev);
+    var bloc = function(fond, contenu) { return '<div class="kc-apparait" style="background:' + fond + ';border-radius:12px;padding:12px;margin-bottom:10px;">' + contenu + '</div>'; };
+    var petitBouton = function(action, libelle, plein) {
+      return '<button type="button" onclick="' + action + '" style="min-height:40px;padding:0 14px;border:none;border-radius:999px;background:' + (plein ? UI.accent : 'var(--card)') + ';color:' + (plein ? '#FFF' : 'var(--ink)') + ';font-size:13px;font-weight:700;cursor:pointer;">' + libelle + '</button>';
+    };
+    var nom = function(id) {
+      var u = db(SK.USERS, []).find(function(x){ return x.id === id; });
+      return u ? (u.prenom + ' ' + (u.nom || '').charAt(0) + '.') : 'Un membre';
+    };
+    var out = '';
+
+    // 1) Le convoqué : proposer sa place, ou suivre sa proposition.
+    var mienne = (ev.assignments || []).find(function(a){ return a && a.userId === moi; });
+    if (mienne && !mienne.deadline) {
+      var ouvert = ouverts.find(function(e){ return e.uid === moi; });
+      if (!ouvert) {
+        out += '<div style="margin:-4px 0 10px;text-align:right;"><button type="button" onclick="App.proposerEchange(\'' + jsArg(ev.id) + '\')" style="min-height:36px;background:none;border:none;color:' + UI.accent + ';font-size:12.5px;font-weight:700;cursor:pointer;">⇄ Proposer ma place à un membre du pôle</button></div>';
+      } else {
+        out += bloc('var(--warn-soft)',
+          '<div style="font-size:13px;font-weight:700;color:var(--warn-ink);margin-bottom:8px;">' +
+            (ouvert.repreneurs.length ? safeHtml(ouvert.repreneurs.map(nom).join(', ')) + ' veut reprendre ta place. En attente du responsable.' : 'Ta place est proposée aux membres du pôle.') +
+          '</div>' +
+          petitBouton('App.retirerEchange(\'' + jsArg(ev.id) + '\')', 'Retirer ma proposition'));
+      }
+    }
+
+    // 2) Les autres membres du pôle : reprendre une place proposée.
+    ouverts.forEach(function(e) {
+      if (!peutReprendre(S.user, ev, e)) return;
+      var dejaPris = ev.reprises && ev.reprises[moi] && ev.reprises[moi].pour === e.uid;
+      out += bloc('var(--accent-soft)',
+        '<div style="font-size:13px;font-weight:700;color:var(--accent-ink);margin-bottom:8px;">' +
+          (dejaPris ? 'Tu as proposé de reprendre la place de ' + safeHtml(nom(e.uid)) + '. En attente du responsable.'
+                    : 'Place à reprendre : ' + safeHtml(nom(e.uid)) + (e.assignation.task ? ' · ' + safeHtml(e.assignation.task) : '')) +
+        '</div>' +
+        (dejaPris ? petitBouton('App.annulerReprise(\'' + jsArg(ev.id) + '\')', 'Annuler')
+                  : petitBouton('App.reprendreEchange(\'' + jsArg(ev.id) + '\',\'' + jsArg(e.uid) + '\')', 'Je la reprends', true)));
+    });
+
+    // 3) L'organisateur : valider d'un geste.
+    if (ev.userId === moi || canManageEventAssignments(ev, S.user)) {
+      ouverts.forEach(function(e) {
+        e.repreneurs.forEach(function(r) {
+          out += bloc('var(--tile)',
+            '<div style="font-size:13px;font-weight:700;color:var(--ink);margin-bottom:8px;">Échange : ' + safeHtml(nom(e.uid)) + ' → ' + safeHtml(nom(r)) + (e.assignation.task ? ' · ' + safeHtml(e.assignation.task) : '') + '</div>' +
+            petitBouton('App.validerEchange(\'' + jsArg(ev.id) + '\',\'' + jsArg(e.uid) + '\',\'' + jsArg(r) + '\')', 'Valider l\'échange', true));
+        });
+      });
+    }
+    return out;
+  }
+
   // Ajouter à l'agenda + itinéraire, sous la fiche d'un événement à venir.
   function renderActionsEvenement(ev) {
     if (!ev || ev.type !== 'EVENT' || isEventPast(ev)) return '';
@@ -454,11 +538,130 @@
   }
 
   // ============================================================
-  // MESSAGERIE PRIVÉE (simple, 1-à-1)
+  // MESSAGERIE : messages privés (1-à-1) et canaux de pôle
+  // Un canal est une conversation dont l'interlocuteur est « pole:<id> » :
+  // le message est adressé au pôle, lisible par ses membres (migration 08).
   // ============================================================
+  function estCanal(id) { return String(id || '').indexOf('pole:') === 0; }
+  function poleDuCanal(id) { var pid = String(id).slice(5); return SECTIONS.find(function(s){ return s.id === pid; }) || null; }
+  function dansConversation(m, autre) {
+    if (!m || !S.user) return false;
+    if (estCanal(autre)) return m.toId === autre;
+    return (m.fromId === S.user.id && m.toId === autre) || (m.fromId === autre && m.toId === S.user.id);
+  }
+  // Canaux accessibles : ceux de ses pôles (tous pour l'Admin).
+  function mesCanaux(u) {
+    if (!u) return [];
+    var ids = isGrandResponsable(u) ? SECTIONS.map(function(s){ return s.id; })
+      : getUserSections(u).filter(function(id){ return SECTIONS.some(function(s){ return s.id === id; }); });
+    return ids.map(function(id){ return 'pole:' + id; });
+  }
+  // Dernière lecture de chaque conversation (sur cet appareil).
+  function dmLus() { return db('kc_dm_lus', {}) || {}; }
+  function marquerConversationLue(autre) {
+    var lus = Object.assign({}, dmLus());
+    lus[autre] = Date.now();
+    dbSet('kc_dm_lus', lus);
+  }
+  function nonLusConversation(autre, tous) {
+    var depuis = dmLus()[autre] || 0;
+    return (tous || db(SK.DMS, [])).filter(function(m) {
+      return dansConversation(m, autre) && m.fromId !== S.user.id && (m.timestamp || 0) > depuis;
+    }).length;
+  }
+  // Conversations : ses canaux d'abord, puis les échanges privés, du plus
+  // récent au plus ancien.
+  function conversations() {
+    if (!S.user) return [];
+    var tous = db(SK.DMS, []);
+    var parAutre = {};
+    tous.forEach(function(m) {
+      if (!m) return;
+      var autre = estCanal(m.toId) ? m.toId : (m.fromId === S.user.id ? m.toId : (m.toId === S.user.id ? m.fromId : null));
+      if (!autre) return;
+      if (!parAutre[autre] || (m.timestamp || 0) > (parAutre[autre].timestamp || 0)) parAutre[autre] = m;
+    });
+    var canaux = mesCanaux(S.user).map(function(c){ return { autre: c, dernier: parAutre[c] || null, nonLus: nonLusConversation(c, tous) }; });
+    var prives = Object.keys(parAutre).filter(function(a){ return !estCanal(a); })
+      .map(function(a){ return { autre: a, dernier: parAutre[a], nonLus: nonLusConversation(a, tous) }; })
+      .sort(function(a, b){ return (b.dernier.timestamp || 0) - (a.dernier.timestamp || 0); });
+    return canaux.concat(prives);
+  }
+  function totalNonLus() {
+    if (!S.user) return 0;
+    return conversations().reduce(function(n, c){ return n + c.nonLus; }, 0);
+  }
+
+  // Bouton de l'en-tête : la bulle de messages, avec le nombre de non-lus.
+  function renderBoiteBouton() {
+    if (!S.user || S.auth !== 'app') return '';
+    var n = totalNonLus();
+    return '<button id="boiteMessages" onclick="App.ouvrirBoite()" aria-label="Messages' + (n ? ' (' + n + ' non lus)' : '') + '" ' +
+      'style="position:relative;width:44px;height:44px;border-radius:' + UI.pill + ';border:none;cursor:pointer;padding:0;flex-shrink:0;background:none;display:flex;align-items:center;justify-content:center;touch-action:manipulation;">' +
+      '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="' + (n ? UI.accent : UI.muted) + '" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' +
+      (n ? '<span class="kc-pastille" style="position:absolute;top:4px;right:2px;min-width:18px;height:18px;padding:0 5px;border-radius:' + UI.pill + ';background:' + UI.bad + ';color:#FFF;font-size:10.5px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid ' + UI.card + ';">' + (n > 99 ? '99+' : n) + '</span>' : '') +
+    '</button>';
+  }
+
+  function avatarConversation(autre, taille) {
+    var t = taille || 44;
+    if (estCanal(autre)) {
+      var p = poleDuCanal(autre) || { emoji: '💬', color: '#0B63F6' };
+      return '<div style="width:' + t + 'px;height:' + t + 'px;border-radius:' + (t / 2) + 'px;background:' + p.color + '22;display:flex;align-items:center;justify-content:center;font-size:' + Math.round(t * 0.45) + 'px;flex-shrink:0;">' + p.emoji + '</div>';
+    }
+    var o = db(SK.USERS, []).find(function(u){ return u.id === autre; }) || {};
+    return o.avatar_url
+      ? '<img src="' + safeUrl(o.avatar_url) + '" style="width:' + t + 'px;height:' + t + 'px;border-radius:' + (t / 2) + 'px;object-fit:cover;flex-shrink:0;" />'
+      : '<div style="width:' + t + 'px;height:' + t + 'px;border-radius:' + (t / 2) + 'px;background:' + (o.avatar_color || '#0B63F6') + ';color:#FFF;font-weight:800;font-size:' + Math.round(t * 0.38) + 'px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + (o.prenom || 'M').charAt(0).toUpperCase() + '</div>';
+  }
+  function nomConversation(autre) {
+    if (estCanal(autre)) { var p = poleDuCanal(autre); return 'Canal ' + (p ? p.nom : 'du pôle'); }
+    var o = db(SK.USERS, []).find(function(u){ return u.id === autre; }) || {};
+    return ((o.prenom || 'Membre') + ' ' + (o.nom || '')).trim();
+  }
+
+  function renderBoiteModal() {
+    var liste = conversations();
+    var lignes = liste.map(function(c) {
+      var d = c.dernier;
+      var apercu = d ? ((d.fromId === S.user.id ? 'Toi : ' : (estCanal(c.autre) ? nomCourt(d.fromId) + ' : ' : '')) + String(d.text || '')) : 'Discussion du pôle pour la logistique du jour J';
+      return '<button type="button" onclick="App.openDirectMessage(\'' + jsArg(c.autre) + '\')" style="display:flex;align-items:center;gap:12px;width:100%;padding:10px 16px;background:none;border:none;border-bottom:1px solid ' + UI.line + ';text-align:left;cursor:pointer;">' +
+        avatarConversation(c.autre) +
+        '<div style="flex:1;min-width:0;">' +
+          '<div style="display:flex;justify-content:space-between;gap:8px;">' +
+            '<strong style="font-size:15px;color:' + UI.ink + ';overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + safeHtml(nomConversation(c.autre)) + '</strong>' +
+            (d ? '<span style="font-size:11.5px;color:' + UI.faint + ';flex-shrink:0;">' + timeAgo(d.timestamp) + '</span>' : '') +
+          '</div>' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:2px;">' +
+            '<span style="font-size:13px;color:' + (c.nonLus ? UI.ink : UI.faint) + ';font-weight:' + (c.nonLus ? '600' : '400') + ';overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + safeHtml(apercu.slice(0, 80)) + '</span>' +
+            (c.nonLus ? '<span style="min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:' + UI.accent + ';color:#FFF;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + c.nonLus + '</span>' : '') +
+          '</div>' +
+        '</div>' +
+      '</button>';
+    }).join('');
+    return '<div class="safe-top" style="position:fixed;inset:0;z-index:9500;background:' + UI.page + ';display:flex;flex-direction:column;animation:fadeIn 0.2s ease-out;">' +
+      '<div style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:' + UI.card + ';border-bottom:1px solid ' + UI.line + ';">' +
+        '<button onclick="App.fermerBoite()" aria-label="Retour" style="background:' + UI.tile + ';border:none;width:44px;height:44px;flex-shrink:0;border-radius:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
+          '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="' + UI.ink + '" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>' +
+        '</button>' +
+        '<h1 style="flex:1;font-family:' + UI.fontDisplay + ';font-size:24px;font-weight:600;letter-spacing:-0.4px;color:' + UI.ink + ';margin:0;">Messages</h1>' +
+        '<button onclick="App.fermerBoite();App.openMembersList()" style="min-height:40px;padding:0 14px;background:' + UI.accent + ';color:#FFF;border:none;border-radius:999px;font-size:13px;font-weight:700;cursor:pointer;">Nouveau</button>' +
+      '</div>' +
+      '<div id="boiteListe" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;background:' + UI.card + ';">' +
+        (lignes || '<div style="padding:50px 24px;text-align:center;color:' + UI.faint + ';font-size:14px;">Aucune conversation. Ouvre le profil d\'un membre et touche « Message ».</div>') +
+      '</div>' +
+    '</div>';
+  }
+  function nomCourt(id) {
+    var o = db(SK.USERS, []).find(function(u){ return u.id === id; });
+    return o ? (o.prenom || 'Membre') : 'Membre';
+  }
+
   function renderDmBubble(m) {
     var mine = S.user && m.fromId === S.user.id;
-    return '<div style="display:flex;justify-content:' + (mine ? 'flex-end' : 'flex-start') + ';margin-bottom:8px;">' +
+    // Dans un canal, le prénom de l'auteur au-dessus de ses messages.
+    var auteur = (!mine && estCanal(m.toId)) ? '<div style="font-size:11.5px;font-weight:700;color:' + UI.accent + ';margin:0 0 2px 4px;">' + safeHtml(nomCourt(m.fromId)) + '</div>' : '';
+    return '<div style="display:flex;flex-direction:column;align-items:' + (mine ? 'flex-end' : 'flex-start') + ';margin-bottom:8px;">' + auteur +
       '<div style="max-width:72%;background:' + (mine ? '#0B63F6' : 'var(--tile)') + ';color:' + (mine ? '#FFF' : 'var(--ink)') + ';padding:9px 13px;border-radius:16px;' + (mine ? 'border-bottom-right-radius:4px;' : 'border-bottom-left-radius:4px;') + 'font-size:14.5px;line-height:1.4;word-break:break-word;">' +
         safeHtml(m.text) +
         '<div style="font-family:' + UI.fontMono + ';font-size:10px;margin-top:3px;opacity:0.7;text-align:right;">' + timeAgo(m.timestamp) + '</div>' +
@@ -468,18 +671,16 @@
 
   function renderDirectMessageModal() {
     if (!S.dmWithUserId) return '';
-    var allU = db(SK.USERS, []);
-    var other = allU.find(function(u){ return u.id === S.dmWithUserId; }) || {};
-    var otherName = (other.prenom || 'Membre') + ' ' + (other.nom || '');
-    var otherAvatar = other.avatar_url
-      ? '<img src="' + safeUrl(other.avatar_url) + '" style="width:34px;height:34px;border-radius:17px;object-fit:cover;flex-shrink:0;" />'
-      : '<div style="width:34px;height:34px;border-radius:17px;background:' + (other.avatar_color||'#0B63F6') + ';color:#FFF;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + (other.prenom||'M').charAt(0).toUpperCase() + '</div>';
+    var autre = S.dmWithUserId;
+    var canal = estCanal(autre);
+    var membresCanal = canal ? db(SK.USERS, []).filter(function(u){ return getUserSections(u).indexOf(autre.slice(5)) !== -1 && !compteEnAttente(u); }).length : 0;
 
     var messagesHtml = S.dmLoading
       ? '<div style="padding:40px 20px;text-align:center;color:var(--faint);font-size:13px;">Chargement…</div>'
       : (S.dmMessages.length > 0
           ? S.dmMessages.map(function(m){ return renderDmBubble(m); }).join('')
-          : '<div style="display:flex;flex-direction:column;align-items:center;padding:44px 20px;text-align:center;"><div style="font-size:40px;margin-bottom:8px;">💬</div><strong style="font-size:14px;color:var(--ink);">Aucun message</strong><p style="font-size:12.5px;color:var(--faint);margin:4px 0 0;">Envoyez le premier message à ' + safeHtml(other.prenom||'ce membre') + '.</p></div>');
+          : '<div style="display:flex;flex-direction:column;align-items:center;padding:44px 20px;text-align:center;"><div style="font-size:40px;margin-bottom:8px;">💬</div><strong style="font-size:14px;color:var(--ink);">Aucun message</strong><p style="font-size:12.5px;color:var(--faint);margin:4px 0 0;">' +
+              (canal ? 'Lance la discussion du pôle : matériel, horaires, consignes du jour J.' : 'Envoyez le premier message à ' + safeHtml(nomCourt(autre)) + '.') + '</p></div>');
 
     return '<div onclick="App.closeDirectMessage()" style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:10000;display:flex;justify-content:center;align-items:flex-end;">' +
       '<div onclick="event.stopPropagation()" style="width:100%;max-width:460px;background:var(--card);border-top-left-radius:28px;border-top-right-radius:28px;height:82vh;display:flex;flex-direction:column;animation:slideUp 0.3s;">' +
@@ -490,15 +691,18 @@
           '<div onclick="App.closeDirectMessage()" aria-label="Retour" style="cursor:pointer;width:44px;height:44px;display:flex;align-items:center;justify-content:center;margin-left:-8px;flex-shrink:0;">' +
             '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2.3"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>' +
           '</div>' +
-          otherAvatar +
-          '<strong style="font-family:' + UI.fontDisplay + ';font-size:16px;font-weight:700;letter-spacing:-0.2px;color:var(--ink);">' + safeHtml(otherName) + '</strong>' +
+          avatarConversation(autre, 34) +
+          '<div style="min-width:0;">' +
+            '<strong style="display:block;font-family:' + UI.fontDisplay + ';font-size:16px;font-weight:700;letter-spacing:-0.2px;color:var(--ink);">' + safeHtml(nomConversation(autre)) + '</strong>' +
+            (canal ? '<span style="font-size:11.5px;color:var(--faint);">' + membresCanal + ' membre' + (membresCanal > 1 ? 's' : '') + '</span>' : '') +
+          '</div>' +
         '</div>' +
         '<div id="dmMessagesList" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px;">' +
           messagesHtml +
         '</div>' +
         '<form onsubmit="event.preventDefault(); App.sendDirectMessage(event);" style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-top:0.5px solid var(--tile);">' +
           '<div style="flex:1;display:flex;align-items:center;background:var(--tile);border-radius:22px;height:40px;padding:0 6px 0 14px;">' +
-            '<input id="dmInput" type="text" placeholder="Écrire un message…" style="flex:1;border:none;background:transparent;font-size:14px;color:var(--ink);outline:none;">' +
+            '<input id="dmInput" type="text" placeholder="' + (canal ? 'Écrire au pôle…' : 'Écrire un message…') + '" style="flex:1;border:none;background:transparent;font-size:14px;color:var(--ink);outline:none;">' +
             '<button type="submit" style="background:none;border:none;padding:0 6px;cursor:pointer;display:flex;align-items:center;">' + SVG.send + '</button>' +
           '</div>' +
         '</form>' +
@@ -724,6 +928,7 @@
               (ev.caption ? '<p style="font-size:13px;color:var(--ink2);margin:0 0 16px;line-height:1.4;overflow-wrap:anywhere;">' + safeHtml(ev.caption) + '</p>' : '') +
               renderActionsEvenement(ev) +
               renderReponseConvocation(ev) +
+              renderEchanges(ev) +
               renderEventCheckInAction(ev) +
               renderSuiviConvocations(ev) +
               (function(){
@@ -2150,7 +2355,8 @@
       '<div style="font-size:11px;color:' + UI.faint + ';padding:9px 16px 10px;line-height:1.4;">Utile si l\'app affiche une ancienne version.</div>';
 
     var admin = isAdmin
-      ? ligne(svg('<path d="M3 6l4 3 5-6 5 6 4-3v12H3z"/>'), 'Gérer les rôles', '›', 'App.closeSettings();App.openRolesPanel()') +
+      ? ligne(svg('<rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/>'), 'Tableau de bord', '›', 'App.closeSettings();App.ouvrirTableauDeBord()') +
+        ligne(svg('<path d="M3 6l4 3 5-6 5 6 4-3v12H3z"/>'), 'Gérer les rôles', '›', 'App.closeSettings();App.openRolesPanel()') +
         ligne(svg('<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"/>'), 'Stockage', '›', 'App.closeSettings();App.openStorageStats()') +
         ligne(svg('<path d="M12 5v14M5 12h14"/>'), 'Quitter le rôle Admin', '›', 'App.revokeGrandResponsable()')
       : '';
@@ -2167,12 +2373,195 @@
       '</div>' +
       '<div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:20px 20px 40px;">' +
         section('Informations', infos) +
+        section('Notifications', renderReglagesNotifications(freshU)) +
         section('Apparence', apparence) +
         (admin ? section('Administration', admin) : '') +
         section('Compte', compte) +
         '<button onclick="App.logout()" style="width:100%;background:var(--bad-soft);color:#E2445C;border:none;border-radius:999px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;margin-top:8px;">Se déconnecter</button>' +
       '</div>' +
     '</div>';
+  }
+
+  // ============================================================
+  // TABLEAU DE BORD ADMIN (lot 3) : une vue d'ensemble, calculée à partir
+  // des données déjà synchronisées.
+  // ============================================================
+  function donneesTableauDeBord(maintenant) {
+    var now = maintenant || Date.now();
+    var J = 864e5;
+    var posts = db(SK.POSTS, []);
+    var users = db(SK.USERS, []).filter(function(u){ return u && u.id && !compteEnAttente(u); });
+    var nomDe = function(id) { var u = users.find(function(x){ return x.id === id; }); return u ? (u.prenom + ' ' + (u.nom || '')).trim() : 'Membre'; };
+
+    var services = posts.filter(function(p) {
+      if (p.type !== 'EVENT') return false;
+      var t = eventStartTimestamp(p);
+      return t && t >= now - 3 * 3600e3 && t <= now + 15 * J;
+    }).sort(function(a, b){ return eventStartTimestamp(a) - eventStartTimestamp(b); }).map(function(ev) {
+      var direct = (ev.assignments || []).filter(function(a){ return a && a.userId; });
+      var conf = 0, decl = 0, att = [];
+      direct.forEach(function(a) {
+        var r = reponseConvocation(ev, a.userId);
+        if (!r) att.push(a.userId); else if (r.statut === 'confirme') conf++; else decl++;
+      });
+      var presents = direct.length - decl;
+      var besoin = Math.max(1, (ev.eventSections || []).length);
+      return { ev: ev, debut: eventStartTimestamp(ev), convoques: direct.length, confirmes: conf, indisponibles: decl,
+               enAttente: att, sousEffectif: presents < besoin };
+    });
+
+    var relances = [];
+    services.forEach(function(s) {
+      s.enAttente.forEach(function(uid){ relances.push({ ev: s.ev, uid: uid, nom: nomDe(uid) }); });
+    });
+
+    var depuis = now - 30 * J;
+    var poles = SECTIONS.map(function(sec) {
+      var membres = users.filter(function(u){ return getUserSections(u).indexOf(sec.id) !== -1; });
+      var total = 0, aLheure = 0;
+      membres.forEach(function(m) {
+        var h = punctualityHistory(m.id, depuis, posts);
+        total += h.count; aLheure += h.onTimeCount;
+      });
+      return { sec: sec, membres: membres.length, total: total, taux: total ? Math.round(aLheure / total * 100) : null };
+    }).filter(function(p){ return p.membres > 0; });
+
+    var inactifs = users.filter(function(u) {
+      var vu = u.last_seen_at ? new Date(u.last_seen_at).getTime() : 0;
+      return !vu || vu < depuis;
+    }).map(function(u) {
+      return { u: u, vu: u.last_seen_at ? new Date(u.last_seen_at).getTime() : 0 };
+    }).sort(function(a, b){ return a.vu - b.vu; });
+
+    var tousServices = poles.reduce(function(n, p){ return n + p.total; }, 0);
+    var tousALheure = poles.reduce(function(n, p){ return n + (p.taux === null ? 0 : Math.round(p.taux * p.total / 100)); }, 0);
+    return {
+      services: services, relances: relances, poles: poles, inactifs: inactifs,
+      chiffres: {
+        actifs: users.length - inactifs.length, membres: users.length,
+        sousEffectif: services.filter(function(s){ return s.sousEffectif; }).length,
+        relances: relances.length,
+        taux: tousServices ? Math.round(tousALheure / tousServices * 100) : null
+      }
+    };
+  }
+
+  function renderTableauDeBord() {
+    var d = donneesTableauDeBord();
+    var carte = function(titre, contenu, compte) {
+      return '<section style="background:' + UI.card + ';border:1px solid ' + UI.line + ';border-radius:16px;padding:14px 16px;margin-bottom:12px;">' +
+        '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;">' +
+          '<h2 style="font-family:' + UI.fontDisplay + ';font-size:17px;font-weight:700;color:' + UI.ink + ';margin:0;">' + titre + '</h2>' +
+          (compte !== undefined ? '<span style="font-size:12px;font-weight:700;color:' + UI.faint + ';">' + compte + '</span>' : '') +
+        '</div>' + contenu + '</section>';
+    };
+    var vide = function(t){ return '<div style="font-size:13px;color:' + UI.faint + ';padding:6px 0;">' + t + '</div>'; };
+    var chiffre = function(v, l, alerte) {
+      return '<div style="flex:1;min-width:0;background:' + UI.card + ';border:1px solid ' + (alerte ? UI.bad + '55' : UI.line) + ';border-radius:14px;padding:12px;">' +
+        '<div style="font-family:' + UI.fontMono + ';font-size:22px;font-weight:700;color:' + (alerte ? UI.bad : UI.ink) + ';">' + v + '</div>' +
+        '<div style="font-size:11.5px;font-weight:600;color:' + UI.muted + ';margin-top:2px;line-height:1.3;">' + l + '</div>' +
+      '</div>';
+    };
+    var c = d.chiffres;
+    var tuiles = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">' +
+      chiffre(c.sousEffectif, 'service' + (c.sousEffectif > 1 ? 's' : '') + ' en sous-effectif (15 j)', c.sousEffectif > 0) +
+      chiffre(c.relances, 'convocation' + (c.relances > 1 ? 's' : '') + ' sans réponse', c.relances > 0) +
+      chiffre(c.taux === null ? '—' : c.taux + ' %', 'à l\'heure sur 30 jours', c.taux !== null && c.taux < 70) +
+      chiffre(c.actifs + '/' + c.membres, 'membres actifs ce mois-ci', c.membres && c.actifs / c.membres < 0.7) +
+    '</div>';
+
+    var services = d.services.map(function(s) {
+      var date = new Date(s.debut).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
+      return '<div onclick="App.fermerTableauDeBord();App.goToPost(\'' + jsArg(s.ev.id) + '\')" style="display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid ' + UI.tile + ';cursor:pointer;">' +
+        '<div style="flex:1;min-width:0;">' +
+          '<div style="font-size:13.5px;font-weight:700;color:' + UI.ink + ';overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + safeHtml(s.ev.eventTitle || 'Événement') + '</div>' +
+          '<div style="font-size:11.5px;color:' + UI.faint + ';">' + date + ' · ' + s.convoques + ' convoqué' + (s.convoques > 1 ? 's' : '') + ' · ' + s.confirmes + ' ✓ · ' + s.enAttente.length + ' ? · ' + s.indisponibles + ' ✕</div>' +
+        '</div>' +
+        (s.sousEffectif ? '<span style="font-size:11px;font-weight:800;padding:3px 8px;border-radius:8px;background:var(--bad-soft);color:var(--bad-ink);white-space:nowrap;">Sous-effectif</span>' : '<span style="font-size:11px;font-weight:800;padding:3px 8px;border-radius:8px;background:var(--ok-soft);color:var(--ok-ink);">OK</span>') +
+      '</div>';
+    }).join('');
+
+    var relances = d.relances.slice(0, 20).map(function(r) {
+      return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid ' + UI.tile + ';">' +
+        '<div style="flex:1;min-width:0;font-size:13px;color:' + UI.ink + ';overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><b>' + safeHtml(r.nom) + '</b> · ' + safeHtml(r.ev.eventTitle || 'Événement') + '</div>' +
+        '<button type="button" onclick="App.relancerConvocation(\'' + jsArg(r.ev.id) + '\',\'' + jsArg(r.uid) + '\')" style="min-height:36px;padding:0 12px;border:none;border-radius:999px;background:' + UI.tile + ';color:' + UI.ink + ';font-size:12.5px;font-weight:700;cursor:pointer;flex-shrink:0;">Relancer</button>' +
+      '</div>';
+    }).join('');
+
+    var poles = d.poles.map(function(p) {
+      var col = p.taux === null ? UI.line : p.taux >= 80 ? UI.ok : p.taux >= 60 ? UI.warn : UI.bad;
+      return '<div style="padding:8px 0;border-top:1px solid ' + UI.tile + ';">' +
+        '<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;color:' + UI.ink + ';margin-bottom:5px;">' +
+          '<span>' + p.sec.emoji + ' ' + safeHtml(p.sec.nom) + '</span>' +
+          '<span style="color:' + (p.taux === null ? UI.faint : UI.ink) + ';">' + (p.taux === null ? 'aucun service' : p.taux + ' % · ' + p.total + ' service' + (p.total > 1 ? 's' : '')) + '</span>' +
+        '</div>' +
+        '<div style="height:8px;background:' + UI.tile + ';border-radius:4px;overflow:hidden;"><div class="kc-progression" style="height:100%;width:' + (p.taux || 0) + '%;background:' + col + ';border-radius:4px;"></div></div>' +
+      '</div>';
+    }).join('');
+
+    var inactifs = d.inactifs.slice(0, 30).map(function(x) {
+      return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid ' + UI.tile + ';">' +
+        '<div style="flex:1;min-width:0;">' +
+          '<div style="font-size:13.5px;font-weight:700;color:' + UI.ink + ';">' + safeHtml(((x.u.prenom || '') + ' ' + (x.u.nom || '')).trim() || 'Membre') + '</div>' +
+          '<div style="font-size:11.5px;color:' + UI.faint + ';">' + (x.vu ? 'Vu le ' + new Date(x.vu).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Jamais vu') + '</div>' +
+        '</div>' +
+        '<button type="button" onclick="App.fermerTableauDeBord();App.openDirectMessage(\'' + jsArg(x.u.id) + '\')" style="min-height:36px;padding:0 12px;border:none;border-radius:999px;background:' + UI.tile + ';color:' + UI.ink + ';font-size:12.5px;font-weight:700;cursor:pointer;">Message</button>' +
+      '</div>';
+    }).join('');
+
+    return '<div id="tableauDeBord" class="safe-top" style="position:fixed;inset:0;z-index:9500;background:' + UI.page + ';display:flex;flex-direction:column;animation:fadeIn 0.2s ease-out;">' +
+      '<div style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:' + UI.card + ';border-bottom:1px solid ' + UI.line + ';">' +
+        '<button onclick="App.fermerTableauDeBord()" aria-label="Retour" style="background:' + UI.tile + ';border:none;width:44px;height:44px;flex-shrink:0;border-radius:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
+          '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="' + UI.ink + '" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>' +
+        '</button>' +
+        '<h1 style="font-family:' + UI.fontDisplay + ';font-size:24px;font-weight:600;letter-spacing:-0.4px;color:' + UI.ink + ';margin:0;">Tableau de bord</h1>' +
+      '</div>' +
+      '<div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 16px 40px;">' +
+        tuiles +
+        carte('Services des 15 prochains jours', services || vide('Aucun service prévu.'), d.services.length) +
+        carte('Convocations sans réponse', relances || vide('Tout le monde a répondu.'), d.relances.length) +
+        carte('Ponctualité par pôle · 30 jours', poles || vide('Pas encore de service.')) +
+        carte('Membres inactifs depuis un mois', inactifs || vide('Tout le monde est passé ce mois-ci.'), d.inactifs.length) +
+      '</div>' +
+    '</div>';
+  }
+
+  // Interrupteur façon iOS, réutilisé par les réglages de notifications.
+  function interrupteur(actif, action, libelle, desc, fige) {
+    return '<div ' + (fige ? '' : 'onclick="' + action + '" ') + 'role="switch" aria-checked="' + (actif ? 'true' : 'false') + '" style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid ' + UI.line + ';' + (fige ? '' : 'cursor:pointer;') + '">' +
+      '<div style="flex:1;min-width:0;">' +
+        '<div style="font-size:15px;font-weight:500;color:' + UI.ink + ';">' + libelle + '</div>' +
+        (desc ? '<div style="font-size:12px;color:' + UI.faint + ';margin-top:2px;">' + desc + '</div>' : '') +
+      '</div>' +
+      '<div aria-hidden="true" style="flex-shrink:0;width:51px;height:31px;border-radius:999px;background:' + (actif ? '#0B63F6' : 'var(--line2)') + ';position:relative;transition:background 0.2s ease;' + (fige ? 'opacity:0.6;' : '') + '">' +
+        '<div style="position:absolute;top:2px;left:' + (actif ? '22px' : '2px') + ';width:27px;height:27px;border-radius:50%;background:#FFFFFF;box-shadow:0 2px 6px rgba(0,0,0,0.25);transition:left 0.2s ease;"></div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  // Paramètres > Notifications : activation sur CE téléphone, puis un
+  // interrupteur par type (valables pour tous les appareils du membre).
+  function renderReglagesNotifications(u) {
+    var etat = S.pushEtat || 'inconnu';
+    var haut;
+    if (!pushDisponible()) {
+      var ios = /iphone|ipad|ipod/i.test(navigator.userAgent || '');
+      haut = '<div style="padding:14px 16px;border-bottom:1px solid ' + UI.line + ';font-size:13.5px;line-height:1.5;color:' + UI.muted + ';">' +
+        (ios ? 'Sur iPhone, installe d\'abord Commit sur l\'écran d\'accueil (iOS 16.4 ou plus récent), puis ouvre-le depuis son icône pour activer les notifications. <span onclick="ouvrirAideInstallation()" style="color:' + UI.accent + ';font-weight:700;cursor:pointer;">Comment faire</span>'
+             : 'Ce navigateur ne peut pas recevoir de notifications.') +
+      '</div>';
+    } else if (typeof Notification !== 'undefined' && Notification.permission === 'denied') {
+      haut = '<div style="padding:14px 16px;border-bottom:1px solid ' + UI.line + ';font-size:13.5px;line-height:1.5;color:' + UI.muted + ';">Les notifications sont bloquées pour Commit dans les réglages du téléphone. Autorise-les puis reviens ici.</div>';
+    } else {
+      haut = interrupteur(etat === 'actif', etat === 'actif' ? 'App.desactiverPush()' : 'App.activerPush()',
+        'Sur ce téléphone', etat === 'encours' ? 'Activation…' : (etat === 'actif' ? 'Tu recevras convocations et rappels même app fermée.' : 'Recevoir convocations, rappels et messages même app fermée.'),
+        etat === 'encours');
+    }
+    return haut +
+      interrupteur(true, '', 'Convocations', 'Toujours envoyées', true) +
+      PREFS_NOTIF.map(function(p) {
+        return interrupteur(prefNotifActive(u, p.id), 'App.basculerPrefNotif(\'' + p.id + '\')', p.libelle, p.desc);
+      }).join('');
   }
 
   function renderPostOptionsModal(post) {

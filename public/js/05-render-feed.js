@@ -115,6 +115,8 @@
     if (S.rolesPanelOpen) modals += renderRolesModal();
     if (S.settingsOpen) modals += renderSettingsModal();
     if (S.adminResetResult) modals += renderAdminResetPwModal();
+    if (S.boiteOpen) modals += renderBoiteModal();
+    if (S.tableauOpen && isGrandResponsable(u)) modals += renderTableauDeBord();
     if (S.dmOpen) modals += renderDirectMessageModal();
     if (S.assignManagerId) modals += renderAssignManagerModal();
     if (S.indisposOpen) modals += renderIndisposModal();
@@ -296,7 +298,7 @@
           (ev.eventLocation ? '<br>' + safeHtml(ev.eventLocation) : '') +
         '</div>' +
         (tache ? '<div style="display:inline-flex;align-items:center;gap:6px;margin-top:10px;background:' + UI.tile + ';border-radius:10px;padding:6px 10px;font-size:13px;color:' + UI.ink + ';"><span style="color:' + UI.faint + ';">Ma tâche</span><b>' + safeHtml(tache) + '</b></div>' : '') +
-        '<div style="margin-top:12px;">' + renderReponseConvocation(ev) + renderEventCheckInAction(ev) + '</div>' +
+        '<div style="margin-top:12px;">' + renderReponseConvocation(ev) + renderEchanges(ev) + renderEventCheckInAction(ev) + '</div>' +
         '<div style="display:flex;gap:8px;">' +
           '<button type="button" onclick="App.goToEvent(\'' + jsArg(ev.id) + '\')" style="flex:1;min-height:44px;background:' + UI.tile + ';color:' + UI.ink + ';border:none;border-radius:12px;font-size:13.5px;font-weight:700;cursor:pointer;">Voir l\'événement</button>' +
           (itineraire ? '<a href="' + safeUrl(itineraire) + '" target="_blank" rel="noopener noreferrer" style="flex:1;min-height:44px;display:flex;align-items:center;justify-content:center;background:' + UI.tile + ';color:' + UI.ink + ';border-radius:12px;font-size:13.5px;font-weight:700;text-decoration:none;">Itinéraire</a>' : '') +
@@ -429,6 +431,7 @@
         '<h1 style="font-family:' + UI.fontDisplay + ';font-size:22px;font-weight:800;color:' + UI.ink + ';margin:0;letter-spacing:-0.6px;min-width:0;">Commit</h1>' +
         '<div style="display:flex;gap:2px;align-items:center;flex-shrink:0;margin-right:-8px;">' +
           iconBtn('App.openMembersList()', '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="' + UI.muted + '" stroke-width="1.9" stroke-linecap="round"><circle cx="11" cy="11" r="7.5"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>', 0) +
+          renderBoiteBouton() +
           renderCloche() +
           '<button onclick="App.tab(\'profile\')" style="width:44px;height:44px;border-radius:' + UI.pill + ';background:none;border:none;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;flex-shrink:0;touch-action:manipulation;">' +
             (u.avatar_url

@@ -36,3 +36,4 @@ lancer() {
 
 lancer tests/sql/test_06_durcissement.sql migration/06_durcissement_ecritures.sql
 lancer tests/sql/test_07_convocations_validation.sql migration/06_durcissement_ecritures.sql migration/07_convocations_et_validation.sql
+lancer tests/sql/test_08_temps_reel.sql migration/06_durcissement_ecritures.sql migration/07_convocations_et_validation.sql migration/08_temps_reel.sql

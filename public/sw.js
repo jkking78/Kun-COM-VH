@@ -5,7 +5,7 @@
 // même stratégie de cache, juste plus de fichiers listés ci-dessous.
 // ============================================================
 
-const CACHE_NAME = 'kun-com-pwa-v153';
+const CACHE_NAME = 'kun-com-pwa-v154';
 // Numéro de version seul ('102'), tel qu'il apparaît dans les ?v=… de index.html.
 const NUM_V = CACHE_NAME.split('-v')[1];
 const JS_FILES = [
@@ -120,4 +120,36 @@ self.addEventListener('fetch', (event) => {
       });
     })
   );
+});
+
+// ============================================================
+// NOTIFICATIONS SUR LE TÉLÉPHONE (Web Push)
+// Le serveur (Edge Function « push ») envoie { titre, corps, cible, tag }.
+// Toucher la notification ouvre l'application sur l'écran concerné.
+// ============================================================
+self.addEventListener('push', (event) => {
+  let d = {};
+  try { d = event.data ? event.data.json() : {}; } catch (e) { d = { corps: event.data ? event.data.text() : '' }; }
+  event.waitUntil(self.registration.showNotification(d.titre || 'Commit', {
+    body: d.corps || '',
+    icon: './icons/icon-192.png',
+    badge: './icons/icon-192.png',
+    tag: d.tag || undefined,
+    renotify: !!d.tag,
+    data: { cible: d.cible || 'notifications' },
+  }));
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const cible = (event.notification.data && event.notification.data.cible) || 'notifications';
+  event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((fenetres) => {
+    for (const f of fenetres) {
+      if (new URL(f.url).origin === self.location.origin) {
+        f.postMessage({ type: 'kc-ouvrir', cible });
+        return f.focus();
+      }
+    }
+    return self.clients.openWindow('./?kc=' + encodeURIComponent(cible));
+  }));
 });
