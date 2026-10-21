@@ -50,6 +50,14 @@
       '.kc-publier{transition:transform 0.12s ease;}button:active>.kc-publier{transform:scale(0.92);}',
       '@keyframes kcIcone{from{opacity:0;transform:scale(0.85)}to{opacity:1;transform:none}}',
       '.kc-visite-icone{animation:kcIcone 0.4s cubic-bezier(0.34,1.4,0.64,1) both;}',
+      // Lot 2 : pointage (anneau de localisation, coche dessinée, points qui montent).
+      '.kc-localise{animation:spin 0.9s linear infinite;}',
+      '@keyframes kcCoche{from{stroke-dashoffset:40}to{stroke-dashoffset:0}}',
+      '.kc-coche{stroke-dasharray:40;animation:kcCoche 0.45s 0.15s cubic-bezier(0.65,0,0.35,1) both;}',
+      '@keyframes kcPoints{0%{opacity:0;transform:translateY(10px)}60%{opacity:1;transform:translateY(-4px)}100%{opacity:1;transform:none}}',
+      '.kc-points{animation:kcPoints 0.6s 0.35s ease-out both;}',
+      '@keyframes kcCarte{from{opacity:0;transform:scale(0.9)}to{opacity:1;transform:none}}',
+      '.kc-pointage-carte{animation:kcCarte 0.25s cubic-bezier(0.34,1.4,0.64,1) both;}',
       '.kc-conditions p{margin:0 0 8px;}.kc-conditions ul{padding-left:20px;margin:4px 0 8px;}.kc-conditions li{margin:4px 0;}',
       // Balayage des cartes squelettes affichées pendant le chargement du fil.
       '@keyframes shimmer{0%{background-position:-400px 0}100%{background-position:400px 0}}',
@@ -71,7 +79,7 @@
   // comporte de façon inexplicable. On vérifie donc que les briques essentielles
   // sont bien là avant de démarrer, et on recharge UNE fois en contournant le
   // cache si ce n'est pas le cas.
-  var APP_VERSION = 'v151'; window.APP_VERSION = APP_VERSION; // Exposé pour l'écran Paramètres (ligne « Version »).
+  var APP_VERSION = 'v152'; window.APP_VERSION = APP_VERSION; // Exposé pour l'écran Paramètres (ligne « Version »).
   // Nom du cache tenu par le service worker pour CETTE version. Doit rester
   // aligné sur CACHE_NAME dans sw.js.
   var CACHE_COURANT = 'kun-com-pwa-' + APP_VERSION;

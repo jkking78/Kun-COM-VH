@@ -237,6 +237,104 @@
   // Bandeau de pointage sur la fiche d'un événement (Planning). C'est le point
   // d'entrée le plus naturel : on regarde le planning, on voit qu'on est de
   // service, on pointe — sans avoir à deviner qu'il faut passer par le composeur.
+  // ============================================================
+  // RÉPONSE À UNE CONVOCATION (lot 2)
+  // Le membre convoqué confirme ou décline (avec un motif) ; sa réponse vit
+  // dans ev.reponsesConvocation[son id], que lui seul peut écrire (migration 07).
+  // ============================================================
+  function reponseConvocation(ev, userId) {
+    var r = ev && ev.reponsesConvocation && ev.reponsesConvocation[userId];
+    return (r && (r.statut === 'confirme' || r.statut === 'decline')) ? r : null;
+  }
+
+  function renderReponseConvocation(ev) {
+    if (!S.user || !ev || ev.type !== 'EVENT') return '';
+    var a = (ev.assignments || []).find(function(x){ return x && x.userId === S.user.id; });
+    if (!a) return '';
+    var debut = eventStartTimestamp(ev);
+    if (debut && Date.now() > debut) return '';      // le service a commencé : place au pointage
+    var r = reponseConvocation(ev, S.user.id);
+    var bouton = function(action, libelle, fond, couleur) {
+      return '<button type="button" onclick="' + action + '" style="flex:1;min-height:44px;border:none;border-radius:12px;background:' + fond + ';color:' + couleur + ';font-size:13.5px;font-weight:800;cursor:pointer;">' + libelle + '</button>';
+    };
+
+    if (S.declinerEvId === ev.id) {
+      return '<div class="kc-apparait" style="background:var(--tile);border-radius:12px;padding:12px;margin-bottom:10px;">' +
+        '<label for="motifDecline" style="display:block;font-size:13px;font-weight:700;color:var(--ink);margin-bottom:6px;">Pourquoi ne peux-tu pas venir&nbsp;?</label>' +
+        '<input id="motifDecline" type="text" maxlength="120" placeholder="Ex. voyage, examen, maladie" style="width:100%;min-height:44px;border:1px solid var(--line);border-radius:10px;padding:0 12px;background:var(--card);color:var(--ink);font-size:14px;box-sizing:border-box;">' +
+        '<div style="display:flex;gap:8px;margin-top:8px;">' +
+          bouton('App.annulerDecliner()', 'Annuler', 'var(--card)', 'var(--ink)') +
+          bouton('App.repondreConvocation(\'' + jsArg(ev.id) + '\',\'decline\')', 'Envoyer', 'var(--bad)', '#FFF') +
+        '</div>' +
+      '</div>';
+    }
+
+    if (!r) {
+      return '<div style="background:var(--accent-soft);border-radius:12px;padding:12px;margin-bottom:10px;">' +
+        '<div style="font-size:13px;font-weight:700;color:var(--accent-ink);margin-bottom:8px;">Tu es convoqué(e)' + (a.task ? ' · ' + safeHtml(a.task) : '') + '. Tu confirmes&nbsp;?</div>' +
+        '<div style="display:flex;gap:8px;">' +
+          bouton('App.repondreConvocation(\'' + jsArg(ev.id) + '\',\'confirme\')', 'Je confirme', '#0E9F6E', '#FFF') +
+          bouton('App.ouvrirDecliner(\'' + jsArg(ev.id) + '\')', 'Je ne peux pas', 'var(--card)', 'var(--bad-ink)') +
+        '</div>' +
+      '</div>';
+    }
+
+    var ok = r.statut === 'confirme';
+    return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:' + (ok ? 'var(--ok-soft)' : 'var(--bad-soft)') + ';border:1px solid ' + (ok ? 'var(--ok-line)' : 'var(--bad-line)') + ';border-radius:12px;padding:8px 8px 8px 12px;margin-bottom:10px;">' +
+      '<span class="kc-apparait" style="font-size:13px;font-weight:800;color:' + (ok ? 'var(--ok-ink)' : 'var(--bad-ink)') + ';min-width:0;overflow-wrap:anywhere;">' +
+        (ok ? '✓ Présence confirmée' : 'Indisponible' + (r.motif ? ' · ' + safeHtml(r.motif) : '')) +
+      '</span>' +
+      '<button type="button" onclick="App.annulerReponseConvocation(\'' + jsArg(ev.id) + '\')" style="flex-shrink:0;min-height:36px;background:none;border:none;font-size:12.5px;font-weight:700;color:var(--muted);cursor:pointer;">Modifier</button>' +
+    '</div>';
+  }
+
+  // Pour l'organisateur (auteur, Responsable de pôle, Admin) : où en sont les
+  // réponses des convoqués.
+  function renderSuiviConvocations(ev) {
+    if (!S.user || !ev || ev.type !== 'EVENT' || !(ev.assignments || []).length) return '';
+    var organisateur = ev.userId === S.user.id || canManageEventAssignments(ev, S.user);
+    if (!organisateur) return '';
+    var users = db(SK.USERS, []);
+    var confirmes = 0, enAttente = 0, declines = [];
+    (ev.assignments || []).forEach(function(a) {
+      if (!a || !a.userId) return;
+      var r = reponseConvocation(ev, a.userId);
+      if (!r) enAttente++;
+      else if (r.statut === 'confirme') confirmes++;
+      else {
+        var u = users.find(function(x){ return x.id === a.userId; });
+        declines.push((u ? (u.prenom + ' ' + (u.nom || '').charAt(0) + '.') : (a.userName || 'Membre')) + (r.motif ? ' (' + r.motif + ')' : ''));
+      }
+    });
+    var puce = function(n, libelle, fond, couleur) {
+      return '<span style="font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px;background:' + fond + ';color:' + couleur + ';">' + n + ' ' + libelle + '</span>';
+    };
+    return '<div style="border-top:1px solid var(--line);margin-top:4px;padding-top:10px;margin-bottom:10px;">' +
+      '<div style="font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--faint);margin-bottom:6px;">Réponses des convoqués</div>' +
+      '<div style="display:flex;flex-wrap:wrap;gap:6px;">' +
+        puce(confirmes, confirmes > 1 ? 'confirmés' : 'confirmé', 'var(--ok-soft)', 'var(--ok-ink)') +
+        puce(declines.length, declines.length > 1 ? 'indisponibles' : 'indisponible', 'var(--bad-soft)', 'var(--bad-ink)') +
+        puce(enAttente, 'en attente', 'var(--tile)', 'var(--muted)') +
+      '</div>' +
+      (declines.length ? '<div style="font-size:12.5px;color:var(--bad-ink);margin-top:6px;line-height:1.45;">' + declines.map(safeHtml).join(' · ') + '</div>' : '') +
+    '</div>';
+  }
+
+  // Ajouter à l'agenda + itinéraire, sous la fiche d'un événement à venir.
+  function renderActionsEvenement(ev) {
+    if (!ev || ev.type !== 'EVENT' || isEventPast(ev)) return '';
+    var dest = (typeof ev.eventLat === 'number' && typeof ev.eventLng === 'number')
+      ? ev.eventLat + ',' + ev.eventLng
+      : (ev.eventLocation ? encodeURIComponent(ev.eventLocation + ', Abidjan') : '');
+    var lien = 'display:flex;align-items:center;justify-content:center;gap:6px;flex:1;min-height:40px;background:var(--tile);color:var(--ink);border:none;border-radius:10px;font-size:12.5px;font-weight:700;cursor:pointer;text-decoration:none;';
+    return '<div style="display:flex;gap:8px;margin-bottom:10px;">' +
+      '<button type="button" onclick="App.ajouterAgenda(\'' + jsArg(ev.id) + '\')" style="' + lien + '">' +
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="12" y1="14" x2="12" y2="18"/><line x1="10" y1="16" x2="14" y2="16"/></svg>Mon agenda</button>' +
+      (dest ? '<a href="' + safeUrl('https://www.google.com/maps/dir/?api=1&destination=' + dest) + '" target="_blank" rel="noopener noreferrer" style="' + lien + '">' +
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>Itinéraire</a>' : '') +
+    '</div>';
+  }
+
   function renderEventCheckInAction(ev) {
     if (!S.user || !ev || ev.type !== 'EVENT') return '';
     var isAssigned = (ev.assignments || []).some(function(a){ return a && a.userId === S.user.id; });
@@ -285,13 +383,21 @@
 
     var delay = Math.round((now - startTs) / 60000);
     var stars = starsForDelay(delay);
-    var sc = stars >= 4 ? '#0E9F6E' : stars >= 2 ? '#D98A0B' : '#E2445C';
-    return '<button onclick="App.startCheckIn(\'' + jsArg(ev.id) + '\')" style="width:100%;background:#0B63F6;color:#FFF;border:none;border-radius:12px;padding:11px;font-size:13.5px;font-weight:800;cursor:pointer;box-shadow:0 4px 12px rgba(11,99,246,0.3);margin-bottom:10px;">' +
-        'Je suis arrivé · ' + (stars>0?'+':'') + stars + '★' +
+    // Pointage en un geste (lot 2) : un appui relève la position et enregistre
+    // l'arrivée. La publication avec photo reste possible, en option.
+    if (S.pointageEnCours === ev.id) {
+      return '<button type="button" disabled aria-live="polite" style="width:100%;min-height:48px;display:flex;align-items:center;justify-content:center;gap:10px;background:#0B63F6;color:#FFF;border:none;border-radius:12px;font-size:14px;font-weight:800;opacity:0.9;margin-bottom:10px;">' +
+        '<svg class="kc-localise" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="2.6" stroke-linecap="round"><circle cx="12" cy="12" r="9" stroke-opacity="0.3"/><path d="M12 3a9 9 0 0 1 9 9"/></svg>' +
+        'Localisation en cours…' +
+      '</button>';
+    }
+    return '<button type="button" onclick="App.pointerEnUnGeste(\'' + jsArg(ev.id) + '\')" style="width:100%;min-height:48px;background:#0B63F6;color:#FFF;border:none;border-radius:12px;padding:11px;font-size:14.5px;font-weight:800;cursor:pointer;box-shadow:0 4px 14px rgba(11,99,246,0.3);margin-bottom:6px;">' +
+        '📍 Je suis arrivé · ' + (stars>0?'+':'') + stars + '★' +
       '</button>' +
-      '<div style="font-size:10.5px;color:var(--faint);text-align:center;margin-bottom:10px;line-height:1.4;">' +
-        (delay > 0 ? 'Retard actuel : ' + delay + ' min. ' : 'Vous êtes à l\'heure. ') +
-        'Votre position sera relevée et visible de tous.' +
+      '<div style="font-size:11px;color:var(--faint);text-align:center;margin-bottom:10px;line-height:1.45;">' +
+        (delay > 0 ? 'Retard actuel : ' + delay + ' min. ' : 'Tu es à l\'heure. ') +
+        'Ta position sera relevée et visible de tous. ' +
+        '<button type="button" onclick="App.startCheckIn(\'' + jsArg(ev.id) + '\')" style="background:none;border:none;padding:4px 2px;font:inherit;font-weight:700;color:#0B63F6;cursor:pointer;">Pointer avec une photo</button>' +
       '</div>';
   }
 
@@ -332,7 +438,7 @@
           '<div style="display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);padding-top:12px;">' +
             '<select id="assignUserSelect" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--line);font-size:14px;outline:none;background:var(--tile);">' +
               '<option value="">Sélectionner un membre…</option>' +
-              renderAssignSelectOptions(u) +
+              renderAssignSelectOptions(u, post.eventDate) +
             '</select>' +
             '<input type="text" id="assignTaskInput" placeholder="Tâche / travail à faire..." style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--line);font-size:14px;outline:none;background:var(--tile);box-sizing:border-box;" />' +
             '<div style="display:flex;gap:8px;">' +
@@ -426,6 +532,14 @@
         '<div style="min-width:0;">' +
           '<h1 style="font-family:' + UI.fontDisplay + ';font-size:30px;font-weight:800;letter-spacing:-1px;color:' + UI.ink + ';margin:0;line-height:1.05;">Planning</h1>' +
           '<p style="font-size:13.5px;color:' + UI.faint + ';margin:5px 0 0;">Gérez et suivez les événements du département.</p>' +
+          (function(){
+            var mes = ((db(SK.USERS, []).find(function(x){ return S.user && x.id === S.user.id; }) || S.user || {}).indisponibilites || [])
+              .filter(function(x){ return x && x.date >= new Date().toISOString().split('T')[0]; });
+            return '<button type="button" onclick="App.ouvrirIndispos()" style="margin-top:10px;min-height:36px;display:inline-flex;align-items:center;gap:6px;background:' + UI.tile + ';border:none;border-radius:999px;padding:0 14px;font-size:13px;font-weight:700;color:' + UI.ink + ';cursor:pointer;">' +
+              '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="9" y1="14" x2="15" y2="18"/><line x1="15" y1="14" x2="9" y2="18"/></svg>' +
+              'Mes indisponibilités' + (mes.length ? ' · ' + mes.length : '') +
+            '</button>';
+          })() +
         '</div>' +
         '<div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">' + renderCloche() + rightBtn + '</div>' +
       '</div>' +
@@ -608,8 +722,14 @@
                 '</div>' +
               '</div>' +
               (ev.caption ? '<p style="font-size:13px;color:var(--ink2);margin:0 0 16px;line-height:1.4;overflow-wrap:anywhere;">' + safeHtml(ev.caption) + '</p>' : '') +
+              renderActionsEvenement(ev) +
+              renderReponseConvocation(ev) +
               renderEventCheckInAction(ev) +
+              renderSuiviConvocations(ev) +
               (function(){
+                // Un convoqué répond à sa convocation ci-dessus : le bouton de
+                // participation libre ne s'adresse qu'aux autres membres.
+                if (S.user && (ev.assignments || []).some(function(a){ return a && a.userId === S.user.id; })) return '';
                 var isPart = S.user && Array.isArray(ev.likedBy) && ev.likedBy.indexOf(S.user.id) !== -1;
                 var count = Array.isArray(ev.likedBy) ? ev.likedBy.length : 0;
                 if (status === 'closed') {
@@ -656,7 +776,7 @@
         '</div>';
 
     if (view === 'suivi') {
-      return renderScreenHeader('Bilans', 'Évaluation des pôles', '') + tabs + renderScoreboard(canEvaluate);
+      return renderScreenHeader('Bilans', 'Évaluation des pôles', '') + tabs + renderMonPole(u) + renderScoreboard(canEvaluate);
     }
     return renderScreenHeader('Bilans', 'Évaluation des pôles', '') + tabs + renderDebriefForm(u);
   }
@@ -727,6 +847,47 @@
           '</div>';
         }).join('') +
       '</div>';
+  }
+
+  // « MON PÔLE » : en tête du Suivi, la note de son ou ses pôles et le dernier
+  // mot de l'Admin, sans avoir à chercher sa carte dans le classement.
+  function renderMonPole(u) {
+    var mesPoles = getUserSections(u || {}).filter(function(s){ return SECTIONS.some(function(x){ return x.id === s; }); });
+    if (!mesPoles.length) return '';
+    var posts = db(SK.POSTS, []);
+    var cycleTs = currentCycleStartTs();
+    var couleur = function(v){ return v >= 4 ? '#0E9F6E' : v >= 2 ? '#D98A0B' : '#E2445C'; };
+    return '<div id="monPole" style="padding:14px 16px 0;">' +
+      '<div style="font-size:11px;font-weight:900;color:#0B63F6;text-transform:uppercase;letter-spacing:0.8px;padding:0 2px 8px;">' + (mesPoles.length > 1 ? 'Mes pôles' : 'Mon pôle') + '</div>' +
+      mesPoles.map(function(id) {
+        var sec = SECTIONS.find(function(x){ return x.id === id; });
+        var cycle = sectionScoreboard(id, cycleTs, posts);
+        var tout = sectionScoreboard(id, 0, posts);
+        var dernier = tout.entries[0];
+        return '<div class="kc-apparait" style="background:var(--card);border-radius:18px;margin-bottom:10px;border:1.5px solid ' + sec.color + '55;padding:14px 16px;">' +
+          '<div style="display:flex;align-items:center;gap:10px;">' +
+            '<div style="width:40px;height:40px;border-radius:20px;background:' + sec.color + '1f;display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0;">' + sec.emoji + '</div>' +
+            '<div style="flex:1;min-width:0;">' +
+              '<strong style="font-size:14.5px;color:var(--ink);display:block;">' + safeHtml(sec.nom) + '</strong>' +
+              '<span style="font-size:11.5px;color:var(--faint);">' + (tout.count ? tout.count + ' bilan' + (tout.count > 1 ? 's' : '') + ' au total' : 'Pas encore évalué') + '</span>' +
+            '</div>' +
+            '<div style="text-align:right;flex-shrink:0;">' +
+              '<div style="font-family:' + UI.fontMono + ';font-size:20px;font-weight:700;color:' + (cycle.count ? couleur(cycle.average) : 'var(--faint)') + ';">' + (cycle.count ? cycle.average + '/5' : '—') + '</div>' +
+              '<div style="font-size:10.5px;color:var(--faint);font-weight:700;">ce cycle</div>' +
+            '</div>' +
+          '</div>' +
+          (dernier
+            ? '<div onclick="App.openBilan(\'' + jsArg(dernier.postId) + '\')" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--tile);cursor:pointer;">' +
+                '<div style="display:flex;justify-content:space-between;gap:8px;font-size:12px;font-weight:700;color:var(--muted);">' +
+                  '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Dernier bilan · ' + safeHtml(dernier.eventTitle) + '</span>' +
+                  '<span style="color:' + couleur(dernier.globalScore) + ';flex-shrink:0;">' + dernier.globalScore + '/5</span>' +
+                '</div>' +
+                (dernier.comment ? '<div style="font-size:13px;color:var(--ink);line-height:1.45;margin-top:6px;font-style:italic;">« ' + safeHtml(String(dernier.comment).slice(0, 220)) + ' »</div>' : '') +
+              '</div>'
+            : '') +
+        '</div>';
+      }).join('') +
+    '</div>';
   }
 
   // cardKey identifie la carte dans S.scoreboardOpen : sec.id seul pour la vue
@@ -1244,6 +1405,74 @@
   // ============================================================
   // PROFILE TAB
   // ============================================================
+  // BADGES : obtenus d'après l'historique réel des services (rien à saisir).
+  // Les badges pas encore obtenus restent visibles, grisés, avec leur condition.
+  function badgesMembre(userId) {
+    var h = punctualityHistory(userId);
+    var cycle = punctualityHistory(userId, currentCycleStartTs());
+    var serie = 0;
+    for (var i = 0; i < h.entries.length && h.entries[i].status === 'ontime'; i++) serie++;
+    return [
+      { id:'premier', emoji:'🎬', nom:'Premier service', cond:'Assurer un premier service', ok: h.count >= 1 },
+      { id:'dix', emoji:'🔟', nom:'10 services', cond:'Assurer 10 services', ok: h.count >= 10 },
+      { id:'serie', emoji:'🔥', nom:'Série de 5', cond:'5 services d\'affilée à l\'heure', ok: serie >= 5 },
+      { id:'cycle', emoji:'⏱️', nom:'Cycle à l\'heure', cond:'Au moins 3 services ce cycle, tous à l\'heure', ok: cycle.count >= 3 && cycle.onTimeCount === cycle.count },
+      { id:'tache', emoji:'📦', nom:'Livré à temps', cond:'Livrer une tâche avant sa date limite', ok: h.entries.some(function(e){ return e.kind === 'task' && e.status === 'ontime'; }) },
+      { id:'pilier', emoji:'🏛️', nom:'Pilier', cond:'Assurer 25 services', ok: h.count >= 25 }
+    ];
+  }
+
+  function renderBadges(freshU) {
+    var badges = badgesMembre(freshU.id);
+    var obtenus = badges.filter(function(b){ return b.ok; }).length;
+    return '<div id="badges" style="background:' + UI.card + ';border:1px solid ' + UI.line + ';border-radius:16px;padding:14px 16px;margin-top:12px;">' +
+      '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;">' +
+        '<strong style="font-size:15px;color:' + UI.ink + ';">Badges</strong>' +
+        '<span style="font-size:12px;font-weight:700;color:' + UI.faint + ';">' + obtenus + ' / ' + badges.length + '</span>' +
+      '</div>' +
+      '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">' +
+        badges.map(function(b) {
+          return '<div title="' + safeHtml(b.cond) + '" class="' + (b.ok ? 'kc-apparait' : '') + '" style="text-align:center;padding:10px 4px;border-radius:12px;background:' + (b.ok ? 'var(--accent-soft)' : UI.tile) + ';' + (b.ok ? '' : 'opacity:0.55;') + '">' +
+            '<div style="font-size:24px;line-height:1;' + (b.ok ? '' : 'filter:grayscale(1);') + '">' + b.emoji + '</div>' +
+            '<div style="font-size:11.5px;font-weight:800;color:' + UI.ink + ';margin-top:6px;line-height:1.2;">' + safeHtml(b.nom) + '</div>' +
+            (b.ok ? '' : '<div style="font-size:10px;color:' + UI.faint + ';margin-top:3px;line-height:1.25;">' + safeHtml(b.cond) + '</div>') +
+          '</div>';
+        }).join('') +
+      '</div>' +
+    '</div>';
+  }
+
+  // HISTORIQUE DES SERVICES : chaque service ou tâche, avec son résultat.
+  function renderHistoriqueServices(freshU) {
+    var h = punctualityHistory(freshU.id);
+    if (!h.count) return '';
+    var tout = !!S.historiqueTout;
+    var lignes = tout ? h.entries : h.entries.slice(0, 5);
+    var pastille = function(e) {
+      var c = e.status === 'ontime' ? ['var(--ok-soft)', UI.ok] : e.status === 'late' ? ['var(--warn-soft)', UI.warn] : ['var(--bad-soft)', UI.bad];
+      return '<span style="font-size:11px;font-weight:800;padding:2px 8px;border-radius:8px;background:' + c[0] + ';color:' + c[1] + ';white-space:nowrap;">' + (e.stars > 0 ? '+' : '') + e.stars + '★</span>';
+    };
+    return '<div id="historiqueServices" style="background:' + UI.card + ';border:1px solid ' + UI.line + ';border-radius:16px;padding:14px 16px;margin-top:12px;">' +
+      '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;">' +
+        '<strong style="font-size:15px;color:' + UI.ink + ';">Historique des services</strong>' +
+        '<span style="font-size:12px;font-weight:700;color:' + UI.faint + ';">' + h.count + '</span>' +
+      '</div>' +
+      lignes.map(function(e) {
+        var d = e.startTs ? new Date(e.startTs).toLocaleDateString('fr-FR', {day:'numeric', month:'short', year:'numeric'}) : '';
+        return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-top:1px solid ' + UI.tile + ';">' +
+          '<div style="min-width:0;">' +
+            '<div style="font-size:13px;font-weight:700;color:' + UI.ink + ';overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + safeHtml(e.eventTitle) + (e.task ? ' · <span style="font-weight:600;color:' + UI.muted + ';">' + safeHtml(e.task) + '</span>' : '') + '</div>' +
+            '<div style="font-size:11px;color:' + UI.faint + ';">' + d + ' · ' + safeHtml(e.label || '') + '</div>' +
+          '</div>' +
+          pastille(e) +
+        '</div>';
+      }).join('') +
+      (h.count > 5
+        ? '<button type="button" onclick="App.basculerHistorique()" style="width:100%;min-height:40px;margin-top:6px;background:none;border:none;color:' + UI.accent + ';font-size:13px;font-weight:700;cursor:pointer;">' + (tout ? 'Réduire' : 'Voir les ' + h.count + ' services') + '</button>'
+        : '') +
+    '</div>';
+  }
+
   function renderProfile(u, posts) {
     try {
     if (!u || !u.id) {
@@ -1449,6 +1678,8 @@
     // désormais dans la page Paramètres (voir renderSettingsModal).
     var infoBlock = '<div style="background:' + UI.page + ';padding:0 20px 16px;">' +
       renderPunctualityCard(freshU, cycleStr) +
+      renderBadges(freshU) +
+      renderHistoriqueServices(freshU) +
       // Accès direct aux conditions d'utilisation depuis son propre profil.
       (isMe ? '<button type="button" onclick="ouvrirConditions()" style="display:flex;align-items:center;justify-content:space-between;width:100%;min-height:44px;margin-top:4px;padding:12px 16px;background:' + UI.card + ';border:1px solid ' + UI.line + ';border-radius:12px;font-size:14px;font-weight:600;color:' + UI.ink + ';cursor:pointer;text-align:left;">' +
         '<span>📜 Conditions d\'utilisation</span><span style="color:' + UI.faint + ';">›</span>' +
@@ -2216,4 +2447,102 @@
     var echap = function(ev) { if (ev.key === 'Escape') fermer(); };
     document.addEventListener('keydown', echap);
     fond.querySelector('[data-fermer]').onclick = fermer;
+  }
+
+  // ============================================================
+  // MES INDISPONIBILITÉS (lot 2)
+  // Les dates où le membre sait qu'il sera absent, enregistrées sur sa fiche.
+  // Les responsables les voient au moment de convoquer.
+  // ============================================================
+  function renderIndisposModal() {
+    var moi = db(SK.USERS, []).find(function(x){ return S.user && x.id === S.user.id; }) || S.user || {};
+    var auj = new Date().toISOString().split('T')[0];
+    var liste = (moi.indisponibilites || []).filter(function(x){ return x && x.date >= auj; })
+      .sort(function(a, b){ return a.date < b.date ? -1 : 1; });
+    return '<div onclick="App.fermerIndispos()" style="position:fixed;inset:0;background:rgba(15,15,20,0.55);z-index:10000;display:flex;justify-content:center;align-items:flex-end;">' +
+      '<div onclick="event.stopPropagation()" role="dialog" aria-modal="true" aria-label="Mes indisponibilités" style="width:100%;max-width:460px;max-height:85vh;overflow-y:auto;background:var(--card);border-radius:20px 20px 0 0;padding:16px 20px calc(24px + env(safe-area-inset-bottom));animation:slideUp 0.28s cubic-bezier(0.22,1,0.36,1);">' +
+        '<div style="width:40px;height:4px;background:var(--line);border-radius:2px;margin:0 auto 16px;"></div>' +
+        '<h2 style="font-family:' + UI.fontDisplay + ';font-size:20px;font-weight:700;color:var(--ink);margin:0 0 4px;">Mes indisponibilités</h2>' +
+        '<p style="font-size:13.5px;color:var(--muted);line-height:1.5;margin:0 0 14px;">Les responsables les voient quand ils convoquent l\'équipe.</p>' +
+        '<div style="display:flex;flex-direction:column;gap:8px;background:var(--tile);border-radius:14px;padding:12px;">' +
+          '<label for="indispoDate" style="font-size:12.5px;font-weight:700;color:var(--ink);">Date</label>' +
+          '<input id="indispoDate" type="date" min="' + auj + '" style="min-height:44px;border:1px solid var(--line);border-radius:10px;padding:0 12px;background:var(--card);color:var(--ink);font-size:16px;">' +
+          '<label for="indispoMotif" style="font-size:12.5px;font-weight:700;color:var(--ink);">Motif <span style="font-weight:500;color:var(--faint);">(facultatif)</span></label>' +
+          '<input id="indispoMotif" type="text" maxlength="80" placeholder="Ex. voyage, examen" style="min-height:44px;border:1px solid var(--line);border-radius:10px;padding:0 12px;background:var(--card);color:var(--ink);font-size:16px;">' +
+          '<button type="button" onclick="App.ajouterIndispo()" style="min-height:44px;background:#0B63F6;color:#FFF;border:none;border-radius:12px;font-size:14.5px;font-weight:800;cursor:pointer;margin-top:4px;">Ajouter cette date</button>' +
+        '</div>' +
+        '<div style="margin-top:14px;">' +
+          (liste.length
+            ? liste.map(function(x) {
+                var d = new Date(x.date + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+                return '<div class="kc-apparait" style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);">' +
+                  '<div style="flex:1;min-width:0;">' +
+                    '<div style="font-size:14.5px;font-weight:700;color:var(--ink);">' + safeHtml(d.charAt(0).toUpperCase() + d.slice(1)) + '</div>' +
+                    (x.motif ? '<div style="font-size:12.5px;color:var(--muted);">' + safeHtml(x.motif) + '</div>' : '') +
+                  '</div>' +
+                  '<button type="button" onclick="App.retirerIndispo(\'' + jsArg(x.date) + '\')" aria-label="Retirer cette date" style="width:44px;height:44px;flex-shrink:0;background:none;border:none;border-radius:50%;color:var(--bad-ink);font-size:20px;cursor:pointer;">×</button>' +
+                '</div>';
+              }).join('')
+            : '<p style="font-size:13.5px;color:var(--faint);text-align:center;margin:10px 0 0;">Aucune date à venir.</p>') +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+
+  // ============================================================
+  // POINTAGE : ALERTE HORS ZONE ET CONFIRMATION ANIMÉE (lot 2)
+  // ============================================================
+  function fermerAlerteHorsZone() {
+    var el = document.getElementById('_kcHorsZone');
+    if (el) el.remove();
+  }
+
+  function ouvrirAlerteHorsZone() {
+    fermerAlerteHorsZone();
+    var h = S.pointageHorsZone;
+    if (!h) return;
+    var fond = document.createElement('div');
+    fond.id = '_kcHorsZone';
+    fond.setAttribute('role', 'alertdialog');
+    fond.setAttribute('aria-modal', 'true');
+    fond.style.cssText = 'position:fixed;inset:0;z-index:9999995;background:rgba(15,15,20,0.6);display:flex;align-items:flex-end;justify-content:center;';
+    fond.innerHTML =
+      '<div class="kc-apparait" style="width:100%;max-width:460px;background:var(--card,#FFF);color:var(--ink,#0C1116);border-radius:20px 20px 0 0;padding:20px 20px calc(24px + env(safe-area-inset-bottom));font-family:var(--font-body,sans-serif);">' +
+        '<h2 style="font-family:var(--font-display,sans-serif);font-size:20px;font-weight:700;margin:0 0 6px;">Tu sembles loin du lieu</h2>' +
+        '<p style="font-size:14.5px;line-height:1.5;color:var(--muted,#5B6572);margin:0 0 16px;">Ta position est à <b>' + formatDistance(h.distance || 0) + '</b> du lieu (il faut être à moins de ' + formatDistance(ON_SITE_RADIUS_M) + '). Un pointage hors zone compte comme une absence. Rapproche-toi et réessaie.</p>' +
+        '<button type="button" data-reessayer style="width:100%;min-height:48px;background:#0B63F6;color:#FFF;border:none;border-radius:12px;font-size:15px;font-weight:800;cursor:pointer;">Réessayer</button>' +
+        '<button type="button" data-forcer style="width:100%;min-height:44px;margin-top:8px;background:none;border:none;font-size:14px;font-weight:700;color:var(--bad-ink,#B42318);cursor:pointer;">Pointer quand même</button>' +
+      '</div>';
+    document.body.appendChild(fond);
+    // Réessayer : nouvelle position, mais la même heure d'arrivée (celle du premier appui).
+    fond.querySelector('[data-reessayer]').onclick = function() { var x = S.pointageHorsZone; S.pointageHorsZone = null; App.pointerEnUnGeste(x.eventId, x.stamp, false); };
+    fond.querySelector('[data-forcer]').onclick = function() { var x = S.pointageHorsZone; App.pointerEnUnGeste(x.eventId, x.stamp, true); };
+    fond.onclick = function(ev) { if (ev.target === fond) { S.pointageHorsZone = null; fermerAlerteHorsZone(); } };
+  }
+
+  // Coche qui se dessine et points qui montent, puis disparaissent seuls.
+  function celebrerPointage(points, detail) {
+    try { if (navigator.vibrate) navigator.vibrate(points > 0 ? [30, 40, 30] : 60); } catch(e) {}
+    var ancien = document.getElementById('_kcPointage');
+    if (ancien) ancien.remove();
+    var positif = points > 0;
+    var el = document.createElement('div');
+    el.id = '_kcPointage';
+    el.setAttribute('role', 'status');
+    el.style.cssText = 'position:fixed;inset:0;z-index:9999996;display:flex;align-items:center;justify-content:center;pointer-events:none;';
+    el.innerHTML =
+      '<div class="kc-pointage-carte" style="background:var(--card,#FFF);color:var(--ink,#0C1116);border-radius:24px;padding:24px 28px;box-shadow:0 20px 60px rgba(0,0,0,0.25);text-align:center;min-width:240px;max-width:86vw;font-family:var(--font-body,sans-serif);">' +
+        '<svg width="72" height="72" viewBox="0 0 52 52" style="display:block;margin:0 auto 10px;">' +
+          '<circle cx="26" cy="26" r="24" fill="' + (positif ? '#0E9F6E' : '#E2445C') + '"/>' +
+          (positif
+            ? '<path class="kc-coche" d="M15 27l7 7 15-16" fill="none" stroke="#FFF" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>'
+            : '<path class="kc-coche" d="M18 18l16 16M34 18L18 34" fill="none" stroke="#FFF" stroke-width="4.5" stroke-linecap="round"/>') +
+        '</svg>' +
+        '<div style="font-size:17px;font-weight:800;">Arrivée enregistrée</div>' +
+        '<div class="kc-points" style="font-family:var(--font-mono,monospace);font-size:28px;font-weight:700;color:' + (positif ? '#0E9F6E' : '#E2445C') + ';margin:4px 0;">' + (points > 0 ? '+' : '') + points + '★</div>' +
+        '<div style="font-size:13.5px;color:var(--muted,#5B6572);">' + safeHtml(detail || '') + '</div>' +
+      '</div>';
+    document.body.appendChild(el);
+    setTimeout(function(){ el.style.transition = 'opacity 0.3s'; el.style.opacity = '0'; }, 2200);
+    setTimeout(function(){ el.remove(); }, 2600);
   }

@@ -56,8 +56,12 @@ const maintenant = Date.now();
 // Les scénarios existants supposent la visite guidée déjà vue ; le scénario
 // « nouveau membre » la remet à zéro.
 let VISITE_VUE = true;
+// Le scénario « compte en attente » passe la fiche de MOI à non validée.
+let APPROUVE = true;
+const ATTENTE = 'cccccccc-0000-4000-8000-000000000003';
 const profils = [
-  { id: MOI, content: { id: MOI, prenom: 'Awa', nom: 'Test', role: 'MEMBRE', sections: [], notifications: [], get visiteVue() { return VISITE_VUE; } } },
+  { id: MOI, content: { id: MOI, prenom: 'Awa', nom: 'Test', role: 'MEMBRE', sections: [], notifications: [], get visiteVue() { return VISITE_VUE; }, get approuve() { return APPROUVE; } } },
+  { id: ATTENTE, content: { id: ATTENTE, prenom: 'Nouveau', nom: 'Venu', role: 'MEMBRE', sections: ['cadrage'], phone: '07 00 00 00 00', approuve: false } },
   { id: AUTRE, content: {
     id: AUTRE, prenom: "O'Brien " + PIEGE_HTML, nom: 'X', role: 'MEMBRE', sections: [],
     avatar_color: 'red;" onmouseover="window.__xss=\'couleur\'" data-pirate="',
@@ -265,6 +269,74 @@ try {
     } finally { VISITE_VUE = true; }
   });
 
+  const sessionPour = (role) => ({
+    access_token: jetonFactice(MOI), refresh_token: 'r', token_type: 'bearer',
+    expires_in: 3600, expires_at: Math.floor(maintenant / 1000) + 3600,
+    user: { id: MOI, aud: 'authenticated', email: 'awa@commit.aev', app_metadata: { role }, user_metadata: {} },
+  });
+
+  await cas('lot 2 : convocation, indisponibilités, pointage, badges', async () => {
+    const { page, erreurs, contexte } = await nouvellePage(nav, base, sessionPour('MEMBRE'));
+    await page.waitForSelector('#post-p_piege', { timeout: 15000 });
+    // Réponse à la convocation depuis la carte « Ma prochaine mission ».
+    const mission = 'section[aria-label="Ma prochaine mission"]';
+    assert.ok((await page.textContent(mission)).includes('Tu confirmes'));
+    await page.click(mission + ' >> text=Je ne peux pas');
+    await page.fill('#motifDecline', 'Voyage');
+    await page.click(mission + ' >> text=Envoyer');
+    const reponse = await page.evaluate((id) => db(SK.POSTS, []).find((p) => p.id === 'ev_mission').reponsesConvocation[id], MOI);
+    assert.equal(reponse.statut, 'decline');
+    assert.equal(reponse.motif, 'Voyage');
+    assert.ok((await page.textContent(mission)).includes('Indisponible'));
+    // Indisponibilités : ajout d'une date depuis le Planning.
+    await page.evaluate("App.tab('planning')");
+    await page.click('text=Mes indisponibilités');
+    await page.fill('#indispoDate', demain);
+    await page.fill('#indispoMotif', 'Examen');
+    await page.click('text=Ajouter cette date');
+    assert.deepEqual(await page.evaluate(() => S.user.indisponibilites.map((i) => i.date)), [demain]);
+    await page.evaluate('App.fermerIndispos()');
+    // Célébration du pointage (le pointage réel dépend de la géolocalisation).
+    await page.evaluate("celebrerPointage(3, 'À l\\'heure')");
+    await page.waitForSelector('#_kcPointage');
+    assert.ok((await page.textContent('#_kcPointage')).includes('+3'));
+    // Profil : badges ; Bilans : rien à signaler pour un membre sans pôle.
+    await page.evaluate("App.tab('profile')");
+    assert.ok((await page.textContent('#badges')).includes('0 / 6'));
+    await page.evaluate("App.tab('debrief')");
+    assert.equal(await page.$('#monPole'), null);
+    // Un membre ne voit pas les demandes d'inscription, et ne peut pas
+    // assigner une personne en attente.
+    await page.evaluate("App.tab('home')");
+    assert.equal(await page.$('#demandesInscription'), null);
+    assert.deepEqual(erreurs, []);
+    await contexte.close();
+  });
+
+  await cas('lot 2 : un compte en attente ne voit que l\'écran d\'attente', async () => {
+    APPROUVE = false;
+    try {
+      const { page, erreurs, contexte } = await nouvellePage(nav, base, sessionPour('MEMBRE'));
+      await page.waitForSelector('#attenteValidation', { timeout: 15000 });
+      assert.equal(await page.$('#post-p_piege'), null);
+      assert.equal(await page.$('nav[aria-label="Navigation principale"]'), null);
+      assert.deepEqual(erreurs, []);
+      await contexte.close();
+    } finally { APPROUVE = true; }
+  });
+
+  await cas('lot 2 : l\'Admin voit les demandes d\'inscription', async () => {
+    const { page, erreurs, contexte } = await nouvellePage(nav, base, sessionPour('GRAND_RESPONSABLE'));
+    await page.waitForSelector('#demandesInscription', { timeout: 15000 });
+    const texte = await page.textContent('#demandesInscription');
+    assert.ok(texte.includes('Nouveau Venu') && texte.includes('Valider') && texte.includes('Refuser'), texte);
+    // La personne en attente n'est pas proposée à l'assignation.
+    const assignables = await page.evaluate(() => assignableMembers(S.user).map((m) => m.id));
+    assert.ok(!assignables.includes('cccccccc-0000-4000-8000-000000000003'));
+    assert.deepEqual(erreurs, []);
+    await contexte.close();
+  });
+
   // Tour de tous les écrans et panneaux : aucune erreur JavaScript, aucun
   // écran « Une erreur est survenue ». Fait pour un membre et pour l'Admin
   // (qui voit davantage de panneaux).
@@ -285,6 +357,7 @@ try {
         'App.openEditProfile()', 'App.closeEditProfile && App.closeEditProfile()',
         'App.openMembersList()', 'App.closeMembersList()',
         "App.openUserProfile('" + AUTRE + "')", "App.tab('home')",
+        'App.ouvrirIndispos()', 'App.fermerIndispos()',
       ];
       if (role === 'GRAND_RESPONSABLE') {
         etapes.push('App.openCreateEvent()', 'App.closeCreateEvent && App.closeCreateEvent()',

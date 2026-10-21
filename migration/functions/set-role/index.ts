@@ -1,4 +1,5 @@
-// Edge Function : attribuer un rôle (STAGIAIRE / MEMBRE / RESP_SECTION / GRAND_RESPONSABLE).
+// Edge Function : attribuer un rôle (STAGIAIRE / MEMBRE / RESP_SECTION / GRAND_RESPONSABLE),
+// et valider ou refuser une inscription (actions « approuver » / « refuser »).
 // Le rôle est écrit dans le JWT (app_metadata) via la clé service_role — jamais
 // exposée au navigateur. Seul un GRAND_RESPONSABLE peut appeler cette fonction.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -31,16 +32,49 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    // 1) Identifier l'appelant via son JWT et vérifier qu'il est GRAND_RESPONSABLE.
+    // 1) Identifier l'appelant via son JWT.
     const token = (req.headers.get("Authorization") ?? "").replace("Bearer ", "");
     if (!token) return json({ error: "Non authentifié" }, 401);
     const caller = await admin.auth.getUser(token);
     if (caller.error || !caller.data.user) return json({ error: "Non authentifié" }, 401);
-    if (caller.data.user.app_metadata?.role !== "GRAND_RESPONSABLE")
+    const roleAppelant = caller.data.user.app_metadata?.role;
+    const corps = await req.json();
+
+    // Validation d'une inscription (migration 07) : Admin ou Responsable de pôle.
+    if (corps.action === "approuver" || corps.action === "refuser") {
+      if (roleAppelant !== "GRAND_RESPONSABLE" && roleAppelant !== "RESP_SECTION")
+        return json({ error: "Réservé aux Admin et aux Responsables de pôle" }, 403);
+      const cible = await admin.auth.admin.getUserById(String(corps.userId || ""));
+      if (cible.error || !cible.data.user) return json({ error: "Membre introuvable" }, 404);
+      const metaCible = cible.data.user.app_metadata ?? {};
+      // Un Responsable ou un Admin est validé par son rôle : jamais « refusable ».
+      const valideParRole = metaCible.role === "GRAND_RESPONSABLE" || metaCible.role === "RESP_SECTION";
+      if (metaCible.approuve === true || valideParRole) {
+        if (corps.action === "refuser") return json({ error: "Ce compte est déjà validé." }, 409);
+        return json({ ok: true, approuve: true });
+      }
+      if (corps.action === "refuser") {
+        // Une demande refusée est supprimée : le compte n'a jamais eu accès à rien.
+        await admin.from("kun_com_profiles").delete().eq("id", cible.data.user.id);
+        const del = await admin.auth.admin.deleteUser(cible.data.user.id);
+        if (del.error) return json({ error: del.error.message }, 500);
+        return json({ ok: true, refuse: true });
+      }
+      const maj = await admin.auth.admin.updateUserById(cible.data.user.id, { app_metadata: { ...metaCible, approuve: true } });
+      if (maj.error) return json({ error: maj.error.message }, 500);
+      const fiche = await admin.from("kun_com_profiles").select("content").eq("id", cible.data.user.id).single();
+      if (fiche.data?.content) {
+        await admin.from("kun_com_profiles").upsert({ id: cible.data.user.id, content: { ...fiche.data.content, approuve: true } }, { onConflict: "id" });
+      }
+      return json({ ok: true, approuve: true });
+    }
+
+    // Changement de rôle : Admin uniquement.
+    if (roleAppelant !== "GRAND_RESPONSABLE")
       return json({ error: "Réservé au Grand Responsable" }, 403);
 
     // 2) Valider la demande.
-    const { userId, role } = await req.json();
+    const { userId, role } = corps;
     if (!userId || !ROLES.includes(role)) return json({ error: "Requête invalide" }, 400);
 
     // 3) Écrire le rôle dans le JWT (en fusionnant les métadonnées existantes)…
@@ -61,7 +95,8 @@ Deno.serve(async (req) => {
         return json({ error: "Impossible : c'est le dernier Admin. Nommez d'abord un autre Admin." }, 409);
       }
     }
-    const meta = { ...(target.data.user.app_metadata ?? {}), role };
+    // Recevoir un rôle vaut validation du compte.
+    const meta = { ...(target.data.user.app_metadata ?? {}), role, approuve: true };
     const upd = await admin.auth.admin.updateUserById(userId, { app_metadata: meta });
     if (upd.error) return json({ error: upd.error.message }, 500);
 

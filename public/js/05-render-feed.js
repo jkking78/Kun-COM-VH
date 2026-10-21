@@ -41,6 +41,7 @@
 
   function renderApp() {
     var u = S.user || {};
+    if (compteEnAttente(u)) return renderAttenteValidation(u);
     var initial = (u.prenom || 'M').charAt(0).toUpperCase();
     var posts = db(SK.POSTS, []);
 
@@ -116,6 +117,7 @@
     if (S.adminResetResult) modals += renderAdminResetPwModal();
     if (S.dmOpen) modals += renderDirectMessageModal();
     if (S.assignManagerId) modals += renderAssignManagerModal();
+    if (S.indisposOpen) modals += renderIndisposModal();
     // En dernier : la visionneuse doit passer par-dessus toutes les autres fenêtres.
     if (S.viewerImage) modals += renderImageViewer();
 
@@ -294,7 +296,7 @@
           (ev.eventLocation ? '<br>' + safeHtml(ev.eventLocation) : '') +
         '</div>' +
         (tache ? '<div style="display:inline-flex;align-items:center;gap:6px;margin-top:10px;background:' + UI.tile + ';border-radius:10px;padding:6px 10px;font-size:13px;color:' + UI.ink + ';"><span style="color:' + UI.faint + ';">Ma tâche</span><b>' + safeHtml(tache) + '</b></div>' : '') +
-        '<div style="margin-top:12px;">' + renderEventCheckInAction(ev) + '</div>' +
+        '<div style="margin-top:12px;">' + renderReponseConvocation(ev) + renderEventCheckInAction(ev) + '</div>' +
         '<div style="display:flex;gap:8px;">' +
           '<button type="button" onclick="App.goToEvent(\'' + jsArg(ev.id) + '\')" style="flex:1;min-height:44px;background:' + UI.tile + ';color:' + UI.ink + ';border:none;border-radius:12px;font-size:13.5px;font-weight:700;cursor:pointer;">Voir l\'événement</button>' +
           (itineraire ? '<a href="' + safeUrl(itineraire) + '" target="_blank" rel="noopener noreferrer" style="flex:1;min-height:44px;display:flex;align-items:center;justify-content:center;background:' + UI.tile + ';color:' + UI.ink + ';border-radius:12px;font-size:13.5px;font-weight:700;text-decoration:none;">Itinéraire</a>' : '') +
@@ -361,6 +363,48 @@
             '<span style="flex:1;font-size:14.5px;font-weight:' + (e.fait ? '500' : '600') + ';color:' + (e.fait ? UI.faint : UI.ink) + ';' + (e.fait ? 'text-decoration:line-through;' : '') + '">' + e.titre + '</span>' +
             (e.fait ? '' : '<span aria-hidden="true" style="color:' + UI.faint + ';">›</span>') +
           '</button>';
+        }).join('') +
+      '</div>' +
+    '</section>';
+  }
+
+  // ÉCRAN D'ATTENTE : une inscription non validée ne voit rien d'autre (le
+  // serveur ne lui renvoie de toute façon ni publication ni fiche d'un autre).
+  function renderAttenteValidation(u) {
+    return '<main id="attenteValidation" style="min-height:100vh;background:' + UI.page + ';display:flex;align-items:center;justify-content:center;padding:24px 16px;">' +
+      '<div class="kc-apparait" style="width:100%;max-width:380px;background:' + UI.card + ';border:1px solid ' + UI.line + ';border-radius:24px;box-shadow:' + UI.sh2 + ';padding:28px 22px;text-align:center;">' +
+        '<div aria-hidden="true" style="font-size:46px;line-height:1;">⏳</div>' +
+        '<h1 style="font-family:' + UI.fontDisplay + ';font-size:22px;font-weight:700;color:' + UI.ink + ';margin:14px 0 8px;">Compte en attente de validation</h1>' +
+        '<p style="font-size:14.5px;line-height:1.55;color:' + UI.muted + ';margin:0 0 6px;">Bienvenue ' + safeHtml(u.prenom || '') + ' ! Un Admin ou un Responsable de pôle doit confirmer que tu fais partie du Département Communication.</p>' +
+        '<p style="font-size:13px;line-height:1.5;color:' + UI.faint + ';margin:0 0 20px;">Tu auras accès à toute l\'application dès la validation. Besoin d\'aide : 07 99 44 24 02.</p>' +
+        '<button type="button" onclick="App.verifierValidation()" style="width:100%;min-height:48px;background:' + UI.accent + ';color:#FFF;border:none;border-radius:999px;font-size:15px;font-weight:700;cursor:pointer;">' + (S.verificationEnCours ? 'Vérification…' : 'Actualiser') + '</button>' +
+        '<button type="button" onclick="ouvrirConditions()" style="width:100%;min-height:44px;margin-top:8px;background:none;border:none;color:' + UI.ink + ';font-size:14px;font-weight:600;cursor:pointer;">Conditions d\'utilisation</button>' +
+        '<button type="button" onclick="App.logout()" style="width:100%;min-height:44px;background:none;border:none;color:' + UI.faint + ';font-size:14px;font-weight:600;cursor:pointer;">Se déconnecter</button>' +
+      '</div>' +
+    '</main>';
+  }
+
+  // Demandes d'inscription, en tête de l'accueil des Admins et Responsables.
+  function renderDemandesInscription(u) {
+    if (!u || !(isGrandResponsable(u) || isSectionResponsable(u))) return '';
+    var demandes = db(SK.USERS, []).filter(compteEnAttente)
+      .sort(function(a, b){ return (b.joined_at || 0) - (a.joined_at || 0); });
+    if (!demandes.length) return '';
+    return '<section id="demandesInscription" aria-label="Demandes d\'inscription" style="padding:14px 16px 4px;">' +
+      '<div class="kc-apparait" style="background:' + UI.card + ';border:1.5px solid ' + UI.warn + '66;border-radius:16px;box-shadow:' + UI.sh2 + ';padding:14px 16px;">' +
+        '<h2 style="font-family:' + UI.fontDisplay + ';font-size:18px;font-weight:700;color:' + UI.ink + ';margin:0 0 4px;">Demandes d\'inscription · ' + demandes.length + '</h2>' +
+        '<p style="font-size:12.5px;color:' + UI.faint + ';margin:0 0 6px;">Ces personnes ne voient rien tant que tu n\'as pas validé leur compte.</p>' +
+        demandes.map(function(m) {
+          var poles = getUserSections(m).map(function(s){ return secNom(s); }).join(' · ');
+          var quand = m.joined_at ? new Date(m.joined_at).toLocaleDateString('fr-FR', {day:'numeric', month:'short'}) : '';
+          return '<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid ' + UI.line + ';">' +
+            '<div style="flex:1;min-width:0;">' +
+              '<div style="font-size:14.5px;font-weight:700;color:' + UI.ink + ';overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + safeHtml(((m.prenom || '') + ' ' + (m.nom || '')).trim() || 'Sans nom') + '</div>' +
+              '<div style="font-size:12px;color:' + UI.faint + ';overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + safeHtml([m.phone, poles, quand].filter(Boolean).join(' · ')) + '</div>' +
+            '</div>' +
+            '<button type="button" onclick="App.validerInscription(\'' + jsArg(m.id) + '\', false)" style="min-height:40px;padding:0 12px;background:' + UI.tile + ';color:' + UI.ink + ';border:none;border-radius:999px;font-size:13px;font-weight:700;cursor:pointer;">Refuser</button>' +
+            '<button type="button" onclick="App.validerInscription(\'' + jsArg(m.id) + '\', true)" style="min-height:40px;padding:0 14px;background:' + UI.ok + ';color:#FFF;border:none;border-radius:999px;font-size:13px;font-weight:700;cursor:pointer;">Valider</button>' +
+          '</div>';
         }).join('') +
       '</div>' +
     '</section>';
@@ -531,7 +575,7 @@
     // Carte « Ma prochaine mission » et liste « Bien démarrer » en tête du fil,
     // seulement sur la vue d'ensemble (pas pendant une recherche ou un filtre).
     var vueGenerale = (!S.story || S.story === 'all') && !S.q;
-    return header + (vueGenerale ? renderProchaineMission(u) + renderBienDemarrer(u) : '') + trendsHtml + stories + feed;
+    return header + (vueGenerale ? renderDemandesInscription(u) + renderProchaineMission(u) + renderBienDemarrer(u) : '') + trendsHtml + stories + feed;
   }
 
   // ============================================================
@@ -662,7 +706,14 @@
                       : '');
                 }
                 return '<div style="background:' + (isMeAssigned ? UI.evGoldSoft : 'rgba(255,255,255,0.05)') + ';border:0.5px solid ' + (isMeAssigned ? UI.evGoldLine : 'transparent') + ';border-radius:' + UI.r1 + ';padding:8px 11px;">' +
-                  '<div style="font-size:12.5px;font-weight:600;color:' + (isMeAssigned ? UI.evGold : UI.evInk) + ';">' + safeHtml(a.userName) + (isMeAssigned ? ' · vous' : '') + '</div>' +
+                  '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">' +
+                    '<div style="font-size:12.5px;font-weight:600;color:' + (isMeAssigned ? UI.evGold : UI.evInk) + ';min-width:0;">' + safeHtml(a.userName) + (isMeAssigned ? ' · vous' : '') + '</div>' +
+                    (function(){
+                      var r = a.userId ? reponseConvocation(post, a.userId) : null;
+                      if (!r) return '';
+                      return '<span style="flex-shrink:0;font-size:10px;font-weight:800;padding:2px 8px;border-radius:999px;' + (r.statut === 'confirme' ? 'background:rgba(14,159,110,0.22);color:#8FE9C4;">Confirmé' : 'background:rgba(226,68,92,0.22);color:#F5A3AF;">Indisponible') + '</span>';
+                    })() +
+                  '</div>' +
                   '<div style="font-size:12px;color:' + UI.evMuted + ';margin-top:1px;">' + safeHtml(a.task) + '</div>' +
                   taskBlock +
                 '</div>';
@@ -1498,8 +1549,20 @@
   // Options du sélecteur d'assignation, groupées par pôle.
   // Le Admin voit tout le monde + une entrée « pôle entier » par
   // section ; un responsable de section ne voit que ses propres membres.
-  function renderAssignSelectOptions(u) {
+  // Indisponibilité déclarée par un membre pour une date (lot 2).
+  function indisponibilite(m, dateIso) {
+    if (!m || !dateIso || !Array.isArray(m.indisponibilites)) return null;
+    return m.indisponibilites.find(function(x){ return x && x.date === dateIso; }) || null;
+  }
+
+  // dateIso (facultatif) : date de l'événement, pour signaler les membres
+  // qui se sont déclarés indisponibles ce jour-là.
+  function renderAssignSelectOptions(u, dateIso) {
     var allU = db(SK.USERS, []);
+    var libelleMembre = function(m) {
+      var indispo = indisponibilite(m, dateIso);
+      return safeHtml((m.prenom||'') + ' ' + (m.nom||'')) + (indispo ? ' — indisponible' + (indispo.motif ? ' (' + safeHtml(indispo.motif) + ')' : '') : '');
+    };
     var members = assignableMembers(u, allU);
     var secIds = assignableSectionIds(u);
     var out = '';
@@ -1521,7 +1584,7 @@
       out += '<optgroup label="' + sec.emoji + ' ' + safeHtml(sec.nom) + '">' +
         inSec.map(function(m) {
           placed[m.id] = true;
-          return '<option value="' + m.id + '">' + safeHtml((m.prenom||'') + ' ' + (m.nom||'')) + '</option>';
+          return '<option value="' + m.id + '">' + libelleMembre(m) + '</option>';
         }).join('') +
       '</optgroup>';
     });
@@ -1531,7 +1594,7 @@
     if (orphans.length > 0) {
       out += '<optgroup label="Sans pôle">' +
         orphans.map(function(m) {
-          return '<option value="' + m.id + '">' + safeHtml((m.prenom||'') + ' ' + (m.nom||'')) + '</option>';
+          return '<option value="' + m.id + '">' + libelleMembre(m) + '</option>';
         }).join('') +
       '</optgroup>';
     }
@@ -1735,7 +1798,7 @@
           '<div style="display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);padding-top:12px;">' +
             '<select id="assignUserSelect" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--line);font-size:14px;outline:none;background:var(--tile);">' +
               '<option value="">Sélectionner un membre…</option>' +
-              renderAssignSelectOptions(S.user) +
+              renderAssignSelectOptions(S.user, dateVal) +
             '</select>' +
             '<input type="text" id="assignTaskInput" placeholder="Tâche / travail à faire..." style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--line);font-size:14px;outline:none;background:var(--tile);box-sizing:border-box;" />' +
             '<div style="display:flex;gap:8px;">' +
