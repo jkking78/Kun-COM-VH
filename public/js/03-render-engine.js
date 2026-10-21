@@ -115,7 +115,7 @@
         '<div style="min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;text-align:center;font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:var(--page);">' +
           '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#D92D20" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>' +
           '<h2 style="font-size:17px;font-weight:600;color:var(--ink);margin:14px 0 6px;">Cet écran n\'a pas pu s\'afficher</h2>' +
-          '<p style="color:var(--muted);font-size:13px;line-height:1.5;margin:0 0 4px;max-width:300px;">Votre compte reste connecté. Réessayez, ou revenez à l\'accueil.</p>' +
+          '<p style="color:var(--muted);font-size:13px;line-height:1.5;margin:0 0 4px;max-width:300px;">Ton compte reste connecté. Réessaie, ou reviens à l\'accueil.</p>' +
           '<code style="font-size:11px;color:var(--faint);word-break:break-word;max-width:300px;display:block;margin-bottom:18px;">' + safeHtml(err && err.message ? err.message : String(err)) + '</code>' +
           '<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">' +
             '<button onclick="App.tab(\'home\')" style="padding:12px 18px;border-radius:12px;background:#0B5FE0;color:#FFF;border:none;font-size:15px;font-weight:500;cursor:pointer;">Retour à l\'accueil</button>' +

@@ -292,7 +292,7 @@
     }, function(e){ console.warn('sendNotificationToUser push error:', e); });
 
     if (S.user && S.user.id === targetUserId) {
-      toast('🔔 ' + notifData.title + ': ' + notifData.text, 'info');
+      toast(notifData.title + ' : ' + notifData.text, 'info');
       if ('Notification' in window && Notification.permission === 'granted') {
         try { new Notification(notifData.title, { body: notifData.text }); } catch(e){}
       }
@@ -309,8 +309,8 @@
       if (a.userId && a.userId !== (S.user ? S.user.id : '')) {
         sendNotificationToUser(a.userId, {
           type: 'EVENT_ASSIGNED',
-          title: '🗓️ Service assigné',
-          text: 'Vous avez été convoqué(e) (' + a.task + ') pour ' + post.eventTitle,
+          title: 'Service assigné',
+          text: 'Tu as été convoqué(e) (' + a.task + ') pour ' + post.eventTitle,
           targetId: post.id
         });
       }
@@ -327,8 +327,8 @@
         if (match) {
           sendNotificationToUser(u.id, {
             type: 'EVENT_SECTION',
-            title: '🗓️ Événement de Pôle',
-            text: 'Un nouvel événement "' + post.eventTitle + '" concerne votre pôle.',
+            title: 'Événement de pôle',
+            text: 'Un nouvel événement "' + post.eventTitle + '" concerne ton pôle.',
             targetId: post.id
           });
         }
@@ -349,8 +349,8 @@
       if (match) {
         sendNotificationToUser(u.id, {
           type: 'POST_SECTION',
-          title: '📢 Nouvelle publication de Pôle',
-          text: (S.user ? S.user.prenom : 'Quelqu\'un') + ' a publié pour votre pôle "' + post.sectionNom + '".',
+          title: 'Nouvelle publication de pôle',
+          text: (S.user ? S.user.prenom : 'Quelqu\'un') + ' a publié pour ton pôle "' + post.sectionNom + '".',
           targetId: post.id
         });
       }
@@ -376,7 +376,7 @@
       senderAvatar: avatarLeger(newUser.avatar_url),
       senderColor: newUser.avatar_color || '#0B5FE0',
       type: 'NEW_MEMBER',
-      title: '🎉 Nouveau membre',
+      title: 'Nouveau membre',
       text: 'a rejoint Commit' + (secs ? ' · ' + secs : '') + '.',
       targetId: newUser.id,
       timestamp: Date.now(),
@@ -419,7 +419,7 @@
       senderAvatar: avatarLeger(author.avatar_url),
       senderColor: author.avatar_color || '#0E9F6E',
       type: 'ARRIVAL',
-      title: '📍 Arrivée',
+      title: 'Arrivée',
       text: 'est arrivé(e) pour « ' + evTitle + ' ».',
       targetId: post.id,               // ouvre la publication de pointage
       timestamp: Date.now(),
@@ -561,10 +561,10 @@
       sendNotificationToUser(uid, {
         type: 'MENTION',
         commentId: commentId || null,
-        title: '📣 Vous avez été mentionné(e)',
+        title: 'Tu as été mentionné(e)',
         text: why
           ? author + ' a mentionné ' + why + ' : ' + extract
-          : author + ' vous a mentionné : ' + extract,
+          : author + ' t\'a mentionné : ' + extract,
         targetId: targetId
       });
     });
@@ -677,8 +677,8 @@
       '<form style="width:100%;max-width:340px;background:var(--card,#FFF);color:var(--ink,#0B0D12);border-radius:20px;padding:24px;font-family:var(--font-body,sans-serif);">' +
         '<h3 style="font-size:17px;font-weight:800;margin:0 0 6px;text-align:center;">Nouveau mot de passe</h3>' +
         '<p style="font-size:13px;color:var(--muted,#6B7280);margin:0 0 14px;text-align:center;">8 caractères minimum.</p>' +
-        '<input name="mdp1" type="password" autocomplete="new-password" placeholder="Nouveau mot de passe" style="width:100%;min-height:44px;padding:10px 12px;border:1px solid var(--line,#DDD);border-radius:12px;font-size:15px;margin-bottom:8px;background:var(--tile,#F4F5F7);color:inherit;">' +
-        '<input name="mdp2" type="password" autocomplete="new-password" placeholder="Confirmer" style="width:100%;min-height:44px;padding:10px 12px;border:1px solid var(--line,#DDD);border-radius:12px;font-size:15px;background:var(--tile,#F4F5F7);color:inherit;">' +
+        '<input name="mdp1" type="password" autocomplete="new-password" placeholder="Nouveau mot de passe" class="kc-champ" style="' + styleChamp() + 'margin-bottom:8px;">' +
+        '<input name="mdp2" type="password" autocomplete="new-password" placeholder="Confirmer" class="kc-champ" style="' + styleChamp() + '">' +
         '<div data-erreur style="color:#D92D20;font-size:13px;font-weight:700;text-align:center;min-height:18px;margin-top:8px;"></div>' +
         '<button type="submit" style="width:100%;min-height:44px;margin-top:6px;background:#0B5FE0;color:#FFF;border:none;border-radius:999px;font-size:15px;font-weight:800;">Enregistrer</button>' +
         '<button type="button" data-annuler style="width:100%;min-height:44px;margin-top:8px;background:none;color:inherit;border:none;font-size:15px;font-weight:600;">Annuler</button>' +
@@ -2066,9 +2066,10 @@
     fontMono:    'var(--font-mono)'      // données (heures, notes, compteurs)
   };
 
-  // Icônes au trait remplaçant les emoji d'interface. Les emoji des PÔLES
-  // (voir SECTIONS ci-dessous) sont volontairement conservés : ils portent
-  // l'identité de chaque équipe, ce n'est pas de la décoration.
+  // Icônes au trait remplaçant les emoji d'interface. Chaque PÔLE a la sienne
+  // (voir SECTIONS), affichée dans sa couleur : l'emoji changeait d'aspect
+  // d'un téléphone à l'autre et jurait avec les autres icônes. Les emoji
+  // restent dans le CONTENU (badges, réactions, publications).
   var ICO_PATHS = {
     pin:      '<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>',
     calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
@@ -2090,8 +2091,44 @@
     history:  '<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/>',
     thumb:    '<path d="M7 22V11l5-9a3 3 0 0 1 3 3v4h4.5a2 2 0 0 1 2 2.4l-1.6 8A2 2 0 0 1 18 22z"/><path d="M7 11H4a1 1 0 0 0-1 1v9a1 1 0 0 0 1 1h3"/>',
     sparkle:  '<path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/>',
-    search:   '<circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>'
+    search:   '<circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>',
+    // Pôles
+    video:    '<path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/>',
+    sliders:  '<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/>',
+    globe:    '<circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>',
+    monitor:  '<rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>',
+    film:     '<rect x="2" y="2" width="20" height="20" rx="2.2"/><path d="M7 2v20M17 2v20M2 12h20M2 7h5M2 17h5M17 17h5M17 7h5"/>',
+    camera:   '<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>',
+    cart:     '<circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/>',
+    // Interface
+    user:     '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+    megaphone:'<path d="M3 11v2a1 1 0 0 0 1 1h3l5 4V6L7 10H4a1 1 0 0 0-1 1z"/><path d="M16 8a5 5 0 0 1 0 8M19 5a9 9 0 0 1 0 14"/>',
+    key:      '<circle cx="7.5" cy="15.5" r="5.5"/><path d="M21 2l-9.6 9.6M15.5 7.5l3 3L22 7l-3-3"/>',
+    shield:   '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
+    hourglass:'<path d="M5 22h14M5 2h14M17 22v-4.2a2 2 0 0 0-.6-1.4L12 12l-4.4 4.4a2 2 0 0 0-.6 1.4V22M7 2v4.2a2 2 0 0 0 .6 1.4L12 12l4.4-4.4a2 2 0 0 0 .6-1.4V2"/>',
+    refresh:  '<path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.5 9a9 9 0 0 1 14.9-3.4L23 10M1 14l4.6 4.4A9 9 0 0 0 20.5 15"/>',
+    trash:    '<path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>',
+    plus:     '<path d="M12 5v14M5 12h14"/>',
+    x:        '<path d="M18 6L6 18M6 6l12 12"/>',
+    layers:   '<path d="M12 2l10 5-10 5L2 7l10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/>'
   };
+
+  // Champ de saisie : UN seul style dans toute l'app, celui de la connexion
+  // (blanc, arrondi, 52 px). styleChamp(true) → zone de texte. La classe
+  // kc-champ donne le contour bleu au focus (voir injectCSS).
+  function styleChamp(zoneTexte) {
+    return 'width:100%;' +
+      (zoneTexte ? 'min-height:96px;padding:14px 16px;border-radius:20px;resize:vertical;line-height:1.45;'
+                 : 'height:52px;padding:0 16px;border-radius:26px;') +
+      'border:1.5px solid var(--line2);background:var(--card);font:inherit;font-size:15px;color:var(--ink);box-sizing:border-box;outline:none;transition:border-color 0.2s;';
+  }
+  var STYLE_LIBELLE = 'font-size:13px;font-weight:700;color:var(--ink2);display:block;margin-bottom:6px;';
+  // Liste déroulante au même style : la flèche native est remplacée par un
+  // chevron (sinon iOS impose son propre rendu gris).
+  function styleSelect() {
+    return styleChamp() + 'padding-right:44px;-webkit-appearance:none;appearance:none;background-repeat:no-repeat;background-position:right 16px center;' +
+      'background-image:url(data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236E7781%22%20stroke-width%3D%222.4%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22%2F%3E%3C%2Fsvg%3E);';
+  }
 
   // ico('pin', 14, UI.faint) → une icône au trait, taille et couleur libres.
   function ico(name, size, color, strokeWidth) {
@@ -2106,14 +2143,20 @@
   // Une couleur par pôle, assez foncée pour porter du texte blanc (contraste
   // AA) et se décliner en teinte claire (couleur + '1F').
   var SECTIONS = [
-    { id: 'cadrage', nom: 'Cadrage', emoji: '🎥', color: '#0B5FE0' },
-    { id: 'regie',   nom: 'Régie',   emoji: '🎛️', color: '#C2410C' },
-    { id: 'web',     nom: 'Web',     emoji: '🌐', color: '#0E7490' },
-    { id: 'proj',    nom: 'Projection', emoji: '🖥️', color: '#6B2FD0' },
-    { id: 'prod',    nom: 'Prod',    emoji: '🎬', color: '#A61E4D' },
-    { id: 'photo',   nom: 'Photo',   emoji: '📸', color: '#0A6B4A' },
-    { id: 'vente',   nom: 'Vente',   emoji: '🛒', color: '#92400E' }
+    { id: 'cadrage', nom: 'Cadrage', emoji: '🎥', icone: 'video',   color: '#0B5FE0' },
+    { id: 'regie',   nom: 'Régie',   emoji: '🎛️', icone: 'sliders', color: '#C2410C' },
+    { id: 'web',     nom: 'Web',     emoji: '🌐', icone: 'globe',   color: '#0E7490' },
+    { id: 'proj',    nom: 'Projection', emoji: '🖥️', icone: 'monitor', color: '#6B2FD0' },
+    { id: 'prod',    nom: 'Prod',    emoji: '🎬', icone: 'film',    color: '#A61E4D' },
+    { id: 'photo',   nom: 'Photo',   emoji: '📸', icone: 'camera',  color: '#0A6B4A' },
+    { id: 'vente',   nom: 'Vente',   emoji: '🛒', icone: 'cart',    color: '#92400E' }
   ];
+  // Icône d'un pôle, dans sa couleur par défaut (repli : icône « équipe »).
+  // L'emoji reste dans SECTIONS pour les données déjà enregistrées (bilans).
+  function icoPole(id, size, color) {
+    var s = SECTIONS.find(function(x){ return x.id === id; });
+    return s ? ico(s.icone, size, color || s.color) : ico('users', size, color || 'currentColor');
+  }
   var HASHTAGS = ['#Cadrage','#Régie','#Web','#Projection','#Prod','#Photo','#Vente','#CulteDuDimanche','#Chorale','#Formation','#Bilan'];
 
   // Critères d'évaluation d'une section. Chacun se note indépendamment des autres
@@ -2951,14 +2994,14 @@
   // Liste proposée à l'inscription et dans le profil. Le TEXTE choisi est ce qui
   // est stocké (et réaffiché lors de la récupération) — pas un identifiant.
   var SECURITY_QUESTIONS = [
-    "Le prénom de votre meilleur(e) ami(e) d'enfance ?",
-    "Le nom de votre premier animal de compagnie ?",
-    "Votre ville de naissance ?",
-    "Le prénom de votre grand-mère maternelle ?",
-    "Le nom de votre école primaire ?",
-    "Le titre de votre chant préféré ?",
-    "Le prénom de votre parrain ou marraine ?",
-    "Votre plat préféré ?"
+    "Le prénom de ton meilleur(e) ami(e) d'enfance ?",
+    "Le nom de ton premier animal de compagnie ?",
+    "Ta ville de naissance ?",
+    "Le prénom de ta grand-mère maternelle ?",
+    "Le nom de ton école primaire ?",
+    "Le titre de ton chant préféré ?",
+    "Le prénom de ton parrain ou de ta marraine ?",
+    "Ton plat préféré ?"
   ];
 
   // Deux blocs question (menu déroulant) + réponse, réutilisés à l'inscription et
@@ -2971,16 +3014,16 @@
           return '<option value="' + safeHtml(q) + '"' + (q === sel ? ' selected' : '') + '>' + safeHtml(q) + '</option>';
         }).join('');
     };
-    var selStyle = 'width:100%;height:44px;border-radius:12px;border:1.5px solid var(--line);background:var(--tile);padding:0 12px;font-size:13px;color:var(--ink);outline:none;box-sizing:border-box;';
-    var inpStyle = 'width:100%;height:44px;border-radius:12px;border:1.5px solid var(--line);background:var(--tile);padding:0 12px;font-size:15px;color:var(--ink);outline:none;box-sizing:border-box;margin-top:8px;';
+    var selStyle = styleSelect();
+    var inpStyle = styleChamp() + 'margin-top:8px;';
     return '<div style="display:flex;flex-direction:column;gap:16px;">' +
       '<div>' +
-        '<select id="' + prefix + 'SecQ1" style="' + selStyle + '">' + opts(q1) + '</select>' +
-        '<input id="' + prefix + 'SecA1" type="text" placeholder="Votre réponse" autocomplete="off" style="' + inpStyle + '" />' +
+        '<select id="' + prefix + 'SecQ1" class="kc-champ" style="' + selStyle + '">' + opts(q1) + '</select>' +
+        '<input id="' + prefix + 'SecA1" type="text" class="kc-champ" placeholder="Ta réponse" autocomplete="off" style="' + inpStyle + '" />' +
       '</div>' +
       '<div>' +
-        '<select id="' + prefix + 'SecQ2" style="' + selStyle + '">' + opts(q2) + '</select>' +
-        '<input id="' + prefix + 'SecA2" type="text" placeholder="Votre réponse" autocomplete="off" style="' + inpStyle + '" />' +
+        '<select id="' + prefix + 'SecQ2" class="kc-champ" style="' + selStyle + '">' + opts(q2) + '</select>' +
+        '<input id="' + prefix + 'SecA2" type="text" class="kc-champ" placeholder="Ta réponse" autocomplete="off" style="' + inpStyle + '" />' +
       '</div>' +
     '</div>';
   }
@@ -2994,8 +3037,8 @@
     var a2 = ((document.getElementById(prefix + 'SecA2') || {}).value || '').trim();
     // Bloc entièrement vide + réponses non obligatoires : on considère « non défini ».
     if (!requireAnswers && !q1 && !q2 && !a1 && !a2) return { empty: true };
-    if (!q1 || !q2 || !a1 || !a2) { toast('Choisissez deux questions et donnez vos deux réponses.', 'error'); return null; }
-    if (q1 === q2) { toast('Choisissez deux questions différentes.', 'error'); return null; }
+    if (!q1 || !q2 || !a1 || !a2) { toast('Choisis deux questions et donne tes deux réponses.', 'error'); return null; }
+    if (q1 === q2) { toast('Choisis deux questions différentes.', 'error'); return null; }
     return { q1: q1, q2: q2, a1: a1, a2: a2 };
   }
 
@@ -3164,10 +3207,12 @@
   // Teinte du badge de grade : plus le rôle porte de responsabilité, plus la
   // couleur est marquante. Le membre reste neutre, c'est le cas courant.
   var ROLE_TINTS = {
-    GRAND_RESPONSABLE: { fg: '#7A5B12', bg: '#FBF1DA' },   // doré
-    RESP_SECTION:      { fg: '#0B4FC4', bg: '#E8EEFB' },   // bleu d'accent
-    MEMBRE:            { fg: 'var(--muted)', bg: '#EEF1F6' },   // neutre
-    STAGIAIRE:         { fg: '#8A5A0B', bg: '#FDF0DC' }    // ambre
+    // Dans la palette, et lisibles en mode sombre : bleu plein pour l'Admin,
+    // bleu clair pour les responsables, gris pour les autres.
+    GRAND_RESPONSABLE: { fg: '#FFF', bg: '#0B5FE0' },
+    RESP_SECTION:      { fg: 'var(--accent-ink)', bg: 'var(--accent-soft)' },
+    MEMBRE:            { fg: 'var(--muted)', bg: 'var(--tile)' },
+    STAGIAIRE:         { fg: 'var(--faint)', bg: 'var(--tile)' }
   };
   function roleTint(role) { return ROLE_TINTS[role] || ROLE_TINTS.MEMBRE; }
 

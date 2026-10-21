@@ -82,9 +82,9 @@
     
     var content = '';
     if (S.loadingUserProfile) {
-      content = '<div style="padding:100px 20px;text-align:center;"><div style="font-size:32px;animation:spin 1s linear infinite;">⏳</div><div style="margin-top:16px;font-size:15px;color:var(--faint);">Chargement du profil...</div></div>';
+      content = '<div style="padding:100px 20px;text-align:center;"><div style="width:28px;height:28px;margin:0 auto;border:3px solid var(--line2);border-top-color:#0B5FE0;border-radius:50%;animation:spin 0.8s linear infinite;"></div><div style="margin-top:16px;font-size:15px;color:var(--faint);">Chargement du profil...</div></div>';
     } else if (!targetUser) {
-      content = '<div style="padding:100px 20px;text-align:center;"><div style="font-size:40px;">😕</div><div style="margin-top:16px;font-size:15px;font-weight:600;">Utilisateur introuvable</div><button onclick="App.closeUserProfile()" style="margin-top:20px;padding:10px 20px;background:#0B5FE0;color:#FFF;border:none;border-radius:20px;font-weight:600;cursor:pointer;">Retour</button></div>';
+      content = '<div style="padding:100px 20px;text-align:center;"><div style="display:flex;justify-content:center;">' + ico('alert', 36, UI.faint, 1.6) + '</div><div style="margin-top:16px;font-size:15px;font-weight:600;">Utilisateur introuvable</div><button onclick="App.closeUserProfile()" style="margin-top:20px;padding:10px 20px;background:#0B5FE0;color:#FFF;border:none;border-radius:20px;font-weight:600;cursor:pointer;">Retour</button></div>';
     } else {
       content = renderProfile(targetUser, posts);
     }
@@ -201,6 +201,24 @@
   // HOME TAB
   // ============================================================
   
+  // En-tête des écrans plein écran (Paramètres, Messages, formulaires…) : un
+  // seul modèle, flèche de retour + titre + action éventuelle à droite. Le titre
+  // passe de 28 à 22 px quand il est long et qu'une action l'accompagne.
+  function enTetePleinEcran(titre, retourJs, actionHtml) {
+    var taille = (actionHtml && titre.length > 12) ? 22 : 28;
+    return '<div style="display:flex;align-items:center;gap:12px;padding:20px 16px 8px;background:' + UI.page + ';">' +
+      '<button type="button" onclick="' + retourJs + '" aria-label="Retour" style="background:' + UI.card + ';border:none;width:44px;height:44px;flex-shrink:0;border-radius:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
+        '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="' + UI.ink + '" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>' +
+      '</button>' +
+      '<h1 style="flex:1;min-width:0;font-family:' + UI.fontDisplay + ';font-size:' + taille + 'px;font-weight:800;letter-spacing:-0.5px;color:' + UI.ink + ';margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + titre + '</h1>' +
+      (actionHtml || '') +
+    '</div>';
+  }
+  // Action principale d'un en-tête plein écran (Créer, Terminer, Nouveau…).
+  function boutonEnTete(libelle, onclickJs) {
+    return '<button type="button" onclick="' + onclickJs + '" style="min-height:40px;padding:0 16px;flex-shrink:0;background:' + UI.accent + ';color:#FFF;border:none;border-radius:999px;font-size:15px;font-weight:700;cursor:pointer;">' + libelle + '</button>';
+  }
+
   function renderScreenHeader(title, subtitle, rightActionHtml) {
     var u = S.user || {};
     var initial = (u.prenom || 'M').charAt(0).toUpperCase();
@@ -394,7 +412,7 @@
   function renderAttenteValidation(u) {
     return '<main id="attenteValidation" style="min-height:100vh;background:' + UI.page + ';display:flex;align-items:center;justify-content:center;padding:24px 16px;">' +
       '<div class="kc-apparait" style="width:100%;max-width:380px;background:' + UI.card + ';border:1px solid ' + UI.line + ';border-radius:20px;box-shadow:' + UI.sh2 + ';padding:28px 22px;text-align:center;">' +
-        '<div aria-hidden="true" style="font-size:46px;line-height:1;">⏳</div>' +
+        '<div aria-hidden="true" style="display:flex;justify-content:center;">' + ico('hourglass', 44, UI.accent, 1.6) + '</div>' +
         '<h1 style="font-family:' + UI.fontDisplay + ';font-size:22px;font-weight:700;color:' + UI.ink + ';margin:14px 0 8px;">Compte en attente de validation</h1>' +
         '<p style="font-size:15px;line-height:1.55;color:' + UI.muted + ';margin:0 0 6px;">Bienvenue ' + safeHtml(u.prenom || '') + ' ! Un Admin ou un Responsable de pôle doit confirmer que tu fais partie du Département Communication.</p>' +
         '<p style="font-size:13px;line-height:1.5;color:' + UI.faint + ';margin:0 0 20px;">Tu auras accès à toute l\'application dès la validation. Besoin d\'aide : 07 99 44 24 02.</p>' +
@@ -424,7 +442,7 @@
               '<div style="font-size:12px;color:' + UI.faint + ';overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + safeHtml([m.phone, poles, quand].filter(Boolean).join(' · ')) + '</div>' +
             '</div>' +
             '<button type="button" onclick="App.validerInscription(\'' + jsArg(m.id) + '\', false)" style="min-height:40px;padding:0 12px;background:' + UI.tile + ';color:' + UI.ink + ';border:none;border-radius:999px;font-size:13px;font-weight:700;cursor:pointer;">Refuser</button>' +
-            '<button type="button" onclick="App.validerInscription(\'' + jsArg(m.id) + '\', true)" style="min-height:40px;padding:0 14px;background:' + UI.okPlein + ';color:#FFF;border:none;border-radius:999px;font-size:13px;font-weight:700;cursor:pointer;">Valider</button>' +
+            '<button type="button" onclick="App.validerInscription(\'' + jsArg(m.id) + '\', true)" style="min-height:40px;padding:0 14px;background:' + UI.accent + ';color:#FFF;border:none;border-radius:999px;font-size:13px;font-weight:700;cursor:pointer;">Valider</button>' +
           '</div>';
         }).join('') +
       '</div>' +
@@ -476,13 +494,12 @@
         '</div></div>';
     }
 
-    // Pôles — les emoji sont conservés ici : ils portent l'identité de chaque
-    // équipe. L'anneau coloré remplace l'ancien fond dégradé.
+    // Pôles : l'icône de chaque équipe, dans sa couleur, au centre d'un anneau.
     var sectionSeen = db(SK.SECTION_SEEN, {});
     var allPostsForCount = db(SK.POSTS, []);
     var stories = '<div style="background:' + UI.card + ';border-bottom:0.5px solid ' + UI.line + ';padding:2px 0 12px;">' +
       '<div style="display:flex;gap:2px;padding:10px 12px 0;overflow-x:auto;-webkit-overflow-scrolling:touch;">' +
-      [{ id:'all', nom:'Tous', emoji:'✨' }].concat(SECTIONS).map(function(s) {
+      [{ id:'all', nom:'Tous' }].concat(SECTIONS).map(function(s) {
         var sel = S.story === s.id;
         var sc = secColor(s.id) || UI.accent;
         var lastSeen = s.id === 'all' ? null : (sectionSeen[s.id] || 0);
@@ -493,7 +510,7 @@
         return '<div onclick="App.story(\'' + jsArg(s.id) + '\')" style="display:flex;flex-direction:column;align-items:center;cursor:pointer;min-width:64px;gap:6px;flex-shrink:0;">' +
           '<div style="position:relative;width:54px;height:54px;">' +
             '<div style="width:54px;height:54px;border-radius:50%;background:' + (sel ? sc + '1A' : UI.tile) + ';border:1.5px solid ' + (sel ? sc : 'transparent') + ';display:flex;align-items:center;justify-content:center;font-size:22px;transition:all 0.2s;">' +
-              s.emoji +
+              (s.id === 'all' ? ico('layers', 22, sel ? UI.accent : UI.muted) : icoPole(s.id, 22)) +
             '</div>' +
             (cnt > 0 ? '<div style="position:absolute;top:-2px;right:-2px;z-index:2;background:' + UI.accent + ';color:#FFF;font-size:11px;font-weight:600;min-width:18px;height:18px;border-radius:' + UI.pill + ';display:flex;align-items:center;justify-content:center;padding:0 5px;box-shadow:0 0 0 2px #FFF;">' + (cnt > 99 ? '99+' : cnt) + '</div>' : '') +
           '</div>' +
@@ -539,10 +556,10 @@
       feed = renderSkeletonCards(3);
     } else if (filtered.length === 0) {
       feed = '<div style="display:flex;flex-direction:column;align-items:center;padding:70px 24px;text-align:center;">' +
-        '<div style="font-size:52px;margin-bottom:16px;">📭</div>' +
+        '<div style="margin-bottom:16px;display:flex;justify-content:center;">' + ico('inbox', 44, UI.faint, 1.6) + '</div>' +
         '<h3 style="font-size:17px;font-weight:800;color:var(--ink);margin:0 0 8px;">' + (S.q ? 'Aucun résultat' : 'Aucune publication') + '</h3>' +
         '<p style="font-size:13px;color:var(--faint);margin:0 0 22px;max-width:240px;line-height:1.5;">' +
-          (S.q ? 'Aucun résultat trouvé pour "' + safeHtml(S.q) + '"' : 'Aucune publication pour le moment. Soyez le premier à publier ! ') +
+          (S.q ? 'Aucun résultat trouvé pour "' + safeHtml(S.q) + '"' : 'Aucune publication pour le moment. Sois le premier à publier.') +
         '</p>' +
         (S.q
           ? '<button onclick="App.search(\'\')" style="' + btnStyle('#0B5FE0') + 'height:44px;width:auto;padding:0 22px;font-size:15px;">Réinitialiser la recherche</button>'
@@ -731,7 +748,7 @@
                 }
                 return '<div style="background:' + (isMeAssigned ? UI.evGoldSoft : 'rgba(255,255,255,0.05)') + ';border:0.5px solid ' + (isMeAssigned ? UI.evGoldLine : 'transparent') + ';border-radius:' + UI.r1 + ';padding:8px 11px;">' +
                   '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">' +
-                    '<div style="font-size:13px;font-weight:600;color:' + (isMeAssigned ? UI.evGold : UI.evInk) + ';min-width:0;">' + safeHtml(a.userName) + (isMeAssigned ? ' · vous' : '') + '</div>' +
+                    '<div style="font-size:13px;font-weight:600;color:' + (isMeAssigned ? UI.evGold : UI.evInk) + ';min-width:0;">' + safeHtml(a.userName) + (isMeAssigned ? ' · toi' : '') + '</div>' +
                     (function(){
                       var r = a.userId ? reponseConvocation(post, a.userId) : null;
                       if (!r) return '';
@@ -788,7 +805,7 @@
     var anyPinned = events.some(function(e){ return isPinnedNow(e); });
 
     return '<article style="background:' + UI.card + ';border-radius:' + UI.r2 + ';box-shadow:' + UI.sh2 + ';margin:0 12px 12px;overflow:hidden;">' +
-      (anyPinned ? '<div style="background:#0B5FE0;color:#FFF;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;padding:4px 12px;display:flex;align-items:center;gap:6px;"><span style="font-size:12px;">📌</span> ÉPINGLÉ</div>' : '') +
+      (anyPinned ? '<div style="background:#0B5FE0;color:#FFF;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;padding:4px 12px;display:flex;align-items:center;gap:6px;">' + ico('pinned', 13, 'currentColor') + ' ÉPINGLÉ</div>' : '') +
       '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px 8px;">' +
         '<div style="min-width:0;">' +
           '<div style="font-size:15px;font-weight:800;color:var(--ink);text-transform:capitalize;">' + safeHtml(dateLabel) + '</div>' +
@@ -830,8 +847,8 @@
     var crit = ev.criteria || {};
     return '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">' +
         '<div>' +
-          '<div style="display:inline-flex;align-items:center;gap:4px;background:var(--card);padding:4px 8px;border-radius:8px;font-size:11px;font-weight:800;color:var(--faint);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05);"><span>📊</span> Évaluation</div>' +
-          '<div style="font-size:22px;font-weight:800;color:var(--ink);letter-spacing:-0.5px;">' + (ev.emoji ? ev.emoji + ' ' : '') + safeHtml(ev.teamName || '') + '</div>' +
+          '<div style="display:inline-flex;align-items:center;gap:4px;background:var(--card);padding:4px 8px;border-radius:8px;font-size:11px;font-weight:800;color:var(--faint);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05);">' + ico('chart', 13, 'currentColor') + ' Évaluation</div>' +
+          '<div style="font-size:22px;font-weight:800;color:var(--ink);letter-spacing:-0.5px;">' + (ev.teamId ? icoPole(ev.teamId, 20) + ' ' : '') + safeHtml(ev.teamName || '') + '</div>' +
         '</div>' +
         '<div style="background:' + badgeBg + ';color:#FFF;padding:12px 16px;border-radius:16px;font-size:28px;font-weight:800;box-shadow:0 6px 16px ' + badgeShadow + ';text-shadow:0 2px 4px rgba(0,0,0,0.1);white-space:nowrap;">' + score + '/5</div>' +
       '</div>' +
@@ -959,7 +976,7 @@
     var starCol = stars === null ? 'var(--faint)' : stars >= 4 ? '#0E9F6E' : stars >= 2 ? '#D98A0B' : '#D92D20';
 
     var confirmBtn = isAuthor
-      ? '<div style="margin-top:6px;"><button onclick="App.confirmPresence(\'' + jsArg(post.id) + '\')"' + (S.geoCapturing ? ' disabled' : '') + ' style="background:var(--accent-soft);color:var(--lien);border:none;border-radius:12px;padding:7px 12px;font-size:12px;font-weight:800;cursor:pointer;">📍 Confirmer ma présence</button></div>'
+      ? '<div style="margin-top:6px;"><button onclick="App.confirmPresence(\'' + jsArg(post.id) + '\')"' + (S.geoCapturing ? ' disabled' : '') + ' style="background:var(--accent-soft);color:var(--lien);border:none;border-radius:12px;padding:7px 12px;font-size:12px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:5px;">' + ico('pin', 13, 'currentColor') + 'Confirmer ma présence</button></div>'
       : '';
 
     // Bloc position selon l'état de présence.
@@ -974,7 +991,7 @@
         ? '<span style="color:var(--muted);">Position enregistrée' + (geo.accuracy ? ' (±' + geo.accuracy + ' m)' : '') + ' · lieu de l\'événement non défini</span>'
         : '<span style="color:var(--faint);">Lieu de l\'événement non défini</span>';
     } else if (presence === 'pending') { // fenêtre de grâce en cours — PAS de pénalité
-      geoBlock = '<span style="color:#B45309;font-weight:800;">⏳ Vérification de la présence en cours…</span>' +
+      geoBlock = '<span style="color:#B45309;font-weight:800;display:inline-flex;align-items:center;gap:5px;">' + ico('hourglass', 13, '#B45309') + 'Vérification de la présence en cours…</span>' +
         '<span style="color:var(--faint);"> · l\'heure d\'arrivée est déjà prise en compte</span>' + confirmBtn;
     } else { // unverified : grâce écoulée sans position — sanctionné
       geoBlock = '<span style="color:var(--bad-ink);font-weight:800;">' + ico('ban',12,'var(--bad-ink)') + ' Présence non vérifiée</span>' +
@@ -1097,21 +1114,21 @@
     var total = pollTotalVotes(poll);
     var hasVoted = myVote !== null;
 
-    return '<div style="margin:0 14px 10px;padding:14px;background:var(--tile);border:1px solid var(--ok-line);border-radius:16px;">' +
-      '<div style="font-size:11px;font-weight:800;color:var(--ok-ink);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;display:flex;align-items:center;gap:6px;"><span>📊</span> Sondage</div>' +
+    return '<div style="margin:0 14px 10px;padding:14px;background:var(--tile);border-radius:16px;">' +
+      '<div style="font-size:11px;font-weight:800;color:var(--lien);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;display:flex;align-items:center;gap:6px;">' + ico('chart', 13, 'currentColor') + ' Sondage</div>' +
       '<div style="font-size:15px;font-weight:800;color:var(--ink);margin-bottom:10px;line-height:1.4;">' + safeHtml(poll.question||'') + '</div>' +
       poll.options.map(function(opt, idx) {
         var pct = pollOptionPct(poll, idx);
         var mine = myVote === idx;
-        return '<div onclick="App.votePoll(\'' + jsArg(post.id) + '\', ' + idx + ')" style="position:relative;margin-bottom:7px;border-radius:12px;overflow:hidden;background:var(--card);border:1.5px solid ' + (mine?'var(--ok-ink)':'var(--line)') + ';cursor:pointer;">' +
-          (hasVoted ? '<div style="position:absolute;top:0;left:0;bottom:0;width:' + pct + '%;background:' + (mine?'var(--ok-soft)':'var(--tile)') + ';transition:width 0.3s;"></div>' : '') +
+        return '<div onclick="App.votePoll(\'' + jsArg(post.id) + '\', ' + idx + ')" style="position:relative;margin-bottom:7px;border-radius:12px;overflow:hidden;background:var(--card);border:1.5px solid ' + (mine?UI.accent:'var(--line)') + ';cursor:pointer;">' +
+          (hasVoted ? '<div style="position:absolute;top:0;left:0;bottom:0;width:' + pct + '%;background:' + (mine?'var(--accent-soft)':'var(--tile)') + ';transition:width 0.3s;"></div>' : '') +
           '<div style="position:relative;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;">' +
-            '<span style="font-size:13px;font-weight:' + (mine?'800':'600') + ';color:' + (mine?'var(--ok-ink)':'var(--ink)') + ';">' + (mine ? '✓ ' : '') + safeHtml(opt) + '</span>' +
+            '<span style="font-size:13px;font-weight:' + (mine?'800':'600') + ';color:' + (mine?'var(--accent-ink)':'var(--ink)') + ';">' + (mine ? '✓ ' : '') + safeHtml(opt) + '</span>' +
             (hasVoted ? '<span style="font-size:12px;font-weight:800;color:var(--faint);white-space:nowrap;">' + pct + '%</span>' : '') +
           '</div>' +
         '</div>';
       }).join('') +
-      '<div style="font-size:11px;color:var(--faint);font-weight:600;margin-top:2px;">' + total + ' vote' + (total!==1?'s':'') + (hasVoted ? ' · touchez pour changer votre choix' : ' · touchez une option pour voter') + '</div>' +
+      '<div style="font-size:11px;color:var(--faint);font-weight:600;margin-top:2px;">' + total + ' vote' + (total!==1?'s':'') + (hasVoted ? ' · touche pour changer ton choix' : ' · touche une option pour voter') + '</div>' +
     '</div>';
   }
 
@@ -1148,7 +1165,7 @@
     if (!(curIdx > 0)) curIdx = 0;
     var expanded = !!S.expandedCaptions[post.id];
     var ago = timeAgo(post.timestamp);
-    var sec = SECTIONS.find(function(s){ return s.id === post.sectionId; }) || { emoji:'📢', color:'var(--faint)' };
+    var sec = SECTIONS.find(function(s){ return s.id === post.sectionId; }) || { id: '', color:'var(--faint)' };
     var likeCount = Array.isArray(post.likedBy) ? post.likedBy.length : (post.likes || 0);
     var viewCount = Array.isArray(post.viewedBy) ? post.viewedBy.length : 0;
     var postAuthorUser = db(SK.USERS, []).find(function(u){ return u.id === post.userId; });
@@ -1157,7 +1174,6 @@
     // détecté par hashtag sur la publication (affiché près des icônes like/commentaire/partage).
     var authorSecId = getUserSections(postAuthorUser)[0];
     var authorSecObj = SECTIONS.find(function(s){ return s.id === authorSecId; });
-    var authorSecEmoji = authorSecObj ? authorSecObj.emoji : '🎥';
     var authorSecColor = authorSecObj ? authorSecObj.color : '#0B5FE0';
     var authorSecNom = authorSecObj ? authorSecObj.nom : 'Membre';
 
@@ -1231,7 +1247,7 @@
         captionHtml = '';
       } else if (post.isVedette || post.scoreText) {
         mediaZone = '<div ondblclick="App.doubleTapLike(\''+jsArg(post.id)+'\')" style="background:linear-gradient(135deg,#1A1A2E,#2D2D44);min-height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;text-align:center;position:relative;">' +
-          '<div style="width:44px;height:44px;border-radius:20px;background:rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center;margin-bottom:8px;font-size:22px;">' + sec.emoji + '</div>' +
+          '<div style="width:44px;height:44px;border-radius:20px;background:rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center;margin-bottom:8px;">' + icoPole(sec.id, 22, '#FFF') + '</div>' +
           (post.isVedette ? '<div style="background:linear-gradient(135deg,#FFD700,#D98A0B);color:#5D3A00;font-size:11px;font-weight:800;padding:4px 12px;border-radius:20px;letter-spacing:0.8px;margin-bottom:6px;">SECTION VEDETTE</div>' : '') +
           (post.scoreText ? '<div style="background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);padding:5px 12px;border-radius:12px;position:absolute;bottom:12px;right:12px;"><strong style="font-size:13px;color:var(--ink);">★ ' + post.scoreText + '</strong></div>' : '') +
         '</div>';
@@ -1241,7 +1257,7 @@
       }
     }
 
-    var pinnedBadge = isPinnedNow(post) ? '<div style="background:#0B5FE0;color:#FFF;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;padding:4px 12px;display:flex;align-items:center;gap:6px;"><span style="font-size:12px;">📌</span> ÉPINGLÉ</div>' : '';
+    var pinnedBadge = isPinnedNow(post) ? '<div style="background:#0B5FE0;color:#FFF;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;padding:4px 12px;display:flex;align-items:center;gap:6px;">' + ico('pinned', 13, 'currentColor') + ' ÉPINGLÉ</div>' : '';
 
       var contentZone = '';
       // Handle new-format EVENT posts (created by saveEvent)
@@ -1254,7 +1270,7 @@
          if (participants.length > 0) {
              partAvatars = '<div style="display:flex;margin-left:8px;">';
              for (var i=0; i<Math.min(participants.length, 3); i++) {
-                 partAvatars += '<div style="width:24px;height:24px;border-radius:12px;background:#0B5FE0;color:#FFF;border:2px solid var(--card);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;margin-left:-8px;">👤</div>';
+                 partAvatars += '<div style="width:24px;height:24px;border-radius:12px;background:#0B5FE0;color:#FFF;border:2px solid var(--card);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;margin-left:-8px;">' + ico('user', 12, 'currentColor') + '</div>';
              }
              if (participants.length > 3) {
                  partAvatars += '<div style="width:24px;height:24px;border-radius:12px;background:var(--line);color:var(--ink);border:2px solid var(--card);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;margin-left:-8px;">+'+(participants.length-3)+'</div>';
@@ -1275,8 +1291,8 @@
             '<div style="flex:1;">' +
               '<h3 style="margin:0 0 8px;font-size:17px;font-weight:800;color:var(--ink);line-height:1.2;letter-spacing:-0.3px;">' + safeHtml(post.metadata.title||'') + '</h3>' +
               '<div style="display:flex;flex-wrap:wrap;gap:10px;">' +
-                '<div style="font-size:13px;color:var(--lien);display:flex;align-items:center;gap:4px;font-weight:600;background:rgba(88,86,214,0.08);padding:4px 8px;border-radius:8px;"><span style="font-size:15px;">🕒</span> ' + safeHtml(post.metadata.time||'') + '</div>' +
-                '<div style="font-size:13px;color:var(--faint);display:flex;align-items:center;gap:4px;font-weight:600;background:var(--tile);padding:4px 8px;border-radius:8px;"><span style="font-size:15px;">📍</span> ' + safeHtml(post.metadata.location||'') + '</div>' +
+                '<div style="font-size:13px;color:var(--lien);display:flex;align-items:center;gap:4px;font-weight:600;background:rgba(88,86,214,0.08);padding:4px 8px;border-radius:8px;">' + ico('clock', 14, 'currentColor') + ' ' + safeHtml(post.metadata.time||'') + '</div>' +
+                '<div style="font-size:13px;color:var(--faint);display:flex;align-items:center;gap:4px;font-weight:600;background:var(--tile);padding:4px 8px;border-radius:8px;">' + ico('pin', 14, 'currentColor') + ' ' + safeHtml(post.metadata.location||'') + '</div>' +
               '</div>' +
             '</div>' +
           '</div>' +
@@ -1292,7 +1308,7 @@
 
           '<div style="display:flex;gap:10px;">' +
             '<button onclick="App.toggleParticipation(\''+jsArg(post.id)+'\',\'yes\')" style="flex:1;padding:12px;border-radius:999px;font-size:15px;font-weight:800;border:none;cursor:pointer;background:'+((post.metadata.participations||{})[(S.user||{}).id]==='yes'?UI.okPlein:'var(--card)')+';color:'+((post.metadata.participations||{})[(S.user||{}).id]==='yes'?'#FFF':'var(--ink)')+';box-shadow:'+((post.metadata.participations||{})[(S.user||{}).id]==='yes'?'0 4px 12px rgba(52,199,89,0.3)':'0 2px 6px rgba(0,0,0,0.05)')+';transition:all 0.2s;">' + ((post.metadata.participations||{})[(S.user||{}).id]==='yes' ? ico('thumb',14,'#FFF') + ' Confirmé' : ico('thumb',14,'currentColor') + ' Je participe') + '</button>' +
-            '<button onclick="App.toggleParticipation(\''+jsArg(post.id)+'\',\'no\')" style="flex:1;padding:12px;border-radius:999px;font-size:15px;font-weight:800;border:none;cursor:pointer;background:'+((post.metadata.participations||{})[(S.user||{}).id]==='no'?'linear-gradient(135deg,#D92D20,#D92D20)':'var(--card)')+';color:'+((post.metadata.participations||{})[(S.user||{}).id]==='no'?'#FFF':'var(--ink)')+';box-shadow:'+((post.metadata.participations||{})[(S.user||{}).id]==='no'?'0 4px 12px rgba(255,59,48,0.3)':'0 2px 6px rgba(0,0,0,0.05)')+';transition:all 0.2s;">' + ((post.metadata.participations||{})[(S.user||{}).id]==='no' ? '❌ Indisponible' : '❌ Non dispo') + '</button>' +
+            '<button onclick="App.toggleParticipation(\''+jsArg(post.id)+'\',\'no\')" style="flex:1;padding:12px;border-radius:999px;font-size:15px;font-weight:800;border:none;cursor:pointer;background:'+((post.metadata.participations||{})[(S.user||{}).id]==='no'?'linear-gradient(135deg,#D92D20,#D92D20)':'var(--card)')+';color:'+((post.metadata.participations||{})[(S.user||{}).id]==='no'?'#FFF':'var(--ink)')+';box-shadow:'+((post.metadata.participations||{})[(S.user||{}).id]==='no'?'0 4px 12px rgba(255,59,48,0.3)':'0 2px 6px rgba(0,0,0,0.05)')+';transition:all 0.2s;">' + ((post.metadata.participations||{})[(S.user||{}).id]==='no' ? ico('x', 14, 'currentColor') + ' Indisponible' : ico('x', 14, 'currentColor') + ' Non dispo') + '</button>' +
           '</div>' +
         '</div>';
       } else if (post.type === 'EVALUATION' && post.metadata && (post.metadata.evaluations || post.metadata.teamName)) {
@@ -1378,7 +1394,7 @@
               '<div style="font-size:15px;font-weight:700;letter-spacing:-0.1px;color:' + UI.ink + ';">' + safeHtml(pName) + '</div>';
         })() +
             '<div style="font-size:12px;color:' + UI.faint + ';display:flex;align-items:center;gap:4px;flex-wrap:wrap;">' +
-              '<span>' + authorSecEmoji + ' ' + authorSecNom + '</span>' +
+              '<span style="display:inline-flex;align-items:center;gap:4px;">' + (authorSecObj ? icoPole(authorSecObj.id, 13) : '') + authorSecNom + '</span>' +
               // Le grade doit rester visible à côté du pôle : c'est lui qui dit
               // qui est responsable de quoi dans l'équipe.
               (postAuthorRoleLabel ? '<span>·</span><span>' + postAuthorRoleLabel + '</span>' : '') +
@@ -1395,7 +1411,7 @@
         var aEvDate = aboutEv.eventDate ? new Date(aboutEv.eventDate + 'T00:00:00') : null;
         var aEvDateStr = aEvDate ? aEvDate.toLocaleDateString('fr-FR', {weekday:'short', day:'numeric', month:'short'}) : '';
         return '<div onclick="App.goToEvent(\''+jsArg(aboutEv.id)+'\')" style="margin:0 14px 10px;padding:10px 12px;background:var(--accent-soft);border-radius:16px;border:1px solid var(--line2);display:flex;align-items:center;gap:10px;cursor:pointer;">' +
-          '<span style="font-size:17px;">🗓️</span>' +
+          ico('calendar', 18, UI.lien) +
           '<div style="flex:1;min-width:0;">' +
             '<div style="font-size:11px;font-weight:800;color:var(--lien);text-transform:uppercase;letter-spacing:0.5px;">À propos de cet événement</div>' +
             '<div style="font-size:13px;font-weight:800;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(aboutEv.eventTitle||'') + (aEvDateStr ? ' · ' + aEvDateStr : '') + (aboutEv.eventStart ? ' à ' + safeHtml(aboutEv.eventStart) : '') + '</div>' +
@@ -1451,7 +1467,7 @@
       itemsHtml = '<div style="padding:50px 20px;text-align:center;color:var(--faint);">' +
         '<div style="margin-bottom:10px;">' + ico('inbox', 40, UI.line2, 1.4) + '</div>' +
         '<div style="font-size:15px;font-weight:800;color:var(--ink);margin-bottom:6px;">Aucune notification</div>' +
-        '<div style="font-size:13px;color:var(--faint);">Vous êtes à jour ! Aucune nouvelle activité.</div>' +
+        '<div style="font-size:13px;color:var(--faint);">Tu es à jour : aucune nouvelle activité.</div>' +
       '</div>';
     } else {
       // Groupage par jour : les notifications défilaient en vrac, sans repère
@@ -1489,7 +1505,7 @@
           : (n.type === 'FOLLOW' || n.type === 'NEW_MEMBER') ? 'users'
           : 'calendar';
         var icon = ico(iconName, 10, '#FFF', 2.4);
-        var bgIcon = n.type === 'LIKE' ? '#FF2D55' : (n.type === 'COMMENT' || n.type === 'REPLY') ? '#0B5FE0' : n.type === 'EVALUATION' ? UI.warnPlein : n.type === 'MENTION' ? UI.warnPlein : n.type === 'MESSAGE' ? '#0E9F6E' : n.type === 'FOLLOW' ? '#AF52DE' : n.type === 'NEW_MEMBER' ? '#0E9F6E' : '#0B5FE0';
+        var bgIcon = n.type === 'LIKE' ? UI.bad : (n.type === 'COMMENT' || n.type === 'REPLY') ? '#0B5FE0' : n.type === 'EVALUATION' ? UI.warnPlein : n.type === 'MENTION' ? UI.warnPlein : n.type === 'MESSAGE' ? '#0E9F6E' : n.type === 'FOLLOW' ? UI.accent : n.type === 'NEW_MEMBER' ? '#0E9F6E' : '#0B5FE0';
         var timeAgoStr = timeAgo(n.timestamp || Date.now());
         var isUnread = !n.read;
 
@@ -1596,7 +1612,7 @@
     if (isGrandResponsable(u)) {
       out += '<optgroup label="Confier à un pôle entier">' +
         SECTIONS.map(function(s) {
-          return '<option value="sec:' + s.id + '">' + s.emoji + ' Pôle ' + safeHtml(s.nom) + '</option>';
+          return '<option value="sec:' + s.id + '">Pôle ' + safeHtml(s.nom) + '</option>';
         }).join('') +
       '</optgroup>';
     }
@@ -1607,7 +1623,7 @@
       if (!sec) return;
       var inSec = members.filter(function(m){ return getUserSections(m).indexOf(secId) !== -1; });
       if (inSec.length === 0) return;
-      out += '<optgroup label="' + sec.emoji + ' ' + safeHtml(sec.nom) + '">' +
+      out += '<optgroup label="' + safeHtml(sec.nom) + '">' +
         inSec.map(function(m) {
           placed[m.id] = true;
           return '<option value="' + m.id + '">' + libelleMembre(m) + '</option>';
@@ -1625,7 +1641,7 @@
       '</optgroup>';
     }
 
-    if (!out) out = '<option value="" disabled>Aucun membre dans votre pôle</option>';
+    if (!out) out = '<option value="" disabled>Aucun membre dans ton pôle</option>';
     return out;
   }
 
@@ -1637,7 +1653,7 @@
     return '<div onclick="App.cancelEventSaveChoice()" style="position:fixed;inset:0;background:rgba(15,15,20,0.6);z-index:10002;display:flex;justify-content:center;align-items:center;padding:24px;">' +
       '<div onclick="event.stopPropagation()" style="width:100%;max-width:360px;background:var(--card);border-radius:20px;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
         '<h3 style="font-size:17px;font-weight:800;color:var(--ink);margin:0 0 6px;text-align:center;">Enregistrer les modifications</h3>' +
-        '<p style="font-size:13px;color:var(--muted);line-height:1.5;margin:0 0 18px;text-align:center;">Voulez-vous remplacer cet événement, ou en créer un nouveau en gardant l\'ancien ?</p>' +
+        '<p style="font-size:13px;color:var(--muted);line-height:1.5;margin:0 0 18px;text-align:center;">Remplacer cet événement, ou en créer un nouveau en gardant l\'ancien ?</p>' +
 
         '<button type="button" onclick="App.chooseEventSaveMode(\'overwrite\')" style="width:100%;background:var(--tile);border:none;border-radius:999px;padding:14px;margin-bottom:10px;cursor:pointer;text-align:left;">' +
           '<div style="font-size:15px;font-weight:800;color:var(--ink);margin-bottom:2px;">Mettre à jour cet événement</div>' +
@@ -1645,7 +1661,7 @@
         '</button>' +
 
         '<button type="button" onclick="App.chooseEventSaveMode(\'duplicate\')" style="width:100%;background:var(--accent-soft);border:1px solid var(--line2);border-radius:999px;padding:14px;margin-bottom:14px;cursor:pointer;text-align:left;">' +
-          '<div style="font-size:15px;font-weight:800;color:var(--lien);margin-bottom:2px;">➕ Créer un nouvel événement</div>' +
+          '<div style="font-size:15px;font-weight:800;color:var(--lien);margin-bottom:2px;display:flex;align-items:center;gap:6px;">' + ico('plus', 15, 'currentColor') + 'Créer un nouvel événement</div>' +
           '<div style="font-size:12px;color:#5A7BAA;line-height:1.4;">L\'ancien reste intact. Idéal pour répéter un événement : changez la date et dupliquez.</div>' +
         '</button>' +
 
@@ -1669,7 +1685,7 @@
     var recurWeeksVal = cData.recurWeeks || 8;
 
     // Bloc image (une seule image par événement)
-    var imageBlock = '<div style="background:var(--card);border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px;">' +
+    var imageBlock = '<div style="background:var(--card);border-radius:20px;padding:16px;margin-bottom:16px;">' +
       '<label style="font-size:15px;font-weight:700;color:var(--ink);display:block;margin-bottom:12px;">Image de l\'événement <span style="font-weight:500;color:var(--faint);">(optionnelle)</span></label>' +
       (S.eventImageProcessing
         ? '<div style="display:flex;align-items:center;gap:10px;background:var(--tile);border-radius:12px;padding:14px;">' +
@@ -1688,30 +1704,26 @@
             '</label>')) +
     '</div>';
 
-    return '<div class="safe-top" style="position:fixed;inset:0;background:var(--card);z-index:10000;display:flex;flex-direction:column;animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
-      '<header style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--line);background:var(--card);z-index:2;">' +
-        '<button onclick="App.closeCreateEvent()" style="background:none;border:none;font-size:15px;color:var(--ink);cursor:pointer;">Annuler</button>' +
-        '<div style="font-weight:700;font-size:15px;color:var(--ink);">' + (isEdit ? 'Modifier l\'événement' : 'Nouvel Événement') + '</div>' +
-        '<button onclick="App.saveEvent(this)" style="background:none;border:none;font-size:15px;font-weight:700;color:var(--lien);cursor:pointer;">' + (isEdit ? 'Enregistrer' : 'Créer') + '</button>' +
-      '</header>' +
-      '<div style="flex:1;overflow-y:auto;background:var(--tile);padding:16px;">' +
+    return '<div class="safe-top" style="position:fixed;inset:0;background:' + UI.page + ';z-index:10000;display:flex;flex-direction:column;animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
+      enTetePleinEcran(isEdit ? 'Modifier l\'événement' : 'Nouvel événement', 'App.closeCreateEvent()', boutonEnTete(isEdit ? 'Enregistrer' : 'Créer', 'App.saveEvent(this)')) +
+      '<div style="flex:1;overflow-y:auto;background:' + UI.page + ';padding:8px 16px 32px;">' +
         imageBlock +
 
-        '<div style="background:var(--card);border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px;">' +
+        '<div style="background:var(--card);border-radius:20px;padding:16px;margin-bottom:16px;">' +
           '<div style="display:flex;flex-direction:column;gap:16px;">' +
-            '<div style="display:flex;flex-direction:column;gap:4px;">' +
-              '<label style="font-size:13px;color:var(--faint);font-weight:600;">Titre de l\'événement</label>' +
-              '<input type="text" id="eventTitle" value="' + safeHtml(titleVal) + '" placeholder="Ex: Culte de Dimanche" style="border:none;border-bottom:1px solid var(--line);font-size:15px;outline:none;padding-bottom:8px;border-radius:0;font-weight:600;" />' +
+            '<div>' +
+              '<label for="eventTitle" style="' + STYLE_LIBELLE + '">Titre de l\'événement</label>' +
+              '<input type="text" id="eventTitle" class="kc-champ" value="' + safeHtml(titleVal) + '" placeholder="Ex. : Culte du dimanche" style="' + styleChamp() + '" />' +
             '</div>' +
-            '<div style="display:flex;flex-direction:column;gap:4px;">' +
-              '<label style="font-size:13px;color:var(--faint);font-weight:600;">Lieu / Salle</label>' +
-              '<input type="text" id="eventLocation" value="' + safeHtml(locVal) + '" placeholder="Ex: Salle Principale" style="border:none;border-bottom:1px solid var(--line);font-size:15px;outline:none;padding-bottom:8px;border-radius:0;" />' +
+            '<div>' +
+              '<label for="eventLocation" style="' + STYLE_LIBELLE + '">Lieu / salle</label>' +
+              '<input type="text" id="eventLocation" class="kc-champ" value="' + safeHtml(locVal) + '" placeholder="Ex. : Salle principale" style="' + styleChamp() + '" />' +
             '</div>' +
             // Position du lieu : recherchée par son nom/adresse. On ne relève jamais
             // la position du créateur — il prépare l'événement à l'avance, souvent
             // de chez lui, sa position n'a donc rien à voir avec le lieu.
             '<div style="display:flex;flex-direction:column;gap:8px;">' +
-              '<label style="font-size:13px;color:var(--faint);font-weight:600;">Situer le lieu sur la carte <span style="font-weight:500;">(optionnel)</span></label>' +
+              '<label for="eventPlaceInput" style="' + STYLE_LIBELLE + 'margin-bottom:0;">Situer le lieu sur la carte <span style="font-weight:500;color:var(--faint);">(facultatif)</span></label>' +
               (typeof cData.lat === 'number'
                 ? '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;background:var(--ok-soft);border:1px solid var(--ok-line);border-radius:12px;padding:10px 12px;">' +
                     '<div style="min-width:0;">' +
@@ -1721,9 +1733,9 @@
                     '<button type="button" onclick="App.clearEventPosition()" style="background:none;border:none;color:#D92D20;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">Changer</button>' +
                   '</div>'
                 : '<div>' +
-                    '<div style="display:flex;align-items:center;gap:8px;background:var(--tile);border-radius:12px;padding:0 12px;height:44px;">' +
-                      '<span style="font-size:15px;">🔎</span>' +
-                      '<input type="text" id="eventPlaceInput" value="' + safeHtml(S.eventPlaceQuery || '') + '" oninput="App.onEventPlaceInput(this.value)" placeholder="Ex : Église Vase d\'Honneur, Cocody" style="flex:1;border:none;background:transparent;font-size:15px;color:var(--ink);outline:none;min-width:0;" />' +
+                    '<div style="display:flex;align-items:center;gap:8px;height:52px;padding:0 16px;border:1.5px solid var(--line2);border-radius:26px;background:var(--card);box-sizing:border-box;">' +
+                      ico('search', 18, UI.faint) +
+                      '<input type="text" id="eventPlaceInput" value="' + safeHtml(S.eventPlaceQuery || '') + '" oninput="App.onEventPlaceInput(this.value)" placeholder="Ex. : Église Vase d\'Honneur, Cocody" style="flex:1;border:none;background:transparent;font-size:15px;color:var(--ink);outline:none;min-width:0;" />' +
                       '<span style="font-size:11px;font-weight:800;color:var(--faint);background:var(--line);padding:2px 7px;border-radius:8px;flex-shrink:0;">🇨🇮 CI</span>' +
                       (S.eventPlaceSearching
                         ? '<div style="width:15px;height:15px;border:2.5px solid var(--line2);border-top-color:#0B5FE0;border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0;"></div>'
@@ -1746,23 +1758,25 @@
           '</div>' +
         '</div>' +
         
-        '<div style="background:var(--card);border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px;">' +
+        '<div style="background:var(--card);border-radius:20px;padding:16px;margin-bottom:16px;">' +
           '<div style="display:flex;flex-direction:column;gap:16px;">' +
-            '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding-bottom:12px;">' +
-              '<label style="font-size:15px;color:var(--ink);font-weight:600;white-space:nowrap;">Date</label>' +
-              '<input type="date" id="eventDate" value="' + safeHtml(dateVal) + '" style="border:none;font-size:15px;outline:none;background:transparent;color:var(--lien);font-weight:600;text-align:right;" />' +
-            '</div>' +
-            '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding-bottom:12px;">' +
-              '<label style="font-size:15px;color:var(--ink);font-weight:600;white-space:nowrap;">Heure de début</label>' +
-              '<input type="time" id="eventStart" value="' + safeHtml(startVal) + '" oninput="App.onEventTimeChange()" style="border:none;font-size:15px;outline:none;background:transparent;color:var(--lien);font-weight:600;text-align:right;" />' +
+            '<div>' +
+              '<label for="eventDate" style="' + STYLE_LIBELLE + '">Date</label>' +
+              '<input type="date" id="eventDate" class="kc-champ" value="' + safeHtml(dateVal) + '" style="' + styleChamp() + '" />' +
             '</div>' +
             // Le message occupe sa PROPRE ligne sous le champ : placé dans la même
             // rangée que l'heure, il se superposait à la valeur et forçait le
             // libellé « Heure de fin » à passer sur deux lignes.
             '<div>' +
-              '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">' +
-                '<label style="font-size:15px;color:var(--ink);font-weight:600;white-space:nowrap;">Heure de fin</label>' +
-                '<input type="time" id="eventEnd" value="' + safeHtml(endVal) + '" oninput="App.onEventTimeChange()" style="border:none;font-size:15px;outline:none;background:transparent;color:var(--lien);font-weight:600;text-align:right;" />' +
+              '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">' +
+                '<div>' +
+                  '<label for="eventStart" style="' + STYLE_LIBELLE + '">Début</label>' +
+                  '<input type="time" id="eventStart" class="kc-champ" value="' + safeHtml(startVal) + '" oninput="App.onEventTimeChange()" style="' + styleChamp() + '" />' +
+                '</div>' +
+                '<div>' +
+                  '<label for="eventEnd" style="' + STYLE_LIBELLE + '">Fin</label>' +
+                  '<input type="time" id="eventEnd" class="kc-champ" value="' + safeHtml(endVal) + '" oninput="App.onEventTimeChange()" style="' + styleChamp() + '" />' +
+                '</div>' +
               '</div>' +
               // État initial calculé au rendu : à la réouverture d'une veillée
               // déjà enregistrée, la mention doit être visible sans toucher au champ.
@@ -1783,66 +1797,66 @@
         // un événement récurrent (ex : les 3 cultes du dimanche). Uniquement à la
         // création — modifier une série déjà créée se fait événement par événement.
         (isEdit ? '' :
-        '<div style="background:var(--card);border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px;">' +
+        '<div style="background:var(--card);border-radius:20px;padding:16px;margin-bottom:16px;">' +
           '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">' +
             '<div>' +
               '<div style="font-size:15px;font-weight:600;color:var(--ink);">Se répète chaque semaine</div>' +
               '<div style="font-size:12px;color:var(--faint);margin-top:2px;">Crée automatiquement les prochaines occurrences (même jour, même heure)</div>' +
             '</div>' +
             '<label style="position:relative;display:inline-block;width:50px;height:30px;flex-shrink:0;">' +
-              '<input type="checkbox" id="eventRecurWeekly"' + (recurWeeklyVal ? ' checked' : '') + ' style="opacity:0;width:0;height:0;" onchange="this.nextElementSibling.style.background=this.checked?\'#0E9F6E\':\'var(--line)\'; this.nextElementSibling.children[0].style.transform=this.checked?\'translateX(20px)\':\'translateX(0)\'; document.getElementById(\'eventRecurWeeksRow\').style.display=this.checked?\'flex\':\'none\';">' +
-              '<span style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:' + (recurWeeklyVal ? '#0E9F6E' : 'var(--line)') + ';transition:.3s;border-radius:30px;">' +
+              '<input type="checkbox" id="eventRecurWeekly"' + (recurWeeklyVal ? ' checked' : '') + ' style="opacity:0;width:0;height:0;" onchange="this.nextElementSibling.style.background=this.checked?\'#0B5FE0\':\'var(--line)\'; this.nextElementSibling.children[0].style.transform=this.checked?\'translateX(20px)\':\'translateX(0)\'; document.getElementById(\'eventRecurWeeksRow\').style.display=this.checked?\'flex\':\'none\';">' +
+              '<span style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:' + (recurWeeklyVal ? UI.accent : 'var(--line)') + ';transition:.3s;border-radius:30px;">' +
                 '<span style="position:absolute;content:\'\';height:26px;width:26px;left:2px;bottom:2px;background-color:white;transition:.3s;border-radius:50%;box-shadow:0 2px 4px rgba(0,0,0,0.2);transform:' + (recurWeeklyVal ? 'translateX(20px)' : 'translateX(0)') + ';"></span>' +
               '</span>' +
             '</label>' +
           '</div>' +
           '<div id="eventRecurWeeksRow" style="display:' + (recurWeeklyVal ? 'flex' : 'none') + ';align-items:center;justify-content:space-between;gap:12px;border-top:1px solid var(--line);margin-top:14px;padding-top:14px;">' +
             '<label style="font-size:15px;color:var(--ink);font-weight:600;">Nombre de semaines</label>' +
-            '<input type="number" id="eventRecurWeeks" min="2" max="52" value="' + recurWeeksVal + '" style="width:70px;border:none;background:var(--tile);border-radius:12px;padding:8px 10px;font-size:15px;font-weight:700;color:var(--ink);text-align:center;outline:none;" />' +
+            '<input type="number" id="eventRecurWeeks" class="kc-champ" min="2" max="52" value="' + recurWeeksVal + '" style="' + styleChamp() + 'width:88px;text-align:center;font-weight:700;" />' +
           '</div>' +
         '</div>') +
 
-        '<div style="background:var(--card);border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px;">' +
+        '<div style="background:var(--card);border-radius:20px;padding:16px;margin-bottom:16px;">' +
           '<label style="font-size:15px;font-weight:700;color:var(--ink);display:block;margin-bottom:12px;">Pôles concernés</label>' +
           '<div id="eventSectionBadgesContainer">' + App.renderSectionBadges(S.eventSections, 'toggleEventSection') + '</div>' + 
         '</div>' +
         
-        '<div style="background:var(--card);border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px;">' +
-          '<label style="font-size:13px;color:var(--faint);font-weight:600;display:block;margin-bottom:8px;">Description / Notes</label>' +
-          '<textarea id="eventDesc" placeholder="Ajoutez un briefing ou des notes pour les équipes..." style="width:100%;border:none;font-size:15px;outline:none;resize:none;font-family:inherit;min-height:80px;background:var(--tile);padding:12px;border-radius:12px;box-sizing:border-box;">' + safeHtml(descVal) + '</textarea>' +
+        '<div style="background:var(--card);border-radius:20px;padding:16px;margin-bottom:16px;">' +
+          '<label for="eventDesc" style="' + STYLE_LIBELLE + '">Description / notes</label>' +
+          '<textarea id="eventDesc" class="kc-champ" placeholder="Ajoute un briefing ou des notes pour les équipes…" style="' + styleChamp(true) + '">' + safeHtml(descVal) + '</textarea>' +
         '</div>' +
         
         (canAssign(S.user) ?
-        '<div style="background:var(--card);border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px;">' +
+        '<div style="background:var(--card);border-radius:20px;padding:16px;margin-bottom:16px;">' +
           '<label style="font-size:15px;font-weight:700;color:var(--ink);display:block;margin-bottom:4px;">Assignations (Équipe)</label>' +
           '<div style="font-size:12px;color:var(--faint);margin-bottom:12px;line-height:1.4;">' +
             (isGrandResponsable(S.user)
-              ? 'Vous pouvez confier une tâche à un membre précis ou à un pôle entier — son responsable la répartira ensuite.'
-              : 'Vous assignez les membres de votre pôle. Les autres responsables complètent pour le leur.') +
+              ? 'Tu peux confier une tâche à un membre précis ou à un pôle entier : son responsable la répartira ensuite.'
+              : 'Tu assignes les membres de ton pôle. Les autres responsables complètent pour le leur.') +
           '</div>' +
           '<div id="eventAssignmentsList">' + App.renderAssignmentsList() + '</div>' +
           '<div style="display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);padding-top:12px;">' +
-            '<select id="assignUserSelect" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--line);font-size:15px;outline:none;background:var(--tile);">' +
+            '<select id="assignUserSelect" class="kc-champ" style="' + styleSelect() + '">' +
               '<option value="">Sélectionner un membre…</option>' +
               renderAssignSelectOptions(S.user, dateVal) +
             '</select>' +
-            '<input type="text" id="assignTaskInput" placeholder="Tâche / travail à faire..." style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--line);font-size:15px;outline:none;background:var(--tile);box-sizing:border-box;" />' +
+            '<input type="text" id="assignTaskInput" class="kc-champ" placeholder="Tâche à confier…" style="' + styleChamp() + '" />' +
             '<div style="display:flex;gap:8px;">' +
-              '<input type="datetime-local" id="assignDeadlineInput" style="flex:1;min-width:0;padding:10px;border-radius:8px;border:1px solid var(--line);font-size:15px;outline:none;background:var(--tile);" />' +
-              '<button onclick="App.addAssignment()" style="background:#0B5FE0;color:#FFF;border:none;border-radius:8px;padding:0 16px;font-weight:700;cursor:pointer;white-space:nowrap;">Ajouter</button>' +
+              '<input type="datetime-local" id="assignDeadlineInput" class="kc-champ" style="' + styleChamp() + 'flex:1;min-width:0;" />' +
+              '<button type="button" onclick="App.addAssignment()" style="background:' + UI.accent + ';color:#FFF;border:none;border-radius:999px;min-height:52px;padding:0 18px;font-size:15px;font-weight:700;cursor:pointer;white-space:nowrap;">Ajouter</button>' +
             '</div>' +
             '<div style="font-size:11px;color:var(--faint);line-height:1.4;">Avec une échéance, l\'assignation devient une <strong>tâche à livrer</strong> : le membre la coche « faite » et elle compte dans ses services (à temps +5, en retard +2, non livrée −2). Sans échéance, c\'est une simple présence.</div>' +
           '</div>' +
         '</div>' : '') +
         
-        '<div style="background:var(--card);border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);display:flex;align-items:center;justify-content:space-between;">' +
+        '<div style="background:var(--card);border-radius:20px;padding:16px;display:flex;align-items:center;justify-content:space-between;">' +
           '<div>' +
-            '<div style="font-size:15px;font-weight:600;color:var(--ink);">Épingler en haut du Feed</div>' +
+            '<div style="font-size:15px;font-weight:600;color:var(--ink);">Épingler en haut du fil</div>' +
             '<div style="font-size:12px;color:var(--faint);margin-top:2px;">Rend l\'événement très visible</div>' +
           '</div>' +
           '<label style="position:relative;display:inline-block;width:50px;height:30px;">' +
-            '<input type="checkbox" id="eventPinned"' + (pinnedVal ? ' checked' : '') + ' style="opacity:0;width:0;height:0;" onchange="this.nextElementSibling.style.background=this.checked?\'#0E9F6E\':\'var(--line)\'; this.nextElementSibling.children[0].style.transform=this.checked?\'translateX(20px)\':\'translateX(0)\';">' +
-            '<span style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:' + (pinnedVal ? '#0E9F6E' : 'var(--line)') + ';transition:.3s;border-radius:30px;">' +
+            '<input type="checkbox" id="eventPinned"' + (pinnedVal ? ' checked' : '') + ' style="opacity:0;width:0;height:0;" onchange="this.nextElementSibling.style.background=this.checked?\'#0B5FE0\':\'var(--line)\'; this.nextElementSibling.children[0].style.transform=this.checked?\'translateX(20px)\':\'translateX(0)\';">' +
+            '<span style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background-color:' + (pinnedVal ? UI.accent : 'var(--line)') + ';transition:.3s;border-radius:30px;">' +
               '<span style="position:absolute;content:\'\';height:26px;width:26px;left:2px;bottom:2px;background-color:white;transition:.3s;border-radius:50%;box-shadow:0 2px 4px rgba(0,0,0,0.2);transform:' + (pinnedVal ? 'translateX(20px)' : 'translateX(0)') + ';"></span>' +
             '</span>' +
           '</label>' +
@@ -1896,16 +1910,16 @@
           (S.pendingMedia.length === 0 && S.postBg
             ? '<div id="bgPreviewZone" style="border-radius:20px;overflow:hidden;margin-bottom:14px;position:relative;min-height:180px;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 20px rgba(0,0,0,0.14);' + (S.postBg.startsWith('url') ? 'background:' + safeHtml(S.postBg) + ';background-size:cover;background-position:center;' : 'background:' + safeHtml(S.postBg) + ';') + '">' +
                 (S.postBg && !S.postBg.includes('linear-gradient') && !S.postBg.includes('url') ? '<div style="position:absolute;inset:0;background:rgba(0,0,0,0.18);border-radius:20px;"></div>' : '') +
-                '<textarea id="editPostText" oninput="App.onPostInput(this.value)" placeholder="Modifiez votre texte..." style="width:100%;min-height:180px;border:none;background:transparent;font-size:28px;font-weight:800;line-height:1.4;color:#FFF;resize:none;outline:none;box-sizing:border-box;font-family:inherit;text-align:center;padding:24px 20px;text-shadow:0 2px 12px rgba(0,0,0,0.3);position:relative;z-index:1;">' + safeHtml(S.postText||'') + '</textarea>' +
+                '<textarea id="editPostText" oninput="App.onPostInput(this.value)" placeholder="Modifie ton texte…" style="width:100%;min-height:180px;border:none;background:transparent;font-size:28px;font-weight:800;line-height:1.4;color:#FFF;resize:none;outline:none;box-sizing:border-box;font-family:inherit;text-align:center;padding:24px 20px;text-shadow:0 2px 12px rgba(0,0,0,0.3);position:relative;z-index:1;">' + safeHtml(S.postText||'') + '</textarea>' +
               '</div>'
-            : '<textarea id="editPostText" oninput="App.onPostInput(this.value)" placeholder="Modifiez votre texte... Tapez @ pour mentionner un membre..." style="width:100%;min-height:120px;border:none;background:var(--tile);border-radius:20px;padding:14px;font-size:15px;line-height:1.55;color:var(--ink);resize:none;outline:none;box-sizing:border-box;font-family:inherit;margin-bottom:14px;">' + safeHtml(S.postText||'') + '</textarea>'
+            : '<textarea id="editPostText" oninput="App.onPostInput(this.value)" placeholder="Modifie ton texte… Tape @ pour mentionner un membre" style="width:100%;min-height:120px;border:none;background:var(--tile);border-radius:20px;padding:14px;font-size:15px;line-height:1.55;color:var(--ink);resize:none;outline:none;box-sizing:border-box;font-family:inherit;margin-bottom:14px;">' + safeHtml(S.postText||'') + '</textarea>'
           ) +
 
           '<!-- Confidentialité -->' +
           '<div style="background:var(--tile);border-radius:20px;padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
-            '<span style="font-size:13px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="width:26px;height:26px;border-radius:12px;background:var(--accent-soft);display:inline-flex;align-items:center;justify-content:center;font-size:13px;">🔒</span>Qui peut voir cette publication ?</span>' +
+            '<span style="font-size:13px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="width:26px;height:26px;border-radius:12px;background:var(--accent-soft);display:inline-flex;align-items:center;justify-content:center;font-size:13px;">' + ico('lock', 14, UI.lien) + '</span>Qui peut voir cette publication ?</span>' +
             '<div style="display:flex;gap:4px;background:var(--line2);border-radius:16px;padding:3px;">' +
-              '<button type="button" onclick="App.setPostVisibility(\'all\')" style="flex:1;padding:8px 6px;border-radius:999px;font-size:12px;font-weight:800;border:none;cursor:pointer;transition:all 0.2s;background:' + (vis==='all'?'#FFFFFF':'transparent') + ';color:' + (vis==='all'?'#0B5FE0':'var(--muted)') + ';box-shadow:' + (vis==='all'?'0 2px 6px rgba(0,0,0,0.08)':'none') + ';">🌍 Tout le monde</button>' +
+              '<button type="button" onclick="App.setPostVisibility(\'all\')" style="flex:1;padding:8px 6px;border-radius:999px;font-size:12px;font-weight:800;border:none;cursor:pointer;transition:all 0.2s;background:' + (vis==='all'?'#FFFFFF':'transparent') + ';color:' + (vis==='all'?'#0B5FE0':'var(--muted)') + ';box-shadow:' + (vis==='all'?'0 2px 6px rgba(0,0,0,0.08)':'none') + ';">' + ico('globe', 14, 'currentColor') + ' Tout le monde</button>' +
               '<button type="button" onclick="App.setPostVisibility(\'sections\')" style="flex:1;padding:8px 6px;border-radius:999px;font-size:12px;font-weight:800;border:none;cursor:pointer;transition:all 0.2s;background:' + (vis==='sections'?'#FFFFFF':'transparent') + ';color:' + (vis==='sections'?'#0B5FE0':'var(--muted)') + ';box-shadow:' + (vis==='sections'?'0 2px 6px rgba(0,0,0,0.08)':'none') + ';">Sections ciblées</button>' +
             '</div>' +
             (vis === 'sections'
@@ -1918,17 +1932,17 @@
 
           '<!-- Programmation -->' +
           '<div style="background:var(--tile);border-radius:20px;padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
-            '<span style="font-size:13px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="width:26px;height:26px;border-radius:12px;background:#FFF3E5;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">⏰</span>Programmer la publication</span>' +
+            '<span style="font-size:13px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="width:26px;height:26px;border-radius:12px;background:#FFF3E5;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">' + ico('clock', 14, '#B45309') + '</span>Programmer la publication</span>' +
             '<div style="display:flex;gap:8px;">' +
-              '<input type="date" id="editPostScheduleDate" value="' + schedDateVal + '" style="flex:1;height:40px;border-radius:12px;border:none;background:var(--card);padding:0 10px;font-size:13px;outline:none;box-shadow:0 1px 2px rgba(16,24,40,0.06);" />' +
-              '<input type="time" id="editPostScheduleTime" value="' + schedTimeVal + '" style="flex:1;height:40px;border-radius:12px;border:none;background:var(--card);padding:0 10px;font-size:13px;outline:none;box-shadow:0 1px 2px rgba(16,24,40,0.06);" />' +
+              '<input type="date" id="editPostScheduleDate" value="' + schedDateVal + '" class="kc-champ" style="' + styleChamp() + 'flex:1;min-width:0;" />' +
+              '<input type="time" id="editPostScheduleTime" value="' + schedTimeVal + '" class="kc-champ" style="' + styleChamp() + 'flex:1;min-width:0;" />' +
             '</div>' +
           '</div>' +
 
           '<!-- À propos -->' +
           '<div style="background:var(--tile);border-radius:20px;padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
             '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:' + (S.postAboutEventId?'10px':'0') + ';">' +
-              '<span style="font-size:13px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:8px;"><span style="width:26px;height:26px;border-radius:12px;background:var(--accent-soft);display:inline-flex;align-items:center;justify-content:center;font-size:13px;">🗓️</span>À propos <span style="font-weight:600;color:var(--faint);font-size:11px;">(optionnel)</span></span>' +
+              '<span style="font-size:13px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:8px;"><span style="width:26px;height:26px;border-radius:12px;background:var(--accent-soft);display:inline-flex;align-items:center;justify-content:center;font-size:13px;">' + ico('calendar', 14, UI.lien) + '</span>À propos <span style="font-weight:600;color:var(--faint);font-size:11px;">(optionnel)</span></span>' +
               (S.postAboutEventId ? '<span onclick="App.clearAboutEvent()" style="color:#D92D20;font-size:12px;font-weight:700;cursor:pointer;">Retirer</span>' : '') +
             '</div>' +
             (function(){
@@ -1939,7 +1953,7 @@
               if (!evAbout2) return '';
               var evAbout2D = evAbout2.eventDate ? new Date(evAbout2.eventDate+'T00:00:00').toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'}) : '';
               return '<button type="button" onclick="App.openAboutEventPicker()" style="width:100%;display:flex;align-items:center;gap:8px;background:var(--card);border-radius:999px;padding:10px;text-align:left;border:none;cursor:pointer;">' +
-                '<span style="font-size:15px;">🗓️</span>' +
+                ico('calendar', 16, UI.lien) +
                 '<span style="flex:1;min-width:0;font-size:13px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(evAbout2.eventTitle||'') + (evAbout2D?' · '+evAbout2D:'') + (evAbout2.eventStart?' à '+safeHtml(evAbout2.eventStart):'') + '</span>' +
               '</button>';
             })() +
@@ -1949,7 +1963,7 @@
           '<div style="background:var(--tile);border-radius:20px;padding:14px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
             '<div style="display:flex;align-items:center;justify-content:space-between;">' +
               '<div style="display:flex;align-items:center;gap:10px;">' +
-                '<span style="width:26px;height:26px;border-radius:12px;background:#FFEDE0;display:inline-flex;align-items:center;justify-content:center;font-size:15px;">🕐</span>' +
+                '<span style="width:26px;height:26px;border-radius:12px;background:#FFEDE0;display:inline-flex;align-items:center;justify-content:center;font-size:15px;">' + ico('clock', 15, '#B45309') + '</span>' +
                 '<div>' +
                   '<div style="font-size:13px;font-weight:800;color:var(--ink);">Publication éphémère</div>' +
                   '<div style="font-size:11px;color:var(--faint);">Disparaît automatiquement après 24h</div>' +
@@ -1999,7 +2013,7 @@
             '</label>' +
             '<span style="font-size:12px;color:var(--faint);font-weight:600;">' + (S.pendingMedia.some(function(m){return isVideoUrl(m);}) ? '1 vidéo' : S.pendingMedia.length + '/10 photos') + '</span>' +
           '</div>' +
-          '<label style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer;font-size:12px;color:var(--muted);font-weight:600;line-height:1.4;background:var(--tile);padding:10px 12px;border-radius:16px;"><input type="checkbox" ' + (S.reduceVideoQuality?'checked':'') + ' onchange="App.toggleReduceVideoQuality()" style="width:17px;height:17px;flex-shrink:0;accent-color:#0B5FE0;"> 🎥 Nous réduisons la qualité vidéo en HD pour une expérience plus fluide</label>' +
+          '<label style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer;font-size:12px;color:var(--muted);font-weight:600;line-height:1.4;background:var(--tile);padding:10px 12px;border-radius:16px;"><input type="checkbox" ' + (S.reduceVideoQuality?'checked':'') + ' onchange="App.toggleReduceVideoQuality()" style="width:17px;height:17px;flex-shrink:0;accent-color:#0B5FE0;"> ' + ico('video', 14, 'currentColor') + ' Nous réduisons la qualité vidéo en HD pour une expérience plus fluide</label>' +
         '</div>' +
 
       '</div>' +
@@ -2038,7 +2052,7 @@
         '<div style="overflow-y:auto;flex:1;padding:4px 16px 16px;">' +
           hashHtml +
           '<div id="mentionSugg" style="display:none;flex-wrap:wrap;gap:6px;background:var(--accent-soft);border:1px solid var(--line2);border-radius:16px;padding:10px;margin-bottom:12px;"></div>' +
-          '<textarea id="repostText" oninput="App.onPostInput(this.value)" placeholder="Ajoutez un commentaire... Tapez # pour un hashtag ou @ pour mentionner un membre..." style="width:100%;min-height:90px;border:none;background:var(--tile);border-radius:20px;padding:14px;font-size:15px;line-height:1.55;color:var(--ink);resize:none;outline:none;box-sizing:border-box;font-family:inherit;margin-bottom:14px;">' + safeHtml(S.postText||'') + '</textarea>' +
+          '<textarea id="repostText" oninput="App.onPostInput(this.value)" placeholder="Ajoute un commentaire… Tape # pour un hashtag ou @ pour mentionner un membre" style="width:100%;min-height:90px;border:none;background:var(--tile);border-radius:20px;padding:14px;font-size:15px;line-height:1.55;color:var(--ink);resize:none;outline:none;box-sizing:border-box;font-family:inherit;margin-bottom:14px;">' + safeHtml(S.postText||'') + '</textarea>' +
 
           '<div style="background:var(--tile);border-radius:20px;overflow:hidden;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
             '<div style="padding:10px 12px;">' +
@@ -2102,15 +2116,15 @@
 
     if (upcoming.length === 0 && past.length === 0) {
       return '<div style="text-align:center;padding:36px 20px;color:var(--faint);">' +
-        '<div style="font-size:38px;margin-bottom:10px;">🗓️</div>' +
+        '<div style="margin-bottom:10px;display:flex;justify-content:center;">' + ico('calendar', 36, UI.faint, 1.6) + '</div>' +
         '<div style="font-size:15px;font-weight:800;color:var(--ink);">' + (q ? 'Aucun résultat' : 'Aucun événement') + '</div>' +
-        '<div style="font-size:13px;margin-top:4px;">' + (q ? 'Essayez un autre mot-clé.' : 'Créez un événement dans Planning & Cultes pour pouvoir le lier ici.') + '</div>' +
+        '<div style="font-size:13px;margin-top:4px;">' + (q ? 'Essaie un autre mot-clé.' : 'Crée un événement dans le Planning pour pouvoir le lier ici.') + '</div>' +
       '</div>';
     }
 
     var html = '';
     if (upcoming.length > 0) {
-      html += '<div style="font-size:11px;font-weight:800;color:var(--faint);text-transform:uppercase;letter-spacing:0.5px;margin:4px 0 8px;">🔜 À venir</div>' +
+      html += '<div style="font-size:11px;font-weight:800;color:var(--faint);text-transform:uppercase;letter-spacing:0.5px;margin:4px 0 8px;">À venir</div>' +
         upcoming.map(renderAboutEventItemBtn).join('');
     }
     if (past.length > 0) {
@@ -2227,13 +2241,13 @@
           'En publiant maintenant : <b style="color:' + col + ';">' + (stars>0?'+':'') + stars + '★</b> de ponctualité' +
           (delay > 0 ? ' (retard de ' + delay + ' min)' : ' (à l\'heure)') + '.' +
         '</div>' +
-        '<div style="font-size:11px;color:var(--faint);line-height:1.4;margin-top:6px;">Votre position sera relevée et visible de tous. Elle ne pourra plus être retirée.</div>' +
+        '<div style="font-size:11px;color:var(--faint);line-height:1.4;margin-top:6px;">Ta position sera relevée et visible de tous. Elle ne pourra plus être retirée.</div>' +
       '</div>';
     }
 
     return '<div style="background:var(--warn-soft);border:1px solid var(--warn-line);border-radius:16px;padding:12px 14px;margin-bottom:10px;">' +
       '<div style="font-size:13px;font-weight:800;color:var(--warn-ink);margin-bottom:6px;">Enregistrer mon arrivée</div>' +
-      '<div style="font-size:12px;color:var(--muted);line-height:1.45;margin-bottom:8px;">Vous êtes de service ' + (candidates.length > 1 ? 'sur ces événements' : 'sur cet événement') + '. Pointez pour valider votre ponctualité.</div>' +
+      '<div style="font-size:12px;color:var(--muted);line-height:1.45;margin-bottom:8px;">Tu es de service ' + (candidates.length > 1 ? 'sur ces événements' : 'sur cet événement') + '. Pointe pour valider ta ponctualité.</div>' +
       candidates.map(function(ev) {
         var st = eventStartTimestamp(ev);
         var dl = st ? Math.round((now - st) / 60000) : 0;
@@ -2247,7 +2261,7 @@
           '<span style="font-size:13px;font-weight:800;color:' + c + ';white-space:nowrap;">' + (sc>0?'+':'') + sc + '★</span>' +
         '</button>';
       }).join('') +
-      '<div style="font-size:11px;color:var(--faint);line-height:1.4;">Le pointage relève votre position, visible de tous et non retirable.</div>' +
+      '<div style="font-size:11px;color:var(--faint);line-height:1.4;">Le pointage relève ta position, visible de tous et non retirable.</div>' +
     '</div>';
   }
 
@@ -2281,7 +2295,7 @@
               : '<div style="width:42px;height:42px;border-radius:20px;background:linear-gradient(135deg,' + couleurSure((u||{}).avatar_color) + ',#0B5FE0);color:#FFF;font-size:15px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 3px 8px rgba(0,0,0,0.12);">' + ((u&&u.prenom||'M').charAt(0)) + '</div>') +
             '<div>' +
               '<div style="font-size:15px;font-weight:800;color:var(--ink);">' + safeHtml((u&&u.prenom||'') + ' ' + (u&&u.nom||'')) + '</div>' +
-              '<div style="font-size:12px;color:var(--lien);font-weight:700;background:var(--accent-soft);display:inline-block;padding:2px 8px;border-radius:8px;margin-top:2px;">' + secNom((u&&u.section_id)||'cadrage') + ' · Tapez # pour les hashtags</div>' +
+              '<div style="font-size:12px;color:var(--lien);font-weight:700;background:var(--accent-soft);display:inline-block;padding:2px 8px;border-radius:8px;margin-top:2px;">' + secNom((u&&u.section_id)||'cadrage') + ' · Tape # pour les hashtags</div>' +
             '</div>' +
           '</div>' +
 
@@ -2301,7 +2315,7 @@
                 '<textarea id="newPostText" oninput="App.onPostInput(this.value)" placeholder="Quoi de neuf ?" style="width:100%;min-height:180px;border:none;background:transparent;font-size:28px;font-weight:800;line-height:1.4;color:#FFF;resize:none;outline:none;box-sizing:border-box;font-family:inherit;text-align:center;padding:24px 20px;text-shadow:0 2px 12px rgba(0,0,0,0.3);position:relative;z-index:1;">' + safeHtml(S.postText||'') + '</textarea>' +
               '</div>'
             : '<form id="createPostForm" onsubmit="App.submitPost(event)">' +
-                '<textarea id="newPostText" oninput="App.onPostInput(this.value)" placeholder="Quoi de neuf ? Tapez # pour ajouter un hashtag de section..." style="width:100%;min-height:140px;border:none;background:transparent;font-size:15px;line-height:1.55;color:var(--ink);resize:none;outline:none;box-sizing:border-box;font-family:inherit;">' + safeHtml(S.postText||'') + '</textarea>' +
+                '<textarea id="newPostText" oninput="App.onPostInput(this.value)" placeholder="Quoi de neuf ? Tape # pour ajouter un hashtag de pôle" style="width:100%;min-height:140px;border:none;background:transparent;font-size:15px;line-height:1.55;color:var(--ink);resize:none;outline:none;box-sizing:border-box;font-family:inherit;">' + safeHtml(S.postText||'') + '</textarea>' +
               '</form>'
           ) +
           (S.postBg ? '<form id="createPostForm" onsubmit="App.submitPost(event)" style="display:none;"></form>' : '') +
@@ -2335,10 +2349,10 @@
           // Qui peut voir
           '<div style="background:var(--tile);border-radius:20px;padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
             '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">' +
-              '<span style="font-size:13px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:8px;"><span style="width:26px;height:26px;border-radius:12px;background:var(--accent-soft);display:inline-flex;align-items:center;justify-content:center;font-size:13px;">🔒</span>Qui peut voir ?</span>' +
+              '<span style="font-size:13px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:8px;"><span style="width:26px;height:26px;border-radius:12px;background:var(--accent-soft);display:inline-flex;align-items:center;justify-content:center;font-size:13px;">' + ico('lock', 14, UI.lien) + '</span>Qui peut voir ?</span>' +
             '</div>' +
             '<div style="display:flex;gap:4px;background:var(--line2);border-radius:16px;padding:3px;">' +
-              '<button type="button" onclick="App.setPostVisibility(\'all\')" style="flex:1;padding:8px 6px;border-radius:999px;font-size:12px;font-weight:800;border:none;cursor:pointer;transition:all 0.2s;background:' + ((S.postVisibility||'all')==='all'?'#FFFFFF':'transparent') + ';color:' + ((S.postVisibility||'all')==='all'?'#0B5FE0':'var(--muted)') + ';box-shadow:' + ((S.postVisibility||'all')==='all'?'0 2px 6px rgba(0,0,0,0.08)':'none') + ';">🌍 Tout le monde</button>' +
+              '<button type="button" onclick="App.setPostVisibility(\'all\')" style="flex:1;padding:8px 6px;border-radius:999px;font-size:12px;font-weight:800;border:none;cursor:pointer;transition:all 0.2s;background:' + ((S.postVisibility||'all')==='all'?'#FFFFFF':'transparent') + ';color:' + ((S.postVisibility||'all')==='all'?'#0B5FE0':'var(--muted)') + ';box-shadow:' + ((S.postVisibility||'all')==='all'?'0 2px 6px rgba(0,0,0,0.08)':'none') + ';">' + ico('globe', 14, 'currentColor') + ' Tout le monde</button>' +
               '<button type="button" onclick="App.setPostVisibility(\'sections\')" style="flex:1;padding:8px 6px;border-radius:999px;font-size:12px;font-weight:800;border:none;cursor:pointer;transition:all 0.2s;background:' + ((S.postVisibility||'all')==='sections'?'#FFFFFF':'transparent') + ';color:' + ((S.postVisibility||'all')==='sections'?'#0B5FE0':'var(--muted)') + ';box-shadow:' + ((S.postVisibility||'all')==='sections'?'0 2px 6px rgba(0,0,0,0.08)':'none') + ';">Sections ciblées</button>' +
             '</div>' +
             (S.postVisibility === 'sections'
@@ -2348,17 +2362,17 @@
 
           // Programmer
           '<div style="background:var(--tile);border-radius:20px;padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
-            '<span style="font-size:13px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="width:26px;height:26px;border-radius:12px;background:#FFF3E5;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">⏰</span>Programmer <span style="font-weight:600;color:var(--faint);font-size:11px;">(optionnel)</span></span>' +
+            '<span style="font-size:13px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="width:26px;height:26px;border-radius:12px;background:#FFF3E5;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">' + ico('clock', 14, '#B45309') + '</span>Programmer <span style="font-weight:600;color:var(--faint);font-size:11px;">(optionnel)</span></span>' +
             '<div style="display:flex;gap:8px;">' +
-              '<input type="date" id="postScheduleDate" style="flex:1;height:40px;border-radius:12px;border:none;background:var(--card);padding:0 10px;font-size:13px;outline:none;box-shadow:0 1px 2px rgba(16,24,40,0.06);" />' +
-              '<input type="time" id="postScheduleTime" style="flex:1;height:40px;border-radius:12px;border:none;background:var(--card);padding:0 10px;font-size:13px;outline:none;box-shadow:0 1px 2px rgba(16,24,40,0.06);" />' +
+              '<input type="date" id="postScheduleDate" class="kc-champ" style="' + styleChamp() + 'flex:1;min-width:0;" />' +
+              '<input type="time" id="postScheduleTime" class="kc-champ" style="' + styleChamp() + 'flex:1;min-width:0;" />' +
             '</div>' +
           '</div>' +
 
           // À propos
           '<div style="background:var(--tile);border-radius:20px;padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
             '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:' + (S.postAboutEventId?'10px':'0') + ';">' +
-              '<span style="font-size:13px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:8px;"><span style="width:26px;height:26px;border-radius:12px;background:var(--accent-soft);display:inline-flex;align-items:center;justify-content:center;font-size:13px;">🗓️</span>À propos <span style="font-weight:600;color:var(--faint);font-size:11px;">(optionnel)</span></span>' +
+              '<span style="font-size:13px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:8px;"><span style="width:26px;height:26px;border-radius:12px;background:var(--accent-soft);display:inline-flex;align-items:center;justify-content:center;font-size:13px;">' + ico('calendar', 14, UI.lien) + '</span>À propos <span style="font-weight:600;color:var(--faint);font-size:11px;">(optionnel)</span></span>' +
               (S.postAboutEventId ? '<span onclick="App.clearAboutEvent()" style="color:#D92D20;font-size:12px;font-weight:700;cursor:pointer;">Retirer</span>' : '') +
             '</div>' +
             (function(){
@@ -2369,7 +2383,7 @@
               if (!evAbout) return '';
               var evAboutD = evAbout.eventDate ? new Date(evAbout.eventDate+'T00:00:00').toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'}) : '';
               return '<button type="button" onclick="App.openAboutEventPicker()" style="width:100%;display:flex;align-items:center;gap:8px;background:var(--card);border-radius:999px;padding:10px;text-align:left;border:none;cursor:pointer;">' +
-                '<span style="font-size:15px;">🗓️</span>' +
+                ico('calendar', 16, UI.lien) +
                 '<span style="flex:1;min-width:0;font-size:13px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(evAbout.eventTitle||'') + (evAboutD?' · '+evAboutD:'') + (evAbout.eventStart?' à '+safeHtml(evAbout.eventStart):'') + '</span>' +
               '</button>';
             })() +
@@ -2378,15 +2392,15 @@
           // Sondage
           '<div style="background:var(--tile);border-radius:20px;padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
             '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:' + (S.pollOpen?'10px':'0') + ';">' +
-              '<span style="font-size:13px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:8px;"><span style="width:26px;height:26px;border-radius:12px;background:#E6F9F0;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">📊</span>Sondage <span style="font-weight:600;color:var(--faint);font-size:11px;">(optionnel)</span></span>' +
+              '<span style="font-size:13px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:8px;"><span style="width:26px;height:26px;border-radius:12px;background:#E6F9F0;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">' + ico('chart', 14, '#047857') + '</span>Sondage <span style="font-weight:600;color:var(--faint);font-size:11px;">(optionnel)</span></span>' +
               (S.pollOpen ? '<span onclick="App.togglePoll()" style="color:#D92D20;font-size:12px;font-weight:700;cursor:pointer;">Retirer</span>' : '') +
             '</div>' +
             (S.pollOpen
               ? (
-                  '<input type="text" value="' + safeHtml(S.pollQuestion||'') + '" oninput="App.setPollQuestion(this.value)" placeholder="Posez votre question…" maxlength="140" style="width:100%;height:40px;border-radius:12px;border:none;background:var(--card);padding:0 12px;font-size:13px;outline:none;box-shadow:0 1px 2px rgba(16,24,40,0.06);margin-bottom:8px;box-sizing:border-box;" />' +
+                  '<input type="text" value="' + safeHtml(S.pollQuestion||'') + '" oninput="App.setPollQuestion(this.value)" placeholder="Pose ta question…" maxlength="140" class="kc-champ" style="' + styleChamp() + 'margin-bottom:8px;" />' +
                   (S.pollOptions||[]).map(function(opt, idx) {
                     return '<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">' +
-                      '<input type="text" value="' + safeHtml(opt||'') + '" oninput="App.setPollOption(' + idx + ', this.value)" placeholder="Option ' + (idx+1) + '" maxlength="60" style="flex:1;height:38px;border-radius:12px;border:none;background:var(--card);padding:0 12px;font-size:13px;outline:none;box-shadow:0 1px 2px rgba(16,24,40,0.06);box-sizing:border-box;" />' +
+                      '<input type="text" value="' + safeHtml(opt||'') + '" oninput="App.setPollOption(' + idx + ', this.value)" placeholder="Option ' + (idx+1) + '" maxlength="60" class="kc-champ" style="' + styleChamp() + 'flex:1;min-width:0;" />' +
                       (S.pollOptions.length > 2 ? '<button type="button" onclick="App.removePollOption(' + idx + ')" style="width:44px;height:44px;flex-shrink:0;margin:-6px -6px -6px 0;border-radius:12px;border:none;background:#FFF0EF;color:#D92D20;font-size:15px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;">×</button>' : '') +
                     '</div>';
                   }).join('') +
@@ -2403,7 +2417,7 @@
           '<div style="background:var(--tile);border-radius:20px;padding:14px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
             '<div style="display:flex;align-items:center;justify-content:space-between;">' +
               '<div style="display:flex;align-items:center;gap:10px;">' +
-                '<span style="width:26px;height:26px;border-radius:12px;background:#FFEDE0;display:inline-flex;align-items:center;justify-content:center;font-size:15px;">🕐</span>' +
+                '<span style="width:26px;height:26px;border-radius:12px;background:#FFEDE0;display:inline-flex;align-items:center;justify-content:center;font-size:15px;">' + ico('clock', 15, '#B45309') + '</span>' +
                 '<div>' +
                   '<div style="font-size:13px;font-weight:800;color:var(--ink);">Publication éphémère</div>' +
                   '<div style="font-size:11px;color:var(--faint);">Disparaît automatiquement après 24h</div>' +
@@ -2456,7 +2470,7 @@
             '</label>' +
             '<span style="font-size:12px;color:var(--faint);font-weight:600;">' + (S.pendingMedia.some(function(m){return isVideoUrl(m);}) ? '1 vidéo' : S.pendingMedia.length + '/10 photos') + '</span>' +
           '</div>' +
-          '<label style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer;font-size:12px;color:var(--muted);font-weight:600;line-height:1.4;background:var(--tile);padding:10px 12px;border-radius:16px;"><input type="checkbox" ' + (S.reduceVideoQuality?'checked':'') + ' onchange="App.toggleReduceVideoQuality()" style="width:17px;height:17px;flex-shrink:0;accent-color:#0B5FE0;"> 🎥 Nous réduisons la qualité vidéo en HD pour une expérience plus fluide</label>' +
+          '<label style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer;font-size:12px;color:var(--muted);font-weight:600;line-height:1.4;background:var(--tile);padding:10px 12px;border-radius:16px;"><input type="checkbox" ' + (S.reduceVideoQuality?'checked':'') + ' onchange="App.toggleReduceVideoQuality()" style="width:17px;height:17px;flex-shrink:0;accent-color:#0B5FE0;"> ' + ico('video', 14, 'currentColor') + ' Nous réduisons la qualité vidéo en HD pour une expérience plus fluide</label>' +
         '</div>' +
 
       '</div>' +
@@ -2476,7 +2490,7 @@
     var listHtml;
     if (ids.length === 0) {
       listHtml = '<div style="text-align:center;padding:40px 20px;color:var(--faint);">' +
-        '<div style="font-size:38px;margin-bottom:10px;">👀</div>' +
+        '<div style="margin-bottom:10px;display:flex;justify-content:center;">' + ico('eye', 36, UI.faint, 1.6) + '</div>' +
         '<div style="font-size:15px;font-weight:800;color:var(--ink);">Aucune vue pour l\'instant</div>' +
         '<div style="font-size:13px;margin-top:4px;">Les membres qui verront cette publication apparaîtront ici.</div>' +
       '</div>';

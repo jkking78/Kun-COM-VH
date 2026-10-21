@@ -31,6 +31,9 @@
       // texte noir du navigateur — illisible (ex. titre et lieu d'un événement).
       // Les styles en ligne, plus prioritaires, restent maîtres là où ils existent.
       'input:not([type=checkbox]):not([type=radio]):not([type=range]),textarea,select{background-color:transparent;color:var(--ink);}',
+      // Champ unique de l'app (styleChamp) : contour bleu au focus.
+      '.kc-champ:focus{border-color:#0B5FE0 !important;}',
+      '.kc-champ::placeholder{color:var(--faint);}',
       // Le zoom est désormais autorisé (accessibilité). iOS zoome automatiquement
       // sur tout champ dont le texte fait moins de 16px au moment de la saisie :
       // on garantit donc 16px minimum sur écran tactile pour éviter ce saut.
@@ -82,7 +85,7 @@
   // comporte de façon inexplicable. On vérifie donc que les briques essentielles
   // sont bien là avant de démarrer, et on recharge UNE fois en contournant le
   // cache si ce n'est pas le cas.
-  var APP_VERSION = 'v159'; window.APP_VERSION = APP_VERSION; // Exposé pour l'écran Paramètres (ligne « Version »).
+  var APP_VERSION = 'v160'; window.APP_VERSION = APP_VERSION; // Exposé pour l'écran Paramètres (ligne « Version »).
   // Nom du cache tenu par le service worker pour CETTE version. Doit rester
   // aligné sur CACHE_NAME dans sw.js.
   var CACHE_COURANT = 'kun-com-pwa-' + APP_VERSION;
