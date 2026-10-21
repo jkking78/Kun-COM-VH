@@ -16,20 +16,20 @@
       toolbar = '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 26px calc(16px + env(safe-area-inset-bottom));background:rgba(0,0,0,0.85);border-top:0.5px solid rgba(255,255,255,0.12);">' +
         '<button type="button" onclick="App.cropperRotate()" style="background:none;border:none;color:#FFF;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;padding:4px 8px;">' +
           '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="13" height="13" rx="2"/><path d="M16 4h3a2 2 0 0 1 2 2v3"/><polyline points="18 2 21 5 18 8"/></svg>' +
-          '<span style="font-size:11.5px;font-weight:700;">Pivoter</span>' +
+          '<span style="font-size:12px;font-weight:700;">Pivoter</span>' +
         '</button>' +
-        '<button type="button" onclick="App.cropperReset()" style="background:none;border:none;color:#FFF;font-size:14px;font-weight:800;cursor:pointer;min-height:44px;padding:8px 10px;box-sizing:border-box;">Réinitialiser</button>' +
-        '<button type="button" onclick="App.cropperToggleSquare()" style="background:none;border:none;color:' + (sqActive ? '#0B63F6' : '#FFF') + ';display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;padding:4px 8px;">' +
-          '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="' + (sqActive ? '#0B63F6' : '#FFF') + '" stroke-width="2" stroke-dasharray="3 2.5" stroke-linecap="round"><rect x="4" y="4" width="16" height="16" rx="1.5"/></svg>' +
-          '<span style="font-size:11.5px;font-weight:700;">' + (sqActive ? 'Libre' : 'Carré') + '</span>' +
+        '<button type="button" onclick="App.cropperReset()" style="background:none;border:none;color:#FFF;font-size:15px;font-weight:800;cursor:pointer;min-height:44px;padding:8px 10px;box-sizing:border-box;">Réinitialiser</button>' +
+        '<button type="button" onclick="App.cropperToggleSquare()" style="background:none;border:none;color:' + (sqActive ? '#0B5FE0' : '#FFF') + ';display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;padding:4px 8px;">' +
+          '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="' + (sqActive ? '#0B5FE0' : '#FFF') + '" stroke-width="2" stroke-dasharray="3 2.5" stroke-linecap="round"><rect x="4" y="4" width="16" height="16" rx="1.5"/></svg>' +
+          '<span style="font-size:12px;font-weight:700;">' + (sqActive ? 'Libre' : 'Carré') + '</span>' +
         '</button>' +
       '</div>';
     }
     return '<div id="cropperModal" class="safe-top" style="position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.94);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);display:flex;flex-direction:column;box-sizing:border-box;animation:fadeIn 0.2s ease-out;">' +
       '<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:rgba(0,0,0,0.8);border-bottom:0.5px solid rgba(255,255,255,0.15);box-sizing:border-box;z-index:10;">' +
-        '<button onclick="App.closeCropper()" style="background:rgba(255,255,255,0.15);color:#FFF;border:none;border-radius:12px;min-height:44px;padding:8px 16px;box-sizing:border-box;font-size:13.5px;font-weight:700;cursor:pointer;">Annuler</button>' +
+        '<button onclick="App.closeCropper()" style="background:rgba(255,255,255,0.15);color:#FFF;border:none;border-radius:12px;min-height:44px;padding:8px 16px;box-sizing:border-box;font-size:13px;font-weight:700;cursor:pointer;">Annuler</button>' +
         '<div style="font-size:15px;font-weight:800;color:#FFF;letter-spacing:-0.2px;">' + safeHtml(title) + '</div>' +
-        '<button onclick="App.confirmCropper()" style="background:#0B63F6;color:#FFF;border:none;border-radius:12px;min-height:44px;padding:8px 18px;box-sizing:border-box;font-size:13.5px;font-weight:800;cursor:pointer;box-shadow:0 4px 14px rgba(11,99,246,0.3);">Terminé</button>' +
+        '<button onclick="App.confirmCropper()" style="background:#0B5FE0;color:#FFF;border:none;border-radius:12px;min-height:44px;padding:8px 18px;box-sizing:border-box;font-size:13px;font-weight:800;cursor:pointer;">Terminé</button>' +
       '</div>' +
       // Scène de recadrage : conteneur en position absolue avec des dimensions
       // explicites. Cropper.js calcule la largeur de sa zone à partir du parent de
@@ -54,7 +54,7 @@
     if (!modal) return;
     var btn = modal.querySelector('[onclick="App.cropperToggleSquare()"]');
     if (!btn) return;
-    var col = S.cropperSquare ? '#0B63F6' : '#FFF';
+    var col = S.cropperSquare ? '#0B5FE0' : '#FFF';
     btn.style.color = col;
     var svg = btn.querySelector('svg'); if (svg) svg.setAttribute('stroke', col);
     var lbl = btn.querySelector('span'); if (lbl) lbl.textContent = S.cropperSquare ? 'Libre' : 'Carré';
@@ -160,8 +160,8 @@
     var memberRow = function(u){
       var initial = (u.prenom||'M').charAt(0).toUpperCase();
       var avatarImg = u.avatar_url
-        ? '<img src="' + safeUrl(u.avatar_url) + '" style="width:48px;height:48px;border-radius:24px;object-fit:cover;" />'
-        : '<div style="width:48px;height:48px;border-radius:24px;background:' + safeHtml(u.avatar_color||'#0B63F6') + ';color:#FFF;font-size:18px;font-weight:800;display:flex;align-items:center;justify-content:center;">' + initial + '</div>';
+        ? '<img src="' + safeUrl(u.avatar_url) + '" style="width:48px;height:48px;border-radius:20px;object-fit:cover;" />'
+        : '<div style="width:48px;height:48px;border-radius:20px;background:' + safeHtml(u.avatar_color||'#0B5FE0') + ';color:#FFF;font-size:17px;font-weight:800;display:flex;align-items:center;justify-content:center;">' + initial + '</div>';
       var avatarNode = '<div style="position:relative;flex-shrink:0;">' + avatarImg +
         (estEnLigne(u) ? '<span style="position:absolute;bottom:1px;right:1px;width:12px;height:12px;border-radius:50%;background:#22C55E;border:2.5px solid var(--card);"></span>' : '') +
       '</div>';
@@ -170,7 +170,7 @@
       return '<div onclick="App.closeMembersList();App.openUserProfile(\'' + jsArg(u.id) + '\');" style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:0.5px solid var(--tile);cursor:pointer;">' +
         avatarNode +
         '<div style="flex:1;min-width:0;">' +
-          '<div style="font-size:14.5px;font-weight:800;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + safeHtml((u.prenom||'') + ' ' + (u.nom||'')) + '</div>' +
+          '<div style="font-size:15px;font-weight:800;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + safeHtml((u.prenom||'') + ' ' + (u.nom||'')) + '</div>' +
           (secs ? '<div style="font-size:12px;color:var(--faint);margin-top:2px;">' + safeHtml(secs) + '</div>' : '') +
         '</div>' +
         '<span style="font-size:11px;font-weight:600;color:' + t.fg + ';background:' + t.bg + ';padding:4px 10px;border-radius:' + UI.pill + ';white-space:nowrap;flex-shrink:0;">' + roleLabel(u.role) + '</span>' +
@@ -180,10 +180,10 @@
       var d = ev.eventDate ? new Date(ev.eventDate + 'T00:00:00') : null;
       return '<div onclick="App.closeMembersList();App.goToEvent(\'' + jsArg(ev.id) + '\');" style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:0.5px solid var(--tile);cursor:pointer;">' +
         '<div style="width:46px;height:46px;border-radius:12px;background:var(--tile);display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;">' +
-          (d ? '<div style="font-family:' + UI.fontMono + ';font-size:8px;color:var(--faint);letter-spacing:0.5px;">' + d.toLocaleDateString('fr-FR',{month:'short'}).toUpperCase() + '</div><div style="font-family:' + UI.fontMono + ';font-size:16px;font-weight:700;color:var(--ink);line-height:1;">' + d.getDate() + '</div>' : ico('calendar',18,'var(--faint)')) +
+          (d ? '<div style="font-family:' + UI.fontMono + ';font-size:8px;color:var(--faint);letter-spacing:0.5px;">' + d.toLocaleDateString('fr-FR',{month:'short'}).toUpperCase() + '</div><div style="font-family:' + UI.fontMono + ';font-size:15px;font-weight:700;color:var(--ink);line-height:1;">' + d.getDate() + '</div>' : ico('calendar',18,'var(--faint)')) +
         '</div>' +
         '<div style="flex:1;min-width:0;">' +
-          '<div style="font-size:14.5px;font-weight:800;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + safeHtml(ev.eventTitle || 'Événement') + '</div>' +
+          '<div style="font-size:15px;font-weight:800;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + safeHtml(ev.eventTitle || 'Événement') + '</div>' +
           '<div style="font-size:12px;color:var(--faint);margin-top:2px;">' + safeHtml((ev.eventStart || '') + (ev.eventLocation ? ' · ' + ev.eventLocation : '')) + '</div>' +
         '</div>' +
         '<span style="font-size:11px;font-weight:700;color:var(--faint);flex-shrink:0;">Événement</span>' +
@@ -195,14 +195,14 @@
       return '<div onclick="App.closeMembersList();App.goToPost(\'' + jsArg(p.id) + '\');" style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:0.5px solid var(--tile);cursor:pointer;">' +
         '<div style="width:46px;height:46px;border-radius:12px;background:var(--tile);display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + ico('message',18,'var(--faint)') + '</div>' +
         '<div style="flex:1;min-width:0;">' +
-          '<div style="font-size:14px;font-weight:700;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (snippet ? safeHtml(snippet) : 'Publication') + '</div>' +
+          '<div style="font-size:15px;font-weight:700;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (snippet ? safeHtml(snippet) : 'Publication') + '</div>' +
           '<div style="font-size:12px;color:var(--faint);margin-top:2px;">' + safeHtml(p.author || '') + (p.timestamp ? ' · ' + timeAgo(p.timestamp) : '') + '</div>' +
         '</div>' +
         '<span style="font-size:11px;font-weight:700;color:var(--faint);flex-shrink:0;">Publication</span>' +
       '</div>';
     };
     var emptyState = function(txt){
-      return '<div style="padding:60px 24px;text-align:center;color:var(--faint);"><div style="font-size:44px;margin-bottom:12px;">🔍</div><div style="font-size:14px;font-weight:700;">' + safeHtml(txt) + '</div></div>';
+      return '<div style="padding:60px 24px;text-align:center;color:var(--faint);"><div style="font-size:44px;margin-bottom:12px;">🔍</div><div style="font-size:15px;font-weight:700;">' + safeHtml(txt) + '</div></div>';
     };
 
     var body = '';
@@ -220,15 +220,15 @@
 
     return '<div class="safe-top" style="position:fixed;inset:0;z-index:9998;background:var(--card);display:flex;flex-direction:column;animation:fadeIn 0.2s ease-out;">' +
       '<div style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:0.5px solid var(--tile);">' +
-        '<button onclick="App.closeMembersList()" style="background:var(--tile);border:none;width:44px;height:44px;flex-shrink:0;touch-action:manipulation;border-radius:17px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
+        '<button onclick="App.closeMembersList()" style="background:var(--tile);border:none;width:44px;height:44px;flex-shrink:0;touch-action:manipulation;border-radius:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
           '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2.5"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>' +
         '</button>' +
-        '<div style="font-family:' + UI.fontDisplay + ';font-size:19px;font-weight:800;letter-spacing:-0.4px;color:var(--ink);">Rechercher</div>' +
+        '<div style="font-family:' + UI.fontDisplay + ';font-size:17px;font-weight:800;letter-spacing:-0.4px;color:var(--ink);">Rechercher</div>' +
       '</div>' +
       '<div style="padding:10px 14px;border-bottom:0.5px solid var(--tile);">' +
         '<div style="display:flex;align-items:center;gap:8px;background:var(--tile);border-radius:12px;height:38px;padding:0 12px;">' +
           SVG.search +
-          '<input id="membersSearchInput" type="search" value="' + safeHtml(S.membersSearch||'') + '" oninput="App.searchMembers(this.value)" placeholder="Membres, publications, événements…" style="flex:1;border:none;background:transparent;font-size:13.5px;color:var(--ink);outline:none;">' +
+          '<input id="membersSearchInput" type="search" value="' + safeHtml(S.membersSearch||'') + '" oninput="App.searchMembers(this.value)" placeholder="Membres, publications, événements…" style="flex:1;border:none;background:transparent;font-size:13px;color:var(--ink);outline:none;">' +
         '</div>' +
       '</div>' +
       '<div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:24px;">' + body + '</div>' +
@@ -236,27 +236,27 @@
   }
 
   function renderLogin() {
-    return '<div style="flex:1;min-height:0;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:28px 24px 40px;box-sizing:border-box;background:var(--card);">' +
-    '<div style="width:100%;max-width:360px;">' +
-
-      '<div style="text-align:center;margin-bottom:40px;">' +
-        '<div style="width:72px;height:72px;border-radius:24px;background:#0B63F6;display:flex;align-items:center;justify-content:center;margin:0 auto 18px;box-shadow:0 8px 28px rgba(11,99,246,0.3);">' +
-          '<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' +
+    // Bandeau bleu en tête (synthèse du design), formulaire en dessous.
+    return '<div style="flex:1;min-height:0;height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;box-sizing:border-box;background:var(--page);">' +
+    '<div style="background:#0B5FE0;color:#FFF;padding:56px 24px 36px;border-radius:0 0 32px 32px;">' +
+      '<div style="max-width:360px;margin:0 auto;">' +
+        '<div style="width:56px;height:56px;border-radius:18px;background:#FFF;display:flex;align-items:center;justify-content:center;">' +
+          '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#0B5FE0" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' +
         '</div>' +
-        '<h1 style="font-family:' + UI.fontDisplay + ';font-size:34px;font-weight:800;color:#0B63F6;margin:0 0 6px;letter-spacing:-1px;">Commit</h1>' +
-        '<div style="font-size:11px;font-weight:800;color:var(--ink);text-transform:uppercase;letter-spacing:2px;margin-bottom:6px;">Église Vase d\'Honneur AEV</div>' +
-        '<p style="font-size:14px;color:var(--faint);margin:6px 0 0;">Plateforme du département de la COM</p>' +
+        '<h1 style="font-size:34px;font-weight:800;margin:20px 0 6px;letter-spacing:-0.8px;">Commit</h1>' +
+        '<p style="font-size:15px;line-height:1.5;margin:0;opacity:0.92;">Le département Communication de l\'église Vase d\'Honneur, au même endroit.</p>' +
       '</div>' +
-
+    '</div>' +
+    '<div style="width:100%;max-width:360px;margin:0 auto;padding:28px 24px 40px;box-sizing:border-box;">' +
       '<form onsubmit="event.preventDefault(); App.login(event);" style="display:flex;flex-direction:column;gap:14px;">' +
         renderPhoneField('loginPhone', 'Numéro de téléphone', 'tel') +
         renderField('loginPwd', 'password', 'Mot de passe', '••••••••', 'current-password') +
-        '<div style="text-align:right;margin-top:-6px;"><span role="button" onclick="App.nav(\'forgot\')" style="display:inline-block;padding:12px 8px;margin:-12px 0;line-height:20px;color:#0B63F6;font-size:12.5px;font-weight:700;cursor:pointer;">Mot de passe oublié ?</span></div>' +
-        '<button type="submit" id="loginSubmitBtn" style="' + btnStyle('#0B63F6') + '">Se connecter →</button>' +
+        '<div style="text-align:right;margin-top:-6px;"><span role="button" onclick="App.nav(\'forgot\')" style="display:inline-block;padding:12px 8px;margin:-12px 0;line-height:20px;color:#0B5FE0;font-size:13px;font-weight:700;cursor:pointer;">Mot de passe oublié ?</span></div>' +
+        '<button type="submit" id="loginSubmitBtn" style="' + btnStyle('#0B5FE0') + '">Se connecter</button>' +
       '</form>' +
 
-      '<p style="text-align:center;font-size:13.5px;color:var(--faint);margin-top:22px;">' +
-        'Pas encore de compte ? <span role="button" onclick="App.nav(\'signup\')" style="display:inline-block;padding:12px 8px;margin:-12px 0;line-height:20px;color:#0B63F6;font-weight:700;cursor:pointer;">S\'inscrire</span>' +
+      '<p style="text-align:center;font-size:13px;color:var(--faint);margin-top:22px;">' +
+        'Pas encore de compte ? <span role="button" onclick="App.nav(\'signup\')" style="display:inline-block;padding:12px 8px;margin:-12px 0;line-height:20px;color:#0B5FE0;font-weight:700;cursor:pointer;">Rejoindre l\'équipe</span>' +
       '</p>' +
 
 
@@ -272,12 +272,12 @@
             '<button onclick="App.nav(\'login\')" style="background:var(--tile);border:none;width:44px;height:44px;flex-shrink:0;touch-action:manipulation;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
               '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2.2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>' +
             '</button>' +
-            '<div><h1 style="font-size:22px;font-weight:900;color:var(--ink);margin:0;">Mot de passe oublié</h1></div>' +
+            '<div><h1 style="font-size:22px;font-weight:800;color:var(--ink);margin:0;">Mot de passe oublié</h1></div>' +
           '</div>' +
-          '<p style="font-size:14px;color:var(--faint);margin-bottom:24px;">Saisissez votre numéro : vos questions de sécurité s\'afficheront pour définir un nouveau mot de passe.</p>' +
+          '<p style="font-size:15px;color:var(--faint);margin-bottom:24px;">Saisissez votre numéro : vos questions de sécurité s\'afficheront pour définir un nouveau mot de passe.</p>' +
           '<form onsubmit="event.preventDefault(); App.checkForgotEmail(event);" style="display:flex;flex-direction:column;gap:14px;">' +
             renderPhoneField('forgotPhone', 'Numéro de téléphone', 'tel') +
-            '<button type="submit" style="' + btnStyle('#0B63F6') + '">Continuer</button>' +
+            '<button type="submit" style="' + btnStyle('#0B5FE0') + '">Continuer</button>' +
           '</form>' +
         '</div></div>';
     } else {
@@ -287,16 +287,16 @@
             '<button onclick="S.forgotUser=null;render();" style="background:var(--tile);border:none;width:44px;height:44px;flex-shrink:0;touch-action:manipulation;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
               '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2.2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>' +
             '</button>' +
-            '<div><h1 style="font-size:22px;font-weight:900;color:var(--ink);margin:0;">Réinitialisation</h1></div>' +
+            '<div><h1 style="font-size:22px;font-weight:800;color:var(--ink);margin:0;">Réinitialisation</h1></div>' +
           '</div>' +
-          '<p style="font-size:14px;color:var(--faint);margin-bottom:20px;">Répondez aux deux questions de sécurité que vous avez définies lors de votre inscription.</p>' +
+          '<p style="font-size:15px;color:var(--faint);margin-bottom:20px;">Répondez aux deux questions de sécurité que vous avez définies lors de votre inscription.</p>' +
           '<form onsubmit="event.preventDefault(); App.resetPassword(event);" style="display:flex;flex-direction:column;gap:14px;">' +
             '<div><label style="font-size:12px;font-weight:700;color:var(--ink2);display:block;margin-bottom:5px;">Q1: ' + safeHtml(S.forgotUser.sec_q1||'Question 1') + '</label>' +
-            '<input id="forgotA1" type="text" placeholder="Votre réponse secrète" required autocomplete="off" autocapitalize="off" spellcheck="false" style="width:100%;height:50px;border-radius:14px;border:1.5px solid var(--line);background:var(--tile);padding:0 16px;font-size:14.5px;color:var(--ink);box-sizing:border-box;outline:none;transition:border-color 0.2s;" onfocus="this.style.borderColor=\'#0B63F6\'" onblur="this.style.borderColor=\'var(--line)\'" /></div>' +
+            '<input id="forgotA1" type="text" placeholder="Votre réponse secrète" required autocomplete="off" autocapitalize="off" spellcheck="false" style="width:100%;height:50px;border-radius:16px;border:1.5px solid var(--line);background:var(--tile);padding:0 16px;font-size:15px;color:var(--ink);box-sizing:border-box;outline:none;transition:border-color 0.2s;" onfocus="this.style.borderColor=\'#0B5FE0\'" onblur="this.style.borderColor=\'var(--line)\'" /></div>' +
             '<div><label style="font-size:12px;font-weight:700;color:var(--ink2);display:block;margin-bottom:5px;">Q2: ' + safeHtml(S.forgotUser.sec_q2||'Question 2') + '</label>' +
-            '<input id="forgotA2" type="text" placeholder="Votre réponse secrète" required autocomplete="off" autocapitalize="off" spellcheck="false" style="width:100%;height:50px;border-radius:14px;border:1.5px solid var(--line);background:var(--tile);padding:0 16px;font-size:14.5px;color:var(--ink);box-sizing:border-box;outline:none;transition:border-color 0.2s;" onfocus="this.style.borderColor=\'#0B63F6\'" onblur="this.style.borderColor=\'var(--line)\'" /></div>' +
+            '<input id="forgotA2" type="text" placeholder="Votre réponse secrète" required autocomplete="off" autocapitalize="off" spellcheck="false" style="width:100%;height:50px;border-radius:16px;border:1.5px solid var(--line);background:var(--tile);padding:0 16px;font-size:15px;color:var(--ink);box-sizing:border-box;outline:none;transition:border-color 0.2s;" onfocus="this.style.borderColor=\'#0B5FE0\'" onblur="this.style.borderColor=\'var(--line)\'" /></div>' +
             '<div style="margin-top:10px;">' + renderField('forgotPwd', 'password', 'Nouveau mot de passe', '8 caractères minimum', 'new-password') + '</div>' +
-            '<button type="submit" style="' + btnStyle('#0B63F6') + 'margin-top:6px;">Réinitialiser le mot de passe</button>' +
+            '<button type="submit" style="' + btnStyle('#0B5FE0') + 'margin-top:6px;">Réinitialiser le mot de passe</button>' +
           '</form>' +
         '</div></div>';
     }
@@ -310,8 +310,8 @@
         '<button onclick="App.nav(\'login\')" style="background:var(--tile);border:none;width:44px;height:44px;flex-shrink:0;touch-action:manipulation;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;">' +
           '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--ink)" stroke-width="2.2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>' +
         '</button>' +
-        '<div><p style="font-size:11px;font-weight:800;color:#0B63F6;text-transform:uppercase;letter-spacing:1.5px;margin:0;">Créer un compte</p>' +
-        '<h1 style="font-size:22px;font-weight:900;color:var(--ink);margin:0;">Rejoindre Commit</h1></div>' +
+        '<div><p style="font-size:11px;font-weight:800;color:#0B5FE0;text-transform:uppercase;letter-spacing:1.5px;margin:0;">Créer un compte</p>' +
+        '<h1 style="font-size:22px;font-weight:800;color:var(--ink);margin:0;">Rejoindre Commit</h1></div>' +
       '</div>' +
 
       '<form onsubmit="event.preventDefault(); App.signup(event);" style="display:flex;flex-direction:column;gap:12px;">' +
@@ -328,20 +328,20 @@
         renderField('signupPwd', 'password', 'Mot de passe', '8 caractères minimum', 'new-password') +
         '<div style="border-top:1px solid var(--line);margin-top:6px;padding-top:14px;">' +
           '<label style="font-size:12px;font-weight:800;color:var(--ink2);display:block;margin-bottom:4px;">Questions de sécurité</label>' +
-          '<p style="font-size:11.5px;color:var(--faint);margin:0 0 12px;line-height:1.4;">Elles servent à récupérer votre mot de passe sans e-mail. Notez bien vos réponses.</p>' +
+          '<p style="font-size:12px;color:var(--faint);margin:0 0 12px;line-height:1.4;">Elles servent à récupérer votre mot de passe sans e-mail. Notez bien vos réponses.</p>' +
           renderSecurityQAFields('signup', '', '') +
         '</div>' +
         // Acceptation des conditions d'utilisation, obligatoire. L'état est gardé
         // dans S.signupConditions : un re-rendu (choix d'un pôle) décochait sinon la case.
-        '<label style="display:flex;align-items:flex-start;gap:10px;font-size:13.5px;color:var(--ink2);line-height:1.45;cursor:pointer;margin-top:4px;">' +
-          '<input type="checkbox" id="signupConditions"' + (S.signupConditions ? ' checked' : '') + ' onchange="S.signupConditions=this.checked" style="width:22px;height:22px;margin:0;flex-shrink:0;accent-color:#0B63F6;-webkit-appearance:checkbox;appearance:auto;">' +
-          '<span>J\'ai lu et j\'accepte les <button type="button" onclick="ouvrirConditions()" style="background:none;border:none;padding:2px;margin:-2px 0;font:inherit;font-weight:700;color:#0B63F6;cursor:pointer;">conditions d\'utilisation</button>.</span>' +
+        '<label style="display:flex;align-items:flex-start;gap:10px;font-size:13px;color:var(--ink2);line-height:1.45;cursor:pointer;margin-top:4px;">' +
+          '<input type="checkbox" id="signupConditions"' + (S.signupConditions ? ' checked' : '') + ' onchange="S.signupConditions=this.checked" style="width:22px;height:22px;margin:0;flex-shrink:0;accent-color:#0B5FE0;-webkit-appearance:checkbox;appearance:auto;">' +
+          '<span>J\'ai lu et j\'accepte les <button type="button" onclick="ouvrirConditions()" style="background:none;border:none;padding:2px;margin:-2px 0;font:inherit;font-weight:700;color:#0B5FE0;cursor:pointer;">conditions d\'utilisation</button>.</span>' +
         '</label>' +
-        '<button type="submit" style="' + btnStyle('#0B63F6') + 'margin-top:6px;">Créer mon compte</button>' +
+        '<button type="submit" style="' + btnStyle('#0B5FE0') + 'margin-top:6px;">Créer mon compte</button>' +
       '</form>' +
 
-      '<p style="text-align:center;font-size:13.5px;color:var(--faint);margin-top:20px;">' +
-        'Déjà inscrit ? <span role="button" onclick="App.nav(\'login\')" style="display:inline-block;padding:12px 8px;margin:-12px 0;line-height:20px;color:#0B63F6;font-weight:700;cursor:pointer;">Se connecter</span>' +
+      '<p style="text-align:center;font-size:13px;color:var(--faint);margin-top:20px;">' +
+        'Déjà inscrit ? <span role="button" onclick="App.nav(\'login\')" style="display:inline-block;padding:12px 8px;margin:-12px 0;line-height:20px;color:#0B5FE0;font-weight:700;cursor:pointer;">Se connecter</span>' +
       '</p>' +
     '</div></div>';
   }
@@ -372,13 +372,13 @@
     var estMdp = (type === 'password');
     // Mot de passe : l'input vit dans un conteneur relatif avec le bouton œil
     // (44×44, cible tactile) posé à droite ; le padding-right libère cette zone.
-    var styleChamp = 'width:100%;height:50px;border-radius:14px;border:1.5px solid var(--line);background:var(--tile);padding:' + (estMdp ? '0 48px 0 16px' : '0 16px') + ';font-size:14.5px;color:var(--ink);box-sizing:border-box;outline:none;transition:border-color 0.2s;';
+    var styleChamp = 'width:100%;height:52px;border-radius:26px;border:1.5px solid var(--line2);background:var(--card);padding:' + (estMdp ? '0 48px 0 16px' : '0 16px') + ';font-size:15px;color:var(--ink);box-sizing:border-box;outline:none;transition:border-color 0.2s;';
     var html = '<div style="flex:1;">' +
       '<label style="font-size:12px;font-weight:700;color:var(--ink2);display:block;margin-bottom:5px;">' + label + '</label>' +
       (estMdp ? '<div style="position:relative;">' : '') +
       '<input id="' + id + '" type="' + type + '" value="' + safeHtml(valeur) + '" oninput="App.saisieAuth(\'' + jsArg(id) + '\', this.value)"' + ' placeholder="' + placeholder + '" autocomplete="' + (autocomplete||'off') + '" required ' +
       'style="' + styleChamp + '" ' +
-      'onfocus="this.style.borderColor=\'#0B63F6\'" onblur="this.style.borderColor=\'var(--line)\'">';
+      'onfocus="this.style.borderColor=\'#0B5FE0\'" onblur="this.style.borderColor=\'var(--line)\'">';
     if (estMdp) {
       html += '<button type="button" onclick="basculerVisibiliteMdp(\'' + jsArg(id) + '\', this)" aria-label="Afficher ou masquer le mot de passe" style="position:absolute;top:50%;right:4px;transform:translateY(-50%);width:44px;height:44px;background:transparent;border:none;padding:0;display:flex;align-items:center;justify-content:center;cursor:pointer;">' + OEIL_MDP_OUVERT + '</button>' +
         '</div>';
@@ -388,7 +388,7 @@
 
   function btnStyle(bg) {
     // Bouton primaire plein (refonte : plus de dégradé), relief doux.
-    return 'width:100%;height:54px;background:' + (bg || '#0B63F6') + ';color:#FFF;border:none;border-radius:14px;font-family:' + UI.fontBody + ';font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 8px 24px rgba(11,99,246,0.3);letter-spacing:0.1px;';
+    return 'width:100%;height:54px;background:' + (bg || '#0B5FE0') + ';color:#FFF;border:none;border-radius:999px;font-family:' + UI.fontBody + ';font-size:15px;font-weight:700;cursor:pointer;letter-spacing:0.1px;';
   }
 
   // Champ NUMÉRO DE TÉLÉPHONE (connexion sans e-mail ni SMS). Préfixe « +225 »
@@ -398,11 +398,11 @@
     var valeur = (S.champsAuth && S.champsAuth[id]) ? S.champsAuth[id] : '';
     return '<div style="flex:1;">' +
       '<label style="font-size:12px;font-weight:700;color:var(--ink2);display:block;margin-bottom:5px;">' + label + '</label>' +
-      '<div style="display:flex;align-items:center;height:50px;border-radius:14px;border:1.5px solid var(--line);background:var(--tile);overflow:hidden;transition:border-color 0.2s;" id="' + id + 'Wrap">' +
-        '<span style="display:flex;align-items:center;gap:5px;padding:0 12px;height:100%;font-family:' + UI.fontMono + ';font-size:14px;font-weight:600;color:var(--muted);border-right:1.5px solid var(--line);background:var(--card);">🇨🇮 +225</span>' +
+      '<div style="display:flex;align-items:center;height:52px;border-radius:26px;border:1.5px solid var(--line2);background:var(--card);overflow:hidden;transition:border-color 0.2s;" id="' + id + 'Wrap">' +
+        '<span style="display:flex;align-items:center;gap:5px;padding:0 12px;height:100%;white-space:nowrap;flex-shrink:0;font-size:15px;font-weight:700;color:var(--ink);border-right:1.5px solid var(--line);background:var(--card);">🇨🇮 +225</span>' +
         '<input id="' + id + '" type="tel" inputmode="numeric" value="' + safeHtml(valeur) + '" oninput="App.saisieAuth(\'' + jsArg(id) + '\', this.value)" placeholder="07 07 07 07 07" autocomplete="' + (autocomplete || 'tel') + '" required ' +
         'style="flex:1;height:100%;border:none;background:transparent;padding:0 14px;font-family:' + UI.fontMono + ';font-size:15px;letter-spacing:0.5px;color:var(--ink);box-sizing:border-box;outline:none;" ' +
-        'onfocus="var w=document.getElementById(\'' + id + 'Wrap\');if(w)w.style.borderColor=\'#0B63F6\'" onblur="var w=document.getElementById(\'' + id + 'Wrap\');if(w)w.style.borderColor=\'var(--line)\'">' +
+        'onfocus="var w=document.getElementById(\'' + id + 'Wrap\');if(w)w.style.borderColor=\'#0B5FE0\'" onblur="var w=document.getElementById(\'' + id + 'Wrap\');if(w)w.style.borderColor=\'var(--line)\'">' +
       '</div>' +
     '</div>';
   }

@@ -82,9 +82,9 @@
     
     var content = '';
     if (S.loadingUserProfile) {
-      content = '<div style="padding:100px 20px;text-align:center;"><div style="font-size:32px;animation:spin 1s linear infinite;">⏳</div><div style="margin-top:16px;font-size:14px;color:var(--faint);">Chargement du profil...</div></div>';
+      content = '<div style="padding:100px 20px;text-align:center;"><div style="font-size:32px;animation:spin 1s linear infinite;">⏳</div><div style="margin-top:16px;font-size:15px;color:var(--faint);">Chargement du profil...</div></div>';
     } else if (!targetUser) {
-      content = '<div style="padding:100px 20px;text-align:center;"><div style="font-size:40px;">😕</div><div style="margin-top:16px;font-size:16px;font-weight:600;">Utilisateur introuvable</div><button onclick="App.closeUserProfile()" style="margin-top:20px;padding:10px 20px;background:#0B63F6;color:#FFF;border:none;border-radius:20px;font-weight:600;cursor:pointer;">Retour</button></div>';
+      content = '<div style="padding:100px 20px;text-align:center;"><div style="font-size:40px;">😕</div><div style="margin-top:16px;font-size:15px;font-weight:600;">Utilisateur introuvable</div><button onclick="App.closeUserProfile()" style="margin-top:20px;padding:10px 20px;background:#0B5FE0;color:#FFF;border:none;border-radius:20px;font-weight:600;cursor:pointer;">Retour</button></div>';
     } else {
       content = renderProfile(targetUser, posts);
     }
@@ -141,21 +141,21 @@
     // devinaient pas (l'étoile des bilans en particulier).
     function nb(id, iconFn, lbl) {
       var a = S.tab === id;
-      return '<button onclick="App.tab(\'' + jsArg(id) + '\')" aria-label="' + lbl + '"' + (a ? ' aria-current="page"' : '') + ' style="flex:1;min-width:0;background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;height:100%;padding:0;color:' + (a ? UI.accent : 'var(--faint)') + ';-webkit-tap-highlight-color:transparent;">' +
-        '<div style="width:52px;height:30px;border-radius:15px;display:flex;align-items:center;justify-content:center;background:' + (a ? 'var(--accent-soft)' : 'transparent') + ';transition:background 0.2s;">' +
+      return '<button onclick="App.tab(\'' + jsArg(id) + '\')" aria-label="' + lbl + '"' + (a ? ' aria-current="page"' : '') + ' style="flex:1;min-width:0;background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:2px;height:100%;padding:8px 0 0;color:' + (a ? 'var(--accent-ink)' : 'var(--muted)') + ';-webkit-tap-highlight-color:transparent;">' +
+        '<div style="width:56px;height:30px;border-radius:16px;display:flex;align-items:center;justify-content:center;background:' + (a ? 'var(--accent-soft)' : 'transparent') + ';transition:background 0.2s;">' +
           iconFn(a) +
         '</div>' +
-        '<span style="font-size:10.5px;font-weight:' + (a ? '700' : '500') + ';line-height:1.1;letter-spacing:0.01em;">' + lbl + '</span>' +
+        '<span style="font-size:11px;font-weight:' + (a ? '700' : '600') + ';line-height:1.1;">' + lbl + '</span>' +
       '</button>';
     }
-    // Barre FLOTTANTE : détachée des bords, arrondie et ombrée. Elle repose au-
-    // dessus du contenu (le fil réserve la place en bas), et respecte l'inset iPhone.
-    return '<nav aria-label="Navigation principale" style="position:fixed;bottom:calc(14px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);width:calc(100% - 26px);max-width:400px;height:66px;background:var(--card);border:0.5px solid var(--line);border-radius:30px;box-shadow:0 10px 30px rgba(0,0,0,0.16);display:flex;align-items:center;justify-content:space-around;padding:0 6px;z-index:9000;">' +
+    // Barre ANCRÉE en bas (synthèse du design) : pleine largeur, filet en haut,
+    // et l'espace de la barre d'accueil de l'iPhone sous les boutons.
+    return '<nav aria-label="Navigation principale" style="position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:460px;height:calc(64px + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom);box-sizing:border-box;background:var(--nav-bg);border-top:1px solid var(--nav-line);display:flex;align-items:stretch;justify-content:space-around;z-index:9000;">' +
       nb('home', SVG.home, 'Accueil') +
       nb('planning', SVG.cal, 'Planning') +
-      '<button onclick="App.openCreate()" aria-label="Publier" style="flex:1;min-width:0;background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;height:100%;padding:0;color:' + UI.accent + ';-webkit-tap-highlight-color:transparent;">' +
-        '<div class="kc-publier" style="width:40px;height:40px;border-radius:20px;background:' + UI.accent + ';display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(11,99,246,0.3);">' + SVG.plus + '</div>' +
-        '<span style="font-size:10.5px;font-weight:700;line-height:1.1;">Publier</span>' +
+      '<button onclick="App.openCreate()" aria-label="Publier" style="flex:1;min-width:0;background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:2px;height:100%;padding:6px 0 0;color:var(--muted);-webkit-tap-highlight-color:transparent;">' +
+        '<div class="kc-publier" style="width:34px;height:34px;border-radius:17px;background:' + UI.accent + ';display:flex;align-items:center;justify-content:center;">' + SVG.plus + '</div>' +
+        '<span style="font-size:11px;font-weight:600;line-height:1.1;">Publier</span>' +
       '</button>' +
       nb('debrief', SVG.chart, 'Bilans') +
       nb('profile', SVG.person, 'Profil') +
@@ -192,7 +192,7 @@
         '</svg>' +
       '</span>' +
       (nonLus > 0
-        ? '<span class="kc-pastille" style="position:absolute;top:4px;right:2px;min-width:18px;height:18px;padding:0 5px;border-radius:' + UI.pill + ';background:' + UI.bad + ';color:#FFF;font-size:10.5px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid ' + UI.card + ';">' + (nonLus > 99 ? '99+' : nonLus) + '</span>'
+        ? '<span class="kc-pastille" style="position:absolute;top:4px;right:2px;min-width:18px;height:18px;padding:0 5px;border-radius:' + UI.pill + ';background:' + UI.bad + ';color:#FFF;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid ' + UI.card + ';">' + (nonLus > 99 ? '99+' : nonLus) + '</span>'
         : '') +
     '</button>';
   }
@@ -206,9 +206,10 @@
     var initial = (u.prenom || 'M').charAt(0).toUpperCase();
     // Un seul niveau de titre, sans sur-titre en capitales : la hiérarchie vient
     // de la taille et du poids, pas de l'empilement de libellés colorés.
-    return '<header style="position:sticky;top:0;z-index:200;background:' + UI.card + ';border-bottom:0.5px solid ' + UI.line + ';padding:14px 16px 12px;">' +
+    // Titre d'écran en grand, posé sur le fond de page (synthèse du design).
+    return '<header style="position:sticky;top:0;z-index:200;background:' + UI.page + ';padding:20px 16px 12px;">' +
       '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;">' +
-        '<h1 style="font-size:19px;font-weight:600;color:' + UI.ink + ';margin:0;letter-spacing:-0.3px;min-width:0;">' + title + '</h1>' +
+        '<h1 style="font-size:28px;font-weight:800;color:' + UI.ink + ';margin:0;letter-spacing:-0.5px;min-width:0;">' + title + '</h1>' +
         '<div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">' +
           (rightActionHtml || '') +
           renderCloche() +
@@ -275,7 +276,6 @@
     var ev = m.ev;
     var debut = eventStartTimestamp(ev);
     var fin = eventEndTimestamp(ev) || debut;
-    var couleur = secColor((ev.eventSections || [])[0]) || UI.accent;
     var tache = m.affectation && m.affectation.task ? m.affectation.task : '';
     // Itinéraire : coordonnées exactes si le lieu a été situé sur la carte,
     // sinon recherche par le nom du lieu.
@@ -286,22 +286,41 @@
     var etat = compteARebours(debut, fin, now);
     var enCours = now >= debut && now <= fin;
 
-    return '<section aria-label="Ma prochaine mission" style="padding:14px 16px 4px;">' +
-      '<div class="kc-apparait" style="background:' + UI.card + ';border:1px solid ' + UI.line + ';border-left:4px solid ' + couleur + ';border-radius:16px;box-shadow:' + UI.sh2 + ';padding:14px 16px;">' +
+    // Les autres convoqués : on voit avec qui on sert.
+    var equipe = [];
+    (ev.assignments || []).forEach(function(a) {
+      if (!a || !a.userId || a.userId === u.id || equipe.indexOf(a.userId) !== -1) return;
+      equipe.push(a.userId);
+    });
+    var profils = db(SK.USERS, []);
+    var visages = equipe.slice(0, 3).map(function(id, i) {
+      var p = profils.find(function(x){ return x.id === id; }) || {};
+      return '<span title="' + safeHtml((p.prenom || '') + ' ' + (p.nom || '')) + '" style="width:28px;height:28px;border-radius:14px;border:2px solid ' + UI.card + ';' + (i ? 'margin-left:-8px;' : '') + 'background:' + (p.avatar_color || UI.accent) + ';color:#FFF;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">' +
+        (p.avatar_url ? '<img src="' + safeUrl(p.avatar_url) + '" alt="" style="width:100%;height:100%;object-fit:cover;">' : safeHtml((p.prenom || 'M').charAt(0).toUpperCase())) + '</span>';
+    }).join('');
+    var lien = 'font-size:13px;font-weight:700;color:' + UI.accent + ';text-decoration:none;background:none;border:none;padding:0;cursor:pointer;min-height:32px;display:inline-flex;align-items:center;';
+
+    return '<section aria-label="Ma prochaine mission" style="padding:4px 16px;">' +
+      '<div class="kc-apparait" style="background:' + UI.card + ';border-radius:20px;box-shadow:' + UI.sh2 + ';padding:18px;">' +
         '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">' +
-          '<span style="font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:' + UI.accent + ';">Ma prochaine mission</span>' +
-          '<span data-compte-a-rebours="' + debut + '" data-fin="' + fin + '" style="font-family:' + UI.fontMono + ';font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px;background:' + (enCours ? 'var(--ok-soft)' : 'var(--accent-soft)') + ';color:' + (enCours ? 'var(--ok-ink)' : UI.accentInk) + ';white-space:nowrap;">' + etat + '</span>' +
+          '<span style="font-size:12px;font-weight:700;color:' + UI.accent + ';">Prochaine mission</span>' +
+          '<span data-compte-a-rebours="' + debut + '" data-fin="' + fin + '" style="font-size:12px;font-weight:700;padding:4px 10px;border-radius:12px;background:' + (enCours ? 'var(--ok-soft)' : 'var(--accent-soft)') + ';color:' + (enCours ? 'var(--ok-ink)' : UI.accentInk) + ';white-space:nowrap;">' + etat + '</span>' +
         '</div>' +
-        '<h2 style="font-family:' + UI.fontDisplay + ';font-size:20px;font-weight:700;letter-spacing:-0.3px;color:' + UI.ink + ';margin:8px 0 4px;line-height:1.2;overflow-wrap:anywhere;">' + safeHtml(ev.eventTitle || 'Événement') + '</h2>' +
-        '<div style="font-size:13.5px;color:' + UI.muted + ';line-height:1.5;">' +
-          safeHtml(jourMission(ev, now)) + ' · <span style="font-family:' + UI.fontMono + ';">' + safeHtml(ev.eventStart || '') + (ev.eventEnd ? ' – ' + safeHtml(ev.eventEnd) : '') + '</span>' +
+        '<h2 style="font-size:22px;font-weight:800;letter-spacing:-0.3px;color:' + UI.ink + ';margin:8px 0 4px;line-height:1.2;overflow-wrap:anywhere;">' + safeHtml(ev.eventTitle || 'Événement') + '</h2>' +
+        '<div style="font-size:15px;color:' + UI.muted + ';line-height:1.5;">' +
+          safeHtml(jourMission(ev, now)) + ' · ' + safeHtml(ev.eventStart || '') + (ev.eventEnd ? ' – ' + safeHtml(ev.eventEnd) : '') +
           (ev.eventLocation ? '<br>' + safeHtml(ev.eventLocation) : '') +
         '</div>' +
-        (tache ? '<div style="display:inline-flex;align-items:center;gap:6px;margin-top:10px;background:' + UI.tile + ';border-radius:10px;padding:6px 10px;font-size:13px;color:' + UI.ink + ';"><span style="color:' + UI.faint + ';">Ma tâche</span><b>' + safeHtml(tache) + '</b></div>' : '') +
-        '<div style="margin-top:12px;">' + renderReponseConvocation(ev) + renderEchanges(ev) + renderEventCheckInAction(ev) + '</div>' +
-        '<div style="display:flex;gap:8px;">' +
-          '<button type="button" onclick="App.goToEvent(\'' + jsArg(ev.id) + '\')" style="flex:1;min-height:44px;background:' + UI.tile + ';color:' + UI.ink + ';border:none;border-radius:12px;font-size:13.5px;font-weight:700;cursor:pointer;">Voir l\'événement</button>' +
-          (itineraire ? '<a href="' + safeUrl(itineraire) + '" target="_blank" rel="noopener noreferrer" style="flex:1;min-height:44px;display:flex;align-items:center;justify-content:center;background:' + UI.tile + ';color:' + UI.ink + ';border-radius:12px;font-size:13.5px;font-weight:700;text-decoration:none;">Itinéraire</a>' : '') +
+        ((tache || equipe.length) ? '<div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-top:12px;">' +
+          (tache ? '<span style="font-size:13px;font-weight:700;color:' + UI.accentInk + ';background:var(--accent-soft);border-radius:12px;padding:6px 10px;"><span style="font-weight:500;">Ma tâche</span> ' + safeHtml(tache) + '</span>' : '') +
+          (equipe.length ? '<span style="display:flex;align-items:center;gap:6px;"><span style="display:flex;">' + visages + '</span>' +
+            (equipe.length > 3 ? '<span style="font-size:12px;color:' + UI.muted + ';">+ ' + (equipe.length - 3) + ' autre' + (equipe.length > 4 ? 's' : '') + '</span>' : '') + '</span>' : '') +
+        '</div>' : '') +
+        '<div style="margin-top:14px;">' + renderReponseConvocation(ev) + renderEchanges(ev) + renderEventCheckInAction(ev) + '</div>' +
+        '<div style="display:flex;flex-wrap:wrap;gap:4px 18px;">' +
+          '<button type="button" onclick="App.goToEvent(\'' + jsArg(ev.id) + '\')" style="' + lien + '">Voir l\'événement</button>' +
+          (itineraire ? '<a href="' + safeUrl(itineraire) + '" target="_blank" rel="noopener noreferrer" style="' + lien + '">Itinéraire</a>' : '') +
+          '<button type="button" onclick="App.ajouterAgenda(\'' + jsArg(ev.id) + '\')" style="' + lien + '">Agenda</button>' +
         '</div>' +
       '</div>' +
     '</section>';
@@ -348,7 +367,7 @@
     return '<section aria-label="Bien démarrer" style="padding:14px 16px 4px;">' +
       '<div class="kc-apparait" style="background:' + UI.card + ';border:1px solid ' + UI.line + ';border-radius:16px;box-shadow:' + UI.sh2 + ';padding:14px 16px;">' +
         '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">' +
-          '<h2 style="font-family:' + UI.fontDisplay + ';font-size:18px;font-weight:700;color:' + UI.ink + ';margin:0;">Bien démarrer</h2>' +
+          '<h2 style="font-family:' + UI.fontDisplay + ';font-size:17px;font-weight:700;color:' + UI.ink + ';margin:0;">Bien démarrer</h2>' +
           '<button type="button" onclick="App._majMonProfil({bienDemarrerMasque:true})" style="background:none;border:none;min-height:44px;padding:0 4px;font-size:13px;font-weight:600;color:' + UI.faint + ';cursor:pointer;">Masquer</button>' +
         '</div>' +
         '<div style="display:flex;align-items:center;gap:10px;margin:2px 0 8px;">' +
@@ -362,7 +381,7 @@
             '<span aria-hidden="true" style="width:22px;height:22px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;' + (e.fait ? 'background:' + UI.ok + ';' : 'border:2px solid ' + UI.line2 + ';') + '">' +
               (e.fait ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>' : '') +
             '</span>' +
-            '<span style="flex:1;font-size:14.5px;font-weight:' + (e.fait ? '500' : '600') + ';color:' + (e.fait ? UI.faint : UI.ink) + ';' + (e.fait ? 'text-decoration:line-through;' : '') + '">' + e.titre + '</span>' +
+            '<span style="flex:1;font-size:15px;font-weight:' + (e.fait ? '500' : '600') + ';color:' + (e.fait ? UI.faint : UI.ink) + ';' + (e.fait ? 'text-decoration:line-through;' : '') + '">' + e.titre + '</span>' +
             (e.fait ? '' : '<span aria-hidden="true" style="color:' + UI.faint + ';">›</span>') +
           '</button>';
         }).join('') +
@@ -374,14 +393,14 @@
   // serveur ne lui renvoie de toute façon ni publication ni fiche d'un autre).
   function renderAttenteValidation(u) {
     return '<main id="attenteValidation" style="min-height:100vh;background:' + UI.page + ';display:flex;align-items:center;justify-content:center;padding:24px 16px;">' +
-      '<div class="kc-apparait" style="width:100%;max-width:380px;background:' + UI.card + ';border:1px solid ' + UI.line + ';border-radius:24px;box-shadow:' + UI.sh2 + ';padding:28px 22px;text-align:center;">' +
+      '<div class="kc-apparait" style="width:100%;max-width:380px;background:' + UI.card + ';border:1px solid ' + UI.line + ';border-radius:20px;box-shadow:' + UI.sh2 + ';padding:28px 22px;text-align:center;">' +
         '<div aria-hidden="true" style="font-size:46px;line-height:1;">⏳</div>' +
         '<h1 style="font-family:' + UI.fontDisplay + ';font-size:22px;font-weight:700;color:' + UI.ink + ';margin:14px 0 8px;">Compte en attente de validation</h1>' +
-        '<p style="font-size:14.5px;line-height:1.55;color:' + UI.muted + ';margin:0 0 6px;">Bienvenue ' + safeHtml(u.prenom || '') + ' ! Un Admin ou un Responsable de pôle doit confirmer que tu fais partie du Département Communication.</p>' +
+        '<p style="font-size:15px;line-height:1.55;color:' + UI.muted + ';margin:0 0 6px;">Bienvenue ' + safeHtml(u.prenom || '') + ' ! Un Admin ou un Responsable de pôle doit confirmer que tu fais partie du Département Communication.</p>' +
         '<p style="font-size:13px;line-height:1.5;color:' + UI.faint + ';margin:0 0 20px;">Tu auras accès à toute l\'application dès la validation. Besoin d\'aide : 07 99 44 24 02.</p>' +
         '<button type="button" onclick="App.verifierValidation()" style="width:100%;min-height:48px;background:' + UI.accent + ';color:#FFF;border:none;border-radius:999px;font-size:15px;font-weight:700;cursor:pointer;">' + (S.verificationEnCours ? 'Vérification…' : 'Actualiser') + '</button>' +
-        '<button type="button" onclick="ouvrirConditions()" style="width:100%;min-height:44px;margin-top:8px;background:none;border:none;color:' + UI.ink + ';font-size:14px;font-weight:600;cursor:pointer;">Conditions d\'utilisation</button>' +
-        '<button type="button" onclick="App.logout()" style="width:100%;min-height:44px;background:none;border:none;color:' + UI.faint + ';font-size:14px;font-weight:600;cursor:pointer;">Se déconnecter</button>' +
+        '<button type="button" onclick="ouvrirConditions()" style="width:100%;min-height:44px;margin-top:8px;background:none;border:none;color:' + UI.ink + ';font-size:15px;font-weight:600;cursor:pointer;">Conditions d\'utilisation</button>' +
+        '<button type="button" onclick="App.logout()" style="width:100%;min-height:44px;background:none;border:none;color:' + UI.faint + ';font-size:15px;font-weight:600;cursor:pointer;">Se déconnecter</button>' +
       '</div>' +
     '</main>';
   }
@@ -394,14 +413,14 @@
     if (!demandes.length) return '';
     return '<section id="demandesInscription" aria-label="Demandes d\'inscription" style="padding:14px 16px 4px;">' +
       '<div class="kc-apparait" style="background:' + UI.card + ';border:1.5px solid ' + UI.warn + '66;border-radius:16px;box-shadow:' + UI.sh2 + ';padding:14px 16px;">' +
-        '<h2 style="font-family:' + UI.fontDisplay + ';font-size:18px;font-weight:700;color:' + UI.ink + ';margin:0 0 4px;">Demandes d\'inscription · ' + demandes.length + '</h2>' +
-        '<p style="font-size:12.5px;color:' + UI.faint + ';margin:0 0 6px;">Ces personnes ne voient rien tant que tu n\'as pas validé leur compte.</p>' +
+        '<h2 style="font-family:' + UI.fontDisplay + ';font-size:17px;font-weight:700;color:' + UI.ink + ';margin:0 0 4px;">Demandes d\'inscription · ' + demandes.length + '</h2>' +
+        '<p style="font-size:13px;color:' + UI.faint + ';margin:0 0 6px;">Ces personnes ne voient rien tant que tu n\'as pas validé leur compte.</p>' +
         demandes.map(function(m) {
           var poles = getUserSections(m).map(function(s){ return secNom(s); }).join(' · ');
           var quand = m.joined_at ? new Date(m.joined_at).toLocaleDateString('fr-FR', {day:'numeric', month:'short'}) : '';
           return '<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid ' + UI.line + ';">' +
             '<div style="flex:1;min-width:0;">' +
-              '<div style="font-size:14.5px;font-weight:700;color:' + UI.ink + ';overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + safeHtml(((m.prenom || '') + ' ' + (m.nom || '')).trim() || 'Sans nom') + '</div>' +
+              '<div style="font-size:15px;font-weight:700;color:' + UI.ink + ';overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + safeHtml(((m.prenom || '') + ' ' + (m.nom || '')).trim() || 'Sans nom') + '</div>' +
               '<div style="font-size:12px;color:' + UI.faint + ';overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + safeHtml([m.phone, poles, quand].filter(Boolean).join(' · ')) + '</div>' +
             '</div>' +
             '<button type="button" onclick="App.validerInscription(\'' + jsArg(m.id) + '\', false)" style="min-height:40px;padding:0 12px;background:' + UI.tile + ';color:' + UI.ink + ';border:none;border-radius:999px;font-size:13px;font-weight:700;cursor:pointer;">Refuser</button>' +
@@ -426,18 +445,20 @@
       '</button>';
     };
 
-    var header = '<header style="position:sticky;top:0;z-index:200;background:' + UI.card + ';border-bottom:0.5px solid ' + UI.line + ';">' +
-      '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px 10px;">' +
-        '<h1 style="font-family:' + UI.fontDisplay + ';font-size:22px;font-weight:800;color:' + UI.ink + ';margin:0;letter-spacing:-0.6px;min-width:0;">Commit</h1>' +
+    // En-tête personnel (synthèse du design) : la date et « Bonjour <prénom> »,
+    // posés sur le fond de page, avec recherche, messages et notifications.
+    var dateDuJour = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+    dateDuJour = dateDuJour.charAt(0).toUpperCase() + dateDuJour.slice(1);
+    var header = '<header style="position:sticky;top:0;z-index:200;background:' + UI.page + ';">' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:20px 16px 12px;">' +
+        '<div style="min-width:0;">' +
+          '<div style="font-size:13px;font-weight:500;color:' + UI.muted + ';">' + dateDuJour + '</div>' +
+          '<h1 style="font-size:28px;font-weight:800;color:' + UI.ink + ';margin:2px 0 0;letter-spacing:-0.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Bonjour ' + safeHtml(u.prenom || '') + '</h1>' +
+        '</div>' +
         '<div style="display:flex;gap:2px;align-items:center;flex-shrink:0;margin-right:-8px;">' +
           iconBtn('App.openMembersList()', '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="' + UI.muted + '" stroke-width="1.9" stroke-linecap="round"><circle cx="11" cy="11" r="7.5"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>', 0) +
           renderBoiteBouton() +
           renderCloche() +
-          '<button onclick="App.tab(\'profile\')" style="width:44px;height:44px;border-radius:' + UI.pill + ';background:none;border:none;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;flex-shrink:0;touch-action:manipulation;">' +
-            (u.avatar_url
-              ? '<img src="' + safeUrl(u.avatar_url) + '" style="width:32px;height:32px;border-radius:' + UI.pill + ';object-fit:cover;" />'
-              : '<span style="width:32px;height:32px;border-radius:' + UI.pill + ';background:' + UI.accent + ';color:#FFF;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center;">' + initial + '</span>') +
-          '</button>' +
         '</div>' +
       '</div>' +
     '</header>';
@@ -447,7 +468,7 @@
     if (trends.length > 0) {
       trendsHtml = '<div style="background:' + UI.card + ';border-bottom:0.5px solid ' + UI.line + ';padding:9px 16px;">' +
         '<div style="display:flex;gap:7px;overflow-x:auto;align-items:center;-webkit-overflow-scrolling:touch;">' +
-        '<span style="display:inline-flex;align-items:center;gap:4px;font-size:10.5px;color:' + UI.faint + ';white-space:nowrap;flex-shrink:0;">' + ico('flame', 13, UI.faint) + 'Tendances</span>' +
+        '<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:' + UI.faint + ';white-space:nowrap;flex-shrink:0;">' + ico('flame', 13, UI.faint) + 'Tendances</span>' +
         trends.map(function(t) {
           var active = S.q.toLowerCase() === t.toLowerCase();
           return '<button onclick="App.filterTag(\'' + jsArg(encodeURIComponent(t)) + '\')" style="flex-shrink:0;display:flex;align-items:center;min-height:44px;background:' + (active ? UI.accent : UI.tile) + ';color:' + (active ? '#FFF' : UI.muted) + ';border:none;padding:5px 12px;border-radius:' + UI.pill + ';font-size:12px;font-weight:500;cursor:pointer;">' + t + '</button>';
@@ -474,7 +495,7 @@
             '<div style="width:54px;height:54px;border-radius:50%;background:' + (sel ? sc + '1A' : UI.tile) + ';border:1.5px solid ' + (sel ? sc : 'transparent') + ';display:flex;align-items:center;justify-content:center;font-size:22px;transition:all 0.2s;">' +
               s.emoji +
             '</div>' +
-            (cnt > 0 ? '<div style="position:absolute;top:-2px;right:-2px;z-index:2;background:' + UI.accent + ';color:#FFF;font-size:10px;font-weight:600;min-width:18px;height:18px;border-radius:' + UI.pill + ';display:flex;align-items:center;justify-content:center;padding:0 5px;box-shadow:0 0 0 2px #FFF;">' + (cnt > 99 ? '99+' : cnt) + '</div>' : '') +
+            (cnt > 0 ? '<div style="position:absolute;top:-2px;right:-2px;z-index:2;background:' + UI.accent + ';color:#FFF;font-size:11px;font-weight:600;min-width:18px;height:18px;border-radius:' + UI.pill + ';display:flex;align-items:center;justify-content:center;padding:0 5px;box-shadow:0 0 0 2px #FFF;">' + (cnt > 99 ? '99+' : cnt) + '</div>' : '') +
           '</div>' +
           '<span style="font-size:11px;font-weight:' + (sel?'600':'400') + ';color:' + (sel ? UI.ink : UI.muted) + ';text-align:center;white-space:nowrap;">' + s.nom + '</span>' +
         '</div>';
@@ -519,13 +540,13 @@
     } else if (filtered.length === 0) {
       feed = '<div style="display:flex;flex-direction:column;align-items:center;padding:70px 24px;text-align:center;">' +
         '<div style="font-size:52px;margin-bottom:16px;">📭</div>' +
-        '<h3 style="font-size:18px;font-weight:800;color:var(--ink);margin:0 0 8px;">' + (S.q ? 'Aucun résultat' : 'Aucune publication') + '</h3>' +
-        '<p style="font-size:13.5px;color:var(--faint);margin:0 0 22px;max-width:240px;line-height:1.5;">' +
+        '<h3 style="font-size:17px;font-weight:800;color:var(--ink);margin:0 0 8px;">' + (S.q ? 'Aucun résultat' : 'Aucune publication') + '</h3>' +
+        '<p style="font-size:13px;color:var(--faint);margin:0 0 22px;max-width:240px;line-height:1.5;">' +
           (S.q ? 'Aucun résultat trouvé pour "' + safeHtml(S.q) + '"' : 'Aucune publication pour le moment. Soyez le premier à publier ! ') +
         '</p>' +
         (S.q
-          ? '<button onclick="App.search(\'\')" style="' + btnStyle('#0B63F6') + 'height:44px;width:auto;padding:0 22px;font-size:14px;">Réinitialiser la recherche</button>'
-          : '<button onclick="App.openCreate()" style="' + btnStyle('#0B63F6') + 'height:44px;width:auto;padding:0 22px;font-size:14px;">Créer un post</button>') +
+          ? '<button onclick="App.search(\'\')" style="' + btnStyle('#0B5FE0') + 'height:44px;width:auto;padding:0 22px;font-size:15px;">Réinitialiser la recherche</button>'
+          : '<button onclick="App.openCreate()" style="' + btnStyle('#0B5FE0') + 'height:44px;width:auto;padding:0 22px;font-size:15px;">Créer un post</button>') +
       '</div>';
     } else {
       // Les événements d'une même journée sont fusionnés en un carrousel unique ;
@@ -562,8 +583,8 @@
       if (!chargementEnCours && elements.length > 0 && canLoadMore) {
         footerHtml = '<div style="padding:20px;text-align:center;background:var(--card);margin-top:8px;">' +
           (S.loadingMorePosts
-            ? '<div style="display:flex;justify-content:center;padding:10px;"><div style="width:22px;height:22px;border:2.5px solid var(--line);border-top-color:#0B63F6;border-radius:50%;animation:spin 0.7s linear infinite;"></div></div>'
-            : '<button onclick="App.loadMorePosts()" style="background:var(--tile);color:var(--ink);border:none;border-radius:14px;padding:12px 22px;font-size:13.5px;font-weight:800;cursor:pointer;">Charger plus d\'anciennes publications</button>') +
+            ? '<div style="display:flex;justify-content:center;padding:10px;"><div style="width:22px;height:22px;border:2.5px solid var(--line);border-top-color:#0B5FE0;border-radius:50%;animation:spin 0.7s linear infinite;"></div></div>'
+            : '<button onclick="App.loadMorePosts()" style="background:var(--tile);color:var(--ink);border:none;border-radius:16px;padding:12px 22px;font-size:13px;font-weight:800;cursor:pointer;">Charger plus d\'anciennes publications</button>') +
         '</div>';
       }
 
@@ -634,10 +655,10 @@
     var evDay = evDate ? evDate.getDate() : '';
     // Pôles concernés, en pastilles discrètes plutôt qu'en texte violet brut.
     var evSections = (post.eventSections || []).slice(0, 3).map(function(s) {
-      return '<span style="font-size:10.5px;color:#CBD9D3;background:' + UI.evTag + ';padding:3px 9px;border-radius:' + UI.pill + ';white-space:nowrap;">' + safeHtml(secNom(s)) + '</span>';
+      return '<span style="font-size:11px;color:#CBD9D3;background:' + UI.evTag + ';padding:3px 9px;border-radius:' + UI.pill + ';white-space:nowrap;">' + safeHtml(secNom(s)) + '</span>';
     }).join('');
     var evMore = (post.eventSections || []).length > 3
-      ? '<span style="font-size:10.5px;color:' + UI.evMuted + ';padding:3px 4px;">+' + ((post.eventSections || []).length - 3) + '</span>'
+      ? '<span style="font-size:11px;color:' + UI.evMuted + ';padding:3px 4px;">+' + ((post.eventSections || []).length - 3) + '</span>'
       : '';
 
     // Statut calculé sur de vrais horodatages (et non sur une comparaison de
@@ -646,7 +667,7 @@
     var startTs = eventStartTimestamp(post);
     var endTs = eventEndTimestamp(post);
     var badge = function(txt, bg, col) {
-      return '<span style="background:' + bg + ';color:' + col + ';padding:2px 9px;border-radius:' + UI.pill + ';font-size:10px;white-space:nowrap;font-weight:600;">' + txt + '</span>';
+      return '<span style="background:' + bg + ';color:' + col + ';padding:2px 9px;border-radius:' + UI.pill + ';font-size:11px;white-space:nowrap;font-weight:600;">' + txt + '</span>';
     };
     var evStatus;
     if (endTs && endTs < nowTs)                            evStatus = badge('Terminé', UI.evTag, UI.evMuted);
@@ -668,12 +689,12 @@
       evImage +
       '<div style="display:flex;gap:13px;align-items:flex-start;">' +
         (evDate ? '<div style="width:48px;flex-shrink:0;background:' + UI.evGoldSoft + ';border:0.5px solid ' + UI.evGoldLine + ';border-radius:' + UI.r1 + ';text-align:center;padding:6px 0;">' +
-          '<div style="font-family:' + UI.fontMono + ';font-size:9.5px;color:' + UI.evGold + ';letter-spacing:0.8px;">' + evMonth + '</div>' +
-          '<div style="font-family:' + UI.fontMono + ';font-size:20px;font-weight:700;color:' + UI.evInk + ';line-height:1.15;">' + evDay + '</div>' +
+          '<div style="font-family:' + UI.fontMono + ';font-size:11px;color:' + UI.evGold + ';letter-spacing:0.8px;">' + evMonth + '</div>' +
+          '<div style="font-family:' + UI.fontMono + ';font-size:22px;font-weight:700;color:' + UI.evInk + ';line-height:1.15;">' + evDay + '</div>' +
         '</div>' : '') +
         '<div style="flex:1;min-width:0;">' +
           '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:5px;">' +
-            '<h3 style="font-family:' + UI.fontDisplay + ';font-size:16px;font-weight:700;letter-spacing:-0.3px;color:' + UI.evInk + ';margin:0;flex:1;min-width:0;">' + safeHtml(post.eventTitle) + '</h3>' +
+            '<h3 style="font-family:' + UI.fontDisplay + ';font-size:15px;font-weight:700;letter-spacing:-0.3px;color:' + UI.evInk + ';margin:0;flex:1;min-width:0;">' + safeHtml(post.eventTitle) + '</h3>' +
             evStatus +
           '</div>' +
           '<div style="font-size:12px;color:' + UI.evMuted + ';display:flex;flex-wrap:wrap;gap:12px;margin-bottom:' + (evSections ? '11px' : '0') + ';">' +
@@ -683,7 +704,7 @@
           (evSections ? '<div style="display:flex;flex-wrap:wrap;gap:5px;">' + evSections + evMore + '</div>' : '') +
           (post.assignments && post.assignments.length > 0 ?
             '<div style="margin-top:13px;border-top:0.5px solid rgba(255,255,255,0.10);padding-top:11px;">' +
-              '<div style="font-size:10px;color:' + UI.evGold + ';letter-spacing:0.8px;margin-bottom:8px;">ÉQUIPE ASSIGNÉE</div>' +
+              '<div style="font-size:11px;color:' + UI.evGold + ';letter-spacing:0.8px;margin-bottom:8px;">ÉQUIPE ASSIGNÉE</div>' +
               '<div style="display:flex;flex-direction:column;gap:6px;">' +
               post.assignments.map(function(a) {
                 var isMeAssigned = S.user && S.user.id === a.userId;
@@ -699,22 +720,22 @@
                   else { chip = 'À livrer'; chipBg = UI.evGoldSoft; chipFg = UI.evGold; }
                   taskBlock =
                     '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:6px;">' +
-                      '<span style="font-size:10px;font-weight:800;color:' + chipFg + ';background:' + chipBg + ';padding:2px 8px;border-radius:999px;">' + chip + '</span>' +
+                      '<span style="font-size:11px;font-weight:800;color:' + chipFg + ';background:' + chipBg + ';padding:2px 8px;border-radius:999px;">' + chip + '</span>' +
                       '<span style="font-size:11px;color:' + UI.evMuted + ';">échéance ' + formatDeadline(a.deadline) + '</span>' +
                     '</div>' +
                     (isMeAssigned
-                      ? '<button onclick="event.stopPropagation();App.toggleTaskDone(\'' + jsArg(post.id) + '\')" style="margin-top:8px;width:100%;background:' + (ts.done ? 'rgba(255,255,255,0.10)' : UI.evGold) + ';color:' + (ts.done ? UI.evInk : '#20160A') + ';border:none;border-radius:' + UI.r1 + ';padding:9px;font-size:12.5px;font-weight:800;cursor:pointer;">' +
+                      ? '<button onclick="event.stopPropagation();App.toggleTaskDone(\'' + jsArg(post.id) + '\')" style="margin-top:8px;width:100%;background:' + (ts.done ? 'rgba(255,255,255,0.10)' : UI.evGold) + ';color:' + (ts.done ? UI.evInk : '#20160A') + ';border:none;border-radius:' + UI.r1 + ';padding:9px;font-size:13px;font-weight:800;cursor:pointer;">' +
                           (ts.done ? '↩︎ Remettre à faire' : '✓ Marquer comme fait') +
                         '</button>'
                       : '');
                 }
                 return '<div style="background:' + (isMeAssigned ? UI.evGoldSoft : 'rgba(255,255,255,0.05)') + ';border:0.5px solid ' + (isMeAssigned ? UI.evGoldLine : 'transparent') + ';border-radius:' + UI.r1 + ';padding:8px 11px;">' +
                   '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">' +
-                    '<div style="font-size:12.5px;font-weight:600;color:' + (isMeAssigned ? UI.evGold : UI.evInk) + ';min-width:0;">' + safeHtml(a.userName) + (isMeAssigned ? ' · vous' : '') + '</div>' +
+                    '<div style="font-size:13px;font-weight:600;color:' + (isMeAssigned ? UI.evGold : UI.evInk) + ';min-width:0;">' + safeHtml(a.userName) + (isMeAssigned ? ' · vous' : '') + '</div>' +
                     (function(){
                       var r = a.userId ? reponseConvocation(post, a.userId) : null;
                       if (!r) return '';
-                      return '<span style="flex-shrink:0;font-size:10px;font-weight:800;padding:2px 8px;border-radius:999px;' + (r.statut === 'confirme' ? 'background:rgba(14,159,110,0.22);color:#8FE9C4;">Confirmé' : 'background:rgba(226,68,92,0.22);color:#F5A3AF;">Indisponible') + '</span>';
+                      return '<span style="flex-shrink:0;font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;' + (r.statut === 'confirme' ? 'background:rgba(14,159,110,0.22);color:#8FE9C4;">Confirmé' : 'background:rgba(226,68,92,0.22);color:#F5A3AF;">Indisponible') + '</span>';
                     })() +
                   '</div>' +
                   '<div style="font-size:12px;color:' + UI.evMuted + ';margin-top:1px;">' + safeHtml(a.task) + '</div>' +
@@ -767,13 +788,13 @@
     var anyPinned = events.some(function(e){ return isPinnedNow(e); });
 
     return '<article style="background:' + UI.card + ';border-radius:' + UI.r2 + ';box-shadow:' + UI.sh2 + ';margin:0 12px 12px;overflow:hidden;">' +
-      (anyPinned ? '<div style="background:#0B63F6;color:#FFF;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:1px;padding:4px 12px;display:flex;align-items:center;gap:6px;"><span style="font-size:12px;">📌</span> ÉPINGLÉ</div>' : '') +
+      (anyPinned ? '<div style="background:#0B5FE0;color:#FFF;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;padding:4px 12px;display:flex;align-items:center;gap:6px;"><span style="font-size:12px;">📌</span> ÉPINGLÉ</div>' : '') +
       '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px 8px;">' +
         '<div style="min-width:0;">' +
-          '<div style="font-size:15px;font-weight:900;color:var(--ink);text-transform:capitalize;">' + safeHtml(dateLabel) + '</div>' +
+          '<div style="font-size:15px;font-weight:800;color:var(--ink);text-transform:capitalize;">' + safeHtml(dateLabel) + '</div>' +
           '<div style="font-size:12px;color:var(--faint);font-weight:600;margin-top:2px;">' + events.length + ' événements · faites défiler</div>' +
         '</div>' +
-        '<div id="evgrpBadge-' + carId + '" style="background:var(--accent-soft);color:#0B63F6;font-size:12px;font-weight:800;padding:4px 10px;border-radius:20px;flex-shrink:0;">' + (curIdx + 1) + '/' + events.length + '</div>' +
+        '<div id="evgrpBadge-' + carId + '" style="background:var(--accent-soft);color:#0B5FE0;font-size:12px;font-weight:800;padding:4px 10px;border-radius:20px;flex-shrink:0;">' + (curIdx + 1) + '/' + events.length + '</div>' +
       '</div>' +
       // align-items:flex-start + hauteur pilotée en JS (voir App.recalerCarrousels) :
       // une rangée flex prend sinon la hauteur de son PLUS GRAND volet. Quand l'un
@@ -795,7 +816,7 @@
       '<div id="evgrpDots-' + carId + '" style="display:flex;justify-content:center;gap:5px;padding:8px 0 12px;">' +
         events.map(function(_, di) {
           var a = di === curIdx;
-          return '<div style="width:' + (a?'18':'6') + 'px;height:6px;border-radius:3px;background:' + (a?'#0B63F6':'var(--line)') + ';transition:all 0.25s;"></div>';
+          return '<div style="width:' + (a?'18':'6') + 'px;height:6px;border-radius:3px;background:' + (a?'#0B5FE0':'var(--line)') + ';transition:all 0.25s;"></div>';
         }).join('') +
       '</div>' +
     '</article>';
@@ -804,25 +825,25 @@
   // Bloc visuel d'UNE section évaluée (utilisé seul ou dans le carrousel).
   function renderEvaluationSlide(ev) {
     var score = ev.globalScore;
-    var badgeBg = score>=4 ? '#0E9F6E' : score>=2 ? '#D98A0B' : '#E2445C';
+    var badgeBg = score>=4 ? '#0E9F6E' : score>=2 ? '#D98A0B' : '#D92D20';
     var badgeShadow = score>=4 ? 'rgba(34,197,94,0.3)' : score>=2 ? 'rgba(245,158,11,0.3)' : 'rgba(239,68,68,0.3)';
     var crit = ev.criteria || {};
     return '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">' +
         '<div>' +
-          '<div style="display:inline-flex;align-items:center;gap:4px;background:var(--card);padding:4px 8px;border-radius:8px;font-size:10px;font-weight:800;color:var(--faint);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05);"><span>📊</span> Évaluation</div>' +
-          '<div style="font-size:20px;font-weight:900;color:var(--ink);letter-spacing:-0.5px;">' + (ev.emoji ? ev.emoji + ' ' : '') + safeHtml(ev.teamName || '') + '</div>' +
+          '<div style="display:inline-flex;align-items:center;gap:4px;background:var(--card);padding:4px 8px;border-radius:8px;font-size:11px;font-weight:800;color:var(--faint);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;box-shadow:0 1px 3px rgba(0,0,0,0.05);"><span>📊</span> Évaluation</div>' +
+          '<div style="font-size:22px;font-weight:800;color:var(--ink);letter-spacing:-0.5px;">' + (ev.emoji ? ev.emoji + ' ' : '') + safeHtml(ev.teamName || '') + '</div>' +
         '</div>' +
-        '<div style="background:' + badgeBg + ';color:#FFF;padding:12px 16px;border-radius:16px;font-size:24px;font-weight:900;box-shadow:0 6px 16px ' + badgeShadow + ';text-shadow:0 2px 4px rgba(0,0,0,0.1);white-space:nowrap;">' + score + '/5</div>' +
+        '<div style="background:' + badgeBg + ';color:#FFF;padding:12px 16px;border-radius:16px;font-size:28px;font-weight:800;box-shadow:0 6px 16px ' + badgeShadow + ';text-shadow:0 2px 4px rgba(0,0,0,0.1);white-space:nowrap;">' + score + '/5</div>' +
       '</div>' +
       '<div style="display:flex;flex-direction:column;gap:14px;">' +
         Object.keys(crit).map(function(k) {
           var v = crit[k];
           var pct = (v/5)*100;
-          var cCol = v>=4?'#0E9F6E':v>=2?'#D98A0B':'#E2445C';
+          var cCol = v>=4?'#0E9F6E':v>=2?'#D98A0B':'#D92D20';
           return '<div style="display:flex;flex-direction:column;gap:6px;">' +
-                   '<div style="display:flex;justify-content:space-between;font-size:12.5px;font-weight:800;color:var(--muted);"><span>' + safeHtml(k) + '</span><span style="color:var(--ink);">' + v + '/5</span></div>' +
-                   '<div style="height:10px;background:var(--line);border-radius:5px;overflow:hidden;box-shadow:inset 0 1px 3px rgba(0,0,0,0.06);">' +
-                     '<div style="height:100%;width:' + pct + '%;background:' + cCol + ';border-radius:5px;box-shadow:0 1px 2px rgba(0,0,0,0.1);"></div>' +
+                   '<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:800;color:var(--muted);"><span>' + safeHtml(k) + '</span><span style="color:var(--ink);">' + v + '/5</span></div>' +
+                   '<div style="height:10px;background:var(--line);border-radius:8px;overflow:hidden;box-shadow:inset 0 1px 3px rgba(0,0,0,0.06);">' +
+                     '<div style="height:100%;width:' + pct + '%;background:' + cCol + ';border-radius:8px;box-shadow:0 1px 2px rgba(0,0,0,0.1);"></div>' +
                    '</div>' +
                  '</div>';
         }).join('') +
@@ -831,23 +852,23 @@
       // chacun a apporté au total du pôle.
       (ev.punctuality && ev.punctuality.details && ev.punctuality.details.length
         ? '<div style="margin-top:16px;padding-top:14px;border-top:1px dashed var(--line2);">' +
-            '<div style="font-size:10.5px;font-weight:800;color:var(--faint);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Ponctualité — calcul automatique</div>' +
+            '<div style="font-size:11px;font-weight:800;color:var(--faint);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Ponctualité — calcul automatique</div>' +
             ev.punctuality.details.map(function(d) {
-              var dc = d.stars >= 4 ? '#0E9F6E' : d.stars >= 2 ? '#D98A0B' : '#E2445C';
+              var dc = d.stars >= 4 ? '#0E9F6E' : d.stars >= 2 ? '#D98A0B' : '#D92D20';
               var when = d.absent ? 'aucune publication' : (d.delayMinutes <= 0 ? "à l'heure" : '+' + d.delayMinutes + ' min');
               var geoNote = '';
               if (!d.absent) {
-                if (!d.geo || !d.geo.available) geoNote = '<span style="display:block;font-size:10.5px;color:#B45309;font-weight:700;">présence non vérifiée</span>';
+                if (!d.geo || !d.geo.available) geoNote = '<span style="display:block;font-size:11px;color:#B45309;font-weight:700;">présence non vérifiée</span>';
                 else if (d.distance === null || d.distance === undefined) geoNote = '';
-                else if (d.onSite) geoNote = '<span style="display:block;font-size:10.5px;color:var(--ok-ink);">sur place (' + formatDistance(d.distance) + ')</span>';
-                else geoNote = '<span style="display:block;font-size:10.5px;color:var(--bad-ink);font-weight:700;">à ' + formatDistance(d.distance) + ' du lieu</span>';
+                else if (d.onSite) geoNote = '<span style="display:block;font-size:11px;color:var(--ok-ink);">sur place (' + formatDistance(d.distance) + ')</span>';
+                else geoNote = '<span style="display:block;font-size:11px;color:var(--bad-ink);font-weight:700;">à ' + formatDistance(d.distance) + ' du lieu</span>';
               }
               return '<div style="display:flex;justify-content:space-between;align-items:flex-start;font-size:12px;padding:3px 0;gap:10px;">' +
                 '<span style="color:var(--muted);min-width:0;">' + safeHtml(d.name) + (d.task ? ' <span style="color:var(--faint);">· ' + safeHtml(d.task) + '</span>' : '') + geoNote + '</span>' +
                 '<span style="font-weight:800;color:' + dc + ';white-space:nowrap;">' + (d.stars>0?'+':'') + d.stars + '★ · ' + when + '</span>' +
               '</div>';
             }).join('') +
-            '<div style="display:flex;justify-content:space-between;align-items:center;font-size:12.5px;font-weight:800;color:var(--ink);padding-top:8px;margin-top:6px;border-top:1px solid var(--line);">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:800;color:var(--ink);padding-top:8px;margin-top:6px;border-top:1px solid var(--line);">' +
               '<span>Total du pôle (' + ev.punctuality.count + ' membre' + (ev.punctuality.count>1?'s':'') + ')</span>' +
               '<span>' + ev.punctuality.average + '/5</span>' +
             '</div>' +
@@ -861,7 +882,7 @@
   function renderEvaluationContent(post) {
     var meta = post.metadata || {};
     var evBadge = meta.eventTitle
-      ? '<div style="font-size:12.5px;font-weight:800;color:#0B63F6;background:rgba(88,86,214,0.08);padding:6px 12px;border-radius:10px;margin-bottom:12px;display:flex;align-items:center;gap:6px;"><span>Événement :</span> <span>' + safeHtml(meta.eventTitle) + '</span></div>'
+      ? '<div style="font-size:13px;font-weight:800;color:#0B5FE0;background:rgba(88,86,214,0.08);padding:6px 12px;border-radius:12px;margin-bottom:12px;display:flex;align-items:center;gap:6px;"><span>Événement :</span> <span>' + safeHtml(meta.eventTitle) + '</span></div>'
       : '';
 
     // Ancien format (une seule section, publications déjà en base) ramené au
@@ -884,7 +905,7 @@
     return '<div style="margin:10px 14px;">' +
       evBadge +
       '<div style="position:relative;">' +
-        '<div style="position:absolute;top:10px;right:10px;z-index:3;background:rgba(15,23,42,0.72);color:#FFF;font-size:11.5px;font-weight:800;padding:4px 10px;border-radius:12px;" id="evalBadge-' + post.id + '">' + (curIdx+1) + '/' + evals.length + '</div>' +
+        '<div style="position:absolute;top:10px;right:10px;z-index:3;background:rgba(15,23,42,0.72);color:#FFF;font-size:12px;font-weight:800;padding:4px 10px;border-radius:12px;" id="evalBadge-' + post.id + '">' + (curIdx+1) + '/' + evals.length + '</div>' +
         '<div id="evalCar-' + post.id + '" onscroll="App.evalCarScroll(\'' + jsArg(post.id) + '\', this)" style="display:flex;overflow-x:auto;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;gap:0;">' +
           evals.map(function(ev) {
             return '<div style="flex:0 0 100%;scroll-snap-align:start;box-sizing:border-box;' + boxStyle + '">' + renderEvaluationSlide(ev) + '</div>';
@@ -894,7 +915,7 @@
       '<div id="evalDots-' + post.id + '" style="display:flex;justify-content:center;gap:5px;margin-top:10px;">' +
         evals.map(function(_, di) {
           var a = di === curIdx;
-          return '<div style="width:' + (a?'18':'6') + 'px;height:6px;border-radius:3px;background:' + (a?'#0B63F6':'var(--line)') + ';transition:all 0.25s;"></div>';
+          return '<div style="width:' + (a?'18':'6') + 'px;height:6px;border-radius:3px;background:' + (a?'#0B5FE0':'var(--line)') + ';transition:all 0.25s;"></div>';
         }).join('') +
       '</div>' +
     '</div>';
@@ -935,10 +956,10 @@
          : (geo && geo.available ? (dist !== null && dist <= ON_SITE_RADIUS_M ? 'onsite' : 'offsite') : 'unverified'));
     var isAuthor = S.user && post.userId === S.user.id;
 
-    var starCol = stars === null ? 'var(--faint)' : stars >= 4 ? '#0E9F6E' : stars >= 2 ? '#D98A0B' : '#E2445C';
+    var starCol = stars === null ? 'var(--faint)' : stars >= 4 ? '#0E9F6E' : stars >= 2 ? '#D98A0B' : '#D92D20';
 
     var confirmBtn = isAuthor
-      ? '<div style="margin-top:6px;"><button onclick="App.confirmPresence(\'' + jsArg(post.id) + '\')"' + (S.geoCapturing ? ' disabled' : '') + ' style="background:var(--accent-soft);color:#0B63F6;border:none;border-radius:10px;padding:7px 12px;font-size:12px;font-weight:800;cursor:pointer;">📍 Confirmer ma présence</button></div>'
+      ? '<div style="margin-top:6px;"><button onclick="App.confirmPresence(\'' + jsArg(post.id) + '\')"' + (S.geoCapturing ? ' disabled' : '') + ' style="background:var(--accent-soft);color:#0B5FE0;border:none;border-radius:12px;padding:7px 12px;font-size:12px;font-weight:800;cursor:pointer;">📍 Confirmer ma présence</button></div>'
       : '';
 
     // Bloc position selon l'état de présence.
@@ -971,18 +992,18 @@
       ? 'Arrivée non comptabilisée : il fallait être à moins de ' + formatDistance(ON_SITE_RADIUS_M) + ' du lieu.'
       : (presence === 'unverified' ? 'Arrivée non comptabilisée : présence non vérifiée dans la minute (position non partagée). Utilise « Confirmer ma présence » si tu es sur place.' : '');
 
-    return '<div style="margin:0 14px 10px;padding:10px 12px;background:' + bg + ';border:1px solid ' + border + ';border-radius:14px;">' +
+    return '<div style="margin:0 14px 10px;padding:10px 12px;background:' + bg + ';border:1px solid ' + border + ';border-radius:16px;">' +
       '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px;">' +
-        '<span style="font-size:10px;font-weight:800;color:' + (isBad ? 'var(--bad-ink)' : 'var(--faint)') + ';text-transform:uppercase;letter-spacing:0.5px;">' + headLabel + '</span>' +
-        (stars === null ? '' : '<span style="font-size:12.5px;font-weight:900;color:' + starCol + ';white-space:nowrap;">' + (stars>0?'+':'') + stars + '★</span>') +
+        '<span style="font-size:11px;font-weight:800;color:' + (isBad ? 'var(--bad-ink)' : 'var(--faint)') + ';text-transform:uppercase;letter-spacing:0.5px;">' + headLabel + '</span>' +
+        (stars === null ? '' : '<span style="font-size:13px;font-weight:800;color:' + starCol + ';white-space:nowrap;">' + (stars>0?'+':'') + stars + '★</span>') +
       '</div>' +
-      '<div style="font-size:11.5px;color:var(--muted);line-height:1.5;">' +
+      '<div style="font-size:12px;color:var(--muted);line-height:1.5;">' +
         (delay === null ? '' : (delay <= 0 ? "À l'heure" : 'Retard de ' + delay + ' min') + ' · ') +
         new Date(arrival).toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'}) +
       '</div>' +
-      '<div style="font-size:11.5px;line-height:1.5;margin-top:2px;">' + geoBlock + '</div>' +
-      (penaltyNote ? '<div style="font-size:10.5px;color:var(--bad-ink);margin-top:3px;font-weight:700;line-height:1.4;">' + penaltyNote + '</div>' : '') +
-      (post.checkInByEdit ? '<div style="font-size:10.5px;color:var(--bad-ink);margin-top:3px;font-weight:700;">Rattaché à l\'événement après publication</div>' : '') +
+      '<div style="font-size:12px;line-height:1.5;margin-top:2px;">' + geoBlock + '</div>' +
+      (penaltyNote ? '<div style="font-size:11px;color:var(--bad-ink);margin-top:3px;font-weight:700;line-height:1.4;">' + penaltyNote + '</div>' : '') +
+      (post.checkInByEdit ? '<div style="font-size:11px;color:var(--bad-ink);margin-top:3px;font-weight:700;">Rattaché à l\'événement après publication</div>' : '') +
     '</div>';
   }
 
@@ -998,11 +1019,11 @@
       var titre = estEv ? p.eventTitle : (p.caption || 'Publication');
       var d = estEv && p.eventDate ? new Date(p.eventDate + 'T00:00:00') : null;
       var vignette = d
-        ? '<div style="width:38px;flex-shrink:0;background:' + UI.evBg + ';border-radius:10px;text-align:center;padding:4px 0;">' +
+        ? '<div style="width:38px;flex-shrink:0;background:' + UI.evBg + ';border-radius:12px;text-align:center;padding:4px 0;">' +
             '<div style="font-size:8px;color:' + UI.evGold + ';letter-spacing:0.5px;">' + d.toLocaleDateString('fr-FR',{month:'short'}).toUpperCase() + '</div>' +
             '<div style="font-size:15px;font-weight:600;color:' + UI.evInk + ';line-height:1.1;">' + d.getDate() + '</div>' +
           '</div>'
-        : '<div style="width:38px;height:38px;flex-shrink:0;border-radius:10px;background:' + UI.tile + ';display:flex;align-items:center;justify-content:center;">' + ico('message', 17, UI.faint) + '</div>';
+        : '<div style="width:38px;height:38px;flex-shrink:0;border-radius:12px;background:' + UI.tile + ';display:flex;align-items:center;justify-content:center;">' + ico('message', 17, UI.faint) + '</div>';
       var meta = estEv
         ? ((p.eventStart || '') + (p.eventEnd ? ' – ' + p.eventEnd : '') + (p.eventLocation ? ' · ' + p.eventLocation : ''))
         : (p.author || '');
@@ -1010,8 +1031,8 @@
       return '<div onclick="' + action + '" style="display:flex;align-items:center;gap:11px;padding:9px 14px;border-top:0.5px solid ' + UI.line + ';cursor:pointer;">' +
         vignette +
         '<div style="flex:1;min-width:0;">' +
-          '<div style="font-size:13.5px;font-weight:500;color:' + UI.ink + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(titre) + '</div>' +
-          (meta ? '<div style="font-size:11.5px;color:' + UI.faint + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(meta) + '</div>' : '') +
+          '<div style="font-size:13px;font-weight:500;color:' + UI.ink + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(titre) + '</div>' +
+          (meta ? '<div style="font-size:12px;color:' + UI.faint + ';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(meta) + '</div>' : '') +
         '</div>' +
         '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="' + UI.line2 + '" stroke-width="2.4" style="flex-shrink:0;"><path d="M9 18l6-6-6-6"/></svg>' +
       '</div>';
@@ -1020,9 +1041,9 @@
     return '<div style="background:' + UI.card + ';border-radius:' + UI.r2 + ';box-shadow:' + UI.sh2 + ';margin:0 12px 12px;overflow:hidden;">' +
       '<div onclick="App.togglePinnedStack()" style="display:flex;align-items:center;gap:9px;padding:13px 14px;cursor:pointer;">' +
         ico('pinned', 16, UI.accent) +
-        '<span style="font-size:13.5px;font-weight:600;color:' + UI.ink + ';">Épinglés</span>' +
-        '<span style="font-size:11.5px;font-weight:600;color:' + UI.accentInk + ';background:' + UI.accentSoft + ';padding:1px 8px;border-radius:' + UI.pill + ';">' + pinned.length + '</span>' +
-        '<span style="margin-left:auto;font-size:11.5px;color:' + UI.faint + ';">' + (ouvert ? 'Réduire' : 'Afficher') + '</span>' +
+        '<span style="font-size:13px;font-weight:600;color:' + UI.ink + ';">Épinglés</span>' +
+        '<span style="font-size:12px;font-weight:600;color:' + UI.accentInk + ';background:' + UI.accentSoft + ';padding:1px 8px;border-radius:' + UI.pill + ';">' + pinned.length + '</span>' +
+        '<span style="margin-left:auto;font-size:12px;color:' + UI.faint + ';">' + (ouvert ? 'Réduire' : 'Afficher') + '</span>' +
         '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="' + UI.faint + '" stroke-width="2.2" style="transform:rotate(' + (ouvert ? '90' : '0') + 'deg);transition:transform 0.2s;flex-shrink:0;"><path d="M9 18l6-6-6-6"/></svg>' +
       '</div>' +
       (ouvert ? '' : pinned.map(ligne).join('')) +
@@ -1036,7 +1057,7 @@
   function renderImageViewer() {
     if (!S.viewerImage) return '';
     return '<div onclick="App.closeImageViewer()" class="safe-top" style="position:fixed;inset:0;z-index:100000;background:rgba(0,0,0,0.94);display:flex;align-items:center;justify-content:center;padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom));animation:fadeIn 0.18s ease-out;">' +
-      '<button onclick="event.stopPropagation();App.closeImageViewer()" aria-label="Fermer" style="position:absolute;top:10px;right:10px;background:rgba(255,255,255,0.16);border:none;border-radius:50%;width:44px;height:44px;color:#FFF;font-size:20px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;touch-action:manipulation;">×</button>' +
+      '<button onclick="event.stopPropagation();App.closeImageViewer()" aria-label="Fermer" style="position:absolute;top:10px;right:10px;background:rgba(255,255,255,0.16);border:none;border-radius:50%;width:44px;height:44px;color:#FFF;font-size:22px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;touch-action:manipulation;">×</button>' +
       '<img src="' + safeUrl(S.viewerImage) + '" onclick="event.stopPropagation()" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:' + UI.r1 + ';" />' +
     '</div>';
   }
@@ -1054,8 +1075,8 @@
     var inner =
       img +
       '<div style="padding:10px 12px;">' +
-        '<div style="font-size:10.5px;color:' + UI.faint + ';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px;">' + safeHtml(domain) + '</div>' +
-        '<div style="font-size:13.5px;font-weight:600;color:' + UI.ink + ';line-height:1.35;">' + safeHtml(titre) + '</div>' +
+        '<div style="font-size:11px;color:' + UI.faint + ';text-transform:uppercase;letter-spacing:0.5px;margin-bottom:3px;">' + safeHtml(domain) + '</div>' +
+        '<div style="font-size:13px;font-weight:600;color:' + UI.ink + ';line-height:1.35;">' + safeHtml(titre) + '</div>' +
         (pv.description && !opts.compact
           ? '<div style="font-size:12px;color:' + UI.muted + ';line-height:1.4;margin-top:3px;">' + safeHtml(pv.description) + '</div>'
           : '') +
@@ -1077,8 +1098,8 @@
     var hasVoted = myVote !== null;
 
     return '<div style="margin:0 14px 10px;padding:14px;background:var(--tile);border:1px solid var(--ok-line);border-radius:16px;">' +
-      '<div style="font-size:10px;font-weight:800;color:var(--ok-ink);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;display:flex;align-items:center;gap:6px;"><span>📊</span> Sondage</div>' +
-      '<div style="font-size:14.5px;font-weight:800;color:var(--ink);margin-bottom:10px;line-height:1.4;">' + safeHtml(poll.question||'') + '</div>' +
+      '<div style="font-size:11px;font-weight:800;color:var(--ok-ink);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;display:flex;align-items:center;gap:6px;"><span>📊</span> Sondage</div>' +
+      '<div style="font-size:15px;font-weight:800;color:var(--ink);margin-bottom:10px;line-height:1.4;">' + safeHtml(poll.question||'') + '</div>' +
       poll.options.map(function(opt, idx) {
         var pct = pollOptionPct(poll, idx);
         var mine = myVote === idx;
@@ -1137,7 +1158,7 @@
     var authorSecId = getUserSections(postAuthorUser)[0];
     var authorSecObj = SECTIONS.find(function(s){ return s.id === authorSecId; });
     var authorSecEmoji = authorSecObj ? authorSecObj.emoji : '🎥';
-    var authorSecColor = authorSecObj ? authorSecObj.color : '#0B63F6';
+    var authorSecColor = authorSecObj ? authorSecObj.color : '#0B5FE0';
     var authorSecNom = authorSecObj ? authorSecObj.nom : 'Membre';
 
     // Caption truncation (Instagram style: max 3 lines)
@@ -1187,7 +1208,7 @@
         (isMulti ? '<div id="dots-'+post.id+'" style="display:flex;justify-content:center;gap:5px;padding:8px 0;background:var(--card);">' +
           post.mediaUrls.map(function(_,di){
             var a = di === curIdx;
-            return '<div style="width:'+(a?'18':'6')+'px;height:6px;border-radius:3px;background:'+(a?'#0B63F6':'var(--line)')+';transition:all 0.25s;"></div>';
+            return '<div style="width:'+(a?'18':'6')+'px;height:6px;border-radius:3px;background:'+(a?'#0B5FE0':'var(--line)')+';transition:all 0.25s;"></div>';
           }).join('') +
         '</div>' : '') +
       '</div>';
@@ -1202,14 +1223,14 @@
         var fontSize = captionForBg.length > 100 ? '18px' : captionForBg.length > 60 ? '22px' : '26px';
         mediaZone = '<div ondblclick="App.doubleTapLike(\''+jsArg(post.id)+'\')" style="position:relative;' + bgStyle + 'min-height:220px;display:flex;align-items:center;justify-content:center;padding:28px 20px;text-align:center;overflow:hidden;">' +
           '<div style="position:absolute;inset:0;background:rgba(0,0,0,0.08);"></div>' +
-          '<p style="position:relative;z-index:1;font-size:' + fontSize + ';font-weight:900;color:#FFF;margin:0;line-height:1.4;text-shadow:0 2px 16px rgba(0,0,0,0.4);word-break:break-word;">' + hashtagify(captionForBg) + '</p>' +
+          '<p style="position:relative;z-index:1;font-size:' + fontSize + ';font-weight:800;color:#FFF;margin:0;line-height:1.4;text-shadow:0 2px 16px rgba(0,0,0,0.4);word-break:break-word;">' + hashtagify(captionForBg) + '</p>' +
         '</div>';
         // Don't show caption again below for bg posts (it's in the card)
         captionHtml = '';
       } else if (post.isVedette || post.scoreText) {
         mediaZone = '<div ondblclick="App.doubleTapLike(\''+jsArg(post.id)+'\')" style="background:linear-gradient(135deg,#1A1A2E,#2D2D44);min-height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;text-align:center;position:relative;">' +
-          '<div style="width:44px;height:44px;border-radius:22px;background:rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center;margin-bottom:8px;font-size:22px;">' + sec.emoji + '</div>' +
-          (post.isVedette ? '<div style="background:linear-gradient(135deg,#FFD700,#D98A0B);color:#5D3A00;font-size:10px;font-weight:900;padding:4px 12px;border-radius:20px;letter-spacing:0.8px;margin-bottom:6px;">SECTION VEDETTE</div>' : '') +
+          '<div style="width:44px;height:44px;border-radius:20px;background:rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center;margin-bottom:8px;font-size:22px;">' + sec.emoji + '</div>' +
+          (post.isVedette ? '<div style="background:linear-gradient(135deg,#FFD700,#D98A0B);color:#5D3A00;font-size:11px;font-weight:800;padding:4px 12px;border-radius:20px;letter-spacing:0.8px;margin-bottom:6px;">SECTION VEDETTE</div>' : '') +
           (post.scoreText ? '<div style="background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);padding:5px 12px;border-radius:12px;position:absolute;bottom:12px;right:12px;"><strong style="font-size:13px;color:var(--ink);">★ ' + post.scoreText + '</strong></div>' : '') +
         '</div>';
       } else {
@@ -1218,7 +1239,7 @@
       }
     }
 
-    var pinnedBadge = isPinnedNow(post) ? '<div style="background:#0B63F6;color:#FFF;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:1px;padding:4px 12px;display:flex;align-items:center;gap:6px;"><span style="font-size:12px;">📌</span> ÉPINGLÉ</div>' : '';
+    var pinnedBadge = isPinnedNow(post) ? '<div style="background:#0B5FE0;color:#FFF;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:1px;padding:4px 12px;display:flex;align-items:center;gap:6px;"><span style="font-size:12px;">📌</span> ÉPINGLÉ</div>' : '';
 
       var contentZone = '';
       // Handle new-format EVENT posts (created by saveEvent)
@@ -1231,34 +1252,34 @@
          if (participants.length > 0) {
              partAvatars = '<div style="display:flex;margin-left:8px;">';
              for (var i=0; i<Math.min(participants.length, 3); i++) {
-                 partAvatars += '<div style="width:24px;height:24px;border-radius:12px;background:#0B63F6;color:#FFF;border:2px solid var(--card);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;margin-left:-8px;">👤</div>';
+                 partAvatars += '<div style="width:24px;height:24px;border-radius:12px;background:#0B5FE0;color:#FFF;border:2px solid var(--card);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;margin-left:-8px;">👤</div>';
              }
              if (participants.length > 3) {
-                 partAvatars += '<div style="width:24px;height:24px;border-radius:12px;background:var(--line);color:var(--ink);border:2px solid var(--card);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;margin-left:-8px;">+'+(participants.length-3)+'</div>';
+                 partAvatars += '<div style="width:24px;height:24px;border-radius:12px;background:var(--line);color:var(--ink);border:2px solid var(--card);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;margin-left:-8px;">+'+(participants.length-3)+'</div>';
              }
              partAvatars += '</div>';
          }
 
-         contentZone = '<div style="margin:10px 14px;padding:20px;background:var(--tile);border-radius:20px;border-left:5px solid #0B63F6;box-shadow:0 4px 12px rgba(0,0,0,0.03);position:relative;overflow:hidden;">' +
+         contentZone = '<div style="margin:10px 14px;padding:20px;background:var(--tile);border-radius:20px;border-left:5px solid #0B5FE0;box-shadow:0 4px 12px rgba(0,0,0,0.03);position:relative;overflow:hidden;">' +
           '<div style="position:absolute;top:0;right:0;width:100px;height:100px;background:radial-gradient(circle, rgba(88,86,214,0.05) 0%, rgba(255,255,255,0) 70%);border-radius:50%;transform:translate(30%,-30%);"></div>' +
           
-          '<div style="display:inline-block;background:rgba(88,86,214,0.1);color:#0B63F6;padding:4px 10px;border-radius:6px;font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin-bottom:16px;">Événement Planning</div>' +
+          '<div style="display:inline-block;background:rgba(88,86,214,0.1);color:#0B5FE0;padding:4px 10px;border-radius:8px;font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;margin-bottom:16px;">Événement Planning</div>' +
           
           '<div style="display:flex;gap:16px;align-items:center;margin-bottom:16px;">' +
             '<div style="background:var(--card);border-radius:16px;overflow:hidden;box-shadow:0 6px 16px rgba(0,0,0,0.08);width:70px;text-align:center;flex-shrink:0;border:1px solid var(--line);">' +
-              '<div style="background:linear-gradient(135deg, #E2445C, #E2445C);color:#FFF;font-size:11px;font-weight:900;text-transform:uppercase;padding:6px 0;letter-spacing:1px;">' + (post.metadata.month||'MOIS') + '</div>' +
-              '<div style="font-size:28px;font-weight:900;color:var(--ink);padding:8px 0;">' + (post.metadata.day||'00') + '</div>' +
+              '<div style="background:linear-gradient(135deg, #D92D20, #D92D20);color:#FFF;font-size:11px;font-weight:800;text-transform:uppercase;padding:6px 0;letter-spacing:1px;">' + (post.metadata.month||'MOIS') + '</div>' +
+              '<div style="font-size:28px;font-weight:800;color:var(--ink);padding:8px 0;">' + (post.metadata.day||'00') + '</div>' +
             '</div>' +
             '<div style="flex:1;">' +
-              '<h3 style="margin:0 0 8px;font-size:19px;font-weight:900;color:var(--ink);line-height:1.2;letter-spacing:-0.3px;">' + safeHtml(post.metadata.title||'') + '</h3>' +
+              '<h3 style="margin:0 0 8px;font-size:17px;font-weight:800;color:var(--ink);line-height:1.2;letter-spacing:-0.3px;">' + safeHtml(post.metadata.title||'') + '</h3>' +
               '<div style="display:flex;flex-wrap:wrap;gap:10px;">' +
-                '<div style="font-size:13px;color:#0B63F6;display:flex;align-items:center;gap:4px;font-weight:600;background:rgba(88,86,214,0.08);padding:4px 8px;border-radius:6px;"><span style="font-size:14px;">🕒</span> ' + safeHtml(post.metadata.time||'') + '</div>' +
-                '<div style="font-size:13px;color:var(--faint);display:flex;align-items:center;gap:4px;font-weight:600;background:var(--tile);padding:4px 8px;border-radius:6px;"><span style="font-size:14px;">📍</span> ' + safeHtml(post.metadata.location||'') + '</div>' +
+                '<div style="font-size:13px;color:#0B5FE0;display:flex;align-items:center;gap:4px;font-weight:600;background:rgba(88,86,214,0.08);padding:4px 8px;border-radius:8px;"><span style="font-size:15px;">🕒</span> ' + safeHtml(post.metadata.time||'') + '</div>' +
+                '<div style="font-size:13px;color:var(--faint);display:flex;align-items:center;gap:4px;font-weight:600;background:var(--tile);padding:4px 8px;border-radius:8px;"><span style="font-size:15px;">📍</span> ' + safeHtml(post.metadata.location||'') + '</div>' +
               '</div>' +
             '</div>' +
           '</div>' +
           
-          (post.caption ? '<p style="font-size:14px;color:var(--ink2);margin:0 0 16px;line-height:1.5;">' + safeHtml(post.caption) + '</p>' : '') +
+          (post.caption ? '<p style="font-size:15px;color:var(--ink2);margin:0 0 16px;line-height:1.5;">' + safeHtml(post.caption) + '</p>' : '') +
           
           '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-top:12px;border-top:1px dashed var(--line);">' +
             '<div style="display:flex;align-items:center;">' +
@@ -1268,8 +1289,8 @@
           '</div>' +
 
           '<div style="display:flex;gap:10px;">' +
-            '<button onclick="App.toggleParticipation(\''+jsArg(post.id)+'\',\'yes\')" style="flex:1;padding:12px;border-radius:12px;font-size:14px;font-weight:800;border:none;cursor:pointer;background:'+((post.metadata.participations||{})[(S.user||{}).id]==='yes'?'#0E9F6E':'var(--card)')+';color:'+((post.metadata.participations||{})[(S.user||{}).id]==='yes'?'#FFF':'var(--ink)')+';box-shadow:'+((post.metadata.participations||{})[(S.user||{}).id]==='yes'?'0 4px 12px rgba(52,199,89,0.3)':'0 2px 6px rgba(0,0,0,0.05)')+';transition:all 0.2s;">' + ((post.metadata.participations||{})[(S.user||{}).id]==='yes' ? ico('thumb',14,'#FFF') + ' Confirmé' : ico('thumb',14,'currentColor') + ' Je participe') + '</button>' +
-            '<button onclick="App.toggleParticipation(\''+jsArg(post.id)+'\',\'no\')" style="flex:1;padding:12px;border-radius:12px;font-size:14px;font-weight:800;border:none;cursor:pointer;background:'+((post.metadata.participations||{})[(S.user||{}).id]==='no'?'linear-gradient(135deg,#E2445C,#E2445C)':'var(--card)')+';color:'+((post.metadata.participations||{})[(S.user||{}).id]==='no'?'#FFF':'var(--ink)')+';box-shadow:'+((post.metadata.participations||{})[(S.user||{}).id]==='no'?'0 4px 12px rgba(255,59,48,0.3)':'0 2px 6px rgba(0,0,0,0.05)')+';transition:all 0.2s;">' + ((post.metadata.participations||{})[(S.user||{}).id]==='no' ? '❌ Indisponible' : '❌ Non dispo') + '</button>' +
+            '<button onclick="App.toggleParticipation(\''+jsArg(post.id)+'\',\'yes\')" style="flex:1;padding:12px;border-radius:999px;font-size:15px;font-weight:800;border:none;cursor:pointer;background:'+((post.metadata.participations||{})[(S.user||{}).id]==='yes'?'#0E9F6E':'var(--card)')+';color:'+((post.metadata.participations||{})[(S.user||{}).id]==='yes'?'#FFF':'var(--ink)')+';box-shadow:'+((post.metadata.participations||{})[(S.user||{}).id]==='yes'?'0 4px 12px rgba(52,199,89,0.3)':'0 2px 6px rgba(0,0,0,0.05)')+';transition:all 0.2s;">' + ((post.metadata.participations||{})[(S.user||{}).id]==='yes' ? ico('thumb',14,'#FFF') + ' Confirmé' : ico('thumb',14,'currentColor') + ' Je participe') + '</button>' +
+            '<button onclick="App.toggleParticipation(\''+jsArg(post.id)+'\',\'no\')" style="flex:1;padding:12px;border-radius:999px;font-size:15px;font-weight:800;border:none;cursor:pointer;background:'+((post.metadata.participations||{})[(S.user||{}).id]==='no'?'linear-gradient(135deg,#D92D20,#D92D20)':'var(--card)')+';color:'+((post.metadata.participations||{})[(S.user||{}).id]==='no'?'#FFF':'var(--ink)')+';box-shadow:'+((post.metadata.participations||{})[(S.user||{}).id]==='no'?'0 4px 12px rgba(255,59,48,0.3)':'0 2px 6px rgba(0,0,0,0.05)')+';transition:all 0.2s;">' + ((post.metadata.participations||{})[(S.user||{}).id]==='no' ? '❌ Indisponible' : '❌ Non dispo') + '</button>' +
           '</div>' +
         '</div>';
       } else if (post.type === 'EVALUATION' && post.metadata && (post.metadata.evaluations || post.metadata.teamName)) {
@@ -1293,7 +1314,7 @@
                   : '<img src="' + safeUrl(url) + '" onerror="App.mediaEchoue(this)" style="width:100%;display:block;" />';
               }).join('') + '</div>';
            } else if (post.originalPostBg) {
-              contentZone = '<div' + (goOrig ? goOrig.replace('style="cursor:pointer;"', '') : '') + ' style="background:' + safeHtml(post.originalPostBg) + ';min-height:200px;display:flex;align-items:center;justify-content:center;padding:30px;' + (goOrig ? 'cursor:pointer;' : '') + '"><p style="color:#FFF;font-size:20px;font-weight:800;text-align:center;text-shadow:0 2px 8px rgba(0,0,0,0.3);margin:0;line-height:1.4;">' + safeHtml(post.originalCaption || '') + '</p></div>';
+              contentZone = '<div' + (goOrig ? goOrig.replace('style="cursor:pointer;"', '') : '') + ' style="background:' + safeHtml(post.originalPostBg) + ';min-height:200px;display:flex;align-items:center;justify-content:center;padding:30px;' + (goOrig ? 'cursor:pointer;' : '') + '"><p style="color:#FFF;font-size:22px;font-weight:800;text-align:center;text-shadow:0 2px 8px rgba(0,0,0,0.3);margin:0;line-height:1.4;">' + safeHtml(post.originalCaption || '') + '</p></div>';
            }
          }
       }
@@ -1303,8 +1324,8 @@
       // Le bandeau lui-même ramène à la publication d'origine : c'est l'endroit
       // que l'on touche naturellement quand on veut « voir l'original ».
       var bannerClick = post.originalPostId
-        ? ' onclick="App.goToOriginalPost(\'' + jsArg(post.originalPostId) + '\')" style="padding:12px 16px 0;display:flex;align-items:center;gap:7px;color:' + UI.faint + ';font-size:12.5px;cursor:pointer;"'
-        : ' style="padding:12px 16px 0;display:flex;align-items:center;gap:7px;color:' + UI.faint + ';font-size:12.5px;"';
+        ? ' onclick="App.goToOriginalPost(\'' + jsArg(post.originalPostId) + '\')" style="padding:12px 16px 0;display:flex;align-items:center;gap:7px;color:' + UI.faint + ';font-size:13px;cursor:pointer;"'
+        : ' style="padding:12px 16px 0;display:flex;align-items:center;gap:7px;color:' + UI.faint + ';font-size:13px;"';
       repostBanner = '<div' + bannerClick + '>' +
         '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="' + UI.faint + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>' +
         '<span style="min-width:0;">' + safeHtml(post.author || '') + ' a partagé la publication de ' + safeHtml(post.originalAuthor || '') + '</span>' +
@@ -1314,8 +1335,8 @@
     // Caption text (author + label), shown ABOVE the media — Facebook style
     var captionTextBlock = (!post.postBg && (captionHtml || (post.type === 'REPOST' && post.originalCaption && !post.originalPostBg)))
       ? '<div style="padding:0 16px 12px;">' +
-          (post.type === 'REPOST' && post.originalCaption && !post.originalPostBg ? '<p style="font-size:14px;color:' + UI.ink2 + ';margin:0 0 4px;line-height:1.5;"><strong style="font-weight:600;">' + safeHtml(post.originalAuthor || '') + '</strong> ' + safeHtml(post.originalCaption) + '</p>' : '') +
-          (captionHtml ? '<p style="font-size:14px;color:' + UI.ink2 + ';margin:0;line-height:1.5;">' + captionHtml + '</p>' : '') +
+          (post.type === 'REPOST' && post.originalCaption && !post.originalPostBg ? '<p style="font-size:15px;color:' + UI.ink2 + ';margin:0 0 4px;line-height:1.5;"><strong style="font-weight:600;">' + safeHtml(post.originalAuthor || '') + '</strong> ' + safeHtml(post.originalCaption) + '</p>' : '') +
+          (captionHtml ? '<p style="font-size:15px;color:' + UI.ink2 + ';margin:0;line-height:1.5;">' + captionHtml + '</p>' : '') +
         '</div>'
       : '';
 
@@ -1341,7 +1362,7 @@
           var allU = db(SK.USERS, []);
           var pAuthor = allU.find(function(u){ return u.id === post.userId; });
           var pAvatarUrl = (pAuthor && pAuthor.avatar_url) ? pAuthor.avatar_url : post.avatar_url;
-          var pColor = (pAuthor && pAuthor.avatar_color) ? pAuthor.avatar_color : (post.avatarColor || '#0B63F6');
+          var pColor = (pAuthor && pAuthor.avatar_color) ? pAuthor.avatar_color : (post.avatarColor || '#0B5FE0');
           var pInitial = (pAuthor && pAuthor.prenom) ? pAuthor.prenom.charAt(0).toUpperCase() : (post.authorAvatar || 'M');
           var pName = (pAuthor && pAuthor.prenom && pAuthor.nom) ? (pAuthor.prenom + ' ' + pAuthor.nom) : (post.author || 'Membre');
 
@@ -1352,9 +1373,9 @@
           return '<div onclick="App.openUserProfile(\'' + jsArg(post.userId) + '\')" style="display:flex;align-items:center;gap:10px;cursor:pointer;min-width:0;">' +
             avatarNode +
             '<div style="min-width:0;">' +
-              '<div style="font-size:14px;font-weight:700;letter-spacing:-0.1px;color:' + UI.ink + ';">' + safeHtml(pName) + '</div>';
+              '<div style="font-size:15px;font-weight:700;letter-spacing:-0.1px;color:' + UI.ink + ';">' + safeHtml(pName) + '</div>';
         })() +
-            '<div style="font-size:11.5px;color:' + UI.faint + ';display:flex;align-items:center;gap:4px;flex-wrap:wrap;">' +
+            '<div style="font-size:12px;color:' + UI.faint + ';display:flex;align-items:center;gap:4px;flex-wrap:wrap;">' +
               '<span>' + authorSecEmoji + ' ' + authorSecNom + '</span>' +
               // Le grade doit rester visible à côté du pôle : c'est lui qui dit
               // qui est responsable de quoi dans l'équipe.
@@ -1371,13 +1392,13 @@
         if (!aboutEv) return '';
         var aEvDate = aboutEv.eventDate ? new Date(aboutEv.eventDate + 'T00:00:00') : null;
         var aEvDateStr = aEvDate ? aEvDate.toLocaleDateString('fr-FR', {weekday:'short', day:'numeric', month:'short'}) : '';
-        return '<div onclick="App.goToEvent(\''+jsArg(aboutEv.id)+'\')" style="margin:0 14px 10px;padding:10px 12px;background:var(--accent-soft);border-radius:14px;border:1px solid var(--line2);display:flex;align-items:center;gap:10px;cursor:pointer;">' +
-          '<span style="font-size:18px;">🗓️</span>' +
+        return '<div onclick="App.goToEvent(\''+jsArg(aboutEv.id)+'\')" style="margin:0 14px 10px;padding:10px 12px;background:var(--accent-soft);border-radius:16px;border:1px solid var(--line2);display:flex;align-items:center;gap:10px;cursor:pointer;">' +
+          '<span style="font-size:17px;">🗓️</span>' +
           '<div style="flex:1;min-width:0;">' +
-            '<div style="font-size:10px;font-weight:800;color:#0B63F6;text-transform:uppercase;letter-spacing:0.5px;">À propos de cet événement</div>' +
+            '<div style="font-size:11px;font-weight:800;color:#0B5FE0;text-transform:uppercase;letter-spacing:0.5px;">À propos de cet événement</div>' +
             '<div style="font-size:13px;font-weight:800;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(aboutEv.eventTitle||'') + (aEvDateStr ? ' · ' + aEvDateStr : '') + (aboutEv.eventStart ? ' à ' + aboutEv.eventStart : '') + '</div>' +
           '</div>' +
-          '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0B63F6" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>' +
+          '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0B5FE0" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>' +
         '</div>';
       })() +
       renderCheckInBadge(post) +
@@ -1388,7 +1409,7 @@
       // Actions row
       // Barre d'engagement : icône + compteur sur une seule ligne, séparée du
       // contenu par un filet. Le compteur de j'aime n'a plus sa propre ligne.
-      '<div style="display:flex;align-items:center;gap:18px;padding:11px 16px;border-top:0.5px solid ' + UI.line + ';color:' + UI.muted + ';font-size:12.5px;font-family:' + UI.fontMono + ';">' +
+      '<div style="display:flex;align-items:center;gap:18px;padding:11px 16px;border-top:0.5px solid ' + UI.line + ';color:' + UI.muted + ';font-size:13px;font-family:' + UI.fontMono + ';">' +
         '<button id="likeBtn-'+post.id+'" onclick="App.like(\''+jsArg(post.id)+'\')" style="background:none;border:none;padding:0;cursor:pointer;display:flex;align-items:center;gap:6px;color:inherit;font-size:inherit;transition:transform 0.1s;" onmousedown="this.style.transform=\'scale(0.9)\'" onmouseup="this.style.transform=\'scale(1)\'">' +
           '<svg width="18" height="18" viewBox="0 0 24 24" fill="' + (iLiked ? UI.bad : 'none') + '" stroke="' + (iLiked ? UI.bad : UI.muted) + '" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>' +
           '<span id="likeCount-'+post.id+'" style="color:' + (iLiked ? UI.bad : UI.muted) + ';">' + likeCount + '</span>' +
@@ -1427,7 +1448,7 @@
     if (notifs.length === 0) {
       itemsHtml = '<div style="padding:50px 20px;text-align:center;color:var(--faint);">' +
         '<div style="margin-bottom:10px;">' + ico('inbox', 40, UI.line2, 1.4) + '</div>' +
-        '<div style="font-size:16px;font-weight:800;color:var(--ink);margin-bottom:6px;">Aucune notification</div>' +
+        '<div style="font-size:15px;font-weight:800;color:var(--ink);margin-bottom:6px;">Aucune notification</div>' +
         '<div style="font-size:13px;color:var(--faint);">Vous êtes à jour ! Aucune nouvelle activité.</div>' +
       '</div>';
     } else {
@@ -1466,7 +1487,7 @@
           : (n.type === 'FOLLOW' || n.type === 'NEW_MEMBER') ? 'users'
           : 'calendar';
         var icon = ico(iconName, 10, '#FFF', 2.4);
-        var bgIcon = n.type === 'LIKE' ? '#FF2D55' : (n.type === 'COMMENT' || n.type === 'REPLY') ? '#0B63F6' : n.type === 'EVALUATION' ? '#D98A0B' : n.type === 'MENTION' ? '#D98A0B' : n.type === 'MESSAGE' ? '#0E9F6E' : n.type === 'FOLLOW' ? '#AF52DE' : n.type === 'NEW_MEMBER' ? '#0E9F6E' : '#0B63F6';
+        var bgIcon = n.type === 'LIKE' ? '#FF2D55' : (n.type === 'COMMENT' || n.type === 'REPLY') ? '#0B5FE0' : n.type === 'EVALUATION' ? '#D98A0B' : n.type === 'MENTION' ? '#D98A0B' : n.type === 'MESSAGE' ? '#0E9F6E' : n.type === 'FOLLOW' ? '#AF52DE' : n.type === 'NEW_MEMBER' ? '#0E9F6E' : '#0B5FE0';
         var timeAgoStr = timeAgo(n.timestamp || Date.now());
         var isUnread = !n.read;
 
@@ -1476,11 +1497,11 @@
         // dans toutes ses notifications passées, au lieu de rester figée.
         var expediteur = n.senderId ? tousMembres.find(function(m){ return m.id === n.senderId; }) : null;
         var photo = (expediteur && expediteur.avatar_url) || n.senderAvatar || null;
-        var teinte = (expediteur && expediteur.avatar_color) || n.senderColor || '#0B63F6';
+        var teinte = (expediteur && expediteur.avatar_color) || n.senderColor || '#0B5FE0';
 
         var avatarHtml = photo
-          ? '<img src="' + safeUrl(photo) + '" style="width:44px;height:44px;border-radius:22px;object-fit:cover;flex-shrink:0;" />'
-          : '<div style="width:44px;height:44px;border-radius:22px;background:' + teinte + ';color:#FFF;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + (n.senderName||'S').charAt(0).toUpperCase() + '</div>';
+          ? '<img src="' + safeUrl(photo) + '" style="width:44px;height:44px;border-radius:20px;object-fit:cover;flex-shrink:0;" />'
+          : '<div style="width:44px;height:44px;border-radius:20px;background:' + teinte + ';color:#FFF;font-size:15px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + (n.senderName||'S').charAt(0).toUpperCase() + '</div>';
 
         return '<div onclick="App.clickNotification(\'' + jsArg(n.id) + '\', \'' + jsArg((n.targetId||'')) + '\')" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:0.5px solid var(--tile);background:' + (isUnread ? 'var(--accent-soft)' : 'var(--card)') + ';cursor:pointer;transition:background 0.2s;position:relative;">' +
           '<div style="position:relative;flex-shrink:0;">' +
@@ -1488,12 +1509,12 @@
             '<div style="position:absolute;bottom:-2px;right:-2px;width:19px;height:19px;border-radius:' + UI.pill + ';background:' + bgIcon + ';display:flex;align-items:center;justify-content:center;border:1.5px solid ' + UI.card + ';">' + icon + '</div>' +
           '</div>' +
           '<div style="flex:1;min-width:0;">' +
-            '<div style="font-size:13.5px;color:var(--ink);line-height:1.35;word-break:break-word;">' +
+            '<div style="font-size:13px;color:var(--ink);line-height:1.35;word-break:break-word;">' +
               '<strong>' + safeHtml(n.senderName || 'Membre') + '</strong> ' + safeHtml(n.text || '') +
             '</div>' +
             '<div style="font-size:11px;color:var(--faint);margin-top:3px;">' + timeAgoStr + '</div>' +
           '</div>' +
-          (isUnread ? '<div style="width:8px;height:8px;border-radius:4px;background:#0B63F6;flex-shrink:0;"></div>' : '') +
+          (isUnread ? '<div style="width:8px;height:8px;border-radius:4px;background:#0B5FE0;flex-shrink:0;"></div>' : '') +
         '</div>';
       };
 
@@ -1527,16 +1548,16 @@
         '</div>' +
         '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 8px 12px 18px;border-bottom:0.5px solid var(--line);">' +
           '<div style="display:flex;align-items:center;gap:8px;">' +
-            '<h2 style="font-family:' + UI.fontDisplay + ';font-size:21px;font-weight:800;letter-spacing:-0.4px;color:var(--ink);margin:0;">Notifications</h2>' +
-            (unreadCount > 0 ? '<span style="background:#E2445C;color:#FFF;font-size:11px;font-weight:900;padding:2px 8px;border-radius:10px;">' + unreadCount + '</span>' : '') +
+            '<h2 style="font-family:' + UI.fontDisplay + ';font-size:22px;font-weight:800;letter-spacing:-0.4px;color:var(--ink);margin:0;">Notifications</h2>' +
+            (unreadCount > 0 ? '<span style="background:#D92D20;color:#FFF;font-size:11px;font-weight:800;padding:2px 8px;border-radius:12px;">' + unreadCount + '</span>' : '') +
           '</div>' +
           '<div style="display:flex;align-items:center;gap:2px;flex-shrink:0;">' +
-            (unreadCount > 0 ? '<button onclick="App.markAllNotificationsRead()" style="background:none;border:none;color:#0B63F6;font-size:13px;font-weight:700;cursor:pointer;padding:0 8px;height:44px;">Tout lire</button>' : '') +
+            (unreadCount > 0 ? '<button onclick="App.markAllNotificationsRead()" style="background:none;border:none;color:#0B5FE0;font-size:13px;font-weight:700;cursor:pointer;padding:0 8px;height:44px;">Tout lire</button>' : '') +
             // Auparavant, la seule façon de fermer était de viser la fine bande grise
             // au-dessus de la feuille ou la petite poignée — difficile à atteindre à
             // une main sur un écran presque entièrement occupé par la liste. Un bouton
             // explicite, à taille de cible tactile normale, referme la feuille sans ambiguïté.
-            '<button onclick="App.closeNotifications()" aria-label="Fermer" style="background:none;border:none;width:44px;height:44px;border-radius:' + UI.pill + ';color:var(--ink);font-size:20px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;touch-action:manipulation;">×</button>' +
+            '<button onclick="App.closeNotifications()" aria-label="Fermer" style="background:none;border:none;width:44px;height:44px;border-radius:' + UI.pill + ';color:var(--ink);font-size:22px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;touch-action:manipulation;">×</button>' +
           '</div>' +
         '</div>' +
         '<div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;">' +
@@ -1612,21 +1633,21 @@
   function renderEventSaveChoice() {
     if (!S.eventSaveChoiceOpen) return '';
     return '<div onclick="App.cancelEventSaveChoice()" style="position:fixed;inset:0;background:rgba(15,15,20,0.6);z-index:10002;display:flex;justify-content:center;align-items:center;padding:24px;">' +
-      '<div onclick="event.stopPropagation()" style="width:100%;max-width:360px;background:var(--card);border-radius:24px;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
-        '<h3 style="font-size:17px;font-weight:900;color:var(--ink);margin:0 0 6px;text-align:center;">Enregistrer les modifications</h3>' +
-        '<p style="font-size:12.5px;color:var(--muted);line-height:1.5;margin:0 0 18px;text-align:center;">Voulez-vous remplacer cet événement, ou en créer un nouveau en gardant l\'ancien ?</p>' +
+      '<div onclick="event.stopPropagation()" style="width:100%;max-width:360px;background:var(--card);border-radius:20px;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">' +
+        '<h3 style="font-size:17px;font-weight:800;color:var(--ink);margin:0 0 6px;text-align:center;">Enregistrer les modifications</h3>' +
+        '<p style="font-size:13px;color:var(--muted);line-height:1.5;margin:0 0 18px;text-align:center;">Voulez-vous remplacer cet événement, ou en créer un nouveau en gardant l\'ancien ?</p>' +
 
-        '<button type="button" onclick="App.chooseEventSaveMode(\'overwrite\')" style="width:100%;background:var(--tile);border:none;border-radius:16px;padding:14px;margin-bottom:10px;cursor:pointer;text-align:left;">' +
-          '<div style="font-size:14.5px;font-weight:800;color:var(--ink);margin-bottom:2px;">Mettre à jour cet événement</div>' +
-          '<div style="font-size:11.5px;color:var(--faint);line-height:1.4;">L\'événement d\'origine est remplacé. Ses assignations et son historique sont conservés.</div>' +
+        '<button type="button" onclick="App.chooseEventSaveMode(\'overwrite\')" style="width:100%;background:var(--tile);border:none;border-radius:999px;padding:14px;margin-bottom:10px;cursor:pointer;text-align:left;">' +
+          '<div style="font-size:15px;font-weight:800;color:var(--ink);margin-bottom:2px;">Mettre à jour cet événement</div>' +
+          '<div style="font-size:12px;color:var(--faint);line-height:1.4;">L\'événement d\'origine est remplacé. Ses assignations et son historique sont conservés.</div>' +
         '</button>' +
 
-        '<button type="button" onclick="App.chooseEventSaveMode(\'duplicate\')" style="width:100%;background:var(--accent-soft);border:1px solid var(--line2);border-radius:16px;padding:14px;margin-bottom:14px;cursor:pointer;text-align:left;">' +
-          '<div style="font-size:14.5px;font-weight:800;color:#0B63F6;margin-bottom:2px;">➕ Créer un nouvel événement</div>' +
-          '<div style="font-size:11.5px;color:#5A7BAA;line-height:1.4;">L\'ancien reste intact. Idéal pour répéter un événement : changez la date et dupliquez.</div>' +
+        '<button type="button" onclick="App.chooseEventSaveMode(\'duplicate\')" style="width:100%;background:var(--accent-soft);border:1px solid var(--line2);border-radius:999px;padding:14px;margin-bottom:14px;cursor:pointer;text-align:left;">' +
+          '<div style="font-size:15px;font-weight:800;color:#0B5FE0;margin-bottom:2px;">➕ Créer un nouvel événement</div>' +
+          '<div style="font-size:12px;color:#5A7BAA;line-height:1.4;">L\'ancien reste intact. Idéal pour répéter un événement : changez la date et dupliquez.</div>' +
         '</button>' +
 
-        '<button type="button" onclick="App.cancelEventSaveChoice()" style="width:100%;background:none;border:none;padding:8px;font-size:13.5px;font-weight:700;color:var(--faint);cursor:pointer;">Annuler</button>' +
+        '<button type="button" onclick="App.cancelEventSaveChoice()" style="width:100%;background:none;border:none;padding:8px;font-size:13px;font-weight:700;color:var(--faint);cursor:pointer;">Annuler</button>' +
       '</div>' +
     '</div>';
   }
@@ -1647,19 +1668,19 @@
 
     // Bloc image (une seule image par événement)
     var imageBlock = '<div style="background:var(--card);border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px;">' +
-      '<label style="font-size:14px;font-weight:700;color:var(--ink);display:block;margin-bottom:12px;">Image de l\'événement <span style="font-weight:500;color:var(--faint);">(optionnelle)</span></label>' +
+      '<label style="font-size:15px;font-weight:700;color:var(--ink);display:block;margin-bottom:12px;">Image de l\'événement <span style="font-weight:500;color:var(--faint);">(optionnelle)</span></label>' +
       (S.eventImageProcessing
         ? '<div style="display:flex;align-items:center;gap:10px;background:var(--tile);border-radius:12px;padding:14px;">' +
-            '<div style="width:18px;height:18px;border:3px solid var(--line2);border-top-color:#0B63F6;border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0;"></div>' +
-            '<span style="font-size:12.5px;font-weight:700;color:var(--ink2);">Traitement de l\'image…</span>' +
+            '<div style="width:18px;height:18px;border:3px solid var(--line2);border-top-color:#0B5FE0;border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0;"></div>' +
+            '<span style="font-size:13px;font-weight:700;color:var(--ink2);">Traitement de l\'image…</span>' +
           '</div>'
         : (S.eventImage
-          ? '<div style="position:relative;border-radius:14px;overflow:hidden;background:#000;">' +
+          ? '<div style="position:relative;border-radius:16px;overflow:hidden;background:#000;">' +
               '<img src="' + safeUrl(S.eventImage) + '" style="display:block;width:100%;height:auto;max-height:260px;object-fit:contain;background:#000;" />' +
-              '<button type="button" onclick="App.editEventImage()" style="position:absolute;top:8px;left:8px;background:rgba(0,0,0,0.72);border:none;border-radius:10px;padding:6px 12px;color:#FFF;font-size:12.5px;font-weight:800;cursor:pointer;">Modifier</button>' +
-              '<button type="button" onclick="App.removeEventImage()" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.72);border:none;border-radius:14px;width:32px;height:32px;color:#FFF;font-size:15px;font-weight:900;cursor:pointer;">×</button>' +
+              '<button type="button" onclick="App.editEventImage()" style="position:absolute;top:8px;left:8px;background:rgba(0,0,0,0.72);border:none;border-radius:12px;padding:6px 12px;color:#FFF;font-size:13px;font-weight:800;cursor:pointer;">Modifier</button>' +
+              '<button type="button" onclick="App.removeEventImage()" style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.72);border:none;border-radius:16px;width:32px;height:32px;color:#FFF;font-size:15px;font-weight:800;cursor:pointer;">×</button>' +
             '</div>'
-          : '<label style="display:flex;align-items:center;justify-content:center;gap:8px;border:1.5px dashed var(--line);border-radius:14px;padding:22px;cursor:pointer;color:#0B63F6;font-size:14px;font-weight:700;">' +
+          : '<label style="display:flex;align-items:center;justify-content:center;gap:8px;border:1.5px dashed var(--line);border-radius:16px;padding:22px;cursor:pointer;color:#0B5FE0;font-size:15px;font-weight:700;">' +
               'Ajouter une image' +
               '<input type="file" accept="image/*" onchange="App.addEventImage(event)" style="display:none;" />' +
             '</label>')) +
@@ -1667,9 +1688,9 @@
 
     return '<div class="safe-top" style="position:fixed;inset:0;background:var(--card);z-index:10000;display:flex;flex-direction:column;animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
       '<header style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--line);background:var(--card);z-index:2;">' +
-        '<button onclick="App.closeCreateEvent()" style="background:none;border:none;font-size:16px;color:var(--ink);cursor:pointer;">Annuler</button>' +
-        '<div style="font-weight:700;font-size:16px;color:var(--ink);">' + (isEdit ? 'Modifier l\'événement' : 'Nouvel Événement') + '</div>' +
-        '<button onclick="App.saveEvent(this)" style="background:none;border:none;font-size:16px;font-weight:700;color:#0B63F6;cursor:pointer;">' + (isEdit ? 'Enregistrer' : 'Créer') + '</button>' +
+        '<button onclick="App.closeCreateEvent()" style="background:none;border:none;font-size:15px;color:var(--ink);cursor:pointer;">Annuler</button>' +
+        '<div style="font-weight:700;font-size:15px;color:var(--ink);">' + (isEdit ? 'Modifier l\'événement' : 'Nouvel Événement') + '</div>' +
+        '<button onclick="App.saveEvent(this)" style="background:none;border:none;font-size:15px;font-weight:700;color:#0B5FE0;cursor:pointer;">' + (isEdit ? 'Enregistrer' : 'Créer') + '</button>' +
       '</header>' +
       '<div style="flex:1;overflow-y:auto;background:var(--tile);padding:16px;">' +
         imageBlock +
@@ -1678,11 +1699,11 @@
           '<div style="display:flex;flex-direction:column;gap:16px;">' +
             '<div style="display:flex;flex-direction:column;gap:4px;">' +
               '<label style="font-size:13px;color:var(--faint);font-weight:600;">Titre de l\'événement</label>' +
-              '<input type="text" id="eventTitle" value="' + safeHtml(titleVal) + '" placeholder="Ex: Culte de Dimanche" style="border:none;border-bottom:1px solid var(--line);font-size:16px;outline:none;padding-bottom:8px;border-radius:0;font-weight:600;" />' +
+              '<input type="text" id="eventTitle" value="' + safeHtml(titleVal) + '" placeholder="Ex: Culte de Dimanche" style="border:none;border-bottom:1px solid var(--line);font-size:15px;outline:none;padding-bottom:8px;border-radius:0;font-weight:600;" />' +
             '</div>' +
             '<div style="display:flex;flex-direction:column;gap:4px;">' +
               '<label style="font-size:13px;color:var(--faint);font-weight:600;">Lieu / Salle</label>' +
-              '<input type="text" id="eventLocation" value="' + safeHtml(locVal) + '" placeholder="Ex: Salle Principale" style="border:none;border-bottom:1px solid var(--line);font-size:16px;outline:none;padding-bottom:8px;border-radius:0;" />' +
+              '<input type="text" id="eventLocation" value="' + safeHtml(locVal) + '" placeholder="Ex: Salle Principale" style="border:none;border-bottom:1px solid var(--line);font-size:15px;outline:none;padding-bottom:8px;border-radius:0;" />' +
             '</div>' +
             // Position du lieu : recherchée par son nom/adresse. On ne relève jamais
             // la position du créateur — il prépare l'événement à l'avance, souvent
@@ -1692,26 +1713,26 @@
               (typeof cData.lat === 'number'
                 ? '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;background:var(--ok-soft);border:1px solid var(--ok-line);border-radius:12px;padding:10px 12px;">' +
                     '<div style="min-width:0;">' +
-                      '<div style="font-size:12.5px;font-weight:800;color:var(--ok-ink);">' + safeHtml(cData.placeName || 'Lieu situé') + '</div>' +
+                      '<div style="font-size:13px;font-weight:800;color:var(--ok-ink);">' + safeHtml(cData.placeName || 'Lieu situé') + '</div>' +
                       '<div style="font-size:11px;color:var(--muted);line-height:1.35;">' + safeHtml(cData.placeLabel || (cData.lat.toFixed(5) + ', ' + cData.lng.toFixed(5))) + '</div>' +
                     '</div>' +
-                    '<button type="button" onclick="App.clearEventPosition()" style="background:none;border:none;color:#E2445C;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">Changer</button>' +
+                    '<button type="button" onclick="App.clearEventPosition()" style="background:none;border:none;color:#D92D20;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">Changer</button>' +
                   '</div>'
                 : '<div>' +
                     '<div style="display:flex;align-items:center;gap:8px;background:var(--tile);border-radius:12px;padding:0 12px;height:44px;">' +
                       '<span style="font-size:15px;">🔎</span>' +
-                      '<input type="text" id="eventPlaceInput" value="' + safeHtml(S.eventPlaceQuery || '') + '" oninput="App.onEventPlaceInput(this.value)" placeholder="Ex : Église Vase d\'Honneur, Cocody" style="flex:1;border:none;background:transparent;font-size:14px;color:var(--ink);outline:none;min-width:0;" />' +
-                      '<span style="font-size:10px;font-weight:800;color:var(--faint);background:var(--line);padding:2px 7px;border-radius:6px;flex-shrink:0;">🇨🇮 CI</span>' +
+                      '<input type="text" id="eventPlaceInput" value="' + safeHtml(S.eventPlaceQuery || '') + '" oninput="App.onEventPlaceInput(this.value)" placeholder="Ex : Église Vase d\'Honneur, Cocody" style="flex:1;border:none;background:transparent;font-size:15px;color:var(--ink);outline:none;min-width:0;" />' +
+                      '<span style="font-size:11px;font-weight:800;color:var(--faint);background:var(--line);padding:2px 7px;border-radius:8px;flex-shrink:0;">🇨🇮 CI</span>' +
                       (S.eventPlaceSearching
-                        ? '<div style="width:15px;height:15px;border:2.5px solid var(--line2);border-top-color:#0B63F6;border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0;"></div>'
+                        ? '<div style="width:15px;height:15px;border:2.5px solid var(--line2);border-top-color:#0B5FE0;border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0;"></div>'
                         : '') +
                     '</div>' +
                     (S.eventPlaceError
-                      ? '<div style="font-size:11.5px;color:var(--bad-ink);font-weight:600;margin-top:6px;">' + safeHtml(S.eventPlaceError) + '</div>'
+                      ? '<div style="font-size:12px;color:var(--bad-ink);font-weight:600;margin-top:6px;">' + safeHtml(S.eventPlaceError) + '</div>'
                       : '') +
                     '<div id="eventPlaceResults" style="margin-top:' + ((S.eventPlaceResults||[]).length ? '6px' : '0') + ';">' +
                       (S.eventPlaceResults||[]).map(function(r, i) {
-                        return '<button type="button" onclick="App.selectEventPlace(' + i + ')" style="width:100%;text-align:left;background:var(--card);border:1px solid #EFEFEF;border-radius:12px;padding:9px 11px;margin-bottom:5px;cursor:pointer;display:block;">' +
+                        return '<button type="button" onclick="App.selectEventPlace(' + i + ')" style="width:100%;text-align:left;background:var(--card);border:1px solid #EFEFEF;border-radius:999px;padding:9px 11px;margin-bottom:5px;cursor:pointer;display:block;">' +
                           '<div style="font-size:13px;font-weight:800;color:var(--ink);">' + safeHtml(r.shortLabel) + '</div>' +
                           '<div style="font-size:11px;color:var(--faint);line-height:1.35;">' + safeHtml(r.label) + '</div>' +
                         '</button>';
@@ -1727,11 +1748,11 @@
           '<div style="display:flex;flex-direction:column;gap:16px;">' +
             '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding-bottom:12px;">' +
               '<label style="font-size:15px;color:var(--ink);font-weight:600;white-space:nowrap;">Date</label>' +
-              '<input type="date" id="eventDate" value="' + dateVal + '" style="border:none;font-size:16px;outline:none;background:transparent;color:#0B63F6;font-weight:600;text-align:right;" />' +
+              '<input type="date" id="eventDate" value="' + dateVal + '" style="border:none;font-size:15px;outline:none;background:transparent;color:#0B5FE0;font-weight:600;text-align:right;" />' +
             '</div>' +
             '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding-bottom:12px;">' +
               '<label style="font-size:15px;color:var(--ink);font-weight:600;white-space:nowrap;">Heure de début</label>' +
-              '<input type="time" id="eventStart" value="' + startVal + '" oninput="App.onEventTimeChange()" style="border:none;font-size:16px;outline:none;background:transparent;color:#0B63F6;font-weight:600;text-align:right;" />' +
+              '<input type="time" id="eventStart" value="' + startVal + '" oninput="App.onEventTimeChange()" style="border:none;font-size:15px;outline:none;background:transparent;color:#0B5FE0;font-weight:600;text-align:right;" />' +
             '</div>' +
             // Le message occupe sa PROPRE ligne sous le champ : placé dans la même
             // rangée que l'heure, il se superposait à la valeur et forçait le
@@ -1739,18 +1760,18 @@
             '<div>' +
               '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">' +
                 '<label style="font-size:15px;color:var(--ink);font-weight:600;white-space:nowrap;">Heure de fin</label>' +
-                '<input type="time" id="eventEnd" value="' + endVal + '" oninput="App.onEventTimeChange()" style="border:none;font-size:16px;outline:none;background:transparent;color:#0B63F6;font-weight:600;text-align:right;" />' +
+                '<input type="time" id="eventEnd" value="' + endVal + '" oninput="App.onEventTimeChange()" style="border:none;font-size:15px;outline:none;background:transparent;color:#0B5FE0;font-weight:600;text-align:right;" />' +
               '</div>' +
               // État initial calculé au rendu : à la réouverture d'une veillée
               // déjà enregistrée, la mention doit être visible sans toucher au champ.
               (function(){
-                var msg = '', col = '#0B63F6', bg = 'var(--accent-soft)';
+                var msg = '', col = '#0B5FE0', bg = 'var(--accent-soft)';
                 if (startVal && endVal && endVal === startVal) {
                   msg = 'La fin ne peut pas être identique au début.'; col = 'var(--bad-ink)'; bg = 'var(--bad-soft)';
                 } else if (startVal && endVal && endVal < startVal) {
                   msg = 'Se termine le lendemain à ' + endVal + '.';
                 }
-                return '<div id="eventTimeError" style="display:' + (msg ? 'block' : 'none') + ';font-size:11.5px;font-weight:700;line-height:1.4;margin-top:8px;padding:7px 10px;border-radius:10px;background:' + bg + ';color:' + col + ';">' + msg + '</div>';
+                return '<div id="eventTimeError" style="display:' + (msg ? 'block' : 'none') + ';font-size:12px;font-weight:700;line-height:1.4;margin-top:8px;padding:7px 10px;border-radius:12px;background:' + bg + ';color:' + col + ';">' + msg + '</div>';
               })() +
             '</div>' +
           '</div>' +
@@ -1774,13 +1795,13 @@
             '</label>' +
           '</div>' +
           '<div id="eventRecurWeeksRow" style="display:' + (recurWeeklyVal ? 'flex' : 'none') + ';align-items:center;justify-content:space-between;gap:12px;border-top:1px solid var(--line);margin-top:14px;padding-top:14px;">' +
-            '<label style="font-size:14px;color:var(--ink);font-weight:600;">Nombre de semaines</label>' +
-            '<input type="number" id="eventRecurWeeks" min="2" max="52" value="' + recurWeeksVal + '" style="width:70px;border:none;background:var(--tile);border-radius:10px;padding:8px 10px;font-size:15px;font-weight:700;color:var(--ink);text-align:center;outline:none;" />' +
+            '<label style="font-size:15px;color:var(--ink);font-weight:600;">Nombre de semaines</label>' +
+            '<input type="number" id="eventRecurWeeks" min="2" max="52" value="' + recurWeeksVal + '" style="width:70px;border:none;background:var(--tile);border-radius:12px;padding:8px 10px;font-size:15px;font-weight:700;color:var(--ink);text-align:center;outline:none;" />' +
           '</div>' +
         '</div>') +
 
         '<div style="background:var(--card);border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px;">' +
-          '<label style="font-size:14px;font-weight:700;color:var(--ink);display:block;margin-bottom:12px;">Pôles concernés</label>' +
+          '<label style="font-size:15px;font-weight:700;color:var(--ink);display:block;margin-bottom:12px;">Pôles concernés</label>' +
           '<div id="eventSectionBadgesContainer">' + App.renderSectionBadges(S.eventSections, 'toggleEventSection') + '</div>' + 
         '</div>' +
         
@@ -1791,24 +1812,24 @@
         
         (canAssign(S.user) ?
         '<div style="background:var(--card);border-radius:16px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.05);margin-bottom:16px;">' +
-          '<label style="font-size:14px;font-weight:700;color:var(--ink);display:block;margin-bottom:4px;">Assignations (Équipe)</label>' +
-          '<div style="font-size:11.5px;color:var(--faint);margin-bottom:12px;line-height:1.4;">' +
+          '<label style="font-size:15px;font-weight:700;color:var(--ink);display:block;margin-bottom:4px;">Assignations (Équipe)</label>' +
+          '<div style="font-size:12px;color:var(--faint);margin-bottom:12px;line-height:1.4;">' +
             (isGrandResponsable(S.user)
               ? 'Vous pouvez confier une tâche à un membre précis ou à un pôle entier — son responsable la répartira ensuite.'
               : 'Vous assignez les membres de votre pôle. Les autres responsables complètent pour le leur.') +
           '</div>' +
           '<div id="eventAssignmentsList">' + App.renderAssignmentsList() + '</div>' +
           '<div style="display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);padding-top:12px;">' +
-            '<select id="assignUserSelect" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--line);font-size:14px;outline:none;background:var(--tile);">' +
+            '<select id="assignUserSelect" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--line);font-size:15px;outline:none;background:var(--tile);">' +
               '<option value="">Sélectionner un membre…</option>' +
               renderAssignSelectOptions(S.user, dateVal) +
             '</select>' +
-            '<input type="text" id="assignTaskInput" placeholder="Tâche / travail à faire..." style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--line);font-size:14px;outline:none;background:var(--tile);box-sizing:border-box;" />' +
+            '<input type="text" id="assignTaskInput" placeholder="Tâche / travail à faire..." style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--line);font-size:15px;outline:none;background:var(--tile);box-sizing:border-box;" />' +
             '<div style="display:flex;gap:8px;">' +
-              '<input type="datetime-local" id="assignDeadlineInput" style="flex:1;min-width:0;padding:10px;border-radius:8px;border:1px solid var(--line);font-size:14px;outline:none;background:var(--tile);" />' +
-              '<button onclick="App.addAssignment()" style="background:#0B63F6;color:#FFF;border:none;border-radius:8px;padding:0 16px;font-weight:700;cursor:pointer;white-space:nowrap;">Ajouter</button>' +
+              '<input type="datetime-local" id="assignDeadlineInput" style="flex:1;min-width:0;padding:10px;border-radius:8px;border:1px solid var(--line);font-size:15px;outline:none;background:var(--tile);" />' +
+              '<button onclick="App.addAssignment()" style="background:#0B5FE0;color:#FFF;border:none;border-radius:8px;padding:0 16px;font-weight:700;cursor:pointer;white-space:nowrap;">Ajouter</button>' +
             '</div>' +
-            '<div style="font-size:10.5px;color:var(--faint);line-height:1.4;">Avec une échéance, l\'assignation devient une <strong>tâche à livrer</strong> : le membre la coche « faite » et elle compte dans ses services (à temps +5, en retard +2, non livrée −2). Sans échéance, c\'est une simple présence.</div>' +
+            '<div style="font-size:11px;color:var(--faint);line-height:1.4;">Avec une échéance, l\'assignation devient une <strong>tâche à livrer</strong> : le membre la coche « faite » et elle compte dans ses services (à temps +5, en retard +2, non livrée −2). Sans échéance, c\'est une simple présence.</div>' +
           '</div>' +
         '</div>' : '') +
         
@@ -1845,10 +1866,10 @@
 
     var previewHtml = renderComposerMediaPreview();
 
-    var hashHtml = '<div id="hashSugg" style="display:none;flex-wrap:wrap;gap:6px;background:var(--accent-soft);border:1px solid var(--line2);border-radius:14px;padding:10px;margin-bottom:12px;">' +
-      '<div style="font-size:11px;font-weight:800;color:#0B63F6;width:100%;margin-bottom:4px;">Hashtags suggérés :</div>' +
+    var hashHtml = '<div id="hashSugg" style="display:none;flex-wrap:wrap;gap:6px;background:var(--accent-soft);border:1px solid var(--line2);border-radius:16px;padding:10px;margin-bottom:12px;">' +
+      '<div style="font-size:11px;font-weight:800;color:#0B5FE0;width:100%;margin-bottom:4px;">Hashtags suggérés :</div>' +
       HASHTAGS.map(function(h) {
-        return '<button type="button" onclick="App.insertTag(\''+jsArg(h)+'\')" style="display:inline-flex;align-items:center;min-height:36px;background:#0B63F6;color:#FFF;border:none;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;">'+h+'</button>';
+        return '<button type="button" onclick="App.insertTag(\''+jsArg(h)+'\')" style="display:inline-flex;align-items:center;min-height:36px;background:#0B5FE0;color:#FFF;border:none;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;">'+h+'</button>';
       }).join('') +
     '</div>';
 
@@ -1860,30 +1881,30 @@
         '</div>' +
 
         '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px 12px;">' +
-          '<span onclick="App.closeEditPost()" style="font-size:14.5px;color:var(--muted);cursor:pointer;font-weight:700;padding:8px 4px;">Annuler</span>' +
-          '<h3 style="font-size:16px;font-weight:800;margin:0;color:var(--ink);letter-spacing:-0.2px;">Modifier la publication</h3>' +
-          '<button type="button" onclick="App.saveEditPost(\'' + jsArg(post.id) + '\')" style="font-size:14px;color:#FFF;font-weight:800;background:#0B63F6;border:none;border-radius:20px;padding:8px 18px;cursor:pointer;box-shadow:0 4px 12px rgba(11,99,246,0.3);">Enregistrer</button>' +
+          '<span onclick="App.closeEditPost()" style="font-size:15px;color:var(--muted);cursor:pointer;font-weight:700;padding:8px 4px;">Annuler</span>' +
+          '<h3 style="font-size:15px;font-weight:800;margin:0;color:var(--ink);letter-spacing:-0.2px;">Modifier la publication</h3>' +
+          '<button type="button" onclick="App.saveEditPost(\'' + jsArg(post.id) + '\')" style="font-size:15px;color:#FFF;font-weight:800;background:#0B5FE0;border:none;border-radius:20px;padding:8px 18px;cursor:pointer;">Enregistrer</button>' +
         '</div>' +
 
         '<div style="overflow-y:auto;flex:1;padding:4px 16px 16px;">' +
           hashHtml +
-          '<div id="mentionSugg" style="display:none;flex-wrap:wrap;gap:6px;background:var(--accent-soft);border:1px solid var(--line2);border-radius:14px;padding:10px;margin-bottom:12px;"></div>' +
+          '<div id="mentionSugg" style="display:none;flex-wrap:wrap;gap:6px;background:var(--accent-soft);border:1px solid var(--line2);border-radius:16px;padding:10px;margin-bottom:12px;"></div>' +
           previewHtml +
 
           (S.pendingMedia.length === 0 && S.postBg
-            ? '<div id="bgPreviewZone" style="border-radius:22px;overflow:hidden;margin-bottom:14px;position:relative;min-height:180px;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 20px rgba(0,0,0,0.14);' + (S.postBg.startsWith('url') ? 'background:' + safeHtml(S.postBg) + ';background-size:cover;background-position:center;' : 'background:' + safeHtml(S.postBg) + ';') + '">' +
-                (S.postBg && !S.postBg.includes('linear-gradient') && !S.postBg.includes('url') ? '<div style="position:absolute;inset:0;background:rgba(0,0,0,0.18);border-radius:22px;"></div>' : '') +
-                '<textarea id="editPostText" oninput="App.onPostInput(this.value)" placeholder="Modifiez votre texte..." style="width:100%;min-height:180px;border:none;background:transparent;font-size:24px;font-weight:900;line-height:1.4;color:#FFF;resize:none;outline:none;box-sizing:border-box;font-family:inherit;text-align:center;padding:24px 20px;text-shadow:0 2px 12px rgba(0,0,0,0.3);position:relative;z-index:1;">' + safeHtml(S.postText||'') + '</textarea>' +
+            ? '<div id="bgPreviewZone" style="border-radius:20px;overflow:hidden;margin-bottom:14px;position:relative;min-height:180px;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 20px rgba(0,0,0,0.14);' + (S.postBg.startsWith('url') ? 'background:' + safeHtml(S.postBg) + ';background-size:cover;background-position:center;' : 'background:' + safeHtml(S.postBg) + ';') + '">' +
+                (S.postBg && !S.postBg.includes('linear-gradient') && !S.postBg.includes('url') ? '<div style="position:absolute;inset:0;background:rgba(0,0,0,0.18);border-radius:20px;"></div>' : '') +
+                '<textarea id="editPostText" oninput="App.onPostInput(this.value)" placeholder="Modifiez votre texte..." style="width:100%;min-height:180px;border:none;background:transparent;font-size:28px;font-weight:800;line-height:1.4;color:#FFF;resize:none;outline:none;box-sizing:border-box;font-family:inherit;text-align:center;padding:24px 20px;text-shadow:0 2px 12px rgba(0,0,0,0.3);position:relative;z-index:1;">' + safeHtml(S.postText||'') + '</textarea>' +
               '</div>'
-            : '<textarea id="editPostText" oninput="App.onPostInput(this.value)" placeholder="Modifiez votre texte... Tapez @ pour mentionner un membre..." style="width:100%;min-height:120px;border:none;background:var(--tile);border-radius:18px;padding:14px;font-size:15.5px;line-height:1.55;color:var(--ink);resize:none;outline:none;box-sizing:border-box;font-family:inherit;margin-bottom:14px;">' + safeHtml(S.postText||'') + '</textarea>'
+            : '<textarea id="editPostText" oninput="App.onPostInput(this.value)" placeholder="Modifiez votre texte... Tapez @ pour mentionner un membre..." style="width:100%;min-height:120px;border:none;background:var(--tile);border-radius:20px;padding:14px;font-size:15px;line-height:1.55;color:var(--ink);resize:none;outline:none;box-sizing:border-box;font-family:inherit;margin-bottom:14px;">' + safeHtml(S.postText||'') + '</textarea>'
           ) +
 
           '<!-- Confidentialité -->' +
           '<div style="background:var(--tile);border-radius:20px;padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
-            '<span style="font-size:13px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="width:26px;height:26px;border-radius:13px;background:var(--accent-soft);display:inline-flex;align-items:center;justify-content:center;font-size:13px;">🔒</span>Qui peut voir cette publication ?</span>' +
+            '<span style="font-size:13px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="width:26px;height:26px;border-radius:12px;background:var(--accent-soft);display:inline-flex;align-items:center;justify-content:center;font-size:13px;">🔒</span>Qui peut voir cette publication ?</span>' +
             '<div style="display:flex;gap:4px;background:var(--line2);border-radius:16px;padding:3px;">' +
-              '<button type="button" onclick="App.setPostVisibility(\'all\')" style="flex:1;padding:8px 6px;border-radius:13px;font-size:11.5px;font-weight:800;border:none;cursor:pointer;transition:all 0.2s;background:' + (vis==='all'?'#FFFFFF':'transparent') + ';color:' + (vis==='all'?'#0B63F6':'var(--muted)') + ';box-shadow:' + (vis==='all'?'0 2px 6px rgba(0,0,0,0.08)':'none') + ';">🌍 Tout le monde</button>' +
-              '<button type="button" onclick="App.setPostVisibility(\'sections\')" style="flex:1;padding:8px 6px;border-radius:13px;font-size:11.5px;font-weight:800;border:none;cursor:pointer;transition:all 0.2s;background:' + (vis==='sections'?'#FFFFFF':'transparent') + ';color:' + (vis==='sections'?'#0B63F6':'var(--muted)') + ';box-shadow:' + (vis==='sections'?'0 2px 6px rgba(0,0,0,0.08)':'none') + ';">Sections ciblées</button>' +
+              '<button type="button" onclick="App.setPostVisibility(\'all\')" style="flex:1;padding:8px 6px;border-radius:999px;font-size:12px;font-weight:800;border:none;cursor:pointer;transition:all 0.2s;background:' + (vis==='all'?'#FFFFFF':'transparent') + ';color:' + (vis==='all'?'#0B5FE0':'var(--muted)') + ';box-shadow:' + (vis==='all'?'0 2px 6px rgba(0,0,0,0.08)':'none') + ';">🌍 Tout le monde</button>' +
+              '<button type="button" onclick="App.setPostVisibility(\'sections\')" style="flex:1;padding:8px 6px;border-radius:999px;font-size:12px;font-weight:800;border:none;cursor:pointer;transition:all 0.2s;background:' + (vis==='sections'?'#FFFFFF':'transparent') + ';color:' + (vis==='sections'?'#0B5FE0':'var(--muted)') + ';box-shadow:' + (vis==='sections'?'0 2px 6px rgba(0,0,0,0.08)':'none') + ';">Sections ciblées</button>' +
             '</div>' +
             (vis === 'sections'
               ? '<div style="margin-top:10px;">' +
@@ -1895,29 +1916,29 @@
 
           '<!-- Programmation -->' +
           '<div style="background:var(--tile);border-radius:20px;padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
-            '<span style="font-size:13px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="width:26px;height:26px;border-radius:13px;background:#FFF3E5;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">⏰</span>Programmer la publication</span>' +
+            '<span style="font-size:13px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="width:26px;height:26px;border-radius:12px;background:#FFF3E5;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">⏰</span>Programmer la publication</span>' +
             '<div style="display:flex;gap:8px;">' +
-              '<input type="date" id="editPostScheduleDate" value="' + schedDateVal + '" style="flex:1;height:40px;border-radius:12px;border:none;background:var(--card);padding:0 10px;font-size:12.5px;outline:none;box-shadow:0 1px 2px rgba(16,24,40,0.06);" />' +
-              '<input type="time" id="editPostScheduleTime" value="' + schedTimeVal + '" style="flex:1;height:40px;border-radius:12px;border:none;background:var(--card);padding:0 10px;font-size:12.5px;outline:none;box-shadow:0 1px 2px rgba(16,24,40,0.06);" />' +
+              '<input type="date" id="editPostScheduleDate" value="' + schedDateVal + '" style="flex:1;height:40px;border-radius:12px;border:none;background:var(--card);padding:0 10px;font-size:13px;outline:none;box-shadow:0 1px 2px rgba(16,24,40,0.06);" />' +
+              '<input type="time" id="editPostScheduleTime" value="' + schedTimeVal + '" style="flex:1;height:40px;border-radius:12px;border:none;background:var(--card);padding:0 10px;font-size:13px;outline:none;box-shadow:0 1px 2px rgba(16,24,40,0.06);" />' +
             '</div>' +
           '</div>' +
 
           '<!-- À propos -->' +
           '<div style="background:var(--tile);border-radius:20px;padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
             '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:' + (S.postAboutEventId?'10px':'0') + ';">' +
-              '<span style="font-size:13px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:8px;"><span style="width:26px;height:26px;border-radius:13px;background:var(--accent-soft);display:inline-flex;align-items:center;justify-content:center;font-size:13px;">🗓️</span>À propos <span style="font-weight:600;color:var(--faint);font-size:11px;">(optionnel)</span></span>' +
-              (S.postAboutEventId ? '<span onclick="App.clearAboutEvent()" style="color:#E2445C;font-size:12px;font-weight:700;cursor:pointer;">Retirer</span>' : '') +
+              '<span style="font-size:13px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:8px;"><span style="width:26px;height:26px;border-radius:12px;background:var(--accent-soft);display:inline-flex;align-items:center;justify-content:center;font-size:13px;">🗓️</span>À propos <span style="font-weight:600;color:var(--faint);font-size:11px;">(optionnel)</span></span>' +
+              (S.postAboutEventId ? '<span onclick="App.clearAboutEvent()" style="color:#D92D20;font-size:12px;font-weight:700;cursor:pointer;">Retirer</span>' : '') +
             '</div>' +
             (function(){
               if (!S.postAboutEventId) {
-                return '<button type="button" onclick="App.openAboutEventPicker()" style="width:100%;background:var(--card);border:1px dashed var(--line);border-radius:12px;padding:10px;font-size:12.5px;font-weight:700;color:#0B63F6;cursor:pointer;">+ Lier à un événement (ex : culte de dimanche)</button>';
+                return '<button type="button" onclick="App.openAboutEventPicker()" style="width:100%;background:var(--card);border:1px dashed var(--line);border-radius:999px;padding:10px;font-size:13px;font-weight:700;color:#0B5FE0;cursor:pointer;">+ Lier à un événement (ex : culte de dimanche)</button>';
               }
               var evAbout2 = db(SK.POSTS, []).find(function(p){ return p.id === S.postAboutEventId; });
               if (!evAbout2) return '';
               var evAbout2D = evAbout2.eventDate ? new Date(evAbout2.eventDate+'T00:00:00').toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'}) : '';
-              return '<button type="button" onclick="App.openAboutEventPicker()" style="width:100%;display:flex;align-items:center;gap:8px;background:var(--card);border-radius:12px;padding:10px;text-align:left;border:none;cursor:pointer;">' +
-                '<span style="font-size:16px;">🗓️</span>' +
-                '<span style="flex:1;min-width:0;font-size:12.5px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(evAbout2.eventTitle||'') + (evAbout2D?' · '+evAbout2D:'') + (evAbout2.eventStart?' à '+evAbout2.eventStart:'') + '</span>' +
+              return '<button type="button" onclick="App.openAboutEventPicker()" style="width:100%;display:flex;align-items:center;gap:8px;background:var(--card);border-radius:999px;padding:10px;text-align:left;border:none;cursor:pointer;">' +
+                '<span style="font-size:15px;">🗓️</span>' +
+                '<span style="flex:1;min-width:0;font-size:13px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(evAbout2.eventTitle||'') + (evAbout2D?' · '+evAbout2D:'') + (evAbout2.eventStart?' à '+evAbout2.eventStart:'') + '</span>' +
               '</button>';
             })() +
           '</div>' +
@@ -1926,7 +1947,7 @@
           '<div style="background:var(--tile);border-radius:20px;padding:14px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
             '<div style="display:flex;align-items:center;justify-content:space-between;">' +
               '<div style="display:flex;align-items:center;gap:10px;">' +
-                '<span style="width:26px;height:26px;border-radius:13px;background:#FFEDE0;display:inline-flex;align-items:center;justify-content:center;font-size:14px;">🕐</span>' +
+                '<span style="width:26px;height:26px;border-radius:12px;background:#FFEDE0;display:inline-flex;align-items:center;justify-content:center;font-size:15px;">🕐</span>' +
                 '<div>' +
                   '<div style="font-size:13px;font-weight:800;color:var(--ink);">Publication éphémère</div>' +
                   '<div style="font-size:11px;color:var(--faint);">Disparaît automatiquement après 24h</div>' +
@@ -1947,7 +1968,7 @@
           (S.pendingMedia.length === 0
             ? '<div style="display:flex;gap:8px;align-items:center;overflow-x:auto;padding:2px 0 10px;scrollbar-width:none;">' +
                 '<span style="font-size:11px;font-weight:700;color:var(--faint);flex-shrink:0;">Fond</span>' +
-                '<div onclick="App.setPostBg(null)" style="width:30px;height:30px;border-radius:15px;background:var(--card);border:2px solid ' + (S.postBg===null?'#0B63F6':'var(--line)') + ';cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;font-weight:700;color:var(--ink2);">Aa</div>' +
+                '<div onclick="App.setPostBg(null)" style="width:30px;height:30px;border-radius:16px;background:var(--card);border:2px solid ' + (S.postBg===null?'#0B5FE0':'var(--line)') + ';cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;font-weight:700;color:var(--ink2);">Aa</div>' +
                 [
                   'linear-gradient(135deg,#1A1A2E,#16213E)',
                   'linear-gradient(135deg,#FF6B6B,#FF8E53)',
@@ -1963,20 +1984,20 @@
                   'linear-gradient(135deg,#F7971E,#FFD200)',
                 ].map(function(bg, idx) {
                   var isSel = S.postBg === bg;
-                  return '<div onclick="App.setPostBgIdx(' + idx + ')" style="width:30px;height:30px;border-radius:15px;background:' + bg + ';cursor:pointer;flex-shrink:0;border:2.5px solid ' + (isSel?'#FFF':'transparent') + ';box-shadow:' + (isSel?'0 0 0 2px #0B63F6':'0 1px 3px rgba(0,0,0,0.15)') + ';transition:0.15s;"></div>';
+                  return '<div onclick="App.setPostBgIdx(' + idx + ')" style="width:30px;height:30px;border-radius:16px;background:' + bg + ';cursor:pointer;flex-shrink:0;border:2.5px solid ' + (isSel?'#FFF':'transparent') + ';box-shadow:' + (isSel?'0 0 0 2px #0B5FE0':'0 1px 3px rgba(0,0,0,0.15)') + ';transition:0.15s;"></div>';
                 }).join('') +
               '</div>'
             : ''
           ) +
           '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
-            '<label style="cursor:pointer;display:flex;align-items:center;gap:6px;color:#0B63F6;font-size:12.5px;font-weight:800;background:var(--accent-soft);padding:9px 14px;border-radius:16px;">' +
-              '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0B63F6" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>' +
+            '<label style="cursor:pointer;display:flex;align-items:center;gap:6px;color:#0B5FE0;font-size:13px;font-weight:800;background:var(--accent-soft);padding:9px 14px;border-radius:16px;">' +
+              '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0B5FE0" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>' +
               'Photo / Vidéo' +
               '<input type="file" accept="image/*,video/*" multiple onchange="App.addMedia(event)" style="display:none;">' +
             '</label>' +
-            '<span style="font-size:11.5px;color:var(--faint);font-weight:600;">' + (S.pendingMedia.some(function(m){return isVideoUrl(m);}) ? '1 vidéo' : S.pendingMedia.length + '/10 photos') + '</span>' +
+            '<span style="font-size:12px;color:var(--faint);font-weight:600;">' + (S.pendingMedia.some(function(m){return isVideoUrl(m);}) ? '1 vidéo' : S.pendingMedia.length + '/10 photos') + '</span>' +
           '</div>' +
-          '<label style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer;font-size:12px;color:var(--muted);font-weight:600;line-height:1.4;background:var(--tile);padding:10px 12px;border-radius:14px;"><input type="checkbox" ' + (S.reduceVideoQuality?'checked':'') + ' onchange="App.toggleReduceVideoQuality()" style="width:17px;height:17px;flex-shrink:0;accent-color:#0B63F6;"> 🎥 Nous réduisons la qualité vidéo en HD pour une expérience plus fluide</label>' +
+          '<label style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer;font-size:12px;color:var(--muted);font-weight:600;line-height:1.4;background:var(--tile);padding:10px 12px;border-radius:16px;"><input type="checkbox" ' + (S.reduceVideoQuality?'checked':'') + ' onchange="App.toggleReduceVideoQuality()" style="width:17px;height:17px;flex-shrink:0;accent-color:#0B5FE0;"> 🎥 Nous réduisons la qualité vidéo en HD pour une expérience plus fluide</label>' +
         '</div>' +
 
       '</div>' +
@@ -1992,10 +2013,10 @@
     var previewCaption = post.caption || '';
     var previewMedia = (post.mediaUrls && post.mediaUrls[0]) || null;
 
-    var hashHtml = '<div id="hashSugg" style="display:none;flex-wrap:wrap;gap:6px;background:var(--accent-soft);border:1px solid var(--line2);border-radius:14px;padding:10px;margin-bottom:12px;">' +
-      '<div style="font-size:11px;font-weight:800;color:#0B63F6;width:100%;margin-bottom:4px;">Hashtags suggérés :</div>' +
+    var hashHtml = '<div id="hashSugg" style="display:none;flex-wrap:wrap;gap:6px;background:var(--accent-soft);border:1px solid var(--line2);border-radius:16px;padding:10px;margin-bottom:12px;">' +
+      '<div style="font-size:11px;font-weight:800;color:#0B5FE0;width:100%;margin-bottom:4px;">Hashtags suggérés :</div>' +
       HASHTAGS.map(function(h) {
-        return '<button type="button" onclick="App.insertTag(\''+jsArg(h)+'\')" style="display:inline-flex;align-items:center;min-height:36px;background:#0B63F6;color:#FFF;border:none;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;">'+h+'</button>';
+        return '<button type="button" onclick="App.insertTag(\''+jsArg(h)+'\')" style="display:inline-flex;align-items:center;min-height:36px;background:#0B5FE0;color:#FFF;border:none;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;">'+h+'</button>';
       }).join('') +
     '</div>';
 
@@ -2007,17 +2028,17 @@
         '</div>' +
 
         '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px 12px;">' +
-          '<span onclick="App.closeRepostModal()" style="font-size:14.5px;color:var(--muted);cursor:pointer;font-weight:700;padding:8px 4px;">Annuler</span>' +
-          '<h3 style="font-size:16px;font-weight:800;margin:0;color:var(--ink);letter-spacing:-0.2px;">Partager</h3>' +
-          '<button type="button" onclick="App.confirmRepost()" style="font-size:14px;color:#FFF;font-weight:800;background:#0B63F6;border:none;border-radius:20px;padding:8px 18px;cursor:pointer;box-shadow:0 4px 12px rgba(11,99,246,0.3);">Partager</button>' +
+          '<span onclick="App.closeRepostModal()" style="font-size:15px;color:var(--muted);cursor:pointer;font-weight:700;padding:8px 4px;">Annuler</span>' +
+          '<h3 style="font-size:15px;font-weight:800;margin:0;color:var(--ink);letter-spacing:-0.2px;">Partager</h3>' +
+          '<button type="button" onclick="App.confirmRepost()" style="font-size:15px;color:#FFF;font-weight:800;background:#0B5FE0;border:none;border-radius:20px;padding:8px 18px;cursor:pointer;">Partager</button>' +
         '</div>' +
 
         '<div style="overflow-y:auto;flex:1;padding:4px 16px 16px;">' +
           hashHtml +
-          '<div id="mentionSugg" style="display:none;flex-wrap:wrap;gap:6px;background:var(--accent-soft);border:1px solid var(--line2);border-radius:14px;padding:10px;margin-bottom:12px;"></div>' +
-          '<textarea id="repostText" oninput="App.onPostInput(this.value)" placeholder="Ajoutez un commentaire... Tapez # pour un hashtag ou @ pour mentionner un membre..." style="width:100%;min-height:90px;border:none;background:var(--tile);border-radius:18px;padding:14px;font-size:15.5px;line-height:1.55;color:var(--ink);resize:none;outline:none;box-sizing:border-box;font-family:inherit;margin-bottom:14px;">' + safeHtml(S.postText||'') + '</textarea>' +
+          '<div id="mentionSugg" style="display:none;flex-wrap:wrap;gap:6px;background:var(--accent-soft);border:1px solid var(--line2);border-radius:16px;padding:10px;margin-bottom:12px;"></div>' +
+          '<textarea id="repostText" oninput="App.onPostInput(this.value)" placeholder="Ajoutez un commentaire... Tapez # pour un hashtag ou @ pour mentionner un membre..." style="width:100%;min-height:90px;border:none;background:var(--tile);border-radius:20px;padding:14px;font-size:15px;line-height:1.55;color:var(--ink);resize:none;outline:none;box-sizing:border-box;font-family:inherit;margin-bottom:14px;">' + safeHtml(S.postText||'') + '</textarea>' +
 
-          '<div style="background:var(--tile);border-radius:18px;overflow:hidden;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
+          '<div style="background:var(--tile);border-radius:20px;overflow:hidden;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
             '<div style="padding:10px 12px;">' +
               '<strong style="font-size:13px;color:var(--ink);">' + safeHtml(post.author||'Membre') + '</strong>' +
             '</div>' +
@@ -2027,7 +2048,7 @@
                   : '<img src="'+safeUrl(previewMedia)+'" style="width:100%;max-height:220px;object-fit:cover;display:block;">')
               : (post.postBg
                   ? '<div style="min-height:100px;display:flex;align-items:center;justify-content:center;padding:20px;background:' + safeHtml(post.postBg) + ';"><p style="color:#FFF;font-size:15px;font-weight:800;text-align:center;margin:0;">' + safeHtml(previewCaption.slice(0,140)) + '</p></div>'
-                  : '<p style="font-size:13.5px;color:var(--ink2);margin:0;padding:12px;line-height:1.4;">' + safeHtml(previewCaption.slice(0,200)) + '</p>')
+                  : '<p style="font-size:13px;color:var(--ink2);margin:0;padding:12px;line-height:1.4;">' + safeHtml(previewCaption.slice(0,200)) + '</p>')
             ) +
           '</div>' +
         '</div>' +
@@ -2044,16 +2065,16 @@
     var evMonth = evDate ? evDate.toLocaleDateString('fr-FR', {month:'short'}).toUpperCase() : '';
     var evDay = evDate ? evDate.getDate() : '';
     var isSel = S.postAboutEventId === ev.id;
-    return '<button type="button" onclick="App.selectAboutEvent(\''+jsArg(ev.id)+'\')" style="width:100%;display:flex;align-items:center;gap:12px;background:' + (isSel?'var(--accent-soft)':'#F8F8FA') + ';border:1.5px solid ' + (isSel?'#0B63F6':'transparent') + ';border-radius:16px;padding:12px;margin-bottom:10px;cursor:pointer;text-align:left;">' +
-      '<div style="background:var(--card);border-radius:10px;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,0.06);width:44px;text-align:center;flex-shrink:0;">' +
-        '<div style="background:#0B63F6;color:#FFF;font-size:8.5px;font-weight:900;text-transform:uppercase;padding:3px 0;letter-spacing:0.5px;">' + evMonth + '</div>' +
-        '<div style="font-size:18px;font-weight:900;color:var(--ink);padding:3px 0;">' + evDay + '</div>' +
+    return '<button type="button" onclick="App.selectAboutEvent(\''+jsArg(ev.id)+'\')" style="width:100%;display:flex;align-items:center;gap:12px;background:' + (isSel?'var(--accent-soft)':'#F8F8FA') + ';border:1.5px solid ' + (isSel?'#0B5FE0':'transparent') + ';border-radius:999px;padding:12px;margin-bottom:10px;cursor:pointer;text-align:left;">' +
+      '<div style="background:var(--card);border-radius:12px;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,0.06);width:44px;text-align:center;flex-shrink:0;">' +
+        '<div style="background:#0B5FE0;color:#FFF;font-size:8.5px;font-weight:800;text-transform:uppercase;padding:3px 0;letter-spacing:0.5px;">' + evMonth + '</div>' +
+        '<div style="font-size:17px;font-weight:800;color:var(--ink);padding:3px 0;">' + evDay + '</div>' +
       '</div>' +
       '<div style="flex:1;min-width:0;">' +
-        '<div style="font-size:14px;font-weight:800;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(ev.eventTitle) + '</div>' +
+        '<div style="font-size:15px;font-weight:800;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(ev.eventTitle) + '</div>' +
         '<div style="font-size:12px;color:var(--faint);margin-top:2px;">' + (ev.eventStart ? '' + ev.eventStart + (ev.eventEnd ? ' — ' + ev.eventEnd : '') : '') + '</div>' +
       '</div>' +
-      (isSel ? '<span style="color:#0B63F6;font-size:18px;">✓</span>' : '') +
+      (isSel ? '<span style="color:#0B5FE0;font-size:17px;">✓</span>' : '') +
     '</button>';
   }
 
@@ -2104,14 +2125,14 @@
           '<div style="width:38px;height:5px;background:var(--line2);border-radius:3px;"></div>' +
         '</div>' +
         '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px 12px;">' +
-          '<span onclick="App.closeAboutEventPicker()" style="font-size:14.5px;color:var(--muted);cursor:pointer;font-weight:700;padding:8px 4px;">Annuler</span>' +
-          '<h3 style="font-size:16px;font-weight:800;margin:0;color:var(--ink);">À propos de quel événement ?</h3>' +
+          '<span onclick="App.closeAboutEventPicker()" style="font-size:15px;color:var(--muted);cursor:pointer;font-weight:700;padding:8px 4px;">Annuler</span>' +
+          '<h3 style="font-size:15px;font-weight:800;margin:0;color:var(--ink);">À propos de quel événement ?</h3>' +
           '<span style="width:52px;"></span>' +
         '</div>' +
         '<div style="padding:0 16px 10px;">' +
           '<div style="display:flex;align-items:center;gap:8px;background:var(--tile);border-radius:12px;height:38px;padding:0 12px;">' +
             SVG.search +
-            '<input id="aboutEventSearchInput" type="search" value="' + safeHtml(S.aboutEventSearch||'') + '" oninput="App.searchAboutEvents(this.value)" placeholder="Rechercher un événement (à venir ou passé)..." style="flex:1;border:none;background:transparent;font-size:13.5px;color:var(--ink);outline:none;">' +
+            '<input id="aboutEventSearchInput" type="search" value="' + safeHtml(S.aboutEventSearch||'') + '" oninput="App.searchAboutEvents(this.value)" placeholder="Rechercher un événement (à venir ou passé)..." style="flex:1;border:none;background:transparent;font-size:13px;color:var(--ink);outline:none;">' +
           '</div>' +
         '</div>' +
         '<div id="aboutEventListContainer" style="overflow-y:auto;flex:1;padding:4px 16px 20px;">' + renderAboutEventListHtml() + '</div>' +
@@ -2134,7 +2155,7 @@
       // avant compression/upload), on l'affiche en grand avec l'indicateur par-dessus
       // — l'utilisateur voit tout de suite quelle vidéo est en cours d'ajout.
       if (S.pendingVideoPoster) {
-        return '<div style="position:relative;margin-bottom:12px;border-radius:18px;overflow:hidden;background:#000;">' +
+        return '<div style="position:relative;margin-bottom:12px;border-radius:20px;overflow:hidden;background:#000;">' +
           '<img src="' + safeUrl(S.pendingVideoPoster) + '" style="width:100%;max-height:300px;object-fit:contain;display:block;background:#000;" />' +
           '<div style="position:absolute;inset:0;background:rgba(0,0,0,0.35);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;">' +
             '<div style="width:26px;height:26px;border:3px solid rgba(255,255,255,0.35);border-top-color:#FFF;border-radius:50%;animation:spin 0.8s linear infinite;"></div>' +
@@ -2143,18 +2164,18 @@
         '</div>';
       }
       return '<div style="display:flex;align-items:center;gap:10px;background:var(--tile);border-radius:16px;padding:14px;margin-bottom:12px;">' +
-        '<div style="width:20px;height:20px;border:3px solid var(--line2);border-top-color:#0B63F6;border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0;"></div>' +
-        '<span style="font-size:12.5px;font-weight:700;color:var(--ink2);">' + (S.reduceVideoQuality ? 'Traitement de la vidéo (HD)…' : 'Traitement de la vidéo…') + '</span>' +
+        '<div style="width:20px;height:20px;border:3px solid var(--line2);border-top-color:#0B5FE0;border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0;"></div>' +
+        '<span style="font-size:13px;font-weight:700;color:var(--ink2);">' + (S.reduceVideoQuality ? 'Traitement de la vidéo (HD)…' : 'Traitement de la vidéo…') + '</span>' +
       '</div>';
     }
     if (S.pendingMedia.length === 0) return '';
 
     var videoUrl = S.pendingMedia.find(function(m){ return isVideoUrl(m); });
     if (videoUrl) {
-      return '<div style="position:relative;margin-bottom:12px;border-radius:18px;overflow:hidden;background:#000;">' +
+      return '<div style="position:relative;margin-bottom:12px;border-radius:20px;overflow:hidden;background:#000;">' +
         '<video src="' + safeUrl(videoUrl) + '"' + (S.pendingVideoPoster ? ' poster="' + safeUrl(S.pendingVideoPoster) + '"' : '') +
           ' controls playsinline preload="auto" onloadeddata="App.primeVideoFrame(this)" style="width:100%;max-height:300px;display:block;background:#000;"></video>' +
-          '<button type="button" onclick="App.removeMedia(0)" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.65);border:none;border-radius:14px;width:44px;height:44px;color:#FFF;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:900;z-index:2;">×</button>' +
+          '<button type="button" onclick="App.removeMedia(0)" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.65);border:none;border-radius:16px;width:44px;height:44px;color:#FFF;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:800;z-index:2;">×</button>' +
       '</div>';
     }
 
@@ -2162,13 +2183,13 @@
     // (aucun recadrage imposé), avec les boutons "Modifier" et "✕" façon Facebook.
     return '<div style="display:flex;flex-direction:column;gap:10px;margin-bottom:12px;">' +
       S.pendingMedia.map(function(url, i) {
-        return '<div style="position:relative;border-radius:14px;overflow:hidden;background:#000;">' +
+        return '<div style="position:relative;border-radius:16px;overflow:hidden;background:#000;">' +
           '<img src="'+safeUrl(url)+'" style="display:block;width:100%;height:auto;max-height:420px;object-fit:contain;background:#000;">' +
-          '<button type="button" onclick="App.editPendingMedia('+i+')" style="position:absolute;top:8px;left:8px;background:rgba(0,0,0,0.72);border:none;border-radius:10px;padding:6px 12px;color:#FFF;font-size:12.5px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:6px;z-index:2;">' +
+          '<button type="button" onclick="App.editPendingMedia('+i+')" style="position:absolute;top:8px;left:8px;background:rgba(0,0,0,0.72);border:none;border-radius:12px;padding:6px 12px;color:#FFF;font-size:13px;font-weight:800;cursor:pointer;display:flex;align-items:center;gap:6px;z-index:2;">' +
             '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>' +
             'Modifier' +
           '</button>' +
-          '<button type="button" onclick="App.removeMedia('+i+')" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.72);border:none;border-radius:14px;width:44px;height:44px;color:#FFF;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:900;z-index:2;">×</button>' +
+          '<button type="button" onclick="App.removeMedia('+i+')" style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,0.72);border:none;border-radius:16px;width:44px;height:44px;color:#FFF;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:800;z-index:2;">×</button>' +
         '</div>';
       }).join('') +
     '</div>';
@@ -2194,47 +2215,47 @@
       var startTsSel = eventStartTimestamp(selectedEv);
       var delay = startTsSel ? Math.round((now - startTsSel) / 60000) : 0;
       var stars = starsForDelay(delay);
-      var col = stars >= 4 ? '#0E9F6E' : stars >= 2 ? '#D98A0B' : '#E2445C';
+      var col = stars >= 4 ? '#0E9F6E' : stars >= 2 ? '#D98A0B' : '#D92D20';
       return '<div style="background:var(--ok-soft);border:1px solid var(--ok-line);border-radius:16px;padding:12px 14px;margin-bottom:10px;">' +
         '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px;">' +
-          '<span style="font-size:12.5px;font-weight:800;color:var(--ok-ink);min-width:0;overflow-wrap:anywhere;">Arrivée : ' + safeHtml(selectedEv.eventTitle || 'Événement') + '</span>' +
-          '<button type="button" onclick="App.clearCheckInEvent()" style="background:none;border:none;color:#E2445C;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">Retirer</button>' +
+          '<span style="font-size:13px;font-weight:800;color:var(--ok-ink);min-width:0;overflow-wrap:anywhere;">Arrivée : ' + safeHtml(selectedEv.eventTitle || 'Événement') + '</span>' +
+          '<button type="button" onclick="App.clearCheckInEvent()" style="background:none;border:none;color:#D92D20;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">Retirer</button>' +
         '</div>' +
-        '<div style="font-size:11.5px;color:var(--muted);line-height:1.45;">' +
+        '<div style="font-size:12px;color:var(--muted);line-height:1.45;">' +
           'En publiant maintenant : <b style="color:' + col + ';">' + (stars>0?'+':'') + stars + '★</b> de ponctualité' +
           (delay > 0 ? ' (retard de ' + delay + ' min)' : ' (à l\'heure)') + '.' +
         '</div>' +
-        '<div style="font-size:10.5px;color:var(--faint);line-height:1.4;margin-top:6px;">Votre position sera relevée et visible de tous. Elle ne pourra plus être retirée.</div>' +
+        '<div style="font-size:11px;color:var(--faint);line-height:1.4;margin-top:6px;">Votre position sera relevée et visible de tous. Elle ne pourra plus être retirée.</div>' +
       '</div>';
     }
 
     return '<div style="background:var(--warn-soft);border:1px solid var(--warn-line);border-radius:16px;padding:12px 14px;margin-bottom:10px;">' +
-      '<div style="font-size:12.5px;font-weight:800;color:var(--warn-ink);margin-bottom:6px;">Enregistrer mon arrivée</div>' +
-      '<div style="font-size:11.5px;color:var(--muted);line-height:1.45;margin-bottom:8px;">Vous êtes de service ' + (candidates.length > 1 ? 'sur ces événements' : 'sur cet événement') + '. Pointez pour valider votre ponctualité.</div>' +
+      '<div style="font-size:13px;font-weight:800;color:var(--warn-ink);margin-bottom:6px;">Enregistrer mon arrivée</div>' +
+      '<div style="font-size:12px;color:var(--muted);line-height:1.45;margin-bottom:8px;">Vous êtes de service ' + (candidates.length > 1 ? 'sur ces événements' : 'sur cet événement') + '. Pointez pour valider votre ponctualité.</div>' +
       candidates.map(function(ev) {
         var st = eventStartTimestamp(ev);
         var dl = st ? Math.round((now - st) / 60000) : 0;
         var sc = starsForDelay(dl);
-        var c = sc >= 4 ? '#0E9F6E' : sc >= 2 ? '#D98A0B' : '#E2445C';
-        return '<button type="button" onclick="App.setCheckInEvent(\'' + jsArg(ev.id) + '\')" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--card);border:1px solid #F0E0BC;border-radius:12px;padding:10px 12px;margin-bottom:6px;cursor:pointer;text-align:left;">' +
+        var c = sc >= 4 ? '#0E9F6E' : sc >= 2 ? '#D98A0B' : '#D92D20';
+        return '<button type="button" onclick="App.setCheckInEvent(\'' + jsArg(ev.id) + '\')" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--card);border:1px solid #F0E0BC;border-radius:999px;padding:10px 12px;margin-bottom:6px;cursor:pointer;text-align:left;">' +
           '<span style="min-width:0;">' +
             '<span style="display:block;font-size:13px;font-weight:800;color:var(--ink);overflow-wrap:anywhere;">' + safeHtml(ev.eventTitle || 'Événement') + '</span>' +
             '<span style="display:block;font-size:11px;color:var(--faint);">' + safeHtml(ev.eventStart || '') + (dl > 0 ? ' · retard de ' + dl + ' min' : ' · à l\'heure') + '</span>' +
           '</span>' +
-          '<span style="font-size:13px;font-weight:900;color:' + c + ';white-space:nowrap;">' + (sc>0?'+':'') + sc + '★</span>' +
+          '<span style="font-size:13px;font-weight:800;color:' + c + ';white-space:nowrap;">' + (sc>0?'+':'') + sc + '★</span>' +
         '</button>';
       }).join('') +
-      '<div style="font-size:10.5px;color:var(--faint);line-height:1.4;">Le pointage relève votre position, visible de tous et non retirable.</div>' +
+      '<div style="font-size:11px;color:var(--faint);line-height:1.4;">Le pointage relève votre position, visible de tous et non retirable.</div>' +
     '</div>';
   }
 
   function renderCreateModal(u) {
     var previewHtml = renderComposerMediaPreview();
 
-    var hashHtml = '<div id="hashSugg" style="display:none;flex-wrap:wrap;gap:6px;background:var(--accent-soft);border:1px solid var(--line2);border-radius:14px;padding:10px;margin-bottom:12px;">' +
-      '<div style="font-size:11px;font-weight:800;color:#0B63F6;width:100%;margin-bottom:4px;">Hashtags suggérés :</div>' +
+    var hashHtml = '<div id="hashSugg" style="display:none;flex-wrap:wrap;gap:6px;background:var(--accent-soft);border:1px solid var(--line2);border-radius:16px;padding:10px;margin-bottom:12px;">' +
+      '<div style="font-size:11px;font-weight:800;color:#0B5FE0;width:100%;margin-bottom:4px;">Hashtags suggérés :</div>' +
       HASHTAGS.map(function(h) {
-        return '<button type="button" onclick="App.insertTag(\''+jsArg(h)+'\')" style="display:inline-flex;align-items:center;min-height:36px;background:#0B63F6;color:#FFF;border:none;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;">'+h+'</button>';
+        return '<button type="button" onclick="App.insertTag(\''+jsArg(h)+'\')" style="display:inline-flex;align-items:center;min-height:36px;background:#0B5FE0;color:#FFF;border:none;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:700;cursor:pointer;">'+h+'</button>';
       }).join('') +
     '</div>';
 
@@ -2246,19 +2267,19 @@
         '</div>' +
 
         '<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px 12px;">' +
-          '<span onclick="App.closeCreate()" style="font-size:14.5px;color:var(--muted);cursor:pointer;font-weight:700;padding:8px 4px;">Annuler</span>' +
-          '<h3 style="font-family:' + UI.fontDisplay + ';font-size:18px;font-weight:800;margin:0;color:var(--ink);letter-spacing:-0.3px;">Nouvelle publication</h3>' +
-          '<button type="submit" form="createPostForm" style="font-size:14px;color:#FFF;font-weight:800;background:#0B63F6;border:none;border-radius:20px;padding:8px 18px;cursor:pointer;box-shadow:0 4px 12px rgba(11,99,246,0.3);">Publier</button>' +
+          '<span onclick="App.closeCreate()" style="font-size:15px;color:var(--muted);cursor:pointer;font-weight:700;padding:8px 4px;">Annuler</span>' +
+          '<h3 style="font-family:' + UI.fontDisplay + ';font-size:17px;font-weight:800;margin:0;color:var(--ink);letter-spacing:-0.3px;">Nouvelle publication</h3>' +
+          '<button type="submit" form="createPostForm" style="font-size:15px;color:#FFF;font-weight:800;background:#0B5FE0;border:none;border-radius:20px;padding:8px 18px;cursor:pointer;">Publier</button>' +
         '</div>' +
 
         '<div style="overflow-y:auto;flex:1;padding:4px 16px 16px;">' +
           '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">' +
             ((u && u.avatar_url)
-              ? '<img src="' + safeUrl(u.avatar_url) + '" style="width:42px;height:42px;border-radius:21px;object-fit:cover;flex-shrink:0;box-shadow:0 3px 8px rgba(0,0,0,0.12);" />'
-              : '<div style="width:42px;height:42px;border-radius:21px;background:linear-gradient(135deg,' + ((u||{}).avatar_color||'#0B63F6') + ',#0B63F6);color:#FFF;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 3px 8px rgba(0,0,0,0.12);">' + ((u&&u.prenom||'M').charAt(0)) + '</div>') +
+              ? '<img src="' + safeUrl(u.avatar_url) + '" style="width:42px;height:42px;border-radius:20px;object-fit:cover;flex-shrink:0;box-shadow:0 3px 8px rgba(0,0,0,0.12);" />'
+              : '<div style="width:42px;height:42px;border-radius:20px;background:linear-gradient(135deg,' + ((u||{}).avatar_color||'#0B5FE0') + ',#0B5FE0);color:#FFF;font-size:15px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 3px 8px rgba(0,0,0,0.12);">' + ((u&&u.prenom||'M').charAt(0)) + '</div>') +
             '<div>' +
-              '<div style="font-size:14.5px;font-weight:800;color:var(--ink);">' + safeHtml((u&&u.prenom||'') + ' ' + (u&&u.nom||'')) + '</div>' +
-              '<div style="font-size:11.5px;color:#0B63F6;font-weight:700;background:var(--accent-soft);display:inline-block;padding:2px 8px;border-radius:8px;margin-top:2px;">' + secNom((u&&u.section_id)||'cadrage') + ' · Tapez # pour les hashtags</div>' +
+              '<div style="font-size:15px;font-weight:800;color:var(--ink);">' + safeHtml((u&&u.prenom||'') + ' ' + (u&&u.nom||'')) + '</div>' +
+              '<div style="font-size:12px;color:#0B5FE0;font-weight:700;background:var(--accent-soft);display:inline-block;padding:2px 8px;border-radius:8px;margin-top:2px;">' + secNom((u&&u.section_id)||'cadrage') + ' · Tapez # pour les hashtags</div>' +
             '</div>' +
           '</div>' +
 
@@ -2267,25 +2288,25 @@
           renderCheckInBlock() +
 
           hashHtml +
-          '<div id="mentionSugg" style="display:none;flex-wrap:wrap;gap:6px;background:var(--accent-soft);border:1px solid var(--line2);border-radius:14px;padding:10px;margin-bottom:12px;"></div>' +
+          '<div id="mentionSugg" style="display:none;flex-wrap:wrap;gap:6px;background:var(--accent-soft);border:1px solid var(--line2);border-radius:16px;padding:10px;margin-bottom:12px;"></div>' +
           previewHtml +
 
           // Color preview or plain textarea — hauteur généreuse et garantie, tout le
           // reste (options, footer) défile désormais avec elle dans le même conteneur.
           (S.pendingMedia.length === 0 && S.postBg
-            ? '<div id="bgPreviewZone" style="border-radius:22px;overflow:hidden;margin-bottom:14px;position:relative;min-height:180px;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 20px rgba(0,0,0,0.14);' + (S.postBg.startsWith('url') ? 'background:' + safeHtml(S.postBg) + ';background-size:cover;background-position:center;' : 'background:' + safeHtml(S.postBg) + ';') + '">' +
-                (S.postBg && !S.postBg.includes('linear-gradient') && !S.postBg.includes('url') ? '<div style="position:absolute;inset:0;background:rgba(0,0,0,0.18);border-radius:22px;"></div>' : '') +
-                '<textarea id="newPostText" oninput="App.onPostInput(this.value)" placeholder="Quoi de neuf ?" style="width:100%;min-height:180px;border:none;background:transparent;font-size:24px;font-weight:900;line-height:1.4;color:#FFF;resize:none;outline:none;box-sizing:border-box;font-family:inherit;text-align:center;padding:24px 20px;text-shadow:0 2px 12px rgba(0,0,0,0.3);position:relative;z-index:1;">' + safeHtml(S.postText||'') + '</textarea>' +
+            ? '<div id="bgPreviewZone" style="border-radius:20px;overflow:hidden;margin-bottom:14px;position:relative;min-height:180px;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 20px rgba(0,0,0,0.14);' + (S.postBg.startsWith('url') ? 'background:' + safeHtml(S.postBg) + ';background-size:cover;background-position:center;' : 'background:' + safeHtml(S.postBg) + ';') + '">' +
+                (S.postBg && !S.postBg.includes('linear-gradient') && !S.postBg.includes('url') ? '<div style="position:absolute;inset:0;background:rgba(0,0,0,0.18);border-radius:20px;"></div>' : '') +
+                '<textarea id="newPostText" oninput="App.onPostInput(this.value)" placeholder="Quoi de neuf ?" style="width:100%;min-height:180px;border:none;background:transparent;font-size:28px;font-weight:800;line-height:1.4;color:#FFF;resize:none;outline:none;box-sizing:border-box;font-family:inherit;text-align:center;padding:24px 20px;text-shadow:0 2px 12px rgba(0,0,0,0.3);position:relative;z-index:1;">' + safeHtml(S.postText||'') + '</textarea>' +
               '</div>'
             : '<form id="createPostForm" onsubmit="App.submitPost(event)">' +
-                '<textarea id="newPostText" oninput="App.onPostInput(this.value)" placeholder="Quoi de neuf ? Tapez # pour ajouter un hashtag de section..." style="width:100%;min-height:140px;border:none;background:transparent;font-size:15.5px;line-height:1.55;color:var(--ink);resize:none;outline:none;box-sizing:border-box;font-family:inherit;">' + safeHtml(S.postText||'') + '</textarea>' +
+                '<textarea id="newPostText" oninput="App.onPostInput(this.value)" placeholder="Quoi de neuf ? Tapez # pour ajouter un hashtag de section..." style="width:100%;min-height:140px;border:none;background:transparent;font-size:15px;line-height:1.55;color:var(--ink);resize:none;outline:none;box-sizing:border-box;font-family:inherit;">' + safeHtml(S.postText||'') + '</textarea>' +
               '</form>'
           ) +
           (S.postBg ? '<form id="createPostForm" onsubmit="App.submitPost(event)" style="display:none;"></form>' : '') +
 
           // Aperçu du lien collé
           (S.linkPreviewLoading
-            ? '<div style="display:flex;align-items:center;gap:9px;border:0.5px solid ' + UI.line2 + ';border-radius:' + UI.r1 + ';padding:12px;margin-bottom:12px;color:' + UI.faint + ';font-size:12.5px;">' +
+            ? '<div style="display:flex;align-items:center;gap:9px;border:0.5px solid ' + UI.line2 + ';border-radius:' + UI.r1 + ';padding:12px;margin-bottom:12px;color:' + UI.faint + ';font-size:13px;">' +
                 '<div style="width:15px;height:15px;border:2px solid ' + UI.line2 + ';border-top-color:' + UI.accent + ';border-radius:50%;animation:spin 0.7s linear infinite;flex-shrink:0;"></div>' +
                 'Chargement de l\'aperçu du lien…' +
               '</div>'
@@ -2303,7 +2324,7 @@
           (function(){
             var utilisees = S.postVisibility === 'sections' || !!S.postAboutEventId || !!S.pollOpen;
             var ouvert = !!S.createOptionsOpen || utilisees;
-            return '<button type="button" onclick="App.basculerOptionsPublication()" aria-expanded="' + ouvert + '" style="display:flex;align-items:center;justify-content:space-between;width:100%;min-height:44px;background:var(--tile);border:none;border-radius:14px;padding:10px 14px;margin-bottom:10px;font-size:13.5px;font-weight:700;color:var(--ink);cursor:pointer;">' +
+            return '<button type="button" onclick="App.basculerOptionsPublication()" aria-expanded="' + ouvert + '" style="display:flex;align-items:center;justify-content:space-between;width:100%;min-height:44px;background:var(--tile);border:none;border-radius:999px;padding:10px 14px;margin-bottom:10px;font-size:13px;font-weight:700;color:var(--ink);cursor:pointer;">' +
               '<span style="text-align:left;">' + (ouvert ? 'Moins d\'options' : 'Plus d\'options') + ' <span style="font-weight:500;color:var(--faint);">· visibilité, programmation, événement, sondage</span></span>' +
               '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;transition:transform 0.2s;transform:rotate(' + (ouvert ? '180' : '0') + 'deg);"><path d="M6 9l6 6 6-6"/></svg>' +
             '</button>' +
@@ -2312,11 +2333,11 @@
           // Qui peut voir
           '<div style="background:var(--tile);border-radius:20px;padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
             '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">' +
-              '<span style="font-size:13px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:8px;"><span style="width:26px;height:26px;border-radius:13px;background:var(--accent-soft);display:inline-flex;align-items:center;justify-content:center;font-size:13px;">🔒</span>Qui peut voir ?</span>' +
+              '<span style="font-size:13px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:8px;"><span style="width:26px;height:26px;border-radius:12px;background:var(--accent-soft);display:inline-flex;align-items:center;justify-content:center;font-size:13px;">🔒</span>Qui peut voir ?</span>' +
             '</div>' +
             '<div style="display:flex;gap:4px;background:var(--line2);border-radius:16px;padding:3px;">' +
-              '<button type="button" onclick="App.setPostVisibility(\'all\')" style="flex:1;padding:8px 6px;border-radius:13px;font-size:11.5px;font-weight:800;border:none;cursor:pointer;transition:all 0.2s;background:' + ((S.postVisibility||'all')==='all'?'#FFFFFF':'transparent') + ';color:' + ((S.postVisibility||'all')==='all'?'#0B63F6':'var(--muted)') + ';box-shadow:' + ((S.postVisibility||'all')==='all'?'0 2px 6px rgba(0,0,0,0.08)':'none') + ';">🌍 Tout le monde</button>' +
-              '<button type="button" onclick="App.setPostVisibility(\'sections\')" style="flex:1;padding:8px 6px;border-radius:13px;font-size:11.5px;font-weight:800;border:none;cursor:pointer;transition:all 0.2s;background:' + ((S.postVisibility||'all')==='sections'?'#FFFFFF':'transparent') + ';color:' + ((S.postVisibility||'all')==='sections'?'#0B63F6':'var(--muted)') + ';box-shadow:' + ((S.postVisibility||'all')==='sections'?'0 2px 6px rgba(0,0,0,0.08)':'none') + ';">Sections ciblées</button>' +
+              '<button type="button" onclick="App.setPostVisibility(\'all\')" style="flex:1;padding:8px 6px;border-radius:999px;font-size:12px;font-weight:800;border:none;cursor:pointer;transition:all 0.2s;background:' + ((S.postVisibility||'all')==='all'?'#FFFFFF':'transparent') + ';color:' + ((S.postVisibility||'all')==='all'?'#0B5FE0':'var(--muted)') + ';box-shadow:' + ((S.postVisibility||'all')==='all'?'0 2px 6px rgba(0,0,0,0.08)':'none') + ';">🌍 Tout le monde</button>' +
+              '<button type="button" onclick="App.setPostVisibility(\'sections\')" style="flex:1;padding:8px 6px;border-radius:999px;font-size:12px;font-weight:800;border:none;cursor:pointer;transition:all 0.2s;background:' + ((S.postVisibility||'all')==='sections'?'#FFFFFF':'transparent') + ';color:' + ((S.postVisibility||'all')==='sections'?'#0B5FE0':'var(--muted)') + ';box-shadow:' + ((S.postVisibility||'all')==='sections'?'0 2px 6px rgba(0,0,0,0.08)':'none') + ';">Sections ciblées</button>' +
             '</div>' +
             (S.postVisibility === 'sections'
               ? '<div style="margin-top:10px;"><div id="targetSectionBadgesContainer">' + App.renderSectionBadges(S.postTargetSections||[], 'toggleTargetSection') + '</div></div>'
@@ -2325,29 +2346,29 @@
 
           // Programmer
           '<div style="background:var(--tile);border-radius:20px;padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
-            '<span style="font-size:13px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="width:26px;height:26px;border-radius:13px;background:#FFF3E5;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">⏰</span>Programmer <span style="font-weight:600;color:var(--faint);font-size:11px;">(optionnel)</span></span>' +
+            '<span style="font-size:13px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:8px;margin-bottom:10px;"><span style="width:26px;height:26px;border-radius:12px;background:#FFF3E5;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">⏰</span>Programmer <span style="font-weight:600;color:var(--faint);font-size:11px;">(optionnel)</span></span>' +
             '<div style="display:flex;gap:8px;">' +
-              '<input type="date" id="postScheduleDate" style="flex:1;height:40px;border-radius:12px;border:none;background:var(--card);padding:0 10px;font-size:12.5px;outline:none;box-shadow:0 1px 2px rgba(16,24,40,0.06);" />' +
-              '<input type="time" id="postScheduleTime" style="flex:1;height:40px;border-radius:12px;border:none;background:var(--card);padding:0 10px;font-size:12.5px;outline:none;box-shadow:0 1px 2px rgba(16,24,40,0.06);" />' +
+              '<input type="date" id="postScheduleDate" style="flex:1;height:40px;border-radius:12px;border:none;background:var(--card);padding:0 10px;font-size:13px;outline:none;box-shadow:0 1px 2px rgba(16,24,40,0.06);" />' +
+              '<input type="time" id="postScheduleTime" style="flex:1;height:40px;border-radius:12px;border:none;background:var(--card);padding:0 10px;font-size:13px;outline:none;box-shadow:0 1px 2px rgba(16,24,40,0.06);" />' +
             '</div>' +
           '</div>' +
 
           // À propos
           '<div style="background:var(--tile);border-radius:20px;padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
             '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:' + (S.postAboutEventId?'10px':'0') + ';">' +
-              '<span style="font-size:13px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:8px;"><span style="width:26px;height:26px;border-radius:13px;background:var(--accent-soft);display:inline-flex;align-items:center;justify-content:center;font-size:13px;">🗓️</span>À propos <span style="font-weight:600;color:var(--faint);font-size:11px;">(optionnel)</span></span>' +
-              (S.postAboutEventId ? '<span onclick="App.clearAboutEvent()" style="color:#E2445C;font-size:12px;font-weight:700;cursor:pointer;">Retirer</span>' : '') +
+              '<span style="font-size:13px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:8px;"><span style="width:26px;height:26px;border-radius:12px;background:var(--accent-soft);display:inline-flex;align-items:center;justify-content:center;font-size:13px;">🗓️</span>À propos <span style="font-weight:600;color:var(--faint);font-size:11px;">(optionnel)</span></span>' +
+              (S.postAboutEventId ? '<span onclick="App.clearAboutEvent()" style="color:#D92D20;font-size:12px;font-weight:700;cursor:pointer;">Retirer</span>' : '') +
             '</div>' +
             (function(){
               if (!S.postAboutEventId) {
-                return '<button type="button" onclick="App.openAboutEventPicker()" style="width:100%;background:var(--card);border:1px dashed var(--line);border-radius:12px;padding:10px;font-size:12.5px;font-weight:700;color:#0B63F6;cursor:pointer;">+ Lier à un événement (ex : culte de dimanche)</button>';
+                return '<button type="button" onclick="App.openAboutEventPicker()" style="width:100%;background:var(--card);border:1px dashed var(--line);border-radius:999px;padding:10px;font-size:13px;font-weight:700;color:#0B5FE0;cursor:pointer;">+ Lier à un événement (ex : culte de dimanche)</button>';
               }
               var evAbout = db(SK.POSTS, []).find(function(p){ return p.id === S.postAboutEventId; });
               if (!evAbout) return '';
               var evAboutD = evAbout.eventDate ? new Date(evAbout.eventDate+'T00:00:00').toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'}) : '';
-              return '<button type="button" onclick="App.openAboutEventPicker()" style="width:100%;display:flex;align-items:center;gap:8px;background:var(--card);border-radius:12px;padding:10px;text-align:left;border:none;cursor:pointer;">' +
-                '<span style="font-size:16px;">🗓️</span>' +
-                '<span style="flex:1;min-width:0;font-size:12.5px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(evAbout.eventTitle||'') + (evAboutD?' · '+evAboutD:'') + (evAbout.eventStart?' à '+evAbout.eventStart:'') + '</span>' +
+              return '<button type="button" onclick="App.openAboutEventPicker()" style="width:100%;display:flex;align-items:center;gap:8px;background:var(--card);border-radius:999px;padding:10px;text-align:left;border:none;cursor:pointer;">' +
+                '<span style="font-size:15px;">🗓️</span>' +
+                '<span style="flex:1;min-width:0;font-size:13px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(evAbout.eventTitle||'') + (evAboutD?' · '+evAboutD:'') + (evAbout.eventStart?' à '+evAbout.eventStart:'') + '</span>' +
               '</button>';
             })() +
           '</div>' +
@@ -2355,24 +2376,24 @@
           // Sondage
           '<div style="background:var(--tile);border-radius:20px;padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
             '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:' + (S.pollOpen?'10px':'0') + ';">' +
-              '<span style="font-size:13px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:8px;"><span style="width:26px;height:26px;border-radius:13px;background:#E6F9F0;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">📊</span>Sondage <span style="font-weight:600;color:var(--faint);font-size:11px;">(optionnel)</span></span>' +
-              (S.pollOpen ? '<span onclick="App.togglePoll()" style="color:#E2445C;font-size:12px;font-weight:700;cursor:pointer;">Retirer</span>' : '') +
+              '<span style="font-size:13px;font-weight:800;color:var(--ink);display:flex;align-items:center;gap:8px;"><span style="width:26px;height:26px;border-radius:12px;background:#E6F9F0;display:inline-flex;align-items:center;justify-content:center;font-size:13px;">📊</span>Sondage <span style="font-weight:600;color:var(--faint);font-size:11px;">(optionnel)</span></span>' +
+              (S.pollOpen ? '<span onclick="App.togglePoll()" style="color:#D92D20;font-size:12px;font-weight:700;cursor:pointer;">Retirer</span>' : '') +
             '</div>' +
             (S.pollOpen
               ? (
                   '<input type="text" value="' + safeHtml(S.pollQuestion||'') + '" oninput="App.setPollQuestion(this.value)" placeholder="Posez votre question…" maxlength="140" style="width:100%;height:40px;border-radius:12px;border:none;background:var(--card);padding:0 12px;font-size:13px;outline:none;box-shadow:0 1px 2px rgba(16,24,40,0.06);margin-bottom:8px;box-sizing:border-box;" />' +
                   (S.pollOptions||[]).map(function(opt, idx) {
                     return '<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px;">' +
-                      '<input type="text" value="' + safeHtml(opt||'') + '" oninput="App.setPollOption(' + idx + ', this.value)" placeholder="Option ' + (idx+1) + '" maxlength="60" style="flex:1;height:38px;border-radius:11px;border:none;background:var(--card);padding:0 12px;font-size:12.5px;outline:none;box-shadow:0 1px 2px rgba(16,24,40,0.06);box-sizing:border-box;" />' +
-                      (S.pollOptions.length > 2 ? '<button type="button" onclick="App.removePollOption(' + idx + ')" style="width:44px;height:44px;flex-shrink:0;margin:-6px -6px -6px 0;border-radius:10px;border:none;background:#FFF0EF;color:#E2445C;font-size:16px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;">×</button>' : '') +
+                      '<input type="text" value="' + safeHtml(opt||'') + '" oninput="App.setPollOption(' + idx + ', this.value)" placeholder="Option ' + (idx+1) + '" maxlength="60" style="flex:1;height:38px;border-radius:12px;border:none;background:var(--card);padding:0 12px;font-size:13px;outline:none;box-shadow:0 1px 2px rgba(16,24,40,0.06);box-sizing:border-box;" />' +
+                      (S.pollOptions.length > 2 ? '<button type="button" onclick="App.removePollOption(' + idx + ')" style="width:44px;height:44px;flex-shrink:0;margin:-6px -6px -6px 0;border-radius:12px;border:none;background:#FFF0EF;color:#D92D20;font-size:15px;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;">×</button>' : '') +
                     '</div>';
                   }).join('') +
                   (S.pollOptions.length < 5
-                    ? '<button type="button" onclick="App.addPollOption()" style="background:var(--card);border:1px dashed var(--line);border-radius:12px;padding:8px 12px;font-size:12px;font-weight:700;color:#0B63F6;cursor:pointer;width:100%;margin-top:2px;">+ Ajouter une option</button>'
+                    ? '<button type="button" onclick="App.addPollOption()" style="background:var(--card);border:1px dashed var(--line);border-radius:999px;padding:8px 12px;font-size:12px;font-weight:700;color:#0B5FE0;cursor:pointer;width:100%;margin-top:2px;">+ Ajouter une option</button>'
                     : '') +
-                  '<div style="font-size:10.5px;color:var(--faint);line-height:1.4;margin-top:6px;">Une seule réponse par membre. Question et au moins 2 options requises.</div>'
+                  '<div style="font-size:11px;color:var(--faint);line-height:1.4;margin-top:6px;">Une seule réponse par membre. Question et au moins 2 options requises.</div>'
                 )
-              : '<button type="button" onclick="App.togglePoll()" style="width:100%;background:var(--card);border:1px dashed var(--line);border-radius:12px;padding:10px;font-size:12.5px;font-weight:700;color:var(--ok-ink);cursor:pointer;">+ Ajouter un sondage</button>'
+              : '<button type="button" onclick="App.togglePoll()" style="width:100%;background:var(--card);border:1px dashed var(--line);border-radius:999px;padding:10px;font-size:13px;font-weight:700;color:var(--ok-ink);cursor:pointer;">+ Ajouter un sondage</button>'
             ) +
           '</div>' +
 
@@ -2380,7 +2401,7 @@
           '<div style="background:var(--tile);border-radius:20px;padding:14px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
             '<div style="display:flex;align-items:center;justify-content:space-between;">' +
               '<div style="display:flex;align-items:center;gap:10px;">' +
-                '<span style="width:26px;height:26px;border-radius:13px;background:#FFEDE0;display:inline-flex;align-items:center;justify-content:center;font-size:14px;">🕐</span>' +
+                '<span style="width:26px;height:26px;border-radius:12px;background:#FFEDE0;display:inline-flex;align-items:center;justify-content:center;font-size:15px;">🕐</span>' +
                 '<div>' +
                   '<div style="font-size:13px;font-weight:800;color:var(--ink);">Publication éphémère</div>' +
                   '<div style="font-size:11px;color:var(--faint);">Disparaît automatiquement après 24h</div>' +
@@ -2403,7 +2424,7 @@
             ? '<div style="display:flex;gap:8px;align-items:center;overflow-x:auto;padding:2px 0 10px;scrollbar-width:none;">' +
                 '<span style="font-size:11px;font-weight:700;color:var(--faint);flex-shrink:0;">Fond</span>' +
                 // "No color" option
-                '<div onclick="App.setPostBg(null)" style="width:30px;height:30px;border-radius:15px;background:var(--card);border:2px solid ' + (S.postBg===null?'#0B63F6':'var(--line)') + ';cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;font-weight:700;color:var(--ink2);">Aa</div>' +
+                '<div onclick="App.setPostBg(null)" style="width:30px;height:30px;border-radius:16px;background:var(--card);border:2px solid ' + (S.postBg===null?'#0B5FE0':'var(--line)') + ';cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;font-weight:700;color:var(--ink2);">Aa</div>' +
                 // Color swatches
                 [
                   'linear-gradient(135deg,#1A1A2E,#16213E)',
@@ -2420,20 +2441,20 @@
                   'linear-gradient(135deg,#F7971E,#FFD200)',
                 ].map(function(bg, idx) {
                   var isSel = S.postBg === bg;
-                  return '<div onclick="App.setPostBgIdx(' + idx + ')" style="width:30px;height:30px;border-radius:15px;background:' + bg + ';cursor:pointer;flex-shrink:0;border:2.5px solid ' + (isSel?'#FFF':'transparent') + ';box-shadow:' + (isSel?'0 0 0 2px #0B63F6':'0 1px 3px rgba(0,0,0,0.15)') + ';transition:0.15s;"></div>';
+                  return '<div onclick="App.setPostBgIdx(' + idx + ')" style="width:30px;height:30px;border-radius:16px;background:' + bg + ';cursor:pointer;flex-shrink:0;border:2.5px solid ' + (isSel?'#FFF':'transparent') + ';box-shadow:' + (isSel?'0 0 0 2px #0B5FE0':'0 1px 3px rgba(0,0,0,0.15)') + ';transition:0.15s;"></div>';
                 }).join('') +
               '</div>'
             : ''
           ) +
           '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">' +
-            '<label style="cursor:pointer;display:flex;align-items:center;gap:6px;color:#0B63F6;font-size:12.5px;font-weight:800;background:var(--accent-soft);padding:9px 14px;border-radius:16px;">' +
-              '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0B63F6" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>' +
+            '<label style="cursor:pointer;display:flex;align-items:center;gap:6px;color:#0B5FE0;font-size:13px;font-weight:800;background:var(--accent-soft);padding:9px 14px;border-radius:16px;">' +
+              '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0B5FE0" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>' +
               'Photo / Vidéo' +
               '<input type="file" accept="image/*,video/*" multiple onchange="App.addMedia(event)" style="display:none;">' +
             '</label>' +
-            '<span style="font-size:11.5px;color:var(--faint);font-weight:600;">' + (S.pendingMedia.some(function(m){return isVideoUrl(m);}) ? '1 vidéo' : S.pendingMedia.length + '/10 photos') + '</span>' +
+            '<span style="font-size:12px;color:var(--faint);font-weight:600;">' + (S.pendingMedia.some(function(m){return isVideoUrl(m);}) ? '1 vidéo' : S.pendingMedia.length + '/10 photos') + '</span>' +
           '</div>' +
-          '<label style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer;font-size:12px;color:var(--muted);font-weight:600;line-height:1.4;background:var(--tile);padding:10px 12px;border-radius:14px;"><input type="checkbox" ' + (S.reduceVideoQuality?'checked':'') + ' onchange="App.toggleReduceVideoQuality()" style="width:17px;height:17px;flex-shrink:0;accent-color:#0B63F6;"> 🎥 Nous réduisons la qualité vidéo en HD pour une expérience plus fluide</label>' +
+          '<label style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer;font-size:12px;color:var(--muted);font-weight:600;line-height:1.4;background:var(--tile);padding:10px 12px;border-radius:16px;"><input type="checkbox" ' + (S.reduceVideoQuality?'checked':'') + ' onchange="App.toggleReduceVideoQuality()" style="width:17px;height:17px;flex-shrink:0;accent-color:#0B5FE0;"> 🎥 Nous réduisons la qualité vidéo en HD pour une expérience plus fluide</label>' +
         '</div>' +
 
       '</div>' +
@@ -2462,7 +2483,7 @@
         var vu = users.find(function(x){ return x.id === uid; });
         var nom = vu ? ((vu.prenom||'') + ' ' + (vu.nom||'')).trim() : 'Membre';
         var initial = (vu && vu.prenom ? vu.prenom.charAt(0) : 'M').toUpperCase();
-        var color = (vu && vu.avatar_color) || '#0B63F6';
+        var color = (vu && vu.avatar_color) || '#0B5FE0';
         var avatarNode = (vu && vu.avatar_url)
           ? '<img src="' + safeUrl(vu.avatar_url) + '" style="width:40px;height:40px;border-radius:20px;object-fit:cover;flex-shrink:0;" />'
           : '<div style="width:40px;height:40px;border-radius:20px;background:' + color + ';color:#FFF;font-size:15px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + initial + '</div>';
@@ -2471,7 +2492,7 @@
         return '<div onclick="App.closeViewers();App.openUserProfile(\'' + jsArg(uid) + '\')" style="display:flex;align-items:center;gap:12px;padding:10px 4px;cursor:pointer;">' +
           avatarNode +
           '<div style="flex:1;min-width:0;">' +
-            '<div style="font-size:14px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(nom) + '</div>' +
+            '<div style="font-size:15px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(nom) + '</div>' +
             (secLabel ? '<div style="font-size:12px;color:var(--faint);margin-top:1px;">' + safeHtml(secLabel) + '</div>' : '') +
           '</div>' +
         '</div>';
@@ -2484,7 +2505,7 @@
           '<div style="width:38px;height:5px;background:var(--line2);border-radius:3px;"></div>' +
         '</div>' +
         '<div style="text-align:center;padding-bottom:12px;border-bottom:0.5px solid var(--tile);">' +
-          '<h3 style="font-size:16px;font-weight:800;margin:0;color:var(--ink);">Vues</h3>' +
+          '<h3 style="font-size:15px;font-weight:800;margin:0;color:var(--ink);">Vues</h3>' +
           '<p style="font-size:12px;color:var(--faint);margin:2px 0 0;">' + ids.length + ' membre' + (ids.length>1?'s':'') + ' ' + (ids.length>1?'ont':'a') + ' vu cette publication</p>' +
         '</div>' +
         '<div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:8px 16px 24px;">' + listHtml + '</div>' +
