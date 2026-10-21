@@ -2359,6 +2359,7 @@
     var admin = isAdmin
       ? ligne(svg('<rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/>'), 'Tableau de bord', '›', 'App.closeSettings();App.ouvrirTableauDeBord()') +
         ligne(svg('<path d="M3 6l4 3 5-6 5 6 4-3v12H3z"/>'), 'Gérer les rôles', '›', 'App.closeSettings();App.openRolesPanel()') +
+        ligne(ico('pin', 16, UI.muted), 'Lieux enregistrés', (db(SK.LIEUX, []).length || '') + ' ›', 'App.closeSettings();App.ouvrirLieux()') +
         ligne(svg('<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"/>'), 'Stockage', '›', 'App.closeSettings();App.openStorageStats()') +
         ligne(svg('<path d="M12 5v14M5 12h14"/>'), 'Quitter le rôle Admin', '›', 'App.revokeGrandResponsable()')
       : '';
@@ -2375,6 +2376,37 @@
         (admin ? section('Administration', admin) : '') +
         section('Compte', compte) +
         '<button onclick="App.logout()" style="width:100%;background:var(--bad-soft);color:#D92D20;border:none;border-radius:999px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;margin-top:8px;">Se déconnecter</button>' +
+      '</div>' +
+    '</div>';
+  }
+
+  // ============================================================
+  // LIEUX ENREGISTRÉS (Admin) : retirer un lieu mal placé ou en double.
+  // Les événements déjà créés gardent leur position.
+  // ============================================================
+  function renderLieuxPanel() {
+    var lieux = db(SK.LIEUX, []).map(assainirLieu).filter(Boolean)
+      .sort(function(a, b){ return b.utilisations - a.utilisations || a.nom.localeCompare(b.nom, 'fr'); });
+    var admin = isGrandResponsable(S.user);
+    return '<div class="safe-top" style="position:fixed;inset:0;z-index:10006;background:' + UI.page + ';display:flex;flex-direction:column;animation:fadeIn 0.2s ease-out;">' +
+      enTetePleinEcran('Lieux enregistrés', 'App.fermerLieux()') +
+      '<div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:8px 16px 40px;">' +
+        '<div style="font-size:13px;color:var(--muted);line-height:1.45;margin:0 4px 12px;">Chaque lieu choisi pour un événement est enregistré ici et proposé à la saisie. Une position relevée sur place remplace celle d\'une recherche.</div>' +
+        (lieux.length
+          ? '<div style="background:var(--card);border-radius:20px;overflow:hidden;">' +
+              lieux.map(function(l, i) {
+                return '<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;' + (i ? 'border-top:1px solid var(--line);' : '') + '">' +
+                  '<span style="width:32px;height:32px;border-radius:16px;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + ico(l.precision_m ? 'locate' : 'pin', 16, UI.lien) + '</span>' +
+                  '<div style="flex:1;min-width:0;">' +
+                    '<div style="font-size:15px;font-weight:700;color:var(--ink);overflow-wrap:anywhere;">' + safeHtml(l.nom) + '</div>' +
+                    '<div style="font-size:12px;color:var(--muted);line-height:1.35;overflow-wrap:anywhere;">' + safeHtml(detailLieu(l)) + ' · ' + l.utilisations + ' utilisation' + (l.utilisations > 1 ? 's' : '') + '</div>' +
+                  '</div>' +
+                  '<a href="' + safeUrl('https://www.google.com/maps/search/?api=1&query=' + l.lat + ',' + l.lng) + '" target="_blank" rel="noopener noreferrer" aria-label="Voir ' + safeHtml(l.nom) + ' sur la carte" style="width:40px;height:40px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:var(--lien);">' + ico('globe', 18, 'currentColor') + '</a>' +
+                  (admin ? '<button type="button" onclick="App.supprimerLieu(\'' + jsArg(l.id) + '\')" aria-label="Retirer ' + safeHtml(l.nom) + '" style="width:40px;height:40px;border:none;background:none;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;">' + ico('trash', 18, UI.bad) + '</button>' : '') +
+                '</div>';
+              }).join('') +
+            '</div>'
+          : '<div style="background:var(--card);border-radius:20px;padding:24px 16px;text-align:center;font-size:14px;color:var(--muted);line-height:1.45;">Aucun lieu enregistré pour l\'instant. Le prochain lieu choisi pour un événement apparaîtra ici.</div>') +
       '</div>' +
     '</div>';
   }

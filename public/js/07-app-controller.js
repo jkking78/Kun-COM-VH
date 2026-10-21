@@ -208,20 +208,115 @@
         };
       }
     },
-    // Recherche du lieu par son nom ou son adresse. On ne relève JAMAIS la position
-    // du créateur : il prépare généralement l'événement à l'avance depuis chez lui,
-    // sa position n'a donc aucun rapport avec le lieu de l'événement.
+    // Recherche du lieu par son nom ou son adresse. La position du créateur
+    // n'est relevée que s'il le demande (« Utiliser ma position actuelle ») :
+    // il prépare souvent l'événement de chez lui, loin du lieu.
     onEventPlaceInput: function(val) {
       S.eventPlaceQuery = val;
       S.eventPlaceError = null;
       if (App._placeTimer) clearTimeout(App._placeTimer);
-      if (!val || val.trim().length < 3) {
-        S.eventPlaceResults = [];
-        var box0 = document.getElementById('eventPlaceResults');
-        if (box0) box0.innerHTML = '';
+      S.eventPlaceResults = [];
+      // Les lieux enregistrés s'affichent tout de suite, sans réseau.
+      var box0 = document.getElementById('eventPlaceResults');
+      if (box0) box0.innerHTML = renderResultatsLieu(val, []);
+      if (!val || val.trim().length < 3) return;
+      App._placeTimer = setTimeout(function(){ App.searchEventPlace(); }, 600);
+    },
+    // ---- Lieux enregistrés (migration 11) ----
+    chargerLieux: function() {
+      if (!supabase || !S.user) return Promise.resolve();
+      return supabase.from('kun_com_lieux').select('id,nom,adresse,lat,lng,precision_m,utilisations')
+        .order('utilisations', { ascending: false }).limit(300).then(function(r) {
+          if (!r || r.error || !Array.isArray(r.data)) return;
+          dbSet(SK.LIEUX, r.data.map(assainirLieu).filter(Boolean));
+          // Formulaire ouvert : propositions rafraîchies sans voler le focus.
+          var box = document.getElementById('eventLieuxProposes');
+          var champ = document.getElementById('eventLocation');
+          if (box && champ) box.innerHTML = renderLieuxProposes(champ.value, S.createEventData);
+          if (S.lieuxOuverts) render();
+        }, function(){});
+    },
+    onEventLocationInput: function(val) {
+      var box = document.getElementById('eventLieuxProposes');
+      if (box) box.innerHTML = renderLieuxProposes(val, S.createEventData);
+    },
+    // depuis = 'lieu' (sous « Lieu / salle ») ou 'carte' (recherche d'adresse) :
+    // depuis la carte, un nom de salle déjà tapé est gardé, seule la position change.
+    choisirLieu: function(id, depuis) {
+      var l = db(SK.LIEUX, []).map(assainirLieu).filter(Boolean).find(function(x){ return x.id === id; });
+      if (!l) return;
+      App.syncCreateEventData();
+      if (!S.createEventData) S.createEventData = {};
+      var d = S.createEventData;
+      if (depuis !== 'carte' || !(d.location || '').trim()) d.location = l.nom;
+      d.lat = l.lat; d.lng = l.lng;
+      d.accuracy = l.precision_m || undefined;
+      d.placeName = l.nom;
+      d.placeLabel = l.adresse || '';
+      S.eventPlaceResults = []; S.eventPlaceQuery = ''; S.eventPlaceError = null;
+      render();
+      toast('Lieu choisi : ' + l.nom + '.', 'success');
+    },
+    // Sur place, le responsable relève la position du lieu avec son téléphone.
+    utiliserMaPosition: async function() {
+      if (S.eventGeoEnCours) return;
+      App.syncCreateEventData();
+      S.eventGeoEnCours = true; S.eventPlaceError = null;
+      render();
+      var g = await releverPositionPrecise(12000);
+      S.eventGeoEnCours = false;
+      if (!S.createEventOpen) return;
+      App.syncCreateEventData();   // le formulaire a pu changer pendant le relevé
+      if (!g || !g.available) {
+        S.eventPlaceError = (g && g.reason === 'denied') ? 'Accès à ta position refusé. Autorise-le dans les réglages du navigateur, puis réessaie.'
+          : (g && g.reason === 'outside_country') ? 'Ta position semble hors de Côte d\'Ivoire. Réessaie dehors ou cherche l\'adresse.'
+          : 'Position introuvable. Réessaie près d\'une fenêtre ou cherche l\'adresse.';
+        render();
         return;
       }
-      App._placeTimer = setTimeout(function(){ App.searchEventPlace(); }, 600);
+      if (!S.createEventData) S.createEventData = {};
+      var d = S.createEventData;
+      d.lat = g.lat; d.lng = g.lng; d.accuracy = g.accuracy;
+      d.placeName = (d.location || '').trim() || 'Position relevée sur place';
+      d.placeLabel = '';
+      S.eventPlaceResults = []; S.eventPlaceQuery = '';
+      render();
+      toast(g.accuracy > 100 ? 'Position relevée, mais approximative (à ' + g.accuracy + ' m près).'
+        : 'Position du lieu relevée (à ' + g.accuracy + ' m près).', g.accuracy > 100 ? 'info' : 'success');
+    },
+    // Mémorise le lieu d'un événement enregistré (responsables et Admin).
+    _memoriserLieu: function(nom, adresse, lat, lng, precision) {
+      nom = String(nom || '').trim();
+      if (!nom || typeof lat !== 'number' || typeof lng !== 'number' || !canAssign(S.user)) return;
+      var prec = (typeof precision === 'number' && precision > 0) ? Math.round(precision) : null;
+      memoriserLieuLocal({ nom: nom, adresse: adresse || '', lat: lat, lng: lng, precision_m: prec });
+      if (!supabase) return;
+      supabase.rpc('kc_memoriser_lieu', { p_nom: nom, p_adresse: adresse || '', p_lat: lat, p_lng: lng, p_precision: prec })
+        .then(function(r) {
+          if (r && r.error) { console.warn('Lieu non mémorisé :', r.error); return; }
+          App.chargerLieux();
+        }, function(e) { console.warn('Lieu non mémorisé :', e); });
+    },
+    // Nom sous lequel le lieu est mémorisé : le champ « Lieu / salle », sinon
+    // le nom trouvé par la recherche. Une position GPS (avec sa précision) sans
+    // nom n'est pas mémorisée : « Position relevée sur place » ne dit rien.
+    _nomDuLieu: function(loc, d) {
+      if (loc) return loc;
+      return (d && typeof d.accuracy !== 'number') ? (d.placeName || '') : '';
+    },
+    ouvrirLieux: function() { S.lieuxOuverts = true; render(); App.chargerLieux(); },
+    fermerLieux: function() { S.lieuxOuverts = false; render(); },
+    supprimerLieu: async function(id) {
+      if (!isGrandResponsable(S.user)) return;
+      var l = db(SK.LIEUX, []).find(function(x){ return x && x.id === id; });
+      if (!l || !confirm('Retirer « ' + l.nom + ' » des lieux enregistrés ? Les événements déjà créés gardent leur position.')) return;
+      if (supabase && String(id).indexOf('local:') !== 0) {
+        var r = await supabase.from('kun_com_lieux').delete().eq('id', id);
+        if (r && r.error) { toast('Suppression impossible. Réessaie.', 'error'); return; }
+      }
+      dbSet(SK.LIEUX, db(SK.LIEUX, []).filter(function(x){ return x && x.id !== id; }));
+      render();
+      toast('Lieu retiré.', 'success');
     },
     searchEventPlace: async function() {
       var q = (S.eventPlaceQuery || '').trim();
@@ -305,7 +400,9 @@
       S.eventSections = []; S.eventAssignments = []; S.createEventData = null;
       S.eventImage = null; S.eventImageProcessing = false;
       S.eventSaveChoiceOpen = false; S.eventSaveMode = null;
+      S.eventPlaceQuery = ''; S.eventPlaceResults = []; S.eventPlaceError = null; S.eventGeoEnCours = false;
       render();
+      App.chargerLieux();
     },
     // Modification d'un événement : on rouvre le formulaire ÉVÉNEMENT pré-rempli,
     // et non l'éditeur de publication générique (champs sans rapport : fond coloré,
@@ -333,6 +430,8 @@
       S.eventPlaceQuery = '';
       S.eventPlaceResults = [];
       S.eventPlaceError = null;
+      S.eventGeoEnCours = false;
+      App.chargerLieux();
       S.eventSections = (post.eventSections || []).slice();
       S.eventAssignments = (post.assignments || []).slice();
       S.eventImage = post.eventImage || null;
@@ -473,12 +572,16 @@
       if (S.editEventId && S.eventSaveMode === 'duplicate') {
         S.editEventId = null;
       }
+      // Position relevée au GPS : elle prend le nom du champ « Lieu / salle ».
+      var dLieu = S.createEventData || {};
+      var nomPosition = (typeof dLieu.accuracy === 'number' && loc) ? loc : dLieu.placeName;
 
       if (S.editEventId) {
         var allP = db(SK.POSTS, []);
         var idxE = allP.findIndex(function(p){ return p.id === S.editEventId; });
         if (idxE === -1) { toast('Événement introuvable.', 'error'); return; }
         if (btn) { btn.textContent = 'Enregistrement...'; btn.disabled = true; }
+        var avant = allP[idxE];
         var updated = Object.assign({}, allP[idxE], {
           eventTitle: title,
           eventDate: date,
@@ -488,7 +591,7 @@
           eventLat: typeof (S.createEventData||{}).lat === 'number' ? S.createEventData.lat : null,
           eventLng: typeof (S.createEventData||{}).lng === 'number' ? S.createEventData.lng : null,
           eventGeoAccuracy: (S.createEventData||{}).accuracy || null,
-          eventPlaceName: (S.createEventData||{}).placeName || null,
+          eventPlaceName: nomPosition || null,
           eventPlaceLabel: (S.createEventData||{}).placeLabel || null,
           eventSections: (S.eventSections||[]).slice(),
           assignments: (S.eventAssignments||[]).slice(),
@@ -500,6 +603,11 @@
         });
         allP[idxE] = updated;
         dbSet(SK.POSTS, allP);
+        // Lieu mémorisé seulement s'il a changé : rouvrir l'événement pour en
+        // corriger l'heure ne compte pas comme une nouvelle utilisation.
+        if (updated.eventLocation !== avant.eventLocation || updated.eventLat !== avant.eventLat || updated.eventLng !== avant.eventLng) {
+          App._memoriserLieu(App._nomDuLieu(loc, S.createEventData), (S.createEventData||{}).placeLabel, updated.eventLat, updated.eventLng, updated.eventGeoAccuracy);
+        }
         if (supabase) {
           try {
             await supabase.from('kun_com_posts').upsert({ id: updated.id, content: updated }, { onConflict: 'id' });
@@ -535,7 +643,7 @@
         eventLat: typeof (S.createEventData||{}).lat === 'number' ? S.createEventData.lat : null,
         eventLng: typeof (S.createEventData||{}).lng === 'number' ? S.createEventData.lng : null,
         eventGeoAccuracy: (S.createEventData||{}).accuracy || null,
-        eventPlaceName: (S.createEventData||{}).placeName || null,
+        eventPlaceName: nomPosition || null,
         eventPlaceLabel: (S.createEventData||{}).placeLabel || null,
         eventSections: (S.eventSections||[]).slice(),
         assignments: (S.eventAssignments||[]).slice(),
@@ -575,6 +683,7 @@
 
       var allPosts = db(SK.POSTS, []);
       dbSet(SK.POSTS, createdPosts.concat(allPosts));
+      App._memoriserLieu(App._nomDuLieu(loc, dLieu), dLieu.placeLabel, newPost.eventLat, newPost.eventLng, newPost.eventGeoAccuracy);
       // Seule l'occurrence la plus proche notifie les équipes : personne n'a
       // besoin d'être alerté d'un culte prévu dans 8 semaines.
       sendTargetedEventNotifications(newPost);
