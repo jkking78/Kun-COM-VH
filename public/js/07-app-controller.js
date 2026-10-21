@@ -877,6 +877,19 @@
     // ============================================================
     // ABONNEMENT (bouton "Suivre" sur un profil)
     // ============================================================
+    // Enregistre quelques champs de SA fiche (préférences d'interface : visite
+    // vue, conditions lues, carte masquée...) en local puis sur le serveur.
+    _majMonProfil: function(champs) {
+      if (!S.user || !champs) return;
+      Object.assign(S.user, champs);
+      var allUsers = db(SK.USERS, []);
+      var uIdx = allUsers.findIndex(function(u){ return u.id === S.user.id; });
+      if (uIdx !== -1) Object.assign(allUsers[uIdx], champs);
+      dbSet(SK.USERS, allUsers);
+      sauverSession(S.user);
+      App._upsertFiable('kun_com_profiles', { id: S.user.id, content: profilSansSecret(S.user) });
+      try { render(); } catch(e) {}
+    },
     toggleFollow: function(targetUserId) {
       if (!S.user || !targetUserId || targetUserId === S.user.id) return;
       if (!Array.isArray(S.user.following)) S.user.following = [];
@@ -2036,7 +2049,7 @@
       if (!S.user || S.jwtRole !== 'GRAND_RESPONSABLE') { toast('Réservé au Admin.', 'error'); return; }
       if (userId === S.user.id) { toast('Vous ne pouvez pas modifier votre propre rôle ici (évite de te verrouiller dehors). Passe par un autre Admin.', 'info'); return; }
       if (!supabase || !supabase.functions) { toast('Service indisponible.', 'error'); return; }
-      var LABELS = { MEMBRE: 'Membre', RESP_SECTION: 'Responsable', GRAND_RESPONSABLE: 'Admin' };
+      var LABELS = { STAGIAIRE: 'Stagiaire', MEMBRE: 'Membre', RESP_SECTION: 'Responsable de pôle', GRAND_RESPONSABLE: 'Admin' };
       S.roleUpdatingId = userId; render();
       try {
         var r = await supabase.functions.invoke('set-role', { body: { userId: userId, role: role } });
@@ -2740,7 +2753,13 @@
       render();
       toast('Publication modifiée ! ', 'success');
     },
-    openCreate: function() { S.createOpen=true; S.pendingMedia=[]; S.pendingVideoPoster=null; S.postAboutEventId=null; S.postCheckInEventId=null; S.videoProcessing=false; S.pollOpen=false; S.pollQuestion=''; S.pollOptions=['','']; S.linkPreview=null; S.linkPreviewUrl=null; S.linkPreviewLoading=false; S.linkPreviewDismissed=false; render(); setTimeout(function(){ var t=document.getElementById('newPostText'); if(t) t.focus(); },120); // Prépare l'outil de recadrage en arrière-plan : il n'est plus chargé au démarrage
+    basculerOptionsPublication: function() {
+      // Préserve le texte en cours à travers le re-rendu.
+      var ta = document.getElementById('newPostText'); if (ta) S.postText = ta.value;
+      S.createOptionsOpen = !S.createOptionsOpen;
+      render();
+    },
+    openCreate: function() { S.createOpen=true; S.createOptionsOpen=false; S.pendingMedia=[]; S.pendingVideoPoster=null; S.postAboutEventId=null; S.postCheckInEventId=null; S.videoProcessing=false; S.pollOpen=false; S.pollQuestion=''; S.pollOptions=['','']; S.linkPreview=null; S.linkPreviewUrl=null; S.linkPreviewLoading=false; S.linkPreviewDismissed=false; render(); setTimeout(function(){ var t=document.getElementById('newPostText'); if(t) t.focus(); },120); // Prépare l'outil de recadrage en arrière-plan : il n'est plus chargé au démarrage
       // de l'application (il en retardait l'affichage), mais l'avoir prêt dès l'ouverture
       // du composeur rend le recadrage instantané au moment de choisir une photo.
       try { chargerCropper(); } catch(e){} },

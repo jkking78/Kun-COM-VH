@@ -41,6 +41,15 @@
       '@keyframes kcJauge{from{stroke-dashoffset:var(--kc-jauge-depart)}}',
       '.kc-jauge{animation:kcJauge 0.9s cubic-bezier(0.22,1,0.36,1) both;}',
       // Conditions d'utilisation : le reset global (margin/padding à 0) masquait les puces.
+      // Lot 1 : cartes de l'accueil qui glissent en place, barre de progression
+      // et rail de la visite qui coulissent, bouton Publier qui s'enfonce.
+      '@keyframes kcApparait{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}',
+      '.kc-apparait{animation:kcApparait 0.32s cubic-bezier(0.22,1,0.36,1) both;}',
+      '.kc-progression{transition:width 0.5s cubic-bezier(0.22,1,0.36,1);}',
+      '.kc-rail{transition:transform 0.35s cubic-bezier(0.22,1,0.36,1);}',
+      '.kc-publier{transition:transform 0.12s ease;}button:active>.kc-publier{transform:scale(0.92);}',
+      '@keyframes kcIcone{from{opacity:0;transform:scale(0.85)}to{opacity:1;transform:none}}',
+      '.kc-visite-icone{animation:kcIcone 0.4s cubic-bezier(0.34,1.4,0.64,1) both;}',
       '.kc-conditions p{margin:0 0 8px;}.kc-conditions ul{padding-left:20px;margin:4px 0 8px;}.kc-conditions li{margin:4px 0;}',
       // Balayage des cartes squelettes affichées pendant le chargement du fil.
       '@keyframes shimmer{0%{background-position:-400px 0}100%{background-position:400px 0}}',
@@ -62,7 +71,7 @@
   // comporte de façon inexplicable. On vérifie donc que les briques essentielles
   // sont bien là avant de démarrer, et on recharge UNE fois en contournant le
   // cache si ce n'est pas le cas.
-  var APP_VERSION = 'v149'; window.APP_VERSION = APP_VERSION; // Exposé pour l'écran Paramètres (ligne « Version »).
+  var APP_VERSION = 'v150'; window.APP_VERSION = APP_VERSION; // Exposé pour l'écran Paramètres (ligne « Version »).
   // Nom du cache tenu par le service worker pour CETTE version. Doit rester
   // aligné sur CACHE_NAME dans sw.js.
   var CACHE_COURANT = 'kun-com-pwa-' + APP_VERSION;
@@ -155,6 +164,8 @@
     rendreProtege();
     try { syncSupabaseToLocal(); } catch(e) { console.warn("syncSupabaseToLocal init error:", e); }
     try { tryOpenDeepLinkedPost(); } catch(e){}
+    // Visite guidée au premier lancement.
+    try { proposerVisiteSiNouvelle(); } catch(e) {}
     // Présence : battement périodique tant que l'app est au premier plan.
     try { demarrerBattementPresence(); } catch(e) { console.warn('battement présence:', e); }
   }

@@ -120,57 +120,54 @@
     if (S.viewerImage) modals += renderImageViewer();
 
     return '<div style="position:relative;width:100%;height:100%;display:flex;flex-direction:column;background:' + UI.page + ';font-family:var(--font-body);">' +
-      // La réserve de bas de page suit la hauteur réelle de la barre de navigation,
-      // indicateur d'accueil iPhone compris : sinon le dernier élément du fil reste
-      // caché derrière elle et ne peut plus être atteint. Connecté, on compense
-      // AUSSI le FAB de notifications (52px posé à 92px du bas) : sans quoi la
-      // dernière carte passait sous lui et son action devenait injoignable.
-      '<div id="mainContent" style="flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;padding-bottom:calc(' + (S.user && S.auth === 'app' ? '150px' : '24px') + ' + env(safe-area-inset-bottom));">' + content + '</div>' +
+      // La réserve de bas de page suit la hauteur réelle de la barre de navigation
+      // (66px posée à 14px du bas), indicateur d'accueil iPhone compris : sinon le
+      // dernier élément du fil reste caché derrière elle. La cloche ne flotte plus
+      // au-dessus du contenu : elle vit dans l'en-tête de chaque onglet.
+      '<div id="mainContent" style="flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain;padding-bottom:calc(' + (S.user && S.auth === 'app' ? '100px' : '24px') + ' + env(safe-area-inset-bottom));">' + content + '</div>' +
       modals +
-      renderNotifFab() +
       renderNav(initial) +
     '</div>';
   }
 
   function renderNav(initial) {
-    // Seuls les Grands Responsables peuvent NOTER, mais l'onglet Notation reste
-    // visible pour tout le monde : un membre doit pouvoir consulter l'historique
-    // des bilans déjà publiés (le Suivi), même s'ils ont disparu du fil.
-    // App.tab bascule automatiquement les autres profils sur cette vue lecture seule.
-    // Onglet : icône seule, avec un surlignage arrondi sur l'onglet actif
-    // (façon barre flottante des apps récentes).
+    // L'onglet Bilans reste visible pour tout le monde : un membre consulte les
+    // bilans publiés même s'il ne peut pas noter (App.tab le bascule en lecture).
+    // Chaque onglet porte son nom sous l'icône : les icônes seules ne se
+    // devinaient pas (l'étoile des bilans en particulier).
     function nb(id, iconFn, lbl) {
       var a = S.tab === id;
-      return '<button onclick="App.tab(\'' + jsArg(id) + '\')" aria-label="' + lbl + '" style="flex:1;background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;height:100%;padding:0;-webkit-tap-highlight-color:transparent;">' +
-        '<div style="min-width:48px;height:40px;border-radius:14px;display:flex;align-items:center;justify-content:center;background:' + (a ? 'var(--accent-soft)' : 'transparent') + ';color:' + (a ? UI.accent : 'var(--faint)') + ';transition:background 0.2s,color 0.2s;">' +
+      return '<button onclick="App.tab(\'' + jsArg(id) + '\')" aria-label="' + lbl + '"' + (a ? ' aria-current="page"' : '') + ' style="flex:1;min-width:0;background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;height:100%;padding:0;color:' + (a ? UI.accent : 'var(--faint)') + ';-webkit-tap-highlight-color:transparent;">' +
+        '<div style="width:52px;height:30px;border-radius:15px;display:flex;align-items:center;justify-content:center;background:' + (a ? 'var(--accent-soft)' : 'transparent') + ';transition:background 0.2s;">' +
           iconFn(a) +
         '</div>' +
+        '<span style="font-size:10.5px;font-weight:' + (a ? '700' : '500') + ';line-height:1.1;letter-spacing:0.01em;">' + lbl + '</span>' +
       '</button>';
     }
     // Barre FLOTTANTE : détachée des bords, arrondie et ombrée. Elle repose au-
     // dessus du contenu (le fil réserve la place en bas), et respecte l'inset iPhone.
-    return '<nav style="position:fixed;bottom:calc(14px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);width:calc(100% - 26px);max-width:400px;height:62px;background:var(--card);border:0.5px solid var(--line);border-radius:34px;box-shadow:0 10px 30px rgba(0,0,0,0.16);display:flex;align-items:center;justify-content:space-around;padding:0 10px;z-index:9000;">' +
+    return '<nav aria-label="Navigation principale" style="position:fixed;bottom:calc(14px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);width:calc(100% - 26px);max-width:400px;height:66px;background:var(--card);border:0.5px solid var(--line);border-radius:30px;box-shadow:0 10px 30px rgba(0,0,0,0.16);display:flex;align-items:center;justify-content:space-around;padding:0 6px;z-index:9000;">' +
       nb('home', SVG.home, 'Accueil') +
       nb('planning', SVG.cal, 'Planning') +
-      '<button onclick="App.openCreate()" aria-label="Publier" style="flex:1;background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;height:100%;-webkit-tap-highlight-color:transparent;">' +
-        '<div style="width:44px;height:44px;border-radius:22px;background:' + UI.accent + ';display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(11,99,246,0.3);">' + SVG.plus + '</div>' +
+      '<button onclick="App.openCreate()" aria-label="Publier" style="flex:1;min-width:0;background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;height:100%;padding:0;color:' + UI.accent + ';-webkit-tap-highlight-color:transparent;">' +
+        '<div class="kc-publier" style="width:40px;height:40px;border-radius:20px;background:' + UI.accent + ';display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(11,99,246,0.3);">' + SVG.plus + '</div>' +
+        '<span style="font-size:10.5px;font-weight:700;line-height:1.1;">Publier</span>' +
       '</button>' +
-      nb('debrief', SVG.star, 'Notation') +
+      nb('debrief', SVG.chart, 'Bilans') +
       nb('profile', SVG.person, 'Profil') +
     '</nav>';
   }
 
-  // Bouton flottant des notifications, posé au-dessus de la barre du bas et à
-  // droite. Il suit l'utilisateur sur TOUS les onglets, alors que la cloche
-  // n'existait que sur l'Accueil : une notification reçue pendant qu'on
-  // consultait le Planning n'était signalée nulle part.
+  // Cloche des notifications, posée dans l'EN-TÊTE de chaque onglet (Accueil,
+  // Planning, Bilans, Profil). Elle a été un bouton flottant pour être présente
+  // partout, mais elle recouvrait alors la fin des cartes et leurs boutons.
   // Compte des non-lus au rendu précédent. Reste à null tant qu'aucune session
   // n'est ouverte : sinon la bascule « pas connecté (0) » -> « connecté (N) »
   // passerait pour une arrivée de notifications et la cloche s'agiterait à
   // chaque ouverture de l'application.
   var _notifSeen = null;
 
-  function renderNotifFab() {
+  function renderCloche() {
     if (!S.user || S.auth !== 'app') { _notifSeen = null; return ''; }
     var notifs = Array.isArray(S.user.notifications) ? S.user.notifications : [];
     var nonLus = notifs.filter(function(n){ return !n.read; }).length;
@@ -182,18 +179,16 @@
     _notifSeen = nonLus;
     var secoue = S.notifShakeAt && (Date.now() - S.notifShakeAt) < 1500;
 
-    return '<button id="notifFab" onclick="App.openNotifications()" aria-label="Notifications' + (nonLus ? ' (' + nonLus + ' non lues)' : '') + '" ' +
-      'style="position:fixed;right:18px;bottom:calc(92px + env(safe-area-inset-bottom));z-index:8999;' +
-      'width:52px;height:52px;border-radius:' + UI.pill + ';border:none;cursor:pointer;padding:0;' +
-      'background:' + UI.card + ';box-shadow:0 4px 16px rgba(23,43,77,0.18);' +
-      'display:flex;align-items:center;justify-content:center;touch-action:manipulation;">' +
-      '<span id="notifFabIcon" style="display:flex;transform-origin:50% 15%;' + (secoue ? 'animation:notifShake 0.7s cubic-bezier(0.36,0.07,0.19,0.97) 2;' : '') + '">' +
-        '<svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="' + (nonLus ? UI.accent : UI.muted) + '" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' +
+    return '<button id="notifCloche" onclick="App.openNotifications()" aria-label="Notifications' + (nonLus ? ' (' + nonLus + ' non lues)' : '') + '" ' +
+      'style="position:relative;width:44px;height:44px;border-radius:' + UI.pill + ';border:none;cursor:pointer;padding:0;flex-shrink:0;' +
+      'background:none;display:flex;align-items:center;justify-content:center;touch-action:manipulation;-webkit-tap-highlight-color:rgba(0,0,0,0.06);">' +
+      '<span style="display:flex;transform-origin:50% 15%;' + (secoue ? 'animation:notifShake 0.7s cubic-bezier(0.36,0.07,0.19,0.97) 2;' : '') + '">' +
+        '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="' + (nonLus ? UI.accent : UI.muted) + '" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' +
           '<path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>' +
         '</svg>' +
       '</span>' +
       (nonLus > 0
-        ? '<span style="position:absolute;top:-2px;right:-2px;min-width:20px;height:20px;padding:0 5px;border-radius:' + UI.pill + ';background:' + UI.bad + ';color:#FFF;font-size:11px;font-weight:600;display:flex;align-items:center;justify-content:center;border:2px solid ' + UI.card + ';">' + (nonLus > 99 ? '99+' : nonLus) + '</span>'
+        ? '<span class="kc-pastille" style="position:absolute;top:4px;right:2px;min-width:18px;height:18px;padding:0 5px;border-radius:' + UI.pill + ';background:' + UI.bad + ';color:#FFF;font-size:10.5px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid ' + UI.card + ';">' + (nonLus > 99 ? '99+' : nonLus) + '</span>'
         : '') +
     '</button>';
   }
@@ -212,12 +207,163 @@
         '<h1 style="font-size:19px;font-weight:600;color:' + UI.ink + ';margin:0;letter-spacing:-0.3px;min-width:0;">' + title + '</h1>' +
         '<div style="display:flex;gap:8px;align-items:center;flex-shrink:0;">' +
           (rightActionHtml || '') +
+          renderCloche() +
           (u.avatar_url
             ? '<button onclick="App.tab(\'profile\')" style="width:30px;height:30px;border-radius:' + UI.pill + ';border:none;cursor:pointer;padding:0;overflow:hidden;flex-shrink:0;"><img src="' + safeUrl(u.avatar_url) + '" style="width:100%;height:100%;object-fit:cover;" /></button>'
             : '<button onclick="App.tab(\'profile\')" style="width:30px;height:30px;border-radius:' + UI.pill + ';background:' + (u.avatar_color||UI.accent) + ';border:none;cursor:pointer;color:#FFF;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;">' + initial + '</button>') +
         '</div>' +
       '</div>' +
     '</header>';
+  }
+
+  // ============================================================
+  // MA PROCHAINE MISSION
+  // Le service auquel le membre est convoqué, le plus proche dans le temps :
+  // celui en cours (tant que le pointage reste possible) ou le prochain à venir.
+  // Réutilise les règles du Planning (fenêtre de pointage, bouton « Je suis
+  // arrivé ») pour qu'un membre n'ait plus à chercher sa mission.
+  // ============================================================
+  function prochaineMission(u, posts, now) {
+    if (!u) return null;
+    var candidats = (posts || []).filter(function(ev) {
+      if (ev.type !== 'EVENT' || ev.status === 'deleted') return false;
+      var a = (ev.assignments || []).find(function(x){ return x && x.userId === u.id; });
+      if (!a) return false;
+      var debut = eventStartTimestamp(ev);
+      if (!debut) return false;
+      var fin = eventEndTimestamp(ev) || debut;
+      if (now > fin + CHECKIN_LATE_WINDOW_MS) return false;          // terminé
+      // Service en cours déjà pointé : on passe au suivant une fois fini.
+      if (now > fin && hasCheckedIn(u.id, ev.id, posts)) return false;
+      return true;
+    }).sort(function(a, b){ return (eventStartTimestamp(a) || 0) - (eventStartTimestamp(b) || 0); });
+    if (!candidats.length) return null;
+    var ev = candidats[0];
+    return { ev: ev, affectation: (ev.assignments || []).find(function(x){ return x && x.userId === u.id; }) };
+  }
+
+  // « dans 2 j 3 h », « dans 45 min », « en cours », « terminé ».
+  function compteARebours(debut, fin, now) {
+    if (now >= debut) return now <= fin ? 'En cours' : 'Terminé';
+    var min = Math.round((debut - now) / 60000);
+    if (min < 60) return 'Dans ' + Math.max(1, min) + ' min';
+    var h = Math.floor(min / 60), j = Math.floor(h / 24);
+    if (j >= 1) return 'Dans ' + j + ' j' + (h % 24 ? ' ' + (h % 24) + ' h' : '');
+    return 'Dans ' + h + ' h' + (min % 60 ? ' ' + String(min % 60).padStart(2, '0') : '');
+  }
+
+  function jourMission(ev, now) {
+    var d = new Date((ev.eventDate || '') + 'T00:00:00');
+    if (isNaN(d.getTime())) return '';
+    var auj = new Date(now); auj.setHours(0, 0, 0, 0);
+    var ecart = Math.round((d - auj) / 86400000);
+    if (ecart === 0) return 'Aujourd\'hui';
+    if (ecart === 1) return 'Demain';
+    var t = d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+    return t.charAt(0).toUpperCase() + t.slice(1);
+  }
+
+  function renderProchaineMission(u) {
+    var posts = db(SK.POSTS, []);
+    var now = Date.now();
+    var m = prochaineMission(u, posts, now);
+    if (!m) return '';
+    var ev = m.ev;
+    var debut = eventStartTimestamp(ev);
+    var fin = eventEndTimestamp(ev) || debut;
+    var couleur = secColor((ev.eventSections || [])[0]) || UI.accent;
+    var tache = m.affectation && m.affectation.task ? m.affectation.task : '';
+    // Itinéraire : coordonnées exactes si le lieu a été situé sur la carte,
+    // sinon recherche par le nom du lieu.
+    var dest = (typeof ev.eventLat === 'number' && typeof ev.eventLng === 'number')
+      ? ev.eventLat + ',' + ev.eventLng
+      : (ev.eventLocation ? encodeURIComponent(ev.eventLocation + ', Abidjan') : '');
+    var itineraire = dest ? 'https://www.google.com/maps/dir/?api=1&destination=' + dest : '';
+    var etat = compteARebours(debut, fin, now);
+    var enCours = now >= debut && now <= fin;
+
+    return '<section aria-label="Ma prochaine mission" style="padding:14px 16px 4px;">' +
+      '<div class="kc-apparait" style="background:' + UI.card + ';border:1px solid ' + UI.line + ';border-left:4px solid ' + couleur + ';border-radius:16px;box-shadow:' + UI.sh2 + ';padding:14px 16px;">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">' +
+          '<span style="font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:' + UI.accent + ';">Ma prochaine mission</span>' +
+          '<span data-compte-a-rebours="' + debut + '" data-fin="' + fin + '" style="font-family:' + UI.fontMono + ';font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px;background:' + (enCours ? 'var(--ok-soft)' : 'var(--accent-soft)') + ';color:' + (enCours ? 'var(--ok-ink)' : UI.accentInk) + ';white-space:nowrap;">' + etat + '</span>' +
+        '</div>' +
+        '<h2 style="font-family:' + UI.fontDisplay + ';font-size:20px;font-weight:700;letter-spacing:-0.3px;color:' + UI.ink + ';margin:8px 0 4px;line-height:1.2;overflow-wrap:anywhere;">' + safeHtml(ev.eventTitle || 'Événement') + '</h2>' +
+        '<div style="font-size:13.5px;color:' + UI.muted + ';line-height:1.5;">' +
+          safeHtml(jourMission(ev, now)) + ' · <span style="font-family:' + UI.fontMono + ';">' + safeHtml(ev.eventStart || '') + (ev.eventEnd ? ' – ' + safeHtml(ev.eventEnd) : '') + '</span>' +
+          (ev.eventLocation ? '<br>' + safeHtml(ev.eventLocation) : '') +
+        '</div>' +
+        (tache ? '<div style="display:inline-flex;align-items:center;gap:6px;margin-top:10px;background:' + UI.tile + ';border-radius:10px;padding:6px 10px;font-size:13px;color:' + UI.ink + ';"><span style="color:' + UI.faint + ';">Ma tâche</span><b>' + safeHtml(tache) + '</b></div>' : '') +
+        '<div style="margin-top:12px;">' + renderEventCheckInAction(ev) + '</div>' +
+        '<div style="display:flex;gap:8px;">' +
+          '<button type="button" onclick="App.goToEvent(\'' + jsArg(ev.id) + '\')" style="flex:1;min-height:44px;background:' + UI.tile + ';color:' + UI.ink + ';border:none;border-radius:12px;font-size:13.5px;font-weight:700;cursor:pointer;">Voir l\'événement</button>' +
+          (itineraire ? '<a href="' + safeUrl(itineraire) + '" target="_blank" rel="noopener noreferrer" style="flex:1;min-height:44px;display:flex;align-items:center;justify-content:center;background:' + UI.tile + ';color:' + UI.ink + ';border-radius:12px;font-size:13.5px;font-weight:700;text-decoration:none;">Itinéraire</a>' : '') +
+        '</div>' +
+      '</div>' +
+    '</section>';
+  }
+
+  // Le compte à rebours avance sans redessiner l'application : seule l'étiquette
+  // change, une fois par minute.
+  setInterval(function() {
+    try {
+      var now = Date.now();
+      document.querySelectorAll('[data-compte-a-rebours]').forEach(function(el) {
+        var t = compteARebours(Number(el.getAttribute('data-compte-a-rebours')), Number(el.getAttribute('data-fin')), now);
+        if (el.textContent !== t) el.textContent = t;
+      });
+    } catch(e) {}
+  }, 60000);
+
+  // ============================================================
+  // BIEN DÉMARRER
+  // Les premiers gestes utiles d'un nouveau membre, cochés automatiquement à
+  // partir de ses données. La carte disparaît d'elle-même quand tout est fait,
+  // ou dès qu'on la masque (préférence enregistrée sur sa fiche).
+  // ============================================================
+  function etapesBienDemarrer(u, posts) {
+    var estInstallee = false;
+    try { estInstallee = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true; } catch(e) {}
+    var aPublie = (posts || []).some(function(p){ return p && p.userId === u.id && !p.type && p.status !== 'deleted'; });
+    return [
+      { fait: !!u.visiteVue, titre: 'Faire la visite guidée', action: 'ouvrirVisite()' },
+      { fait: !!u.avatar_url, titre: 'Ajouter ta photo de profil', action: "App.tab('profile');App.openEditProfile()" },
+      { fait: !!(u.skills && String(u.skills).trim()), titre: 'Indiquer ton savoir-faire', action: "App.tab('profile');App.openEditProfile()" },
+      { fait: !!u.conditionsLues, titre: 'Lire les conditions d\'utilisation', action: 'ouvrirConditions()' },
+      { fait: aPublie, titre: 'Faire ta première publication', action: 'App.openCreate()' },
+      { fait: estInstallee || !!u.installationVue, titre: 'Installer Commit sur ton téléphone', action: 'ouvrirAideInstallation()' }
+    ];
+  }
+
+  function renderBienDemarrer(u) {
+    if (!u || u.bienDemarrerMasque) return '';
+    var etapes = etapesBienDemarrer(u, db(SK.POSTS, []));
+    var faites = etapes.filter(function(e){ return e.fait; }).length;
+    if (faites === etapes.length) return '';
+    var pct = Math.round(faites / etapes.length * 100);
+    return '<section aria-label="Bien démarrer" style="padding:14px 16px 4px;">' +
+      '<div class="kc-apparait" style="background:' + UI.card + ';border:1px solid ' + UI.line + ';border-radius:16px;box-shadow:' + UI.sh2 + ';padding:14px 16px;">' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">' +
+          '<h2 style="font-family:' + UI.fontDisplay + ';font-size:18px;font-weight:700;color:' + UI.ink + ';margin:0;">Bien démarrer</h2>' +
+          '<button type="button" onclick="App._majMonProfil({bienDemarrerMasque:true})" style="background:none;border:none;min-height:44px;padding:0 4px;font-size:13px;font-weight:600;color:' + UI.faint + ';cursor:pointer;">Masquer</button>' +
+        '</div>' +
+        '<div style="display:flex;align-items:center;gap:10px;margin:2px 0 8px;">' +
+          '<div style="flex:1;height:6px;border-radius:3px;background:' + UI.tile + ';overflow:hidden;" role="progressbar" aria-valuemin="0" aria-valuemax="' + etapes.length + '" aria-valuenow="' + faites + '">' +
+            '<div class="kc-progression" style="width:' + pct + '%;height:100%;border-radius:3px;background:' + UI.accent + ';"></div>' +
+          '</div>' +
+          '<span style="font-family:' + UI.fontMono + ';font-size:12px;color:' + UI.muted + ';">' + faites + '/' + etapes.length + '</span>' +
+        '</div>' +
+        etapes.map(function(e) {
+          return '<button type="button"' + (e.fait ? ' disabled' : ' onclick="' + e.action + '"') + ' style="display:flex;align-items:center;gap:12px;width:100%;min-height:44px;background:none;border:none;border-top:1px solid ' + UI.line + ';padding:8px 0;text-align:left;cursor:' + (e.fait ? 'default' : 'pointer') + ';">' +
+            '<span aria-hidden="true" style="width:22px;height:22px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;' + (e.fait ? 'background:' + UI.ok + ';' : 'border:2px solid ' + UI.line2 + ';') + '">' +
+              (e.fait ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FFF" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>' : '') +
+            '</span>' +
+            '<span style="flex:1;font-size:14.5px;font-weight:' + (e.fait ? '500' : '600') + ';color:' + (e.fait ? UI.faint : UI.ink) + ';' + (e.fait ? 'text-decoration:line-through;' : '') + '">' + e.titre + '</span>' +
+            (e.fait ? '' : '<span aria-hidden="true" style="color:' + UI.faint + ';">›</span>') +
+          '</button>';
+        }).join('') +
+      '</div>' +
+    '</section>';
   }
 
   function renderHome(filtered, initial, u) {
@@ -239,7 +385,7 @@
         '<h1 style="font-family:' + UI.fontDisplay + ';font-size:22px;font-weight:800;color:' + UI.ink + ';margin:0;letter-spacing:-0.6px;min-width:0;">Commit</h1>' +
         '<div style="display:flex;gap:2px;align-items:center;flex-shrink:0;margin-right:-8px;">' +
           iconBtn('App.openMembersList()', '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="' + UI.muted + '" stroke-width="1.9" stroke-linecap="round"><circle cx="11" cy="11" r="7.5"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>', 0) +
-          iconBtn('App.openCreate()', '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="' + UI.muted + '" stroke-width="1.9" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>', 0) +
+          renderCloche() +
           '<button onclick="App.tab(\'profile\')" style="width:44px;height:44px;border-radius:' + UI.pill + ';background:none;border:none;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;flex-shrink:0;touch-action:manipulation;">' +
             (u.avatar_url
               ? '<img src="' + safeUrl(u.avatar_url) + '" style="width:32px;height:32px;border-radius:' + UI.pill + ';object-fit:cover;" />'
@@ -382,7 +528,10 @@
       feed = (regroupe ? renderPinnedStack(epingles) : '') + cartes + squelettes + footerHtml;
     }
 
-    return header + trendsHtml + stories + feed;
+    // Carte « Ma prochaine mission » et liste « Bien démarrer » en tête du fil,
+    // seulement sur la vue d'ensemble (pas pendant une recherche ou un filtre).
+    var vueGenerale = (!S.story || S.story === 'all') && !S.q;
+    return header + (vueGenerale ? renderProchaineMission(u) + renderBienDemarrer(u) : '') + trendsHtml + stories + feed;
   }
 
   // ============================================================
@@ -2081,6 +2230,19 @@
                   '</div>'
                 : '')) +
 
+          // Options repliées par défaut : pour poster un texte ou une photo, il n'y
+          // a rien d'autre à comprendre. Elles s'ouvrent seules si l'une d'elles est
+          // déjà utilisée. Repliées, elles restent dans la page (display:none) : la
+          // publication lit toujours leurs champs (programmation, éphémère).
+          (function(){
+            var utilisees = S.postVisibility === 'sections' || !!S.postAboutEventId || !!S.pollOpen;
+            var ouvert = !!S.createOptionsOpen || utilisees;
+            return '<button type="button" onclick="App.basculerOptionsPublication()" aria-expanded="' + ouvert + '" style="display:flex;align-items:center;justify-content:space-between;width:100%;min-height:44px;background:var(--tile);border:none;border-radius:14px;padding:10px 14px;margin-bottom:10px;font-size:13.5px;font-weight:700;color:var(--ink);cursor:pointer;">' +
+              '<span style="text-align:left;">' + (ouvert ? 'Moins d\'options' : 'Plus d\'options') + ' <span style="font-weight:500;color:var(--faint);">· visibilité, programmation, événement, sondage</span></span>' +
+              '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;transition:transform 0.2s;transform:rotate(' + (ouvert ? '180' : '0') + 'deg);"><path d="M6 9l6 6 6-6"/></svg>' +
+            '</button>' +
+            '<div class="kc-options" style="display:' + (ouvert ? 'block' : 'none') + ';">';
+          })() +
           // Qui peut voir
           '<div style="background:var(--tile);border-radius:20px;padding:14px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,0.04);">' +
             '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">' +
@@ -2166,6 +2328,7 @@
               '</label>' +
             '</div>' +
           '</div>' +
+          '</div>' +   // fin des options repliables
         '</div>' +
 
         '<div style="padding:10px 16px 14px;border-top:0.5px solid var(--tile);flex-shrink:0;">' +

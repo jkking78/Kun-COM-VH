@@ -427,7 +427,7 @@
           '<h1 style="font-family:' + UI.fontDisplay + ';font-size:30px;font-weight:800;letter-spacing:-1px;color:' + UI.ink + ';margin:0;line-height:1.05;">Planning</h1>' +
           '<p style="font-size:13.5px;color:' + UI.faint + ';margin:5px 0 0;">Gérez et suivez les événements du département.</p>' +
         '</div>' +
-        rightBtn +
+        '<div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">' + renderCloche() + rightBtn + '</div>' +
       '</div>' +
     '</div>';
 
@@ -651,14 +651,14 @@
         '</div>'
       : '<div style="padding:12px 16px 0;">' +
           '<div style="background:var(--accent-soft);border-radius:12px;padding:10px 12px;font-size:12px;color:#0B63F6;font-weight:700;display:flex;align-items:center;gap:8px;line-height:1.4;">' +
-            '<span style="font-size:16px;">👀</span> Consultation seule : la notation est réservée aux Grands Responsables.' +
+            '<span style="font-size:16px;">👀</span> Consultation seule : seul l\'Admin publie les bilans.' +
           '</div>' +
         '</div>';
 
     if (view === 'suivi') {
-      return renderScreenHeader('Notation & Débrief', 'Évaluation Inter-Sections', '') + tabs + renderScoreboard(canEvaluate);
+      return renderScreenHeader('Bilans', 'Évaluation des pôles', '') + tabs + renderScoreboard(canEvaluate);
     }
-    return renderScreenHeader('Notation & Débrief', 'Évaluation Inter-Sections', '') + tabs + renderDebriefForm(u);
+    return renderScreenHeader('Bilans', 'Évaluation des pôles', '') + tabs + renderDebriefForm(u);
   }
 
   // ============================================================
@@ -1395,8 +1395,8 @@
           '<h1 style="font-family:' + UI.fontDisplay + ';font-size:32px;font-weight:700;letter-spacing:-1px;color:' + UI.ink + ';line-height:1.06;margin:0;overflow-wrap:anywhere;">' + safeHtml(freshU.prenom + ' ' + freshU.nom) + '</h1>' +
           rolePill +
         '</div>' +
-        // Accès aux Paramètres : engrenage discret à gauche de l'avatar, pour
-        // ne pas alourdir l'en-tête (tout le reste vit dans la page Paramètres).
+        // Cloche puis engrenage des Paramètres, discrets, à gauche de l'avatar.
+        (isMe ? renderCloche() : '') +
         (isMe ? '<button onclick="App.openSettings()" aria-label="Paramètres" style="background:none;border:none;width:40px;height:40px;flex-shrink:0;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;margin-top:10px;">' +
           '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="' + UI.muted + '" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>' +
         '</button>' : '') +
@@ -1899,6 +1899,8 @@
       (uSecs.length ? ligne(svg('<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>'), 'Pôle', uSecs.map(function(s){ return secNom(s); }).join(' · ')) : '') +
       (freshU.phone ? ligne(svg('<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/>'), 'Numéro', '<span style="font-family:' + UI.fontMono + ';">' + safeHtml(freshU.phone) + '</span>') : '') +
       ligne(svg('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/>'), 'Conditions d\'utilisation', '›', 'ouvrirConditions()') +
+      ligne(svg('<circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/>'), 'Revoir la visite guidée', '›', 'App.closeSettings();ouvrirVisite()') +
+      ligne(svg('<rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/>'), 'Installer sur mon téléphone', '›', 'ouvrirAideInstallation()') +
       version;
 
     // Switch iOS (piste 51×31, knob 27) : la piste suit le thème via les
@@ -2038,6 +2040,10 @@
       '</div>' +
       '<div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 16px 40px;">' + sommaire + '</div>';
     document.body.appendChild(fond);
+    // Coche « Lire les conditions » de Bien démarrer (version lue retenue).
+    if (S.user && S.auth === 'app' && S.user.conditionsLues !== CONDITIONS_VERSION && window.App && App._majMonProfil) {
+      App._majMonProfil({ conditionsLues: CONDITIONS_VERSION });
+    }
     var fermer = function() {
       fond.remove();
       document.removeEventListener('keydown', echap);
@@ -2050,4 +2056,164 @@
     fond.tabIndex = -1;
     fond.style.outline = 'none';
     try { fond.focus(); } catch(e) {}
+  }
+
+  // ============================================================
+  // VISITE GUIDÉE
+  // Quatre écrans au premier lancement, rejouables depuis Paramètres. Fenêtre
+  // injectée dans la page (comme les conditions), indépendante de render().
+  // ============================================================
+  var VISITE_ECRANS = [
+    { couleur: '#0B63F6', titre: 'Bienvenue sur Commit',
+      texte: 'L\'application du Département Communication : le planning des services, tes convocations, le pointage et la vie de l\'équipe, au même endroit.',
+      icone: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>' },
+    { couleur: '#0E9F6E', titre: 'Ta mission en un coup d\'œil',
+      texte: 'Quand un responsable te convoque, ta mission apparaît en haut de l\'Accueil avec ta tâche, l\'heure et l\'itinéraire. Tout le calendrier est dans l\'onglet Planning.',
+      icone: '<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M9 16l2 2 4-4"/>' },
+    { couleur: '#D98A0B', titre: 'Pointe ton arrivée',
+      texte: 'Le bouton « Je suis arrivé » s\'ouvre 3 h avant le début. Ta position est vérifiée dans un rayon de 1,5 km autour du lieu. Arriver à l\'heure rapporte +5.',
+      icone: '<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>' },
+    { couleur: '#AF52DE', titre: 'Suis ta note',
+      texte: 'Tous les 15 jours, tes services et tes tâches s\'additionnent sur 30 points. Ta jauge est dans ton Profil, les bilans des pôles dans l\'onglet Bilans.',
+      icone: '<line x1="4" y1="20" x2="20" y2="20"/><rect x="5.5" y="11" width="3" height="6" rx="1"/><rect x="10.5" y="6" width="3" height="11" rx="1"/><rect x="15.5" y="9" width="3" height="8" rx="1"/>' }
+  ];
+
+  // Fenêtre plein écran commune à la visite et à l'aide d'installation.
+  function fenetreInjectee(id, label) {
+    var fond = document.createElement('div');
+    fond.id = id;
+    fond.setAttribute('role', 'dialog');
+    fond.setAttribute('aria-modal', 'true');
+    fond.setAttribute('aria-label', label);
+    fond.className = 'safe-top';
+    fond.tabIndex = -1;
+    fond.style.cssText = 'position:fixed;inset:0;z-index:9999990;background:var(--page,#F5F6F8);color:var(--ink,#0C1116);display:flex;flex-direction:column;outline:none;font-family:var(--font-body,sans-serif);animation:fadeIn 0.25s ease-out;';
+    return fond;
+  }
+
+  function ouvrirVisite() {
+    if (document.getElementById('_kcVisite')) return;
+    var fond = fenetreInjectee('_kcVisite', 'Visite guidée');
+    var n = VISITE_ECRANS.length;
+    fond.innerHTML =
+      '<div style="display:flex;justify-content:flex-end;padding:8px 12px;">' +
+        '<button type="button" data-passer style="background:none;border:none;min-height:44px;padding:0 12px;font-size:15px;font-weight:600;color:var(--muted,#5B6572);cursor:pointer;">Passer</button>' +
+      '</div>' +
+      '<div data-piste style="flex:1;display:flex;overflow:hidden;">' +
+        '<div data-rail class="kc-rail" style="display:flex;flex-shrink:0;width:' + (n * 100) + '%;height:100%;">' +
+          VISITE_ECRANS.map(function(e, i) {
+            return '<div aria-hidden="' + (i ? 'true' : 'false') + '" style="width:' + (100 / n) + '%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px 32px;text-align:center;box-sizing:border-box;">' +
+              '<div class="kc-visite-icone" style="width:112px;height:112px;border-radius:36px;background:' + e.couleur + '1F;display:flex;align-items:center;justify-content:center;margin-bottom:28px;">' +
+                '<svg width="54" height="54" viewBox="0 0 24 24" fill="none" stroke="' + e.couleur + '" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + e.icone + '</svg>' +
+              '</div>' +
+              '<h2 style="font-family:var(--font-display,sans-serif);font-size:26px;font-weight:800;letter-spacing:-0.5px;margin:0 0 12px;">' + e.titre + '</h2>' +
+              '<p style="font-size:16px;line-height:1.55;color:var(--muted,#5B6572);max-width:22rem;margin:0;">' + e.texte + '</p>' +
+            '</div>';
+          }).join('') +
+        '</div>' +
+      '</div>' +
+      '<div style="padding:16px 24px calc(24px + env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:center;gap:18px;">' +
+        '<div data-points style="display:flex;gap:8px;">' +
+          VISITE_ECRANS.map(function(e, i){ return '<span style="height:8px;width:' + (i ? 8 : 24) + 'px;border-radius:4px;background:' + (i ? 'var(--line2,#D6DBE3)' : 'var(--accent,#0B63F6)') + ';transition:width 0.25s,background 0.25s;"></span>'; }).join('') +
+        '</div>' +
+        '<button type="button" data-suivant style="width:100%;max-width:360px;min-height:52px;background:#0B63F6;color:#FFF;border:none;border-radius:14px;font-size:16px;font-weight:700;cursor:pointer;">Suivant</button>' +
+      '</div>';
+    document.body.appendChild(fond);
+    try { fond.focus(); } catch(e) {}
+
+    var rail = fond.querySelector('[data-rail]');
+    var points = fond.querySelectorAll('[data-points] span');
+    var pages = rail.children;
+    var bouton = fond.querySelector('[data-suivant]');
+    var courant = 0;
+    var aller = function(i) {
+      courant = Math.max(0, Math.min(n - 1, i));
+      rail.style.transform = 'translateX(' + (-courant * 100 / n) + '%)';
+      for (var k = 0; k < n; k++) {
+        points[k].style.width = k === courant ? '24px' : '8px';
+        points[k].style.background = k === courant ? 'var(--accent,#0B63F6)' : 'var(--line2,#D6DBE3)';
+        pages[k].setAttribute('aria-hidden', k === courant ? 'false' : 'true');
+      }
+      bouton.textContent = courant === n - 1 ? 'C\'est parti' : 'Suivant';
+    };
+    var terminer = function() {
+      fond.remove();
+      document.removeEventListener('keydown', clavier);
+      if (S.user && !S.user.visiteVue && window.App && App._majMonProfil) App._majMonProfil({ visiteVue: true });
+    };
+    var clavier = function(ev) {
+      if (ev.key === 'Escape') terminer();
+      else if (ev.key === 'ArrowRight') aller(courant + 1);
+      else if (ev.key === 'ArrowLeft') aller(courant - 1);
+    };
+    document.addEventListener('keydown', clavier);
+    bouton.onclick = function() { if (courant === n - 1) terminer(); else aller(courant + 1); };
+    fond.querySelector('[data-passer]').onclick = terminer;
+    // Glisser du doigt pour changer d'écran.
+    var x0 = null;
+    var piste = fond.querySelector('[data-piste]');
+    piste.addEventListener('touchstart', function(ev){ x0 = ev.touches[0].clientX; }, { passive: true });
+    piste.addEventListener('touchend', function(ev){
+      if (x0 === null) return;
+      var dx = ev.changedTouches[0].clientX - x0;
+      if (Math.abs(dx) > 40) aller(courant + (dx < 0 ? 1 : -1));
+      x0 = null;
+    }, { passive: true });
+  }
+
+  // Au premier lancement (fiche sans « visiteVue »), une fois la fiche
+  // synchronisée : sans ce délai, un membre qui l'a déjà vue sur un autre
+  // téléphone la reverrait avant que sa fiche n'arrive du serveur.
+  function proposerVisiteSiNouvelle() {
+    setTimeout(function() {
+      try {
+        if (!S.user || S.auth !== 'app') return;
+        var fiche = db(SK.USERS, []).find(function(x){ return x && x.id === S.user.id; }) || S.user;
+        if (!fiche.visiteVue && !S.user.visiteVue) ouvrirVisite();
+      } catch(e) {}
+    }, 2500);
+  }
+
+  // ============================================================
+  // AIDE À L'INSTALLATION (écran d'accueil du téléphone)
+  // ============================================================
+  function ouvrirAideInstallation() {
+    if (document.getElementById('_kcInstallation')) return;
+    var ios = /iphone|ipad|ipod/i.test(navigator.userAgent || '');
+    var fond = fenetreInjectee('_kcInstallation', 'Installer Commit');
+    var etape = function(n, texte) {
+      return '<li style="display:flex;gap:12px;align-items:flex-start;margin-bottom:14px;">' +
+        '<span style="width:28px;height:28px;border-radius:50%;background:var(--accent-soft,#E8EEFB);color:var(--accent-ink,#0B4FC4);font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + n + '</span>' +
+        '<span style="font-size:15.5px;line-height:1.5;padding-top:3px;">' + texte + '</span></li>';
+    };
+    fond.innerHTML =
+      '<div style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--card,#FFF);border-bottom:1px solid var(--line,#E4E7EC);">' +
+        '<button type="button" data-fermer aria-label="Fermer" style="background:var(--tile,#EFF1F5);border:none;width:44px;height:44px;flex-shrink:0;border-radius:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:inherit;">' +
+          '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>' +
+        '</button>' +
+        '<h1 style="font-family:var(--font-display,sans-serif);font-size:21px;font-weight:700;margin:0;">Installer Commit</h1>' +
+      '</div>' +
+      '<div style="flex:1;overflow-y:auto;padding:20px 20px 40px;">' +
+        '<p style="font-size:15.5px;line-height:1.55;color:var(--muted,#5B6572);margin:0 0 18px;">Installée sur l\'écran d\'accueil, l\'application s\'ouvre comme une vraie app, en plein écran, et pourra bientôt t\'envoyer tes convocations et rappels.</p>' +
+        '<h2 style="font-size:16px;font-weight:700;margin:0 0 12px;">' + (ios ? 'Sur iPhone (Safari)' : 'Sur Android (Chrome)') + '</h2>' +
+        '<ol style="list-style:none;padding:0;margin:0;">' +
+          (ios
+            ? etape(1, 'Touche le bouton <b>Partager</b> (le carré avec une flèche vers le haut), en bas de Safari.') +
+              etape(2, 'Fais défiler et choisis <b>Sur l\'écran d\'accueil</b>.') +
+              etape(3, 'Touche <b>Ajouter</b> : l\'icône Commit apparaît avec tes autres applications.')
+            : etape(1, 'Touche le menu <b>⋮</b> en haut à droite de Chrome.') +
+              etape(2, 'Choisis <b>Installer l\'application</b> (ou <b>Ajouter à l\'écran d\'accueil</b>).') +
+              etape(3, 'Confirme : l\'icône Commit apparaît avec tes autres applications.')) +
+        '</ol>' +
+        '<p style="font-size:13.5px;color:var(--faint,#8A93A0);margin:8px 0 0;">' + (ios ? 'Sur Android : menu ⋮ de Chrome, puis « Installer l\'application ».' : 'Sur iPhone : bouton Partager de Safari, puis « Sur l\'écran d\'accueil ».') + '</p>' +
+      '</div>';
+    document.body.appendChild(fond);
+    try { fond.focus(); } catch(e) {}
+    // Consulter l'aide suffit à cocher l'étape : l'app ne peut pas savoir si
+    // elle a été installée tant qu'on l'utilise depuis le navigateur.
+    if (S.user && !S.user.installationVue && window.App && App._majMonProfil) App._majMonProfil({ installationVue: true });
+    var fermer = function() { fond.remove(); document.removeEventListener('keydown', echap); };
+    var echap = function(ev) { if (ev.key === 'Escape') fermer(); };
+    document.addEventListener('keydown', echap);
+    fond.querySelector('[data-fermer]').onclick = fermer;
   }
