@@ -10,7 +10,9 @@ const CACHE_NAME = 'kun-com-pwa-v167';
 const NUM_V = CACHE_NAME.split('-v')[1];
 const JS_FILES = [
   '01-core', '02-media', '03-render-engine', '04-render-auth-cropper',
-  '05-render-feed', '06-render-panels', '07-app-controller', '08-bootstrap'
+  '05-render-feed', '06-render-panels',
+  '07a-app-evenements', '07b-app-membres', '07c-app-session', '07d-app-publications', '07e-app-commentaires-bilans',
+  '08-bootstrap'
 ];
 // Les scripts sont mis en cache AVEC leur ?v=… : c'est l'adresse réellement
 // demandée par la page. Sans le paramètre, les entrées ne correspondaient à

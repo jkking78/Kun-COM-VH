@@ -20,7 +20,7 @@ test('chaque module JavaScript de l\'application se compile', () => {
   }
 });
 
-test('index.html charge les huit modules, dans l\'ordre, et rien depuis un CDN sans version fixe', () => {
+test('index.html charge tous les modules, dans l\'ordre, et rien depuis un CDN sans version fixe', () => {
   const html = lire('public/index.html');
   const scripts = [...html.matchAll(/<script src="([^"]+)"/g)].map((m) => m[1]);
   const modules = scripts.filter((s) => s.startsWith('js/')).map((s) => s.replace(/\?.*$/, ''));
@@ -37,6 +37,13 @@ test('le service worker ne pré-charge que des fichiers qui existent', () => {
   for (const [, chemin] of liste.matchAll(/'\.\/([^']+)'/g)) {
     assert.ok(existsSync(join(RACINE, 'public', chemin)), chemin);
   }
+});
+
+test('le service worker pré-charge exactement les modules de public/js', () => {
+  const sw = lire('public/sw.js');
+  const liste = sw.slice(sw.indexOf('const JS_FILES'), sw.indexOf('];', sw.indexOf('const JS_FILES')));
+  const declares = [...liste.matchAll(/'([\w-]+)'/g)].map((m) => m[1] + '.js');
+  assert.deepEqual(declares, readdirSync(join(RACINE, 'public/js')).sort());
 });
 
 test('Vercel sert public/ (une seule copie du code)', () => {
