@@ -767,6 +767,43 @@
     };
   }
 
+  // NIVEAU DE FIABILITÉ (carte « Mes engagements »)
+  // Calculé sur les 10 derniers engagements (services et tâches), et non sur
+  // un cycle : un mauvais jour s'efface de lui-même au fil des services
+  // suivants. Seuls les engagements TENUS comptent (service à l'heure, tâche
+  // livrée à temps) ; un retard ou un oubli ne retire rien, il ne compte pas.
+  var FENETRE_FIABILITE = 10;
+  var NIVEAUX_FIABILITE = [
+    { id: 'engage', nom: 'Engagé', seuil: 0 },
+    { id: 'fiable', nom: 'Fiable', seuil: 6 },
+    { id: 'exemplaire', nom: 'Exemplaire', seuil: 9 }
+  ];
+  // entries : du plus récent au plus ancien (punctualityHistory).
+  function niveauFiabilite(entries) {
+    var tenu = function(e) { return e && e.status === 'ontime'; };
+    var recents = (entries || []).slice(0, FENETRE_FIABILITE);
+    var tenus = recents.filter(tenu).length;
+    var rang = 0;
+    NIVEAUX_FIABILITE.forEach(function(n, i) { if (tenus >= n.seuil) rang = i; });
+    var suivant = NIVEAUX_FIABILITE[rang + 1] || null;
+    // Engagements tenus d'affilée qu'il faut encore pour monter d'un niveau.
+    // On simule la fenêtre qui glisse : chaque nouveau service en fait sortir
+    // le plus ancien, qui pouvait lui-même être un engagement tenu.
+    var manque = 0;
+    if (suivant) {
+      var fenetre = recents.slice();
+      var t = tenus;
+      while (t < suivant.seuil && manque < FENETRE_FIABILITE) {
+        fenetre.unshift({ status: 'ontime' });
+        if (fenetre.length > FENETRE_FIABILITE) fenetre.pop();
+        t = fenetre.filter(tenu).length;
+        manque++;
+      }
+    }
+    return { niveau: NIVEAUX_FIABILITE[rang], rang: rang, suivant: suivant, manque: manque,
+             tenus: tenus, total: recents.length, recents: recents };
+  }
+
   // Ponctualité cumulée d'une SECTION sur un événement : moyenne des étoiles de
   // tous ses membres assignés. C'est le total calculé automatiquement après
   // l'événement, qui alimente le critère Ponctualité du bilan.

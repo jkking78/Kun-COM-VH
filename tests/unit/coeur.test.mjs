@@ -140,3 +140,26 @@ test('notifications : fusion sans doublon, plafonnée à 100, sans photo en base
   assert.equal(p.length, 100);
   assert.equal(p[0].id, 'n500');
 });
+
+test('niveau de fiabilité : calculé sur les 10 derniers engagements, sans pénalité', () => {
+  const e = (status) => ({ status });
+  const niveau = (liste) => nu(C.niveauFiabilite(liste));
+  const neuf = niveau([]);
+  assert.equal(neuf.niveau.nom, 'Engagé');
+  assert.equal(neuf.manque, 6);
+  assert.equal(neuf.total, 0);
+  // 6 tenus sur 10 : Fiable ; il en manque 3 pour Exemplaire
+  const six = niveau([...Array(6)].map(() => e('ontime')).concat([e('late'), e('missed'), e('late'), e('missed')]));
+  assert.equal(six.niveau.nom, 'Fiable');
+  assert.equal(six.manque, 3);
+  // seuls les 10 plus récents comptent : un vieux retard sort de la fenêtre
+  const ancien = niveau([...Array(10)].map(() => e('ontime')).concat([e('missed'), e('missed')]));
+  assert.equal(ancien.niveau.nom, 'Exemplaire');
+  assert.equal(ancien.suivant, null);
+  // la fenêtre glisse : les engagements tenus qui en sortent sont pris en compte
+  const glisse = niveau([e('late'), e('late'), e('late'), e('late'), e('late'), e('ontime'), e('ontime'), e('ontime'), e('ontime'), e('ontime')]);
+  assert.equal(glisse.tenus, 5);
+  assert.equal(glisse.manque, 6);   // les 5 premiers nouveaux font sortir les 5 anciens tenus
+  // un retard ou un oubli ne fait jamais descendre en dessous d'Engagé
+  assert.equal(niveau([...Array(10)].map(() => e('missed'))).niveau.nom, 'Engagé');
+});

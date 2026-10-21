@@ -152,18 +152,10 @@
     posts.forEach(function(p){ myCommentsCount += (p.comments||[]).filter(function(c){ return c.userId === freshU.id; }).length; });
 
     // ---- Avatar ----
-        // ---- Dynamic RH Metrics (15-day cycle) ----
-    var now = new Date();
-    // Numéro de cycle court (maquette : « Cycle 16 »). Deux cycles par mois :
-    // 1–15 puis 16–fin. Le libellé long débordait sur trois lignes.
-    // Même libellé que l'écran Bilans (« 16 – fin octobre ») : le profil
-    // affichait un numéro (« Cycle 20 ») qui ne correspondait à rien ailleurs.
-    var cycleStr = now.getDate() <= 15 ? '1er – 15 ' + now.toLocaleDateString('fr-FR',{month:'long'})
-                                       : '16 – fin ' + now.toLocaleDateString('fr-FR',{month:'long'});
 
     // NOTE : l'ancien « indice de confiance » combinait présences et évaluations
     // (score sur 20, bonus/malus, moyenne des bilans). Il a été remplacé par
-    // renderPunctualityCard, entièrement fondé sur la ponctualité automatique.
+    // renderEngagementsCard, entièrement fondé sur la ponctualité automatique.
     // Ses calculs ont été retirés : ils tournaient encore à chaque rendu de profil
     // sans que rien ne les affiche.
 
@@ -216,9 +208,8 @@
     // sur les références : la lecture part du visage, pas d'un coin de l'écran.
     // Sans borne de date : total des services depuis la création du compte.
     var hStats = punctualityHistory(freshU.id);
-    // « Note » du profil = total de points du CYCLE en cours, sur 30 (même
-    // valeur que la jauge de la carte « Mes engagements »).
-    var noteCycle = Math.min(punctualityHistory(freshU.id, currentCycleStartTs()).total, 30);
+    // Niveau de fiabilité : le même que la carte « Mes engagements ».
+    var niveauProfil = niveauFiabilite(hStats.entries).niveau.nom;
     var isFollowing = !!(S.user && S.user.following && S.user.following.indexOf(freshU.id) !== -1);
 
     // Barre de données façon "readout" caméra : chiffres en chasse fixe.
@@ -271,7 +262,7 @@
         '</div>' +
       '</div>' +
       '<div style="display:flex;gap:8px;margin-top:18px;">' +
-        tuile(noteCycle + '<span style="font-size:12px;opacity:0.85;">/30</span>', 'Note du cycle') +
+        tuile('<span style="font-size:15px;">' + niveauProfil + '</span>', 'Niveau') +
         tuile(hStats.count, 'Services') +
         tuile(serie, 'Série à l\'heure') +
       '</div>' +
@@ -302,7 +293,7 @@
     var infoBlock = '<div style="background:' + UI.page + ';padding:0 16px 16px;">' +
       renderBadges(freshU) +
       renderHistoriqueServices(freshU) +
-      '<div style="margin-top:12px;">' + renderPunctualityCard(freshU, cycleStr) + '</div>' +
+      '<div style="margin-top:12px;">' + renderEngagementsCard(freshU) + '</div>' +
       // Accès direct aux conditions d'utilisation depuis son propre profil.
       (isMe ? '<button type="button" onclick="ouvrirConditions()" style="display:flex;align-items:center;justify-content:space-between;width:100%;min-height:44px;margin-top:4px;padding:12px 16px;background:' + UI.card + ';border:1px solid ' + UI.line + ';border-radius:999px;font-size:15px;font-weight:600;color:' + UI.ink + ';cursor:pointer;text-align:left;">' +
         '<span>Conditions d\'utilisation</span><span style="color:' + UI.faint + ';">›</span>' +

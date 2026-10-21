@@ -697,227 +697,83 @@
 
   // Une carte de section dans l'écran Notation. Repliée : nom + moyenne.
   // Dépliée : une ligne d'étoiles par critère, notés indépendamment.
-  // Indice de Confiance du profil : entièrement basé sur la ponctualité, calculée
-  // automatiquement à partir des heures d'arrivée. Aucune saisie manuelle.
-  function renderPunctualityCard(freshU, cycleStr) {
-    // Bornée au CYCLE en cours : c'est ce qu'annonce l'en-tête de la carte.
-    // Le total depuis la création du compte est affiché séparément, en haut du
-    // profil à côté de l'avatar.
-    var h = punctualityHistory(freshU.id, currentCycleStartTs());
-    // La carte s'affiche aussi sur le profil d'un autre membre : les textes
-    // passent alors de « votre » à « sa ».
+  // CARTE « MES ENGAGEMENTS » : niveau de fiabilité (Engagé, Fiable,
+  // Exemplaire) calculé sur les 10 derniers engagements (niveauFiabilite).
+  // Pas de note sur 30 ni de points négatifs : on voit où l'on en est, ce qui
+  // manque pour monter d'un niveau, et ses derniers services en pastilles.
+  function renderEngagementsCard(freshU) {
     var estMoi = !!(S.user && freshU && S.user.id === freshU.id);
-    // NOTE DU CYCLE : total de points ACCUMULÉS pendant le cycle, sur 30.
-    // Chaque service et chaque tâche ajoute (ou retire) ses points ; la jauge se
-    // remplit donc au fil du travail fourni, au lieu d'afficher une moyenne.
-    var NOTE_MAX = 30;
-    var score = Math.min(h.total, NOTE_MAX);
-    var col = score >= 24 ? UI.ok : score >= 15 ? UI.warn : UI.bad;
-    var label = !h.count ? 'Note de départ'
-      : score >= 24 ? 'Excellent'
-      : score >= 15 ? 'En bonne voie'
-      : score >= 0 ? 'À améliorer'
-      : 'Rattrapage requis';
+    var h = punctualityHistory(freshU.id);
+    var f = niveauFiabilite(h.entries);
+    var tes = estMoi ? 'tes' : 'ses';
 
-    // Trois « éléments » de la ponctualité, chacun avec son propre graphique,
-    // basculables via un sélecteur segmenté : la note (jauge + évolution), la
-    // répartition à l'heure/retard/absent (anneau), et le détail par service
-    // (barres). L'onglet actif est mémorisé dans S.punctualityChart.
-    var chart = S.punctualityChart || 'note';
-    var chrono = h.entries.slice().reverse();          // du plus ancien au plus récent
-    var lateCount = h.lateCount;
-    var starColor = function(s){ return s >= 4 ? UI.ok : s >= 2 ? UI.warn : UI.bad; };
-    var shortDate = function(e){
-      if (e.startTs) { var d = new Date(e.startTs); return d.getDate() + '/' + (d.getMonth() + 1); }
-      return (e.eventDate || '').slice(5).replace('-', '/');
-    };
-    var empty = function(txt){
-      return '<div style="text-align:center;padding:30px 14px;color:' + UI.faint + ';font-size:13px;line-height:1.5;">' + txt + '</div>';
-    };
-
-    // ---- Sélecteur segmenté (façon iOS : pastille active en relief) ----
-    var seg = function(id, txt){
-      var on = chart === id;
-      return '<button type="button" onclick="App.setPunctualityChart(\'' + jsArg(id) + '\')" ' +
-        'style="flex:1;height:32px;border:none;cursor:pointer;border-radius:' + UI.pill + ';font-size:12px;' +
-        'font-weight:' + (on ? '700' : '600') + ';color:' + (on ? UI.ink : UI.faint) + ';' +
-        'background:' + (on ? UI.card : 'transparent') + ';box-shadow:' + (on ? UI.sh2 : 'none') + ';' +
-        'transition:color 0.2s, background 0.2s;">' + txt + '</button>';
-    };
-    var switcher = '<div style="display:flex;gap:4px;background:' + UI.page + ';border-radius:' + UI.pill + ';padding:4px;margin-bottom:16px;">' +
-      seg('note', 'Note') + seg('ontime', "À l'heure") + seg('services', 'Services') +
-    '</div>';
-
-    // ============================================================
-    // GRAPHIQUE 1 — NOTE : jauge demi-cercle + courbe d'évolution
-    // ============================================================
-    // JAUGE demi-cercle (aspect de la maquette profil_commit/code.html) tracée
-    // en SVG. L'ancienne version superposait deux dégradés coniques tournés :
-    // le remplissage n'était pas limité à la moitié haute et débordait des deux
-    // côtés (deux « ailes » bleues quelle que soit la note). Ici un seul arc,
-    // dont la longueur visible porte la valeur ; il se remplit à l'affichage.
-    var pctJauge = Math.max(0, Math.min(1, score / NOTE_MAX));
-    var arc = 'M 14 106 A 92 92 0 0 1 198 106';
-    var gauge = '<div style="position:relative;width:100%;max-width:240px;margin:16px auto 0;">' +
-      '<svg viewBox="0 0 212 116" width="100%" style="display:block;overflow:visible;" aria-hidden="true">' +
-        '<path d="' + arc + '" fill="none" stroke="' + UI.tile + '" stroke-width="22" stroke-linecap="round"/>' +
-        '<path class="kc-jauge" d="' + arc + '" fill="none" stroke="' + UI.accent + '" stroke-width="22" stroke-linecap="round" ' +
-          'pathLength="100" stroke-dasharray="100" stroke-dashoffset="' + (100 - pctJauge * 100).toFixed(1) + '" ' +
-          'style="--kc-jauge-depart:100;' + (pctJauge === 0 ? 'opacity:0;' : '') + '"/>' +
-      '</svg>' +
-      '<div style="position:absolute;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;">' +
-        '<div style="font-family:' + UI.fontDisplay + ';font-size:48px;font-weight:800;letter-spacing:-0.02em;color:' + UI.lien + ';line-height:1;">' + score + '</div>' +
-        '<div style="font-size:15px;font-weight:600;color:' + UI.faint + ';margin-top:6px;">/ ' + NOTE_MAX + '</div>' +
-      '</div>' +
-    '</div>';
-
-    // Courbe d'évolution : point de départ (bonus de bienvenue) puis une note par
-    // service, du plus ancien au plus récent. On la trace seulement dès qu'il y a
-    // au moins un service — sinon la « courbe » serait un point isolé.
-    var _me = db(SK.USERS, []).find(function(u){ return u && u.id === freshU.id; });
-    var welcome = (_me && typeof _me.welcomeStars === 'number') ? _me.welcomeStars : 5;
-    var evolution = '';
-    if (chrono.length) {
-      var series = [{ v: welcome, dep: true }].concat(chrono.map(function(e){ return { v: e.stars, dep: false }; }));
-      var W = 300, HH = 76, padX = 10, padY = 12;
-      var innerW = W - padX * 2, innerH = HH - padY * 2;
-      var xAt = function(i){ return padX + (series.length === 1 ? innerW / 2 : innerW * i / (series.length - 1)); };
-      var yAt = function(v){ return padY + innerH * (1 - (v + 2) / 7); };
-      var zeroY = yAt(0);
-      var pts = series.map(function(p, i){ return xAt(i) + ',' + yAt(p.v); });
-      var areaPath = 'M' + xAt(0) + ',' + zeroY + ' L' + pts.join(' L') + ' L' + xAt(series.length - 1) + ',' + zeroY + ' Z';
-      var dots = series.map(function(p, i){
-        return '<circle cx="' + xAt(i) + '" cy="' + yAt(p.v) + '" r="' + (p.dep ? 3 : 3.4) + '" fill="' + (p.dep ? UI.faint : starColor(p.v)) + '" stroke="' + UI.card + '" stroke-width="1.6"/>';
-      }).join('');
-      evolution = '<div style="margin-top:14px;">' +
-        '<div style="font-size:11px;color:' + UI.faint + ';letter-spacing:0.5px;text-transform:uppercase;margin-bottom:6px;">Évolution</div>' +
-        '<svg width="100%" viewBox="0 0 ' + W + ' ' + HH + '" preserveAspectRatio="none" style="display:block;">' +
-          '<line x1="' + padX + '" y1="' + zeroY + '" x2="' + (W - padX) + '" y2="' + zeroY + '" stroke="' + UI.line + '" stroke-width="1" stroke-dasharray="3 4"/>' +
-          '<path d="' + areaPath + '" fill="' + col + '" fill-opacity="0.10"/>' +
-          '<polyline points="' + pts.join(' ') + '" fill="none" stroke="' + col + '" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>' +
-          dots +
-        '</svg>' +
-        '<div style="display:flex;justify-content:space-between;font-size:11px;color:' + UI.faint + ';margin-top:3px;"><span>Départ</span><span>Récent</span></div>' +
-      '</div>';
+    // Phrase d'accompagnement : toujours tournée vers la suite.
+    var phrase;
+    if (!f.total) {
+      phrase = estMoi ? 'Ton premier service lancera ta progression.' : 'Sa progression commencera avec son premier service.';
+    } else if (!f.suivant) {
+      phrase = estMoi ? 'Tu es au plus haut niveau. Bravo, continue comme ça !' : 'Au plus haut niveau. Bravo !';
     } else {
-      // Sans service, la phrase de synthèse suffit : pas de doublon ici.
-      evolution = '';
+      phrase = 'Encore ' + f.manque + ' engagement' + (f.manque > 1 ? 's' : '') + ' tenu' + (f.manque > 1 ? 's' : '') +
+        ' pour devenir <strong style="color:' + UI.ink + ';">' + f.suivant.nom + '</strong>.';
     }
-    // Phrase de synthèse sous la jauge (maquette).
-    // Phrase alignée sur le TOTAL de points du cycle (même seuils que l'étiquette).
-    var verdict = !h.count
-      ? (estMoi ? 'Ta note de départ, en attendant ton premier service.' : 'Note de départ, en attendant son premier service.')
-      : (score >= NOTE_MAX ? 'Cycle au maximum : rien à redire.'
-        : score >= 24 ? 'Performance exceptionnelle ce cycle.'
-        : score >= 15 ? 'Bon rythme : continuez à cumuler des points.'
-        : score >= 0 ? 'Encore ' + (15 - score) + ' points pour être en bonne voie.'
-        : 'Points négatifs : à redresser rapidement.');
-    // La maquette ne montre que la jauge et la phrase de synthèse sur l'onglet
-    // « Note » ; la courbe d'évolution n'y figure pas.
-    var noteChart = gauge +
-      '<p style="text-align:center;font-size:15px;color:' + UI.muted + ';margin:12px 0 0;line-height:1.5;">' + verdict + '</p>';
 
-    // ============================================================
-    // GRAPHIQUE 2 — À L'HEURE : anneau de répartition
-    // ============================================================
-    var onTimeChart;
-    var C = 2 * Math.PI * 52;
-    var donutSegs = [
-      { v: h.onTimeCount, color: UI.ok,  name: "À l'heure" },
-      { v: lateCount,     color: UI.warn, name: 'En retard' },
-      { v: h.absentCount, color: UI.bad,  name: 'Absent' }
-    ];
-    var onTimePct = h.count ? Math.round((h.onTimeCount / h.count) * 100) : 0;
-    var ringOffset = 0;
-    var ring = donutSegs.filter(function(s){ return s.v > 0; }).map(function(s){
-      var len = (s.v / (h.count || 1)) * C;
-      var el = '<circle cx="70" cy="70" r="52" fill="none" stroke="' + s.color + '" stroke-width="15" ' +
-        'stroke-dasharray="' + len + ' ' + (C - len) + '" stroke-dashoffset="' + (-ringOffset) + '" ' +
-        'transform="rotate(-90 70 70)"/>';
-      ringOffset += len;
-      return el;
+    // Les trois niveaux, l'actuel mis en avant.
+    var marches = NIVEAUX_FIABILITE.map(function(n, i) {
+      var atteint = i <= f.rang, actuel = i === f.rang;
+      return '<div style="flex:1;min-width:0;text-align:center;">' +
+        '<div style="height:8px;border-radius:4px;background:' + (atteint ? UI.accent : UI.tile) + ';"></div>' +
+        '<div style="font-size:12px;margin-top:7px;font-weight:' + (actuel ? '800' : '600') + ';color:' + (actuel ? UI.lien : UI.faint) + ';">' + n.nom + '</div>' +
+      '</div>';
     }).join('');
-    var donut = '<div style="position:relative;width:140px;height:140px;margin:4px auto 0;">' +
-      '<svg width="140" height="140" viewBox="0 0 140 140">' +
-        '<circle cx="70" cy="70" r="52" fill="none" stroke="' + UI.line + '" stroke-width="15"/>' + ring +
-      '</svg>' +
-      '<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">' +
-        '<div style="font-family:' + UI.fontMono + ';font-size:28px;font-weight:700;color:' + UI.ink + ';line-height:1;">' + (h.count ? onTimePct + '%' : '—') + '</div>' +
-        '<div style="font-size:11px;color:' + UI.faint + ';margin-top:3px;">à l\'heure</div>' +
-      '</div>' +
-    '</div>';
-    var legendRow = function(s){
-      return '<div style="display:flex;align-items:center;gap:9px;padding:6px 0;">' +
-        '<span style="width:9px;height:9px;border-radius:3px;background:' + s.color + ';flex-shrink:0;"></span>' +
-        '<span style="flex:1;font-size:13px;color:' + UI.ink2 + ';">' + s.name + '</span>' +
-        '<span style="font-size:13px;font-weight:700;color:' + UI.ink + ';">' + s.v + '</span>' +
-      '</div>';
+
+    // Les 10 derniers engagements, du plus ancien (à gauche) au plus récent.
+    var couleur = function(e) { return e.status === 'ontime' ? UI.ok : e.status === 'late' ? UI.warn : 'var(--line2)'; };
+    var chrono = f.recents.slice().reverse();
+    var pastilles = '';
+    for (var i = 0; i < FENETRE_FIABILITE; i++) {
+      var e = chrono[i];
+      pastilles += e
+        ? '<span title="' + safeHtml((e.eventTitle || '') + ' · ' + (e.label || '')) + '" style="flex:1;max-width:22px;aspect-ratio:1;border-radius:50%;background:' + couleur(e) + ';"></span>'
+        : '<span style="flex:1;max-width:22px;aspect-ratio:1;border-radius:50%;border:1.5px dashed var(--line2);box-sizing:border-box;"></span>';
+    }
+    var legende = function(c, txt, pointille) {
+      return '<span style="display:inline-flex;align-items:center;gap:5px;">' +
+        '<span style="width:9px;height:9px;border-radius:50%;' + (pointille ? 'border:1.5px dashed ' + c + ';box-sizing:border-box;' : 'background:' + c + ';') + '"></span>' + txt + '</span>';
     };
-    if (h.count) {
-      onTimeChart = donut +
-        '<div style="margin-top:14px;">' + donutSegs.map(legendRow).join('') + '</div>' +
-        (h.avgDelay > 0
-          ? '<div style="font-size:12px;color:' + UI.muted + ';text-align:center;margin-top:8px;border-top:0.5px solid ' + UI.line + ';padding-top:10px;">Retard moyen de <strong style="color:' + UI.warn + ';">' + h.avgDelay + ' min</strong> sur les services concernés.</div>'
-          : '');
-    } else {
-      onTimeChart = donut + empty('Aucun service pointé sur ce cycle.<br>La répartition apparaîtra dès ' + (estMoi ? 'ton' : 'son') + ' premier pointage.');
-    }
-
-    // ============================================================
-    // GRAPHIQUE 3 — SERVICES : barres divergentes (une par service)
-    // ============================================================
-    var servicesChart;
-    if (chrono.length) {
-      var step = 46, padTop = 18, padBot = 32, chartH = 92;
-      var yVal = function(v){ return padTop + chartH * (1 - (v + 2) / 7); };
-      var baseY = yVal(0);
-      var dateY = padTop + chartH + 24;
-      var svgW = Math.max(280, chrono.length * step);
-      var bars = chrono.map(function(e, i){
-        var cx = i * step + step / 2;
-        var y = yVal(e.stars), c = starColor(e.stars);
-        var top = Math.min(y, baseY), bh = Math.max(3, Math.abs(y - baseY));
-        var valStr = (e.stars > 0 ? '+' : '') + e.stars;
-        var valY = e.stars >= 0 ? top - 6 : top + bh + 12;
-        return '<rect x="' + (cx - 11) + '" y="' + top + '" width="22" height="' + bh + '" rx="5" fill="' + c + '"/>' +
-          '<text x="' + cx + '" y="' + valY + '" text-anchor="middle" font-size="11" font-weight="700" fill="' + c + '">' + valStr + '</text>' +
-          '<text x="' + cx + '" y="' + dateY + '" text-anchor="middle" font-size="9.5" fill="' + UI.faint + '">' + shortDate(e) + '</text>';
-      }).join('');
-      servicesChart =
-        '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">' +
-          '<svg width="' + svgW + '" height="' + (padTop + chartH + padBot) + '" viewBox="0 0 ' + svgW + ' ' + (padTop + chartH + padBot) + '" style="display:block;">' +
-            '<line x1="0" y1="' + baseY + '" x2="' + svgW + '" y2="' + baseY + '" stroke="' + UI.line + '" stroke-width="1" stroke-dasharray="3 4"/>' +
-            bars +
-          '</svg>' +
-        '</div>' +
-        '<div style="display:flex;justify-content:space-around;text-align:center;margin-top:12px;border-top:0.5px solid ' + UI.line + ';padding-top:12px;">' +
-          '<div><div style="font-family:' + UI.fontMono + ';font-size:17px;font-weight:700;color:' + UI.ink + ';">' + h.count + '</div><div style="font-size:11px;color:' + UI.faint + ';">Services</div></div>' +
-          '<div><div style="font-family:' + UI.fontMono + ';font-size:17px;font-weight:700;color:' + UI.ok + ';">' + h.onTimeCount + '</div><div style="font-size:11px;color:' + UI.faint + ';">À l\'heure</div></div>' +
-          '<div><div style="font-family:' + UI.fontMono + ';font-size:17px;font-weight:700;color:' + col + ';">' + score + '</div><div style="font-size:11px;color:' + UI.faint + ';">Points</div></div>' +
-        '</div>';
-    } else {
-      servicesChart = empty('Aucun service sur ce cycle.<br>' + (estMoi ? 'Tes' : 'Ses') + ' services assurés s\'afficheront ici, notés étoile par étoile.');
-    }
-
-    var body = chart === 'ontime' ? onTimeChart : chart === 'services' ? servicesChart : noteChart;
 
     return '<div style="margin:16px 0 14px;">' +
       '<div style="background:' + UI.card + ';border:1px solid ' + UI.line + ';border-radius:12px;box-shadow:' + UI.sh2 + ';padding:16px;">' +
-        '<div style="margin-bottom:14px;">' +
-          '<h2 style="font-family:' + UI.fontDisplay + ';font-size:22px;font-weight:700;color:' + UI.ink + ';letter-spacing:-0.3px;line-height:1.2;margin:0;">' + (estMoi ? 'Mes engagements' : 'Engagements') + '</h2>' +
-          '<div style="font-family:' + UI.fontMono + ';font-size:12px;color:' + UI.faint + ';line-height:1.35;margin-top:2px;">Cycle ' + cycleStr + ' · ' + label + '</div>' +
+        '<h2 style="font-family:' + UI.fontDisplay + ';font-size:22px;font-weight:700;color:' + UI.ink + ';letter-spacing:-0.3px;line-height:1.2;margin:0;">' + (estMoi ? 'Mes engagements' : 'Engagements') + '</h2>' +
+        '<div style="font-size:12px;color:' + UI.faint + ';line-height:1.35;margin-top:2px;">Sur ' + tes + ' ' + FENETRE_FIABILITE + ' derniers services et tâches</div>' +
+        // Niveau actuel
+        '<div style="display:flex;align-items:center;gap:12px;margin-top:16px;">' +
+          '<div style="width:52px;height:52px;flex-shrink:0;border-radius:50%;background:var(--accent-soft);display:flex;align-items:center;justify-content:center;">' +
+            '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="' + UI.lien + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+              (f.rang === 2 ? '<path d="M12 2l3 6.5 7 .8-5.2 4.8 1.5 7L12 17.6 5.7 21.1l1.5-7L2 9.3l7-.8z"/>'
+               : f.rang === 1 ? '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/>'
+               : '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>') +
+            '</svg>' +
+          '</div>' +
+          '<div style="min-width:0;">' +
+            '<div style="font-size:12px;font-weight:600;color:' + UI.faint + ';">Niveau</div>' +
+            '<div style="font-family:' + UI.fontDisplay + ';font-size:28px;font-weight:800;letter-spacing:-0.02em;color:' + UI.lien + ';line-height:1.1;">' + f.niveau.nom + '</div>' +
+          '</div>' +
+          '<div style="margin-left:auto;text-align:right;flex-shrink:0;">' +
+            '<div style="font-family:' + UI.fontDisplay + ';font-size:22px;font-weight:800;color:' + UI.ink + ';line-height:1;">' + f.tenus + '<span style="font-size:13px;font-weight:600;color:' + UI.faint + ';"> / ' + FENETRE_FIABILITE + '</span></div>' +
+            '<div style="font-size:11px;color:' + UI.faint + ';margin-top:3px;">tenus</div>' +
+          '</div>' +
         '</div>' +
-        switcher +
-        '<div style="min-height:170px;">' + body + '</div>' +
-        (h.debt < 0
-          ? '<div style="display:flex;gap:9px;background:' + UI.card + ';border-radius:' + UI.r2 + ';box-shadow:' + UI.sh2 + ';padding:11px 12px;margin-top:14px;">' +
-              ico('alert', 16, UI.bad) +
-              '<div style="min-width:0;">' +
-                '<div style="font-size:13px;font-weight:600;color:var(--bad-ink);margin-bottom:2px;">Rattrapage requis : ' + h.debt + ' étoiles</div>' +
-                '<div style="font-size:12px;color:' + UI.muted + ';line-height:1.45;">Sois à l\'heure aux prochains services pour revenir au positif.</div>' +
-              '</div>' +
-            '</div>'
-          : '') +
+        '<div style="display:flex;gap:6px;margin-top:16px;">' + marches + '</div>' +
+        '<p style="font-size:14px;color:' + UI.muted + ';margin:14px 0 0;line-height:1.5;">' + phrase + '</p>' +
+        // Derniers engagements
+        '<div style="border-top:1px solid ' + UI.line + ';margin-top:14px;padding-top:12px;">' +
+          '<div style="display:flex;gap:6px;justify-content:space-between;align-items:center;">' + pastilles + '</div>' +
+          '<div style="display:flex;flex-wrap:wrap;gap:6px 14px;font-size:11.5px;color:' + UI.muted + ';margin-top:10px;">' +
+            legende(UI.ok, 'Tenu') + legende(UI.warn, 'En retard') + legende('var(--line2)', 'Manqué') +
+          '</div>' +
+          '<div style="font-size:11.5px;color:' + UI.faint + ';margin-top:8px;line-height:1.45;">Un engagement est tenu quand on arrive à l\'heure ou qu\'on livre sa tâche à temps. Un retard ne retire rien : il ne compte simplement pas.</div>' +
+        '</div>' +
       '</div>' +
     '</div>';
   }
