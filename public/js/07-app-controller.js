@@ -208,20 +208,289 @@
         };
       }
     },
-    // Recherche du lieu par son nom ou son adresse. On ne relève JAMAIS la position
-    // du créateur : il prépare généralement l'événement à l'avance depuis chez lui,
-    // sa position n'a donc aucun rapport avec le lieu de l'événement.
+    // Recherche du lieu par son nom ou son adresse. La position du créateur
+    // n'est relevée que s'il le demande (« Utiliser ma position actuelle ») :
+    // il prépare souvent l'événement de chez lui, loin du lieu.
     onEventPlaceInput: function(val) {
       S.eventPlaceQuery = val;
       S.eventPlaceError = null;
       if (App._placeTimer) clearTimeout(App._placeTimer);
-      if (!val || val.trim().length < 3) {
-        S.eventPlaceResults = [];
-        var box0 = document.getElementById('eventPlaceResults');
-        if (box0) box0.innerHTML = '';
+      S.eventPlaceResults = [];
+      // Les lieux enregistrés s'affichent tout de suite, sans réseau.
+      var box0 = document.getElementById('eventPlaceResults');
+      if (box0) box0.innerHTML = renderResultatsLieu(val, []);
+      if (!val || val.trim().length < 3) return;
+      App._placeTimer = setTimeout(function(){ App.searchEventPlace(); }, 600);
+    },
+    // ---- Lieux enregistrés (migration 11) ----
+    chargerLieux: function() {
+      if (!supabase || !S.user) return Promise.resolve();
+      return supabase.from('kun_com_lieux').select('id,nom,adresse,lat,lng,precision_m,utilisations')
+        .order('utilisations', { ascending: false }).limit(300).then(function(r) {
+          if (!r || r.error || !Array.isArray(r.data)) return;
+          dbSet(SK.LIEUX, r.data.map(assainirLieu).filter(Boolean));
+          // Formulaire ouvert : propositions rafraîchies sans voler le focus.
+          var box = document.getElementById('eventLieuxProposes');
+          var champ = document.getElementById('eventLocation');
+          if (box && champ) box.innerHTML = renderLieuxProposes(champ.value, S.createEventData);
+          if (S.lieuxOuverts) render();
+        }, function(){});
+    },
+    onEventLocationInput: function(val) {
+      var box = document.getElementById('eventLieuxProposes');
+      if (box) box.innerHTML = renderLieuxProposes(val, S.createEventData);
+    },
+    // depuis = 'lieu' (sous « Lieu / salle ») ou 'carte' (recherche d'adresse) :
+    // depuis la carte, un nom de salle déjà tapé est gardé, seule la position change.
+    choisirLieu: function(id, depuis) {
+      var l = db(SK.LIEUX, []).map(assainirLieu).filter(Boolean).find(function(x){ return x.id === id; });
+      if (!l) return;
+      App.syncCreateEventData();
+      if (!S.createEventData) S.createEventData = {};
+      var d = S.createEventData;
+      if (depuis !== 'carte' || !(d.location || '').trim()) d.location = l.nom;
+      d.lat = l.lat; d.lng = l.lng;
+      d.accuracy = l.precision_m || undefined;
+      d.placeName = l.nom;
+      d.placeLabel = l.adresse || '';
+      S.eventPlaceResults = []; S.eventPlaceQuery = ''; S.eventPlaceError = null;
+      render();
+      toast('Lieu choisi : ' + l.nom + '.', 'success');
+    },
+    // Sur place, le responsable relève la position du lieu avec son téléphone.
+    utiliserMaPosition: async function() {
+      if (S.eventGeoEnCours) return;
+      App.syncCreateEventData();
+      S.eventGeoEnCours = true; S.eventPlaceError = null;
+      render();
+      var g = await releverPositionPrecise(12000);
+      S.eventGeoEnCours = false;
+      if (!S.createEventOpen) return;
+      App.syncCreateEventData();   // le formulaire a pu changer pendant le relevé
+      if (!g || !g.available) {
+        S.eventPlaceError = (g && g.reason === 'denied') ? 'Accès à ta position refusé. Autorise-le dans les réglages du navigateur, puis réessaie.'
+          : (g && g.reason === 'outside_country') ? 'Ta position semble hors de Côte d\'Ivoire. Réessaie dehors ou cherche l\'adresse.'
+          : 'Position introuvable. Réessaie près d\'une fenêtre ou cherche l\'adresse.';
+        render();
         return;
       }
-      App._placeTimer = setTimeout(function(){ App.searchEventPlace(); }, 600);
+      if (!S.createEventData) S.createEventData = {};
+      var d = S.createEventData;
+      d.lat = g.lat; d.lng = g.lng; d.accuracy = g.accuracy;
+      d.placeName = (d.location || '').trim() || 'Position relevée sur place';
+      d.placeLabel = '';
+      S.eventPlaceResults = []; S.eventPlaceQuery = '';
+      render();
+      toast(g.accuracy > 100 ? 'Position relevée, mais approximative (à ' + g.accuracy + ' m près).'
+        : 'Position du lieu relevée (à ' + g.accuracy + ' m près).', g.accuracy > 100 ? 'info' : 'success');
+    },
+    // Mémorise le lieu d'un événement enregistré (responsables et Admin).
+    _memoriserLieu: function(nom, adresse, lat, lng, precision) {
+      nom = String(nom || '').trim();
+      if (!nom || typeof lat !== 'number' || typeof lng !== 'number' || !canAssign(S.user)) return;
+      var prec = (typeof precision === 'number' && precision > 0) ? Math.round(precision) : null;
+      memoriserLieuLocal({ nom: nom, adresse: adresse || '', lat: lat, lng: lng, precision_m: prec });
+      if (!supabase) return;
+      supabase.rpc('kc_memoriser_lieu', { p_nom: nom, p_adresse: adresse || '', p_lat: lat, p_lng: lng, p_precision: prec })
+        .then(function(r) {
+          if (r && r.error) { console.warn('Lieu non mémorisé :', r.error); return; }
+          App.chargerLieux();
+        }, function(e) { console.warn('Lieu non mémorisé :', e); });
+    },
+    // Nom sous lequel le lieu est mémorisé : le champ « Lieu / salle », sinon
+    // le nom trouvé par la recherche. Une position GPS (avec sa précision) sans
+    // nom n'est pas mémorisée : « Position relevée sur place » ne dit rien.
+    _nomDuLieu: function(loc, d) {
+      if (loc) return loc;
+      return (d && typeof d.accuracy !== 'number') ? (d.placeName || '') : '';
+    },
+    // ---- Plan de préparation d'un événement (migration 11) ----
+    // Chaque pôle a son plan : des tâches, découpées en étapes datées à faire
+    // avant l'événement. Le responsable du pôle et l'Admin l'écrivent, tout le
+    // monde le consulte depuis la fiche de l'événement (Planning).
+    ouvrirPreparation: function(evId) {
+      if (!db(SK.POSTS, []).some(function(p){ return p.id === evId; })) { toast('Événement introuvable.', 'error'); return; }
+      S.preparationId = evId; S.prepForm = null; S.prepPolesEnPlus = [];
+      S.prepSaisie = ''; S.prepSaisieDate = '';
+      if (S.prepVue !== 'dates') S.prepVue = 'poles';
+      render();
+    },
+    fermerPreparation: function() { S.preparationId = null; S.prepForm = null; render(); },
+    prepChoisirVue: function(v) { S.prepVue = v === 'dates' ? 'dates' : 'poles'; S.prepForm = null; render(); },
+    prepAjouterPole: function(pole) {
+      if (!peutPreparer(S.user, pole)) return;
+      if ((S.prepPolesEnPlus || []).indexOf(pole) === -1) S.prepPolesEnPlus = (S.prepPolesEnPlus || []).concat([pole]);
+      App.prepOuvrirForm('tache', pole);
+    },
+    // type : 'tache' (nouvelle), 'etape' (nouvelle, dans une tâche),
+    // 'modifTache', 'modifEtape'.
+    prepOuvrirForm: function(type, pole, tacheId, etapeId) {
+      if (!peutPreparer(S.user, pole)) return;
+      S.prepForm = { type: type, pole: pole, tache: tacheId || null, etape: etapeId || null };
+      S.prepSaisie = ''; S.prepSaisieDate = '';
+      var ev = db(SK.POSTS, []).find(function(p){ return p.id === S.preparationId; });
+      var e = ev && assainirPreparation(ev.preparation)[pole];
+      var t = e && e.taches.find(function(x){ return x.id === tacheId; });
+      if (type === 'modifTache' && t) S.prepSaisie = t.titre;
+      if (type === 'modifEtape' && t) {
+        var et = t.etapes.find(function(x){ return x.id === etapeId; });
+        if (et) { S.prepSaisie = et.titre; S.prepSaisieDate = et.date; }
+      }
+      render();
+      setTimeout(function() {
+        var el = document.getElementById('prepTitre');
+        if (el) { el.focus(); try { el.setSelectionRange(el.value.length, el.value.length); } catch(e) {} }
+      }, 0);
+    },
+    prepFermerForm: function() { S.prepForm = null; S.prepSaisie = ''; S.prepSaisieDate = ''; render(); },
+    // Enregistre le formulaire ouvert. titreImpose : tâche reprise d'une assignation.
+    prepValider: function(titreImpose) {
+      var f = S.prepForm;
+      var ev = f && db(SK.POSTS, []).find(function(p){ return p.id === S.preparationId; });
+      if (!ev) return;
+      var champ = document.getElementById('prepTitre');
+      var titre = String(titreImpose || (champ ? champ.value : S.prepSaisie) || '').replace(/\s+/g, ' ').trim();
+      if (!titre) { toast(f.type === 'tache' || f.type === 'modifTache' ? 'Indique la tâche.' : 'Indique l\'étape.', 'error'); return; }
+      var champDate = document.getElementById('prepDate');
+      var date = champDate ? champDate.value : (S.prepSaisieDate || '');
+      if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) date = '';
+      if (date && ev.eventDate && date > ev.eventDate) {
+        toast('Choisis une date au plus tard le jour de l\'événement.', 'error');
+        return;
+      }
+      var ok;
+      if (f.type === 'tache') {
+        var idT = idPrep('t');
+        titre = titre.slice(0, 120);
+        ok = App._ecrirePreparation(ev.id, f.pole, function(taches) {
+          if (taches.some(function(x){ return x.id === idT; })) return;
+          if (taches.length >= PREP_MAX_TACHES) return false;
+          taches.push({ id: idT, titre: titre, etapes: [] });
+        });
+        // Tâche créée : on enchaîne sur ses étapes.
+        if (ok) { S.prepForm = { type: 'etape', pole: f.pole, tache: idT }; toast('Tâche ajoutée. Ajoute maintenant ses étapes.', 'success'); }
+      } else if (f.type === 'etape') {
+        var idE = idPrep('e');
+        ok = App._ecrirePreparation(ev.id, f.pole, function(taches) {
+          var t = taches.find(function(x){ return x.id === f.tache; });
+          if (!t) return false;
+          if (t.etapes.some(function(x){ return x.id === idE; })) return;
+          if (t.etapes.length >= PREP_MAX_ETAPES) return false;
+          t.etapes.push({ id: idE, titre: titre.slice(0, 160), date: date, fait: false, faitLe: null });
+          trierEtapes(t.etapes);
+        });
+        // Le formulaire reste ouvert pour l'étape suivante.
+      } else if (f.type === 'modifTache') {
+        ok = App._ecrirePreparation(ev.id, f.pole, function(taches) {
+          var t = taches.find(function(x){ return x.id === f.tache; });
+          if (!t) return false;
+          t.titre = titre.slice(0, 120);
+        });
+        if (ok) S.prepForm = null;
+      } else if (f.type === 'modifEtape') {
+        ok = App._ecrirePreparation(ev.id, f.pole, function(taches) {
+          var t = taches.find(function(x){ return x.id === f.tache; });
+          var e = t && t.etapes.find(function(x){ return x.id === f.etape; });
+          if (!e) return false;
+          e.titre = titre.slice(0, 160); e.date = date;
+          trierEtapes(t.etapes);
+        });
+        if (ok) S.prepForm = null;
+      }
+      if (ok) { S.prepSaisie = ''; S.prepSaisieDate = ''; render(); App._focusPrep(); }
+      else if (ok === false) toast('Modification impossible (limite atteinte ou élément supprimé).', 'error');
+    },
+    _focusPrep: function() {
+      setTimeout(function(){ var el = document.getElementById('prepTitre'); if (el) el.focus(); }, 0);
+    },
+    // Supprime la tâche ou l'étape du formulaire de modification ouvert.
+    prepSupprimer: function() {
+      var f = S.prepForm;
+      var ev = f && db(SK.POSTS, []).find(function(p){ return p.id === S.preparationId; });
+      if (!ev) return;
+      var e = assainirPreparation(ev.preparation)[f.pole];
+      var t = e && e.taches.find(function(x){ return x.id === f.tache; });
+      if (!t) return;
+      if (f.type === 'modifTache') {
+        if (!confirm('Supprimer la tâche « ' + t.titre + ' »' + (t.etapes.length ? ' et ses ' + t.etapes.length + ' étape' + (t.etapes.length > 1 ? 's' : '') : '') + ' ?')) return;
+        App._ecrirePreparation(ev.id, f.pole, function(taches) {
+          var i = taches.findIndex(function(x){ return x.id === f.tache; });
+          if (i !== -1) taches.splice(i, 1);
+        });
+      } else if (f.type === 'modifEtape') {
+        if (!confirm('Supprimer cette étape ?')) return;
+        App._ecrirePreparation(ev.id, f.pole, function(taches) {
+          var tt = taches.find(function(x){ return x.id === f.tache; });
+          if (tt) tt.etapes = tt.etapes.filter(function(x){ return x.id !== f.etape; });
+        });
+      } else return;
+      S.prepForm = null; S.prepSaisie = ''; S.prepSaisieDate = '';
+      render();
+    },
+    // Coche ou décoche une étape (valeur voulue fixée d'avance : rejouée sur
+    // la version fraîche du serveur, elle ne s'inverse pas deux fois).
+    prepBasculer: function(pole, tacheId, etapeId) {
+      var ev = db(SK.POSTS, []).find(function(p){ return p.id === S.preparationId; });
+      var e = ev && assainirPreparation(ev.preparation)[pole];
+      var t = e && e.taches.find(function(x){ return x.id === tacheId; });
+      var et = t && t.etapes.find(function(x){ return x.id === etapeId; });
+      if (!et) return;
+      var fait = !et.fait;
+      App._ecrirePreparation(ev.id, pole, function(taches) {
+        var tt = taches.find(function(x){ return x.id === tacheId; });
+        var ee = tt && tt.etapes.find(function(x){ return x.id === etapeId; });
+        if (!ee) return false;
+        ee.fait = fait; ee.faitLe = fait ? Date.now() : null;
+      });
+      render();
+    },
+    // Applique une modification au plan d'un pôle : d'abord sur la copie
+    // locale (affichage immédiat), puis sur la version fraîche du serveur.
+    // modifier(taches) agit sur une copie et doit pouvoir être rejoué sans
+    // double effet ; il renvoie false si la modification est impossible.
+    _ecrirePreparation: function(evId, pole, modifier) {
+      if (!peutPreparer(S.user, pole)) { toast('Seul le responsable du pôle peut modifier ce plan.', 'error'); return null; }
+      var appliquer = function(ev) {
+        var prep = assainirPreparation(ev.preparation);
+        var e = prep[pole] || { taches: [], v: 0 };
+        var taches = JSON.parse(JSON.stringify(e.taches || []));
+        if (modifier(taches) === false) return false;
+        prep[pole] = { taches: taches, v: (e.v || 0) + 1, maj_le: Date.now(), maj_par: S.user.id };
+        ev.preparation = prep;
+        return prep[pole].v;
+      };
+      var posts = db(SK.POSTS, []);
+      var idx = posts.findIndex(function(p){ return p.id === evId; });
+      if (idx === -1) return false;
+      var copie = Object.assign({}, posts[idx]);
+      if (appliquer(copie) === false) return false;
+      posts[idx] = copie;
+      dbSet(SK.POSTS, posts);
+      var versionEnvoyee = null;
+      App.ecrirePostFrais(evId, function(ev) { versionEnvoyee = appliquer(ev); }, function(retenu) {
+        // Version refusée (modifiée au même moment par quelqu'un d'autre, ou
+        // trop volumineuse) : l'écran reprend la version enregistrée.
+        var e = assainirPreparation(retenu.preparation)[pole];
+        if (versionEnvoyee && (!e || e.v < versionEnvoyee)) {
+          toast('Modification non enregistrée : le plan a sans doute changé entre-temps. Vérifie-le et recommence.', 'info');
+        }
+        if (S.preparationId === evId || S.tab === 'planning') render();
+      });
+      return true;
+    },
+    ouvrirLieux: function() { S.lieuxOuverts = true; render(); App.chargerLieux(); },
+    fermerLieux: function() { S.lieuxOuverts = false; render(); },
+    supprimerLieu: async function(id) {
+      if (!isGrandResponsable(S.user)) return;
+      var l = db(SK.LIEUX, []).find(function(x){ return x && x.id === id; });
+      if (!l || !confirm('Retirer « ' + l.nom + ' » des lieux enregistrés ? Les événements déjà créés gardent leur position.')) return;
+      if (supabase && String(id).indexOf('local:') !== 0) {
+        var r = await supabase.from('kun_com_lieux').delete().eq('id', id);
+        if (r && r.error) { toast('Suppression impossible. Réessaie.', 'error'); return; }
+      }
+      dbSet(SK.LIEUX, db(SK.LIEUX, []).filter(function(x){ return x && x.id !== id; }));
+      render();
+      toast('Lieu retiré.', 'success');
     },
     searchEventPlace: async function() {
       var q = (S.eventPlaceQuery || '').trim();
@@ -305,7 +574,9 @@
       S.eventSections = []; S.eventAssignments = []; S.createEventData = null;
       S.eventImage = null; S.eventImageProcessing = false;
       S.eventSaveChoiceOpen = false; S.eventSaveMode = null;
+      S.eventPlaceQuery = ''; S.eventPlaceResults = []; S.eventPlaceError = null; S.eventGeoEnCours = false;
       render();
+      App.chargerLieux();
     },
     // Modification d'un événement : on rouvre le formulaire ÉVÉNEMENT pré-rempli,
     // et non l'éditeur de publication générique (champs sans rapport : fond coloré,
@@ -333,6 +604,8 @@
       S.eventPlaceQuery = '';
       S.eventPlaceResults = [];
       S.eventPlaceError = null;
+      S.eventGeoEnCours = false;
+      App.chargerLieux();
       S.eventSections = (post.eventSections || []).slice();
       S.eventAssignments = (post.assignments || []).slice();
       S.eventImage = post.eventImage || null;
@@ -473,12 +746,16 @@
       if (S.editEventId && S.eventSaveMode === 'duplicate') {
         S.editEventId = null;
       }
+      // Position relevée au GPS : elle prend le nom du champ « Lieu / salle ».
+      var dLieu = S.createEventData || {};
+      var nomPosition = (typeof dLieu.accuracy === 'number' && loc) ? loc : dLieu.placeName;
 
       if (S.editEventId) {
         var allP = db(SK.POSTS, []);
         var idxE = allP.findIndex(function(p){ return p.id === S.editEventId; });
         if (idxE === -1) { toast('Événement introuvable.', 'error'); return; }
         if (btn) { btn.textContent = 'Enregistrement...'; btn.disabled = true; }
+        var avant = allP[idxE];
         var updated = Object.assign({}, allP[idxE], {
           eventTitle: title,
           eventDate: date,
@@ -488,7 +765,7 @@
           eventLat: typeof (S.createEventData||{}).lat === 'number' ? S.createEventData.lat : null,
           eventLng: typeof (S.createEventData||{}).lng === 'number' ? S.createEventData.lng : null,
           eventGeoAccuracy: (S.createEventData||{}).accuracy || null,
-          eventPlaceName: (S.createEventData||{}).placeName || null,
+          eventPlaceName: nomPosition || null,
           eventPlaceLabel: (S.createEventData||{}).placeLabel || null,
           eventSections: (S.eventSections||[]).slice(),
           assignments: (S.eventAssignments||[]).slice(),
@@ -500,6 +777,11 @@
         });
         allP[idxE] = updated;
         dbSet(SK.POSTS, allP);
+        // Lieu mémorisé seulement s'il a changé : rouvrir l'événement pour en
+        // corriger l'heure ne compte pas comme une nouvelle utilisation.
+        if (updated.eventLocation !== avant.eventLocation || updated.eventLat !== avant.eventLat || updated.eventLng !== avant.eventLng) {
+          App._memoriserLieu(App._nomDuLieu(loc, S.createEventData), (S.createEventData||{}).placeLabel, updated.eventLat, updated.eventLng, updated.eventGeoAccuracy);
+        }
         if (supabase) {
           try {
             await supabase.from('kun_com_posts').upsert({ id: updated.id, content: updated }, { onConflict: 'id' });
@@ -535,7 +817,7 @@
         eventLat: typeof (S.createEventData||{}).lat === 'number' ? S.createEventData.lat : null,
         eventLng: typeof (S.createEventData||{}).lng === 'number' ? S.createEventData.lng : null,
         eventGeoAccuracy: (S.createEventData||{}).accuracy || null,
-        eventPlaceName: (S.createEventData||{}).placeName || null,
+        eventPlaceName: nomPosition || null,
         eventPlaceLabel: (S.createEventData||{}).placeLabel || null,
         eventSections: (S.eventSections||[]).slice(),
         assignments: (S.eventAssignments||[]).slice(),
@@ -575,6 +857,7 @@
 
       var allPosts = db(SK.POSTS, []);
       dbSet(SK.POSTS, createdPosts.concat(allPosts));
+      App._memoriserLieu(App._nomDuLieu(loc, dLieu), dLieu.placeLabel, newPost.eventLat, newPost.eventLng, newPost.eventGeoAccuracy);
       // Seule l'occurrence la plus proche notifie les équipes : personne n'a
       // besoin d'être alerté d'un culte prévu dans 8 semaines.
       sendTargetedEventNotifications(newPost);
@@ -1718,7 +2001,8 @@
     // version fraîche du serveur, on y applique UNIQUEMENT notre mutation en
     // valeur absolue (état final voulu, pas un basculement), puis on réécrit —
     // le même schéma que votePoll, généralisé.
-    ecrirePostFrais: async function(postId, mutateur) {
+    // apresServeur(post) : appelé avec la version retenue par le serveur.
+    ecrirePostFrais: async function(postId, mutateur, apresServeur) {
       var posts = db(SK.POSTS, []);
       var local = posts.find(function(p){ return p.id === postId; });
       if (!local) return null;
@@ -1742,6 +2026,7 @@
           var posts2 = db(SK.POSTS, []);
           var i2 = posts2.findIndex(function(p){ return p.id === postId; });
           if (i2 !== -1) { posts2[i2] = parsePostItem({ id: postId, content: contenuServeur }) || posts2[i2]; dbSet(SK.POSTS, posts2); }
+          if (apresServeur && i2 !== -1) apresServeur(posts2[i2]);
         });
       }
       return cible;
@@ -2536,6 +2821,7 @@
       S.cropperOpen=false; S.membersListOpen=false; S.repostPostId=null; S.aboutEventPickerOpen=false;
       S.deleteAccountOpen=false; S.bulkDeleteConfirmOpen=false; S.viewersPostId=null; S.indisposOpen=false; S.declinerEvId=null;
       S.storageStatsOpen=false; S.dmOpen=false; S.dmWithUserId=null; S.boiteOpen=false; S.tableauOpen=false; S.assignManagerId=null; S.viewerImage=null;
+      S.preparationId=null; S.prepForm=null; S.lieuxOuverts=false;
       // Quitter un écran via la barre détruit proprement ce qui y vivait :
       // l'instance Cropper (canvas + listeners, sinon détachée du DOM mais
       // vivante) et l'interval de polling de la messagerie (sinon orphelin à

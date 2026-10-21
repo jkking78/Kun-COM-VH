@@ -209,6 +209,27 @@ sur l'écran d'accueil (iOS 16.4 ou plus récent).
    vérification automatique du jeton, comme avant).
 3. **Déployer le client v159.**
 
+## Migration 11 — lieux enregistrés et plan de préparation (v161)
+
+- **Lieux enregistrés** (`kun_com_lieux`) : chaque lieu retenu pour un
+  événement est mémorisé par la fonction `kc_memoriser_lieu` (responsables et
+  Admin), puis proposé à la saisie. Un lieu par nom (sans tenir compte des
+  majuscules) ; un relevé GPS fait sur place remplace un résultat de
+  recherche, jamais l'inverse, et un relevé grossier n'écrase pas un relevé
+  précis. Lecture : membres validés. Suppression : Admin. 30 enregistrements
+  par 10 minutes et par personne.
+- **Plan de préparation** (`content.preparation` d'un événement) : une entrée
+  par pôle, écrite seulement par l'Admin et les responsables de ce pôle.
+  Une copie plus ancienne (version `v` pas plus grande qu'en base) ne
+  remplace jamais le plan enregistré : modifier l'événement n'efface pas le
+  travail des pôles. Le serveur fixe la version, l'heure et l'auteur. Figé
+  une fois l'événement archivé ; 60 tâches et 40 Ko au plus par pôle.
+
+### Ordre de mise en production
+1. **Exécuter `11_lieux_et_preparation.sql`** (sans effet sur le client v160,
+   qui n'envoie ni lieu ni plan).
+2. **Déployer le client v161.**
+
 ## Limites restantes (connues)
 - La **position GPS** d'un pointage est fournie par le téléphone : le serveur
   borne l'heure, mais ne peut pas prouver la présence physique.

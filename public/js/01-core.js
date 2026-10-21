@@ -13,7 +13,8 @@
     SAVED: 'kc_saved',
     LIKED_COMMENTS: 'kc_liked_comments',
     SECTION_SEEN: 'kc_section_seen',
-    DMS: 'kc_dms'
+    DMS: 'kc_dms',
+    LIEUX: 'kc_lieux'
   };
 
   var DB_CACHE = {};
@@ -104,6 +105,7 @@
       if (p[k] && !/^([01]\d|2[0-3]):[0-5]\d$/.test(String(p[k]))) p[k] = '';
     });
     if (p.eventDate && !/^\d{4}-\d{2}-\d{2}$/.test(String(p.eventDate))) p.eventDate = null;
+    if (p.preparation !== undefined) p.preparation = assainirPreparation(p.preparation);
     if (Array.isArray(p.comments)) {
       p.comments.forEach(function(c){ assainirAuteur(c, ['avatarColor'], ['avatar_url', 'imageUrl']); });
     }
@@ -2110,7 +2112,10 @@
     trash:    '<path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>',
     plus:     '<path d="M12 5v14M5 12h14"/>',
     x:        '<path d="M18 6L6 18M6 6l12 12"/>',
-    layers:   '<path d="M12 2l10 5-10 5L2 7l10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/>'
+    layers:   '<path d="M12 2l10 5-10 5L2 7l10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/>',
+    locate:   '<circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5"/><path d="M12 1v4M12 19v4M1 12h4M19 12h4"/>',
+    circle:   '<circle cx="12" cy="12" r="9"/>',
+    clipboard:'<rect x="5" y="4" width="14" height="18" rx="2"/><path d="M9 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1"/><path d="M9 12l2 2 4-4M9 18h6"/>'
   };
 
   // Champ de saisie : UN seul style dans toute l'app, celui de la connexion
@@ -2278,6 +2283,187 @@
         { enableHighAccuracy: highAccuracy !== false, timeout: timeoutMs || 12000, maximumAge: maxAgeMs || 0 }
       );
     });
+  }
+
+  // Relevé précis de la position, pour situer un lieu quand on y est (bouton
+  // « Utiliser ma position actuelle » du formulaire d'événement). Le premier
+  // relevé d'un téléphone est souvent grossier : on écoute le GPS quelques
+  // secondes et on garde le meilleur, en s'arrêtant dès qu'il est à 15 m près.
+  function releverPositionPrecise(dureeMaxMs) {
+    return new Promise(function(resolve) {
+      if (!navigator || !navigator.geolocation) { resolve({ available: false, reason: 'unsupported' }); return; }
+      var meilleur = null, fini = false, ident = null;
+      var terminer = function(echec) {
+        if (fini) return;
+        fini = true;
+        clearTimeout(minuterie);
+        if (ident !== null) { try { navigator.geolocation.clearWatch(ident); } catch(e) {} }
+        if (!meilleur) { resolve(echec || { available: false, reason: 'timeout' }); return; }
+        if (!isInIvoryCoast(meilleur.lat, meilleur.lng)) { resolve(Object.assign({ available: false, reason: 'outside_country' }, meilleur)); return; }
+        resolve(Object.assign({ available: true }, meilleur));
+      };
+      var minuterie = setTimeout(function(){ terminer(); }, dureeMaxMs || 12000);
+      ident = navigator.geolocation.watchPosition(function(pos) {
+        var r = { lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: Math.round(pos.coords.accuracy || 0), at: Date.now() };
+        if (!meilleur || r.accuracy < meilleur.accuracy) meilleur = r;
+        if (meilleur.accuracy <= 15) terminer();
+      }, function(err) {
+        // Un échec après un premier relevé n'efface pas ce relevé.
+        if (err && err.code === 1) terminer({ available: false, reason: 'denied' });
+        else if (!meilleur && err && err.code !== 3) terminer({ available: false, reason: 'unavailable' });
+      }, { enableHighAccuracy: true, timeout: dureeMaxMs || 12000, maximumAge: 0 });
+    });
+  }
+
+  // ============================================================
+  // LIEUX ENREGISTRÉS (migration 11)
+  // ============================================================
+  // Chaque lieu retenu pour un événement est mémorisé dans la table partagée
+  // kun_com_lieux, puis proposé à la saisie, même loin du lieu. Copie locale
+  // dans SK.LIEUX pour proposer aussi hors connexion.
+  function assainirLieu(l) {
+    if (!l || typeof l !== 'object') return null;
+    var lat = Number(l.lat), lng = Number(l.lng);
+    var nom = String(l.nom || '').replace(/\s+/g, ' ').trim().slice(0, 80);
+    if (!nom || !isFinite(lat) || !isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+    var prec = Number(l.precision_m);
+    return {
+      id: String(l.id || ('local:' + nom.toLowerCase())),
+      nom: nom,
+      adresse: String(l.adresse || '').slice(0, 200),
+      lat: lat, lng: lng,
+      precision_m: (l.precision_m === null || l.precision_m === undefined || !isFinite(prec)) ? null : Math.round(prec),
+      utilisations: Math.max(0, parseInt(l.utilisations, 10) || 0)
+    };
+  }
+  // Mots significatifs d'une saisie : « l'Église VH » → ['eglise', 'vh'].
+  // Les articles (l', la, de…) sont ignorés pour que « l'église » trouve
+  // « Église Vase d'Honneur ».
+  var MOTS_VIDES = ['l', 'd', 'le', 'la', 'les', 'de', 'des', 'du', 'un', 'une', 'au', 'aux', 'et', 'a'];
+  function motsDe(s) {
+    return String(s || '').toLowerCase()
+      .normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .split(/[^a-z0-9]+/).filter(Boolean);
+  }
+  function lieuxCorrespondants(saisie, lieux, max) {
+    var liste = (lieux || []).map(assainirLieu).filter(Boolean);
+    var mots = motsDe(saisie);
+    var utiles = mots.filter(function(m){ return MOTS_VIDES.indexOf(m) === -1; });
+    if (!utiles.length) utiles = mots.filter(function(m){ return m.length > 1; });
+    var tri = function(a, b){ return b.utilisations - a.utilisations || a.nom.localeCompare(b.nom, 'fr'); };
+    if (!utiles.length) return mots.length ? [] : liste.sort(tri).slice(0, max || 6);
+    return liste.map(function(l) {
+      var motsNom = motsDe(l.nom), motsTout = motsNom.concat(motsDe(l.adresse));
+      var ok = utiles.every(function(m){ return motsTout.some(function(w){ return w.indexOf(m) === 0; }); });
+      if (!ok) return null;
+      // Le nom avant l'adresse : « eglise » trouve d'abord « Église VH ».
+      var dansNom = utiles.every(function(m){ return motsNom.some(function(w){ return w.indexOf(m) === 0; }); });
+      return { l: l, rang: dansNom ? 0 : 1 };
+    }).filter(Boolean).sort(function(a, b){ return a.rang - b.rang || tri(a.l, b.l); })
+      .slice(0, max || 6).map(function(x){ return x.l; });
+  }
+  // Ajoute ou met à jour un lieu dans la copie locale (même règle de nom que
+  // le serveur : sans tenir compte des majuscules ni des espaces).
+  function memoriserLieuLocal(lieu) {
+    var l = assainirLieu(lieu);
+    if (!l) return;
+    var cle = l.nom.toLowerCase();
+    var liste = db(SK.LIEUX, []).filter(function(x){ return x && String(x.nom || '').toLowerCase().trim() !== cle; });
+    var ancien = db(SK.LIEUX, []).find(function(x){ return x && String(x.nom || '').toLowerCase().trim() === cle; });
+    if (ancien) { l.id = ancien.id || l.id; l.utilisations = (ancien.utilisations || 0) + 1; }
+    else l.utilisations = Math.max(1, l.utilisations);
+    liste.unshift(l);
+    dbSet(SK.LIEUX, liste.slice(0, 300));
+  }
+
+  // ============================================================
+  // PLAN DE PRÉPARATION D'UN ÉVÉNEMENT (migration 11)
+  // ============================================================
+  // ev.preparation = { <pôle>: { taches: [{ id, titre, etapes: [{ id, titre,
+  // date, fait, faitLe }] }], v, maj_le, maj_par } }. Le responsable du pôle
+  // et l'Admin écrivent l'entrée du pôle ; tout le monde la lit.
+  var PREP_MAX_TACHES = 60, PREP_MAX_ETAPES = 30;
+  function assainirPreparation(prep) {
+    var res = {};
+    if (!prep || typeof prep !== 'object' || Array.isArray(prep)) return res;
+    var texte = function(v, max){ return typeof v === 'string' ? v.replace(/\s+/g, ' ').trim().slice(0, max) : ''; };
+    var ident = function(v){ return typeof v === 'string' && /^[A-Za-z0-9_-]{1,40}$/.test(v) ? v : ''; };
+    SECTIONS.forEach(function(sec) {
+      var e = prep[sec.id];
+      if (!e || typeof e !== 'object' || !Array.isArray(e.taches)) return;
+      res[sec.id] = {
+        taches: e.taches.slice(0, PREP_MAX_TACHES).map(function(t) {
+          if (!t || typeof t !== 'object') return null;
+          var id = ident(t.id), titre = texte(t.titre, 120);
+          if (!id || !titre) return null;
+          return {
+            id: id, titre: titre,
+            etapes: (Array.isArray(t.etapes) ? t.etapes : []).slice(0, PREP_MAX_ETAPES).map(function(et) {
+              if (!et || typeof et !== 'object') return null;
+              var eid = ident(et.id), etitre = texte(et.titre, 160);
+              if (!eid || !etitre) return null;
+              return {
+                id: eid, titre: etitre,
+                date: (typeof et.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(et.date)) ? et.date : '',
+                fait: et.fait === true,
+                faitLe: typeof et.faitLe === 'number' ? et.faitLe : null
+              };
+            }).filter(Boolean)
+          };
+        }).filter(Boolean),
+        v: typeof e.v === 'number' ? e.v : 0,
+        maj_le: typeof e.maj_le === 'number' ? e.maj_le : null,
+        maj_par: typeof e.maj_par === 'string' ? e.maj_par : null
+      };
+    });
+    return res;
+  }
+  // Date du jour en heure LOCALE (toISOString passerait en UTC).
+  function isoLocal(d) {
+    d = d || new Date();
+    return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+  }
+  // Étapes d'un plan (d'un pôle ou de tous), à plat, dans l'ordre des dates.
+  function etapesPreparation(prep, poleId) {
+    var out = [];
+    Object.keys(prep || {}).forEach(function(pid) {
+      if (poleId && pid !== poleId) return;
+      ((prep[pid] || {}).taches || []).forEach(function(t) {
+        (t.etapes || []).forEach(function(e) { out.push({ pole: pid, tache: t, etape: e }); });
+      });
+    });
+    return out.sort(function(a, b) {
+      return (a.etape.date || '9999') < (b.etape.date || '9999') ? -1 : (a.etape.date || '9999') > (b.etape.date || '9999') ? 1 : 0;
+    });
+  }
+  // Bilan d'un plan : étapes faites, en retard, prochaine échéance.
+  function statsPreparation(prep, poleId) {
+    var auj = isoLocal();
+    var etapes = etapesPreparation(prep, poleId);
+    var taches = 0;
+    Object.keys(prep || {}).forEach(function(pid){ if (!poleId || pid === poleId) taches += ((prep[pid] || {}).taches || []).length; });
+    var restantes = etapes.filter(function(x){ return !x.etape.fait; });
+    return {
+      taches: taches,
+      total: etapes.length,
+      faites: etapes.length - restantes.length,
+      enRetard: restantes.filter(function(x){ return x.etape.date && x.etape.date < auj; }).length,
+      prochaine: restantes.filter(function(x){ return x.etape.date && x.etape.date >= auj; })[0] || null
+    };
+  }
+  // Qui peut écrire le plan d'un pôle : l'Admin, ou un responsable de ce pôle
+  // (même règle que le serveur, kc_peut_preparer).
+  function peutPreparer(u, poleId) {
+    if (isGrandResponsable(u)) return true;
+    return isSectionResponsable(u) && getUserSections(u).indexOf(poleId) !== -1;
+  }
+  // Étapes d'une tâche dans l'ordre des dates (sans date : à la fin).
+  function trierEtapes(etapes) {
+    return etapes.sort(function(a, b){ return (a.date || '9999') < (b.date || '9999') ? -1 : (a.date || '9999') > (b.date || '9999') ? 1 : 0; });
+  }
+  // Identifiant court pour une tâche ou une étape.
+  function idPrep(prefixe) {
+    return prefixe + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   }
 
   // ============================================================

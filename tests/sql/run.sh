@@ -44,3 +44,6 @@ lancer tests/sql/test_09_performances_rls.sql migration/06_durcissement_ecriture
 # La 10 durcit sans retirer de droit : test_08 doit encore passer par-dessus.
 lancer tests/sql/test_08_temps_reel.sql migration/03_security_questions.sql migration/06_durcissement_ecritures.sql migration/07_convocations_et_validation.sql migration/08_temps_reel.sql migration/09_performances_rls.sql migration/10_securite.sql
 lancer tests/sql/test_10_securite.sql migration/03_security_questions.sql migration/06_durcissement_ecritures.sql migration/07_convocations_et_validation.sql migration/08_temps_reel.sql migration/09_performances_rls.sql migration/10_securite.sql
+# La 11 étend la fusion collaborative : test_08 doit encore passer par-dessus.
+lancer tests/sql/test_08_temps_reel.sql migration/03_security_questions.sql migration/06_durcissement_ecritures.sql migration/07_convocations_et_validation.sql migration/08_temps_reel.sql migration/09_performances_rls.sql migration/10_securite.sql migration/11_lieux_et_preparation.sql
+lancer tests/sql/test_11_lieux_preparation.sql migration/03_security_questions.sql migration/06_durcissement_ecritures.sql migration/07_convocations_et_validation.sql migration/08_temps_reel.sql migration/09_performances_rls.sql migration/10_securite.sql migration/11_lieux_et_preparation.sql
