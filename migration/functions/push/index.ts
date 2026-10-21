@@ -12,11 +12,13 @@
 //       au plus 30 par minute et par expéditeur. Seuls les responsables
 //       passent outre les préférences (convocations).
 //   { action: "rappels" }                      → rappels dus (veille, 2 h avant,
-//       oubli de pointage, échéance de tâche). Appelée toutes les 10 min par
+//       oubli de pointage, échéance de tâche ; étapes du plan de préparation,
+//       la veille et en cas de retard, aux responsables du pôle). Appelée toutes les 10 min par
 //       pg_cron (08b). Sans effet si on la rappelle : chaque rappel n'est envoyé
 //       qu'une fois (journal kun_com_push_envois).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { envoyer, genererClesVapid, type Abonnement, type ClesVapid } from "./webpush.ts";
+import { destinataires, etapesDues, message } from "./etapes.ts";
 
 // Contact VAPID : l'adresse de l'application (une URL https est admise).
 const CONTACT = "https://kun-com-vh.vercel.app";
@@ -173,9 +175,39 @@ async function rappels(admin: Admin): Promise<Record<string, number>> {
     if (!accepte(prefsCache[r.userId], "rappels")) continue;
     envoyes += await envoyerA(admin, cles, r.userId, { titre: r.titre, corps: r.corps, cible: r.cible, tag: r.cle });
   }
+  // Étapes du plan de préparation : un seul message par événement, pôle et
+  // responsable, qui ne cite que les étapes pas encore rappelées.
+  const groupes = etapesDues(evs.data ?? [], maintenant, (ev) => horodatage(String(ev.eventDate ?? ""), String(ev.eventStart ?? "")));
+  let etapesEnvoyees = 0;
+  if (groupes.length) {
+    const comptes = await admin.auth.admin.listUsers({ perPage: 1000 });
+    const idsResp = (comptes.data?.users ?? []).filter((u: Admin) => u.app_metadata?.role === "RESP_SECTION").map((u: Admin) => u.id);
+    const fiches = idsResp.length ? await admin.from("kun_com_profiles").select("id, content").in("id", idsResp) : { data: [] };
+    const responsables = (fiches.data ?? []).map((f: Admin) => {
+      const c = f.content ?? {};
+      const secs = Array.isArray(c.sections) ? c.sections.map(String) : [];
+      if (typeof c.section_id === "string") secs.push(c.section_id);
+      return { id: String(f.id), sections: secs };
+    });
+    for (const g of groupes) {
+      for (const uid of destinataires(g, responsables)) {
+        const nouvelles: typeof g.etapes = [];
+        for (const e of g.etapes) {
+          const ins = await admin.from("kun_com_push_envois").insert({ cle: e.cle + ":" + uid });
+          if (!ins.error) nouvelles.push(e);
+        }
+        if (!nouvelles.length) { deja++; continue; }
+        if (!(uid in prefsCache)) prefsCache[uid] = (await profil(admin, uid))?.preferencesNotif as Record<string, boolean> | undefined;
+        if (!accepte(prefsCache[uid], "rappels")) continue;
+        const { titre, corps } = message(g, nouvelles, POLES[g.pole] ?? g.pole);
+        etapesEnvoyees += await envoyerA(admin, cles, uid, { titre, corps, cible: "prep:" + g.evId, tag: "prep:" + g.evId + ":" + g.genre });
+      }
+    }
+  }
+
   // Ménage du journal (au-delà de 30 jours).
   await admin.from("kun_com_push_envois").delete().lt("envoye_le", new Date(maintenant - 30 * 24 * H).toISOString());
-  return { candidats: aEnvoyer.length, envoyes, deja };
+  return { candidats: aEnvoyer.length, envoyes, deja, etapes: groupes.length, etapesEnvoyees };
 }
 
 Deno.serve(async (req) => {

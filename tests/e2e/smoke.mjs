@@ -593,6 +593,10 @@ try {
     // L'action est refusée même appelée directement.
     await page.evaluate("App.prepBasculer('cadrage', 't1', 'e1')");
     assert.equal(await page.evaluate(() => db(SK.POSTS, []).find((p) => p.id === 'ev_mission').preparation.cadrage.taches[0].etapes[0].fait), false);
+    // Toucher le rappel d'une étape ouvre le plan de l'événement.
+    await page.evaluate("App.fermerPreparation(); App.tab('home'); App.ouvrirCible('prep:ev_mission')");
+    assert.ok(await page.$('#preparation'), 'le rappel ouvre le plan');
+    assert.equal(await page.evaluate(() => S.tab), 'planning');
     assert.deepEqual(erreurs, []);
     await contexte.close();
   });
