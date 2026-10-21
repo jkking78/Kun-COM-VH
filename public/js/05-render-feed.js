@@ -101,6 +101,7 @@
     if (S.postOptionsOpen) modals += renderPostOptionsModal(posts.find(function(p){return p.id===S.selectedPostId;}));
     if (S.createEventOpen) modals += renderCreateEventModal() + renderEventSaveChoice();
     if (S.lieuxOuverts) modals += renderLieuxPanel();
+    if (S.preparationId) modals += renderPreparation();
     if (S.editPostId) modals += renderEditPostModal();
     if (S.createOpen) modals += renderCreateModal(u);
     if (S.optionsOpen && S.optionsPost) modals += renderOptionsModal();

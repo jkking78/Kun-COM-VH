@@ -2457,6 +2457,10 @@
     if (isGrandResponsable(u)) return true;
     return isSectionResponsable(u) && getUserSections(u).indexOf(poleId) !== -1;
   }
+  // Étapes d'une tâche dans l'ordre des dates (sans date : à la fin).
+  function trierEtapes(etapes) {
+    return etapes.sort(function(a, b){ return (a.date || '9999') < (b.date || '9999') ? -1 : (a.date || '9999') > (b.date || '9999') ? 1 : 0; });
+  }
   // Identifiant court pour une tâche ou une étape.
   function idPrep(prefixe) {
     return prefixe + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);

@@ -304,6 +304,179 @@
       if (loc) return loc;
       return (d && typeof d.accuracy !== 'number') ? (d.placeName || '') : '';
     },
+    // ---- Plan de préparation d'un événement (migration 11) ----
+    // Chaque pôle a son plan : des tâches, découpées en étapes datées à faire
+    // avant l'événement. Le responsable du pôle et l'Admin l'écrivent, tout le
+    // monde le consulte depuis la fiche de l'événement (Planning).
+    ouvrirPreparation: function(evId) {
+      if (!db(SK.POSTS, []).some(function(p){ return p.id === evId; })) { toast('Événement introuvable.', 'error'); return; }
+      S.preparationId = evId; S.prepForm = null; S.prepPolesEnPlus = [];
+      S.prepSaisie = ''; S.prepSaisieDate = '';
+      if (S.prepVue !== 'dates') S.prepVue = 'poles';
+      render();
+    },
+    fermerPreparation: function() { S.preparationId = null; S.prepForm = null; render(); },
+    prepChoisirVue: function(v) { S.prepVue = v === 'dates' ? 'dates' : 'poles'; S.prepForm = null; render(); },
+    prepAjouterPole: function(pole) {
+      if (!peutPreparer(S.user, pole)) return;
+      if ((S.prepPolesEnPlus || []).indexOf(pole) === -1) S.prepPolesEnPlus = (S.prepPolesEnPlus || []).concat([pole]);
+      App.prepOuvrirForm('tache', pole);
+    },
+    // type : 'tache' (nouvelle), 'etape' (nouvelle, dans une tâche),
+    // 'modifTache', 'modifEtape'.
+    prepOuvrirForm: function(type, pole, tacheId, etapeId) {
+      if (!peutPreparer(S.user, pole)) return;
+      S.prepForm = { type: type, pole: pole, tache: tacheId || null, etape: etapeId || null };
+      S.prepSaisie = ''; S.prepSaisieDate = '';
+      var ev = db(SK.POSTS, []).find(function(p){ return p.id === S.preparationId; });
+      var e = ev && assainirPreparation(ev.preparation)[pole];
+      var t = e && e.taches.find(function(x){ return x.id === tacheId; });
+      if (type === 'modifTache' && t) S.prepSaisie = t.titre;
+      if (type === 'modifEtape' && t) {
+        var et = t.etapes.find(function(x){ return x.id === etapeId; });
+        if (et) { S.prepSaisie = et.titre; S.prepSaisieDate = et.date; }
+      }
+      render();
+      setTimeout(function() {
+        var el = document.getElementById('prepTitre');
+        if (el) { el.focus(); try { el.setSelectionRange(el.value.length, el.value.length); } catch(e) {} }
+      }, 0);
+    },
+    prepFermerForm: function() { S.prepForm = null; S.prepSaisie = ''; S.prepSaisieDate = ''; render(); },
+    // Enregistre le formulaire ouvert. titreImpose : tâche reprise d'une assignation.
+    prepValider: function(titreImpose) {
+      var f = S.prepForm;
+      var ev = f && db(SK.POSTS, []).find(function(p){ return p.id === S.preparationId; });
+      if (!ev) return;
+      var champ = document.getElementById('prepTitre');
+      var titre = String(titreImpose || (champ ? champ.value : S.prepSaisie) || '').replace(/\s+/g, ' ').trim();
+      if (!titre) { toast(f.type === 'tache' || f.type === 'modifTache' ? 'Indique la tâche.' : 'Indique l\'étape.', 'error'); return; }
+      var champDate = document.getElementById('prepDate');
+      var date = champDate ? champDate.value : (S.prepSaisieDate || '');
+      if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) date = '';
+      if (date && ev.eventDate && date > ev.eventDate) {
+        toast('Choisis une date au plus tard le jour de l\'événement.', 'error');
+        return;
+      }
+      var ok;
+      if (f.type === 'tache') {
+        var idT = idPrep('t');
+        titre = titre.slice(0, 120);
+        ok = App._ecrirePreparation(ev.id, f.pole, function(taches) {
+          if (taches.some(function(x){ return x.id === idT; })) return;
+          if (taches.length >= PREP_MAX_TACHES) return false;
+          taches.push({ id: idT, titre: titre, etapes: [] });
+        });
+        // Tâche créée : on enchaîne sur ses étapes.
+        if (ok) { S.prepForm = { type: 'etape', pole: f.pole, tache: idT }; toast('Tâche ajoutée. Ajoute maintenant ses étapes.', 'success'); }
+      } else if (f.type === 'etape') {
+        var idE = idPrep('e');
+        ok = App._ecrirePreparation(ev.id, f.pole, function(taches) {
+          var t = taches.find(function(x){ return x.id === f.tache; });
+          if (!t) return false;
+          if (t.etapes.some(function(x){ return x.id === idE; })) return;
+          if (t.etapes.length >= PREP_MAX_ETAPES) return false;
+          t.etapes.push({ id: idE, titre: titre.slice(0, 160), date: date, fait: false, faitLe: null });
+          trierEtapes(t.etapes);
+        });
+        // Le formulaire reste ouvert pour l'étape suivante.
+      } else if (f.type === 'modifTache') {
+        ok = App._ecrirePreparation(ev.id, f.pole, function(taches) {
+          var t = taches.find(function(x){ return x.id === f.tache; });
+          if (!t) return false;
+          t.titre = titre.slice(0, 120);
+        });
+        if (ok) S.prepForm = null;
+      } else if (f.type === 'modifEtape') {
+        ok = App._ecrirePreparation(ev.id, f.pole, function(taches) {
+          var t = taches.find(function(x){ return x.id === f.tache; });
+          var e = t && t.etapes.find(function(x){ return x.id === f.etape; });
+          if (!e) return false;
+          e.titre = titre.slice(0, 160); e.date = date;
+          trierEtapes(t.etapes);
+        });
+        if (ok) S.prepForm = null;
+      }
+      if (ok) { S.prepSaisie = ''; S.prepSaisieDate = ''; render(); App._focusPrep(); }
+      else if (ok === false) toast('Modification impossible (limite atteinte ou élément supprimé).', 'error');
+    },
+    _focusPrep: function() {
+      setTimeout(function(){ var el = document.getElementById('prepTitre'); if (el) el.focus(); }, 0);
+    },
+    // Supprime la tâche ou l'étape du formulaire de modification ouvert.
+    prepSupprimer: function() {
+      var f = S.prepForm;
+      var ev = f && db(SK.POSTS, []).find(function(p){ return p.id === S.preparationId; });
+      if (!ev) return;
+      var e = assainirPreparation(ev.preparation)[f.pole];
+      var t = e && e.taches.find(function(x){ return x.id === f.tache; });
+      if (!t) return;
+      if (f.type === 'modifTache') {
+        if (!confirm('Supprimer la tâche « ' + t.titre + ' »' + (t.etapes.length ? ' et ses ' + t.etapes.length + ' étape' + (t.etapes.length > 1 ? 's' : '') : '') + ' ?')) return;
+        App._ecrirePreparation(ev.id, f.pole, function(taches) {
+          var i = taches.findIndex(function(x){ return x.id === f.tache; });
+          if (i !== -1) taches.splice(i, 1);
+        });
+      } else if (f.type === 'modifEtape') {
+        if (!confirm('Supprimer cette étape ?')) return;
+        App._ecrirePreparation(ev.id, f.pole, function(taches) {
+          var tt = taches.find(function(x){ return x.id === f.tache; });
+          if (tt) tt.etapes = tt.etapes.filter(function(x){ return x.id !== f.etape; });
+        });
+      } else return;
+      S.prepForm = null; S.prepSaisie = ''; S.prepSaisieDate = '';
+      render();
+    },
+    // Coche ou décoche une étape (valeur voulue fixée d'avance : rejouée sur
+    // la version fraîche du serveur, elle ne s'inverse pas deux fois).
+    prepBasculer: function(pole, tacheId, etapeId) {
+      var ev = db(SK.POSTS, []).find(function(p){ return p.id === S.preparationId; });
+      var e = ev && assainirPreparation(ev.preparation)[pole];
+      var t = e && e.taches.find(function(x){ return x.id === tacheId; });
+      var et = t && t.etapes.find(function(x){ return x.id === etapeId; });
+      if (!et) return;
+      var fait = !et.fait;
+      App._ecrirePreparation(ev.id, pole, function(taches) {
+        var tt = taches.find(function(x){ return x.id === tacheId; });
+        var ee = tt && tt.etapes.find(function(x){ return x.id === etapeId; });
+        if (!ee) return false;
+        ee.fait = fait; ee.faitLe = fait ? Date.now() : null;
+      });
+      render();
+    },
+    // Applique une modification au plan d'un pôle : d'abord sur la copie
+    // locale (affichage immédiat), puis sur la version fraîche du serveur.
+    // modifier(taches) agit sur une copie et doit pouvoir être rejoué sans
+    // double effet ; il renvoie false si la modification est impossible.
+    _ecrirePreparation: function(evId, pole, modifier) {
+      if (!peutPreparer(S.user, pole)) { toast('Seul le responsable du pôle peut modifier ce plan.', 'error'); return null; }
+      var appliquer = function(ev) {
+        var prep = assainirPreparation(ev.preparation);
+        var e = prep[pole] || { taches: [], v: 0 };
+        var taches = JSON.parse(JSON.stringify(e.taches || []));
+        if (modifier(taches) === false) return false;
+        prep[pole] = { taches: taches, v: (e.v || 0) + 1, maj_le: Date.now(), maj_par: S.user.id };
+        ev.preparation = prep;
+        return prep[pole].v;
+      };
+      var posts = db(SK.POSTS, []);
+      var idx = posts.findIndex(function(p){ return p.id === evId; });
+      if (idx === -1) return false;
+      var copie = Object.assign({}, posts[idx]);
+      if (appliquer(copie) === false) return false;
+      posts[idx] = copie;
+      dbSet(SK.POSTS, posts);
+      var versionEnvoyee = null;
+      App.ecrirePostFrais(evId, function(ev) { versionEnvoyee = appliquer(ev); }, function(retenu) {
+        // Version refusée : quelqu'un a modifié ce plan au même moment.
+        var e = assainirPreparation(retenu.preparation)[pole];
+        if (versionEnvoyee && (!e || e.v < versionEnvoyee)) {
+          toast('Ce plan vient d\'être modifié par quelqu\'un d\'autre : vérifie-le et recommence.', 'info');
+        }
+        if (S.preparationId === evId || S.tab === 'planning') render();
+      });
+      return true;
+    },
     ouvrirLieux: function() { S.lieuxOuverts = true; render(); App.chargerLieux(); },
     fermerLieux: function() { S.lieuxOuverts = false; render(); },
     supprimerLieu: async function(id) {
@@ -1827,7 +2000,8 @@
     // version fraîche du serveur, on y applique UNIQUEMENT notre mutation en
     // valeur absolue (état final voulu, pas un basculement), puis on réécrit —
     // le même schéma que votePoll, généralisé.
-    ecrirePostFrais: async function(postId, mutateur) {
+    // apresServeur(post) : appelé avec la version retenue par le serveur.
+    ecrirePostFrais: async function(postId, mutateur, apresServeur) {
       var posts = db(SK.POSTS, []);
       var local = posts.find(function(p){ return p.id === postId; });
       if (!local) return null;
@@ -1851,6 +2025,7 @@
           var posts2 = db(SK.POSTS, []);
           var i2 = posts2.findIndex(function(p){ return p.id === postId; });
           if (i2 !== -1) { posts2[i2] = parsePostItem({ id: postId, content: contenuServeur }) || posts2[i2]; dbSet(SK.POSTS, posts2); }
+          if (apresServeur && i2 !== -1) apresServeur(posts2[i2]);
         });
       }
       return cible;
@@ -2645,6 +2820,7 @@
       S.cropperOpen=false; S.membersListOpen=false; S.repostPostId=null; S.aboutEventPickerOpen=false;
       S.deleteAccountOpen=false; S.bulkDeleteConfirmOpen=false; S.viewersPostId=null; S.indisposOpen=false; S.declinerEvId=null;
       S.storageStatsOpen=false; S.dmOpen=false; S.dmWithUserId=null; S.boiteOpen=false; S.tableauOpen=false; S.assignManagerId=null; S.viewerImage=null;
+      S.preparationId=null; S.prepForm=null; S.lieuxOuverts=false;
       // Quitter un écran via la barre détruit proprement ce qui y vivait :
       // l'instance Cropper (canvas + listeners, sinon détachée du DOM mais
       // vivante) et l'interval de polling de la messagerie (sinon orphelin à

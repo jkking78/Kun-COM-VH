@@ -417,11 +417,263 @@
       : (ev.eventLocation ? encodeURIComponent(ev.eventLocation + ', Abidjan') : '');
     // Liens discrets (synthèse du design) : l'action principale reste le bouton.
     var lien = 'display:inline-flex;align-items:center;gap:6px;min-height:36px;background:none;color:' + UI.lien + ';border:none;padding:0;font-size:13px;font-weight:700;cursor:pointer;text-decoration:none;';
+    // Plan de préparation : visible de tous dès qu'il existe, proposé aux
+    // responsables de pôle et à l'Admin tant qu'il est vide.
+    var st = statsPreparation(assainirPreparation(ev.preparation));
+    var editeur = SECTIONS.some(function(sec){ return peutPreparer(S.user, sec.id); });
+    var prep = (st.taches || editeur)
+      ? '<button type="button" onclick="App.ouvrirPreparation(\'' + jsArg(ev.id) + '\')" style="' + lien + '">' +
+          ico('clipboard', 14, 'currentColor', 2.2) +
+          (st.total ? 'Préparation · ' + st.faites + '/' + st.total : (st.taches ? 'Préparation' : 'Préparer')) +
+          (st.enRetard ? '<span style="color:var(--bad-ink);">· ' + st.enRetard + ' en retard</span>' : '') +
+        '</button>'
+      : '';
     return '<div style="display:flex;flex-wrap:wrap;gap:4px 18px;margin-bottom:8px;">' +
+      prep +
       '<button type="button" onclick="App.ajouterAgenda(\'' + jsArg(ev.id) + '\')" style="' + lien + '">' +
         '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="12" y1="14" x2="12" y2="18"/><line x1="10" y1="16" x2="14" y2="16"/></svg>Mon agenda</button>' +
       (dest ? '<a href="' + safeUrl('https://www.google.com/maps/dir/?api=1&destination=' + dest) + '" target="_blank" rel="noopener noreferrer" style="' + lien + '">' +
         '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>Itinéraire</a>' : '') +
+    '</div>';
+  }
+
+  // ============================================================
+  // PLAN DE PRÉPARATION D'UN ÉVÉNEMENT (migration 11)
+  // ============================================================
+  // Écran public : chaque pôle y présente ses tâches, découpées en étapes
+  // datées à faire avant l'événement. Le responsable du pôle et l'Admin
+  // ajoutent, modifient et cochent ; les autres membres consultent.
+  function echeancePrep(date, fait, auj) {
+    if (!date) return { txt: 'Sans date', col: 'var(--muted)', bg: 'var(--tile)' };
+    var court = new Date(date + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
+    if (fait) return { txt: court, col: 'var(--muted)', bg: 'var(--tile)' };
+    if (date < auj) return { txt: 'En retard · ' + court, col: 'var(--bad-ink)', bg: 'var(--bad-soft)' };
+    if (date === auj) return { txt: 'Aujourd\'hui', col: 'var(--warn-ink)', bg: 'var(--warn-soft)' };
+    if (date === isoLocal(new Date(Date.now() + 864e5))) return { txt: 'Demain', col: 'var(--accent-ink)', bg: 'var(--accent-soft)' };
+    return { txt: court, col: 'var(--ink2)', bg: 'var(--tile)' };
+  }
+
+  // Case à cocher d'une étape : un bouton pour qui peut modifier le plan.
+  function caseEtapePrep(pole, t, e, modifiable, auj) {
+    var enRetard = !e.fait && e.date && e.date < auj;
+    var icone = e.fait ? ico('check', 22, UI.okPlein, 2.2) : ico('circle', 22, enRetard ? 'var(--bad-ink)' : UI.faint, 2);
+    if (!modifiable) return '<span aria-hidden="true" style="width:44px;height:44px;margin:-10px -6px -10px -12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + icone + '</span>';
+    return '<button type="button" onclick="App.prepBasculer(\'' + jsArg(pole) + '\',\'' + jsArg(t.id) + '\',\'' + jsArg(e.id) + '\')" aria-pressed="' + (e.fait ? 'true' : 'false') + '" aria-label="' + safeHtml((e.fait ? 'Décocher : ' : 'Marquer comme faite : ') + e.titre) + '" style="width:44px;height:44px;margin:-10px -6px -10px -12px;border:none;background:none;padding:0;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;">' + icone + '</button>';
+  }
+
+  // Formulaire en ligne : nouvelle tâche / étape, ou modification.
+  function formulairePrep(ev, f, assignees) {
+    var etape = f.type === 'etape' || f.type === 'modifEtape';
+    var modif = f.type === 'modifTache' || f.type === 'modifEtape';
+    var entree = 'onkeydown="if(event.key===\'Enter\'){event.preventDefault();App.prepValider();}"';
+    var bouton = function(libelle, action, principal, danger) {
+      return '<button type="button" onclick="' + action + '" style="min-height:44px;padding:0 16px;border-radius:999px;border:none;font:inherit;font-size:15px;font-weight:700;cursor:pointer;' +
+        (principal ? 'background:' + UI.accent + ';color:#FFF;' : danger ? 'background:none;color:var(--bad-ink);margin-right:auto;padding:0 4px;' : 'background:var(--card);color:var(--ink);') + '">' + libelle + '</button>';
+    };
+    return '<div id="prepFormulaire" style="background:var(--tile);border-radius:16px;padding:12px;margin-top:10px;display:flex;flex-direction:column;gap:10px;">' +
+      '<label for="prepTitre" style="' + STYLE_LIBELLE + 'margin-bottom:-4px;">' + (etape ? (modif ? 'Étape' : 'Nouvelle étape') : (modif ? 'Tâche' : 'Nouvelle tâche')) + '</label>' +
+      '<input type="text" id="prepTitre" class="kc-champ" maxlength="' + (etape ? 160 : 120) + '" value="' + safeHtml(S.prepSaisie || '') + '" oninput="S.prepSaisie=this.value" ' + entree +
+        ' placeholder="' + (etape ? 'Ex. : Charger les batteries' : 'Ex. : Communication de l\'événement') + '" style="' + styleChamp() + '" />' +
+      (etape
+        ? '<div><label for="prepDate" style="' + STYLE_LIBELLE + '">À faire pour le</label>' +
+            '<input type="date" id="prepDate" class="kc-champ" value="' + safeHtml(S.prepSaisieDate || '') + '"' + (ev.eventDate ? ' max="' + safeHtml(ev.eventDate) + '"' : '') + ' onchange="S.prepSaisieDate=this.value" style="' + styleChamp() + '" /></div>'
+        : '') +
+      // Nouvelle tâche : reprendre une tâche déjà assignée aux membres du pôle.
+      (f.type === 'tache' && assignees.length
+        ? '<div><div style="font-size:12px;font-weight:700;color:var(--muted);margin:0 4px 6px;">Reprendre une tâche assignée</div>' +
+            '<div style="display:flex;flex-wrap:wrap;gap:6px;">' + assignees.map(function(a) {
+              return '<button type="button" onclick="App.prepValider(\'' + jsArg(a) + '\')" style="min-height:36px;padding:0 12px;border-radius:999px;border:1px solid var(--line2);background:var(--card);color:var(--ink);font:inherit;font-size:13px;font-weight:600;cursor:pointer;">' + ico('plus', 13, UI.lien, 2.4) + ' ' + safeHtml(a) + '</button>';
+            }).join('') + '</div></div>'
+        : '') +
+      '<div style="display:flex;gap:8px;justify-content:flex-end;align-items:center;flex-wrap:wrap;">' +
+        (modif ? bouton('Supprimer', 'App.prepSupprimer()', false, true) : '') +
+        bouton(f.type === 'etape' ? 'Terminé' : 'Annuler', 'App.prepFermerForm()') +
+        bouton(modif ? 'Enregistrer' : 'Ajouter', 'App.prepValider()', true) +
+      '</div>' +
+    '</div>';
+  }
+
+  function blocPolePrep(ev, pid, prep, auj) {
+    var e = prep[pid] || { taches: [] };
+    var modifiable = peutPreparer(S.user, pid);
+    var f = S.prepForm && S.prepForm.pole === pid ? S.prepForm : null;
+    var st = statsPreparation(prep, pid);
+    var couleur = secColor(pid);
+    var auteur = e.maj_par ? db(SK.USERS, []).find(function(x){ return x && x.id === e.maj_par; }) : null;
+    var maj = e.maj_le ? 'mis à jour ' + (auteur ? 'par ' + (auteur.prenom || 'un membre') + ' ' : '') + 'il y a ' + timeAgo(e.maj_le).replace('À l\'instant', 'un instant') : '';
+    // Tâches déjà confiées aux membres de ce pôle sur l'événement.
+    var titres = e.taches.map(function(t){ return t.titre.toLowerCase(); });
+    var assignees = [];
+    (ev.assignments || []).forEach(function(a) {
+      if (!a || !a.task || a.sectionId !== pid) return;
+      var t = String(a.task).trim();
+      if (t && titres.indexOf(t.toLowerCase()) === -1 && assignees.indexOf(t) === -1) assignees.push(t);
+    });
+
+    var taches = e.taches.map(function(t) {
+      var faites = t.etapes.filter(function(x){ return x.fait; }).length;
+      var enEdition = f && f.type === 'modifTache' && f.tache === t.id;
+      return '<div style="border-top:1px solid var(--line);padding-top:12px;margin-top:12px;">' +
+        (enEdition ? formulairePrep(ev, f, []) :
+        '<div style="display:flex;align-items:flex-start;gap:8px;">' +
+          (modifiable
+            ? '<button type="button" onclick="App.prepOuvrirForm(\'modifTache\',\'' + jsArg(pid) + '\',\'' + jsArg(t.id) + '\')" style="flex:1;min-width:0;text-align:left;background:none;border:none;padding:0;font:inherit;cursor:pointer;display:flex;align-items:flex-start;gap:6px;">' +
+                '<span style="font-size:15px;font-weight:800;color:var(--ink);line-height:1.3;overflow-wrap:anywhere;">' + safeHtml(t.titre) + '</span>' + ico('pencil', 14, UI.faint) +
+              '</button>'
+            : '<div style="flex:1;min-width:0;font-size:15px;font-weight:800;color:var(--ink);line-height:1.3;overflow-wrap:anywhere;">' + safeHtml(t.titre) + '</div>') +
+          (t.etapes.length ? '<span style="font-size:12px;font-weight:700;color:' + (faites === t.etapes.length ? 'var(--ok-ink)' : 'var(--muted)') + ';flex-shrink:0;">' + faites + '/' + t.etapes.length + '</span>' : '') +
+        '</div>') +
+        '<div style="margin-top:6px;">' +
+          (t.etapes.length ? t.etapes.map(function(et) {
+            if (f && f.type === 'modifEtape' && f.etape === et.id) return formulairePrep(ev, f, []);
+            var ech = echeancePrep(et.date, et.fait, auj);
+            return '<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0 4px;">' +
+              caseEtapePrep(pid, t, et, modifiable, auj) +
+              '<div style="flex:1;min-width:0;">' +
+                (modifiable
+                  ? '<button type="button" onclick="App.prepOuvrirForm(\'modifEtape\',\'' + jsArg(pid) + '\',\'' + jsArg(t.id) + '\',\'' + jsArg(et.id) + '\')" style="display:block;width:100%;text-align:left;background:none;border:none;padding:0;font:inherit;cursor:pointer;">'
+                  : '<div>') +
+                  '<span style="display:block;font-size:14px;line-height:1.35;overflow-wrap:anywhere;color:' + (et.fait ? 'var(--muted)' : 'var(--ink)') + ';' + (et.fait ? 'text-decoration:line-through;' : '') + '">' + safeHtml(et.titre) + '</span>' +
+                  '<span style="display:inline-block;margin-top:4px;font-size:12px;font-weight:700;padding:2px 8px;border-radius:8px;background:' + ech.bg + ';color:' + ech.col + ';">' + safeHtml(ech.txt) + '</span>' +
+                (modifiable ? '</button>' : '</div>') +
+              '</div>' +
+            '</div>';
+          }).join('') : '<div style="font-size:13px;color:var(--muted);padding:4px 0;">Pas encore d\'étape.</div>') +
+          (modifiable && f && f.type === 'etape' && f.tache === t.id ? formulairePrep(ev, f, []) :
+            (modifiable && !(f && (f.type === 'modifTache' && f.tache === t.id))
+              ? '<button type="button" onclick="App.prepOuvrirForm(\'etape\',\'' + jsArg(pid) + '\',\'' + jsArg(t.id) + '\')" style="display:inline-flex;align-items:center;gap:6px;min-height:40px;margin-top:2px;background:none;border:none;padding:0;color:var(--lien);font:inherit;font-size:13px;font-weight:700;cursor:pointer;">' + ico('plus', 14, 'currentColor', 2.4) + 'Ajouter une étape</button>'
+              : '')) +
+        '</div>' +
+      '</div>';
+    }).join('');
+
+    return '<section aria-label="' + safeHtml('Pôle ' + secNom(pid)) + '" style="background:var(--card);border-radius:20px;padding:16px;margin-bottom:12px;">' +
+      '<div style="display:flex;align-items:center;gap:12px;">' +
+        '<span style="width:40px;height:40px;border-radius:20px;background:' + couleur + '1F;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:' + couleur + ';color:color-mix(in srgb, ' + couleur + ', #FFF var(--pole-clair));">' + icoPole(pid, 20, 'currentColor') + '</span>' +
+        '<div style="flex:1;min-width:0;">' +
+          '<div style="font-size:17px;font-weight:800;color:var(--ink);">' + safeHtml(secNom(pid)) + '</div>' +
+          '<div style="font-size:12px;color:var(--muted);line-height:1.35;">' +
+            (st.total ? st.faites + '/' + st.total + ' étape' + (st.total > 1 ? 's' : '') + ' faite' + (st.faites > 1 ? 's' : '') : (e.taches.length ? e.taches.length + ' tâche' + (e.taches.length > 1 ? 's' : '') : 'Rien de prévu pour l\'instant')) +
+            (st.enRetard ? ' · <span style="color:var(--bad-ink);font-weight:700;">' + st.enRetard + ' en retard</span>' : '') +
+            (maj ? ' · ' + safeHtml(maj) : '') +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+      taches +
+      (modifiable
+        ? (f && f.type === 'tache'
+            ? '<div style="border-top:1px solid var(--line);margin-top:12px;">' + formulairePrep(ev, f, assignees) + '</div>'
+            : '<button type="button" onclick="App.prepOuvrirForm(\'tache\',\'' + jsArg(pid) + '\')" style="display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:44px;margin-top:14px;border-radius:999px;border:1.5px dashed var(--line2);background:none;color:var(--lien);font:inherit;font-size:15px;font-weight:700;cursor:pointer;">' + ico('plus', 16, 'currentColor', 2.4) + 'Ajouter une tâche</button>')
+        : '') +
+    '</section>';
+  }
+
+  // Vue « Par date » : toutes les étapes de tous les pôles, dans l'ordre.
+  function vueDatesPrep(prep, auj) {
+    var etapes = etapesPreparation(prep);
+    if (!etapes.length) return '';
+    var groupes = [], courant = null;
+    etapes.forEach(function(x) {
+      var cle = !x.etape.date ? 'sans' : (!x.etape.fait && x.etape.date < auj) ? 'retard' : x.etape.date;
+      var g = groupes.find(function(y){ return y.cle === cle; });
+      if (!g) { g = { cle: cle, items: [] }; groupes.push(g); }
+      g.items.push(x);
+    });
+    var rang = function(c){ return c === 'retard' ? '0' : c === 'sans' ? '9' : '1' + c; };
+    groupes.sort(function(a, b){ return rang(a.cle) < rang(b.cle) ? -1 : 1; });
+    return groupes.map(function(g) {
+      var titre = g.cle === 'retard' ? 'En retard' : g.cle === 'sans' ? 'Sans date'
+        : g.cle === auj ? 'Aujourd\'hui'
+        : (function(){ var l = new Date(g.cle + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }); return l.charAt(0).toUpperCase() + l.slice(1); })();
+      return '<div style="font-size:12px;font-weight:700;color:' + (g.cle === 'retard' ? 'var(--bad-ink)' : UI.muted) + ';margin:16px 4px 8px;">' + safeHtml(titre) + '</div>' +
+        '<div style="background:var(--card);border-radius:20px;padding:4px 16px;">' +
+          g.items.map(function(x, i) {
+            var couleur = secColor(x.pole);
+            return '<div style="display:flex;align-items:flex-start;gap:10px;padding:12px 0 8px;' + (i ? 'border-top:1px solid var(--line);' : '') + '">' +
+              caseEtapePrep(x.pole, x.tache, x.etape, peutPreparer(S.user, x.pole), auj) +
+              '<div style="flex:1;min-width:0;">' +
+                '<div style="font-size:14px;line-height:1.35;overflow-wrap:anywhere;color:' + (x.etape.fait ? 'var(--muted)' : 'var(--ink)') + ';' + (x.etape.fait ? 'text-decoration:line-through;' : '') + '">' + safeHtml(x.etape.titre) + '</div>' +
+                '<div style="font-size:12px;color:var(--muted);margin-top:2px;overflow-wrap:anywhere;">' +
+                  '<span style="font-weight:700;color:' + couleur + ';color:color-mix(in srgb, ' + couleur + ', #FFF var(--pole-clair));">' + safeHtml(secNom(x.pole)) + '</span> · ' + safeHtml(x.tache.titre) +
+                  (g.cle === 'retard' ? ' · ' + safeHtml(echeancePrep(x.etape.date, false, auj).txt.replace('En retard · ', 'prévue ')) : '') +
+                '</div>' +
+              '</div>' +
+            '</div>';
+          }).join('') +
+        '</div>';
+    }).join('');
+  }
+
+  function renderPreparation() {
+    var ev = db(SK.POSTS, []).find(function(p){ return p.id === S.preparationId; });
+    if (!ev) return '';
+    var u = S.user || {};
+    var prep = assainirPreparation(ev.preparation);
+    var auj = isoLocal();
+    var st = statsPreparation(prep);
+
+    // Pôles affichés : ceux de l'événement, ceux qui ont un plan, ceux du
+    // responsable connecté, et ceux que l'Admin vient d'ajouter.
+    var vus = {};
+    (ev.eventSections || []).forEach(function(id){ vus[id] = true; });
+    Object.keys(prep).forEach(function(id){ if (prep[id].taches.length) vus[id] = true; });
+    if (isSectionResponsable(u)) getUserSections(u).forEach(function(id){ vus[id] = true; });
+    (S.prepPolesEnPlus || []).forEach(function(id){ vus[id] = true; });
+    var poles = (ev.eventSections || []).filter(function(id){ return SECTIONS.some(function(x){ return x.id === id; }); })
+      .concat(SECTIONS.map(function(x){ return x.id; }).filter(function(id){ return vus[id] && (ev.eventSections || []).indexOf(id) === -1; }));
+    var autres = isGrandResponsable(u) ? SECTIONS.filter(function(x){ return poles.indexOf(x.id) === -1; }) : [];
+
+    var jours = ev.eventDate ? Math.round((new Date(ev.eventDate + 'T00:00:00') - new Date(auj + 'T00:00:00')) / 864e5) : null;
+    var compte = jours === null ? '' : jours > 1 ? 'J-' + jours : jours === 1 ? 'Demain' : jours === 0 ? 'Aujourd\'hui' : 'Passé';
+    var evDate = ev.eventDate ? new Date(ev.eventDate + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }) : '';
+    var pct = st.total ? Math.round(st.faites / st.total * 100) : 0;
+    var vue = S.prepVue === 'dates' ? 'dates' : 'poles';
+
+    return '<div class="safe-top" id="preparation" style="position:fixed;inset:0;background:' + UI.page + ';z-index:10001;display:flex;flex-direction:column;animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
+      enTetePleinEcran('Préparation', 'App.fermerPreparation()') +
+      '<div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:8px 16px 40px;">' +
+
+        '<div style="background:var(--accent-soft);border:1px solid var(--line2);border-radius:16px;padding:14px;margin-bottom:12px;display:flex;gap:12px;align-items:flex-start;">' +
+          '<div style="flex:1;min-width:0;">' +
+            '<div style="font-size:15px;font-weight:800;color:var(--ink);overflow-wrap:anywhere;">' + safeHtml(ev.eventTitle || 'Événement') + '</div>' +
+            '<div style="font-size:13px;color:var(--muted);margin-top:2px;overflow-wrap:anywhere;">' + safeHtml(evDate) + (ev.eventStart ? ' · ' + safeHtml(ev.eventStart) : '') + (ev.eventLocation ? ' · ' + safeHtml(ev.eventLocation) : '') + '</div>' +
+          '</div>' +
+          (compte ? '<span style="flex-shrink:0;font-size:13px;font-weight:800;color:var(--accent-ink);background:var(--card);border-radius:10px;padding:4px 10px;">' + compte + '</span>' : '') +
+        '</div>' +
+
+        '<div style="background:var(--card);border-radius:20px;padding:16px;margin-bottom:12px;">' +
+          (st.total
+            ? '<div style="display:flex;align-items:baseline;gap:8px;">' +
+                '<span style="font-size:28px;font-weight:800;color:var(--ink);letter-spacing:-0.5px;">' + st.faites + '<span style="color:var(--faint);font-size:20px;">/' + st.total + '</span></span>' +
+                '<span style="font-size:14px;color:var(--muted);">étape' + (st.total > 1 ? 's' : '') + ' faite' + (st.faites > 1 ? 's' : '') + '</span>' +
+                (st.enRetard ? '<span style="margin-left:auto;font-size:13px;font-weight:700;color:var(--bad-ink);background:var(--bad-soft);border-radius:8px;padding:2px 8px;">' + st.enRetard + ' en retard</span>' : '') +
+              '</div>' +
+              '<div role="progressbar" aria-label="Avancement de la préparation" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + pct + '" style="height:8px;border-radius:4px;background:var(--tile);margin:10px 0;overflow:hidden;">' +
+                '<div style="height:100%;width:' + pct + '%;background:' + UI.okPlein + ';border-radius:4px;"></div>' +
+              '</div>' +
+              (st.prochaine
+                ? '<div style="font-size:13px;color:var(--ink2);line-height:1.4;overflow-wrap:anywhere;"><strong>Prochaine étape :</strong> ' + safeHtml(st.prochaine.etape.titre) + ' · ' + safeHtml(echeancePrep(st.prochaine.etape.date, false, auj).txt) + ' · ' + safeHtml(secNom(st.prochaine.pole)) + '</div>'
+                : (st.faites === st.total ? '<div style="font-size:13px;font-weight:700;color:var(--ok-ink);">Tout est prêt.</div>' : ''))
+            : '<div style="font-size:15px;font-weight:700;color:var(--ink);">Aucune étape pour l\'instant</div>' +
+              '<div style="font-size:13px;color:var(--muted);line-height:1.45;margin-top:4px;">Chaque responsable de pôle inscrit ici ses tâches, puis les étapes à faire, date par date, avant l\'événement. Tout le monde peut suivre l\'avancement.</div>') +
+        '</div>' +
+
+        (st.total ? '<div style="margin-bottom:12px;">' + renderSegmented([
+          { label: 'Par pôle', action: "App.prepChoisirVue('poles')", active: vue === 'poles' },
+          { label: 'Par date', action: "App.prepChoisirVue('dates')", active: vue === 'dates' }
+        ]) + '</div>' : '') +
+
+        (vue === 'dates' && st.total
+          ? vueDatesPrep(prep, auj)
+          : poles.map(function(pid){ return blocPolePrep(ev, pid, prep, auj); }).join('') +
+            (!poles.length ? '<div style="font-size:13px;color:var(--muted);text-align:center;padding:12px;">Aucun pôle n\'est encore concerné par cet événement.</div>' : '') +
+            (autres.length
+              ? '<div style="font-size:12px;font-weight:700;color:var(--muted);margin:16px 4px 8px;">Préparer un autre pôle</div>' +
+                '<div style="display:flex;flex-wrap:wrap;gap:6px;">' + autres.map(function(x) {
+                  return '<button type="button" onclick="App.prepAjouterPole(\'' + jsArg(x.id) + '\')" style="display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:0 12px;border-radius:999px;border:1px solid var(--line2);background:var(--card);color:var(--ink);font:inherit;font-size:13px;font-weight:600;cursor:pointer;">' + icoPole(x.id, 14) + safeHtml(x.nom) + '</button>';
+                }).join('') + '</div>'
+              : '')) +
+      '</div>' +
     '</div>';
   }
 
