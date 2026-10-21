@@ -1,4 +1,4 @@
-// KUN COM VH — Partie 2/8 : Médias (compression image/vidéo, upload/suppression Storage, vues)
+// KUN COM VH — Partie 2 : Médias (compression image/vidéo, upload/suppression Storage, vues)
 
   'use strict';
   // Helper for image compression to avoid LocalStorage QuotaExceededError

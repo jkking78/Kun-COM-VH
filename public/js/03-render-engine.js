@@ -1,4 +1,4 @@
-// KUN COM VH — Partie 3/8 : Toast, icônes SVG, moteur de rendu (render + morphdom)
+// KUN COM VH — Partie 3 : Toast, icônes SVG, moteur de rendu (render + morphdom)
 
   'use strict';
   // TOAST — Non-bloquant, par injection DOM directe (pas re-render)

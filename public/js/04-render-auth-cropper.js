@@ -1,4 +1,4 @@
-// KUN COM VH — Partie 4/8 : Écrans d'authentification, recadrage photo, liste des membres
+// KUN COM VH — Partie 4 : Écrans d'authentification, recadrage photo, liste des membres
 
   'use strict';
   // ============================================================
