@@ -54,7 +54,7 @@ test('aucun code d\'accès en clair dans le client', () => {
 });
 
 test('les fonctions Vercel se chargent', async () => {
-  for (const f of ['api/og.js', 'api/p/[id].js', 'api/p-image/[id].js']) {
+  for (const f of ['api/og.js', 'api/p.js', 'api/p-image.js']) {
     const mod = await import(join(RACINE, f));
     assert.equal(typeof (mod.default || mod), 'function', f);
   }
