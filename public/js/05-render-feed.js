@@ -215,7 +215,7 @@
           renderCloche() +
           (u.avatar_url
             ? '<button onclick="App.tab(\'profile\')" style="width:30px;height:30px;border-radius:' + UI.pill + ';border:none;cursor:pointer;padding:0;overflow:hidden;flex-shrink:0;"><img src="' + safeUrl(u.avatar_url) + '" style="width:100%;height:100%;object-fit:cover;" /></button>'
-            : '<button onclick="App.tab(\'profile\')" style="width:30px;height:30px;border-radius:' + UI.pill + ';background:' + (u.avatar_color||UI.accent) + ';border:none;cursor:pointer;color:#FFF;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;">' + initial + '</button>') +
+            : '<button onclick="App.tab(\'profile\')" style="width:30px;height:30px;border-radius:' + UI.pill + ';background:' + couleurSure(u.avatar_color, UI.accent) + ';border:none;cursor:pointer;color:#FFF;font-size:12px;font-weight:600;display:flex;align-items:center;justify-content:center;">' + initial + '</button>') +
         '</div>' +
       '</div>' +
     '</header>';
@@ -295,7 +295,7 @@
     var profils = db(SK.USERS, []);
     var visages = equipe.slice(0, 3).map(function(id, i) {
       var p = profils.find(function(x){ return x.id === id; }) || {};
-      return '<span title="' + safeHtml((p.prenom || '') + ' ' + (p.nom || '')) + '" style="width:28px;height:28px;border-radius:14px;border:2px solid ' + UI.card + ';' + (i ? 'margin-left:-8px;' : '') + 'background:' + (p.avatar_color || UI.accent) + ';color:#FFF;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">' +
+      return '<span title="' + safeHtml((p.prenom || '') + ' ' + (p.nom || '')) + '" style="width:28px;height:28px;border-radius:14px;border:2px solid ' + UI.card + ';' + (i ? 'margin-left:-8px;' : '') + 'background:' + couleurSure(p.avatar_color, UI.accent) + ';color:#FFF;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">' +
         (p.avatar_url ? '<img src="' + safeUrl(p.avatar_url) + '" alt="" style="width:100%;height:100%;object-fit:cover;">' : safeHtml((p.prenom || 'M').charAt(0).toUpperCase())) + '</span>';
     }).join('');
     var lien = 'font-size:13px;font-weight:700;color:' + UI.lien + ';text-decoration:none;background:none;border:none;padding:0;cursor:pointer;min-height:32px;display:inline-flex;align-items:center;';
@@ -698,7 +698,7 @@
             evStatus +
           '</div>' +
           '<div style="font-size:12px;color:' + UI.evMuted + ';display:flex;flex-wrap:wrap;gap:12px;margin-bottom:' + (evSections ? '11px' : '0') + ';">' +
-            (post.eventStart ? '<span style="font-family:' + UI.fontMono + ';">' + ico('clock', 13, UI.evMuted) + ' ' + post.eventStart + (post.eventEnd ? ' – ' + post.eventEnd : '') + (crossesMidnight(post) ? ' +1 j' : '') + '</span>' : '') +
+            (post.eventStart ? '<span style="font-family:' + UI.fontMono + ';">' + ico('clock', 13, UI.evMuted) + ' ' + safeHtml(post.eventStart) + (post.eventEnd ? ' – ' + safeHtml(post.eventEnd) : '') + (crossesMidnight(post) ? ' +1 j' : '') + '</span>' : '') +
             (post.eventLocation ? '<span style="min-width:0;">' + ico('pin', 13, UI.evMuted) + ' ' + safeHtml(post.eventLocation) + '</span>' : '') +
           '</div>' +
           (evSections ? '<div style="display:flex;flex-wrap:wrap;gap:5px;">' + evSections + evMore + '</div>' : '') +
@@ -1364,7 +1364,7 @@
           var allU = db(SK.USERS, []);
           var pAuthor = allU.find(function(u){ return u.id === post.userId; });
           var pAvatarUrl = (pAuthor && pAuthor.avatar_url) ? pAuthor.avatar_url : post.avatar_url;
-          var pColor = (pAuthor && pAuthor.avatar_color) ? pAuthor.avatar_color : (post.avatarColor || '#0B5FE0');
+          var pColor = couleurSure((pAuthor && pAuthor.avatar_color) ? pAuthor.avatar_color : post.avatarColor);
           var pInitial = (pAuthor && pAuthor.prenom) ? pAuthor.prenom.charAt(0).toUpperCase() : (post.authorAvatar || 'M');
           var pName = (pAuthor && pAuthor.prenom && pAuthor.nom) ? (pAuthor.prenom + ' ' + pAuthor.nom) : (post.author || 'Membre');
 
@@ -1398,7 +1398,7 @@
           '<span style="font-size:17px;">🗓️</span>' +
           '<div style="flex:1;min-width:0;">' +
             '<div style="font-size:11px;font-weight:800;color:var(--lien);text-transform:uppercase;letter-spacing:0.5px;">À propos de cet événement</div>' +
-            '<div style="font-size:13px;font-weight:800;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(aboutEv.eventTitle||'') + (aEvDateStr ? ' · ' + aEvDateStr : '') + (aboutEv.eventStart ? ' à ' + aboutEv.eventStart : '') + '</div>' +
+            '<div style="font-size:13px;font-weight:800;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(aboutEv.eventTitle||'') + (aEvDateStr ? ' · ' + aEvDateStr : '') + (aboutEv.eventStart ? ' à ' + safeHtml(aboutEv.eventStart) : '') + '</div>' +
           '</div>' +
           '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0B5FE0" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>' +
         '</div>';
@@ -1499,7 +1499,7 @@
         // dans toutes ses notifications passées, au lieu de rester figée.
         var expediteur = n.senderId ? tousMembres.find(function(m){ return m.id === n.senderId; }) : null;
         var photo = (expediteur && expediteur.avatar_url) || n.senderAvatar || null;
-        var teinte = (expediteur && expediteur.avatar_color) || n.senderColor || '#0B5FE0';
+        var teinte = couleurSure((expediteur && expediteur.avatar_color) || n.senderColor);
 
         var avatarHtml = photo
           ? '<img src="' + safeUrl(photo) + '" style="width:44px;height:44px;border-radius:20px;object-fit:cover;flex-shrink:0;" />'
@@ -1750,11 +1750,11 @@
           '<div style="display:flex;flex-direction:column;gap:16px;">' +
             '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding-bottom:12px;">' +
               '<label style="font-size:15px;color:var(--ink);font-weight:600;white-space:nowrap;">Date</label>' +
-              '<input type="date" id="eventDate" value="' + dateVal + '" style="border:none;font-size:15px;outline:none;background:transparent;color:var(--lien);font-weight:600;text-align:right;" />' +
+              '<input type="date" id="eventDate" value="' + safeHtml(dateVal) + '" style="border:none;font-size:15px;outline:none;background:transparent;color:var(--lien);font-weight:600;text-align:right;" />' +
             '</div>' +
             '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);padding-bottom:12px;">' +
               '<label style="font-size:15px;color:var(--ink);font-weight:600;white-space:nowrap;">Heure de début</label>' +
-              '<input type="time" id="eventStart" value="' + startVal + '" oninput="App.onEventTimeChange()" style="border:none;font-size:15px;outline:none;background:transparent;color:var(--lien);font-weight:600;text-align:right;" />' +
+              '<input type="time" id="eventStart" value="' + safeHtml(startVal) + '" oninput="App.onEventTimeChange()" style="border:none;font-size:15px;outline:none;background:transparent;color:var(--lien);font-weight:600;text-align:right;" />' +
             '</div>' +
             // Le message occupe sa PROPRE ligne sous le champ : placé dans la même
             // rangée que l'heure, il se superposait à la valeur et forçait le
@@ -1762,7 +1762,7 @@
             '<div>' +
               '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">' +
                 '<label style="font-size:15px;color:var(--ink);font-weight:600;white-space:nowrap;">Heure de fin</label>' +
-                '<input type="time" id="eventEnd" value="' + endVal + '" oninput="App.onEventTimeChange()" style="border:none;font-size:15px;outline:none;background:transparent;color:var(--lien);font-weight:600;text-align:right;" />' +
+                '<input type="time" id="eventEnd" value="' + safeHtml(endVal) + '" oninput="App.onEventTimeChange()" style="border:none;font-size:15px;outline:none;background:transparent;color:var(--lien);font-weight:600;text-align:right;" />' +
               '</div>' +
               // État initial calculé au rendu : à la réouverture d'une veillée
               // déjà enregistrée, la mention doit être visible sans toucher au champ.
@@ -1940,7 +1940,7 @@
               var evAbout2D = evAbout2.eventDate ? new Date(evAbout2.eventDate+'T00:00:00').toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'}) : '';
               return '<button type="button" onclick="App.openAboutEventPicker()" style="width:100%;display:flex;align-items:center;gap:8px;background:var(--card);border-radius:999px;padding:10px;text-align:left;border:none;cursor:pointer;">' +
                 '<span style="font-size:15px;">🗓️</span>' +
-                '<span style="flex:1;min-width:0;font-size:13px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(evAbout2.eventTitle||'') + (evAbout2D?' · '+evAbout2D:'') + (evAbout2.eventStart?' à '+evAbout2.eventStart:'') + '</span>' +
+                '<span style="flex:1;min-width:0;font-size:13px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(evAbout2.eventTitle||'') + (evAbout2D?' · '+evAbout2D:'') + (evAbout2.eventStart?' à '+safeHtml(evAbout2.eventStart):'') + '</span>' +
               '</button>';
             })() +
           '</div>' +
@@ -2074,7 +2074,7 @@
       '</div>' +
       '<div style="flex:1;min-width:0;">' +
         '<div style="font-size:15px;font-weight:800;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(ev.eventTitle) + '</div>' +
-        '<div style="font-size:12px;color:var(--faint);margin-top:2px;">' + (ev.eventStart ? '' + ev.eventStart + (ev.eventEnd ? ' — ' + ev.eventEnd : '') : '') + '</div>' +
+        '<div style="font-size:12px;color:var(--faint);margin-top:2px;">' + (ev.eventStart ? safeHtml(ev.eventStart) + (ev.eventEnd ? ' — ' + safeHtml(ev.eventEnd) : '') : '') + '</div>' +
       '</div>' +
       (isSel ? '<span style="color:var(--lien);font-size:17px;">✓</span>' : '') +
     '</button>';
@@ -2278,7 +2278,7 @@
           '<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">' +
             ((u && u.avatar_url)
               ? '<img src="' + safeUrl(u.avatar_url) + '" style="width:42px;height:42px;border-radius:20px;object-fit:cover;flex-shrink:0;box-shadow:0 3px 8px rgba(0,0,0,0.12);" />'
-              : '<div style="width:42px;height:42px;border-radius:20px;background:linear-gradient(135deg,' + ((u||{}).avatar_color||'#0B5FE0') + ',#0B5FE0);color:#FFF;font-size:15px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 3px 8px rgba(0,0,0,0.12);">' + ((u&&u.prenom||'M').charAt(0)) + '</div>') +
+              : '<div style="width:42px;height:42px;border-radius:20px;background:linear-gradient(135deg,' + couleurSure((u||{}).avatar_color) + ',#0B5FE0);color:#FFF;font-size:15px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 3px 8px rgba(0,0,0,0.12);">' + ((u&&u.prenom||'M').charAt(0)) + '</div>') +
             '<div>' +
               '<div style="font-size:15px;font-weight:800;color:var(--ink);">' + safeHtml((u&&u.prenom||'') + ' ' + (u&&u.nom||'')) + '</div>' +
               '<div style="font-size:12px;color:var(--lien);font-weight:700;background:var(--accent-soft);display:inline-block;padding:2px 8px;border-radius:8px;margin-top:2px;">' + secNom((u&&u.section_id)||'cadrage') + ' · Tapez # pour les hashtags</div>' +
@@ -2370,7 +2370,7 @@
               var evAboutD = evAbout.eventDate ? new Date(evAbout.eventDate+'T00:00:00').toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short'}) : '';
               return '<button type="button" onclick="App.openAboutEventPicker()" style="width:100%;display:flex;align-items:center;gap:8px;background:var(--card);border-radius:999px;padding:10px;text-align:left;border:none;cursor:pointer;">' +
                 '<span style="font-size:15px;">🗓️</span>' +
-                '<span style="flex:1;min-width:0;font-size:13px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(evAbout.eventTitle||'') + (evAboutD?' · '+evAboutD:'') + (evAbout.eventStart?' à '+evAbout.eventStart:'') + '</span>' +
+                '<span style="flex:1;min-width:0;font-size:13px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + safeHtml(evAbout.eventTitle||'') + (evAboutD?' · '+evAboutD:'') + (evAbout.eventStart?' à '+safeHtml(evAbout.eventStart):'') + '</span>' +
               '</button>';
             })() +
           '</div>' +
@@ -2485,7 +2485,7 @@
         var vu = users.find(function(x){ return x.id === uid; });
         var nom = vu ? ((vu.prenom||'') + ' ' + (vu.nom||'')).trim() : 'Membre';
         var initial = (vu && vu.prenom ? vu.prenom.charAt(0) : 'M').toUpperCase();
-        var color = (vu && vu.avatar_color) || '#0B5FE0';
+        var color = couleurSure(vu && vu.avatar_color);
         var avatarNode = (vu && vu.avatar_url)
           ? '<img src="' + safeUrl(vu.avatar_url) + '" style="width:40px;height:40px;border-radius:20px;object-fit:cover;flex-shrink:0;" />'
           : '<div style="width:40px;height:40px;border-radius:20px;background:' + color + ';color:#FFF;font-size:15px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + initial + '</div>';

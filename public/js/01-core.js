@@ -97,6 +97,13 @@
     ['mediaUrls', 'originalMediaUrls'].forEach(function(k) {
       if (Array.isArray(p[k])) p[k] = p[k].map(function(u){ return urlSure(u); }).filter(Boolean);
     });
+    // Heures et date d'un événement : concaténées telles quelles à une dizaine
+    // d'endroits du rendu. Seules les formes « 09:00 » et « 2026-10-25 » passent
+    // (le serveur les impose aussi, migration 10).
+    ['eventStart', 'eventEnd'].forEach(function(k) {
+      if (p[k] && !/^([01]\d|2[0-3]):[0-5]\d$/.test(String(p[k]))) p[k] = '';
+    });
+    if (p.eventDate && !/^\d{4}-\d{2}-\d{2}$/.test(String(p.eventDate))) p.eventDate = null;
     if (Array.isArray(p.comments)) {
       p.comments.forEach(function(c){ assainirAuteur(c, ['avatarColor'], ['avatar_url', 'imageUrl']); });
     }
@@ -953,8 +960,27 @@
   // que de relire le store persistant. Indispensable pour enchaîner deux fusions
   // (posts récents, puis événements) sans perdre la première au passage — voir
   // le bug corrigé dans syncSupabaseToLocal.
+  // Écritures de publications parties de cet appareil et pas encore confirmées
+  // (id → heure d'envoi), tenues par App._upsertFiable. Les écritures en file
+  // d'attente hors connexion sont lues dans kc_pending_writes.
+  var ecrituresEnVol = {};
+  function idsEcrituresLocalesEnCours() {
+    var ids = {};
+    Object.keys(ecrituresEnVol).forEach(function(id) {
+      if (Date.now() - ecrituresEnVol[id] < 30000) ids[id] = true;
+      else delete ecrituresEnVol[id];
+    });
+    try {
+      JSON.parse(localStorage.getItem('kc_pending_writes') || '[]').forEach(function(w) {
+        if (w && w.table === 'kun_com_posts' && w.row && w.row.id) ids[w.row.id] = true;
+      });
+    } catch(e) {}
+    return ids;
+  }
+
   function mergePostsWithLocal(remoteData, purgeWindow, baseLocal) {
     var localPosts = baseLocal || db(SK.POSTS, []);
+    var enCours = idsEcrituresLocalesEnCours();
     var map = {};
     (localPosts || []).forEach(function(raw) {
       var p = parsePostItem(raw);
@@ -968,18 +994,22 @@
           return;
         }
         var local = map[p.id];
-        if (local) {
-          // Fusion CHAMP PAR CHAMP : l'ancienne bascule comparait de simples
-          // compteurs et écrasait ensuite le post ENTIERS d'un côté ou de
-          // l'autre — un like local de plus faisait perdre à jamais les
-          // commentaires distants (et inversement). Ici : union des likes,
-          // union des commentaires dédoublonnée par id, puis le reste des
-          // champs au plus récent des deux.
+        if (local && enCours[p.id]) {
+          // Une écriture de cet appareil n'est pas encore arrivée au serveur :
+          // la copie locale porte le changement, on y ajoute ce que le serveur
+          // a reçu d'autres membres (likes, commentaires).
           var fusion = Object.assign({}, p, local);
           fusion.likedBy = unionSansDoublons(local.likedBy, p.likedBy);
           fusion.comments = fusionnerCommentaires(local.comments, p.comments);
           fusion.timestamp = Math.max(local.timestamp || 0, p.timestamp || 0);
           map[p.id] = fusion;
+        } else if (local) {
+          // Sinon le serveur fait foi : il fusionne lui-même les écritures de
+          // chacun (migration 06). Laisser gagner la copie locale gardait une
+          // heure ou une assignation périmée, un J'aime retiré, un commentaire
+          // modéré. Seul « viewedBy », compté sur l'appareil, est conservé.
+          p.viewedBy = unionSansDoublons(local.viewedBy, p.viewedBy);
+          map[p.id] = p;
         } else {
           map[p.id] = p;
         }

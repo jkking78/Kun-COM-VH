@@ -131,7 +131,7 @@
             }).join('') +
           '</div>' +
           '<form onsubmit="event.preventDefault(); App.submitComment(event);" style="display:flex;align-items:center;gap:8px;padding:10px 14px;">' +
-            (u.avatar_url ? '<img src="' + safeUrl(u.avatar_url) + '" style="width:34px;height:34px;border-radius:16px;object-fit:cover;flex-shrink:0;" />' : '<div style="width:34px;height:34px;border-radius:16px;background:' + (u.avatar_color||'#0B5FE0') + ';color:#FFF;font-weight:800;font-size:15px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + userInitial + '</div>') +
+            (u.avatar_url ? '<img src="' + safeUrl(u.avatar_url) + '" style="width:34px;height:34px;border-radius:16px;object-fit:cover;flex-shrink:0;" />' : '<div style="width:34px;height:34px;border-radius:16px;background:' + couleurSure(u.avatar_color) + ';color:#FFF;font-weight:800;font-size:15px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + userInitial + '</div>') +
             '<div style="flex:1;display:flex;align-items:center;background:var(--tile);border-radius:20px;height:40px;padding:0 6px 0 14px;">' +
               '<input id="commentInput" type="text" oninput="App.onCommentInput(this.value)" placeholder="' + (S.replyingToCommentId ? 'Répondre à ' + safeHtml(S.replyingToAuthor||'') + '…' : 'Ajouter un commentaire… (@ pour taguer)') + '" style="flex:1;border:none;background:transparent;font-size:15px;color:var(--ink);outline:none;">' +
               '<label style="cursor:pointer;padding:6px;display:flex;align-items:center;flex-shrink:0;">' +
@@ -152,8 +152,11 @@
     var allU = db(SK.USERS, []);
     var cAuthor = allU.find(function(u){ return u.id === c.userId; });
     var cAvatarUrl = (cAuthor && cAuthor.avatar_url) ? cAuthor.avatar_url : c.avatar_url;
-    var cColor = (cAuthor && cAuthor.avatar_color) ? cAuthor.avatar_color : (c.avatarColor || '#0B5FE0');
+    var cColor = couleurSure((cAuthor && cAuthor.avatar_color) ? cAuthor.avatar_color : c.avatarColor);
     var cInitial = (cAuthor && cAuthor.prenom) ? cAuthor.prenom.charAt(0).toUpperCase() : ((c.author||'U').charAt(0));
+    // Nom affiché tiré de la fiche de l'auteur quand on la connaît : le champ
+    // « author » du commentaire est libre et pouvait usurper un autre nom.
+    var cNom = (cAuthor && cAuthor.prenom) ? cAuthor.prenom + (cAuthor.nom ? ' ' + cAuthor.nom.charAt(0) + '.' : '') : (c.author || 'Membre');
     var avSize = isReply ? 28 : 36;
 
     var cAvatarNode = cAvatarUrl
@@ -177,7 +180,7 @@
       '<div onclick="App.openUserProfile(\'' + jsArg(c.userId) + '\')" style="cursor:pointer;">' + cAvatarNode + '</div>' +
       '<div style="flex:1;">' +
         '<div style="display:flex;align-items:baseline;gap:6px;">' +
-          '<strong onclick="App.openUserProfile(\'' + jsArg(c.userId) + '\')" style="cursor:pointer;font-size:13px;color:var(--ink);">' + safeHtml(c.author||'Membre') + '</strong>' +
+          '<strong onclick="App.openUserProfile(\'' + jsArg(c.userId) + '\')" style="cursor:pointer;font-size:13px;color:var(--ink);">' + safeHtml(cNom) + '</strong>' +
           '<span style="font-size:12px;color:var(--faint);">' + timeAgo(c.timestamp) + '</span>' +
         '</div>' +
         (c.text ? '<p style="font-size:15px;color:var(--ink);margin:3px 0 5px;line-height:1.4;">' + hashtagify(c.text) + '</p>' : '') +
@@ -614,7 +617,7 @@
     var o = db(SK.USERS, []).find(function(u){ return u.id === autre; }) || {};
     return o.avatar_url
       ? '<img src="' + safeUrl(o.avatar_url) + '" style="width:' + t + 'px;height:' + t + 'px;border-radius:' + (t / 2) + 'px;object-fit:cover;flex-shrink:0;" />'
-      : '<div style="width:' + t + 'px;height:' + t + 'px;border-radius:' + (t / 2) + 'px;background:' + (o.avatar_color || '#0B5FE0') + ';color:#FFF;font-weight:800;font-size:' + Math.round(t * 0.38) + 'px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + (o.prenom || 'M').charAt(0).toUpperCase() + '</div>';
+      : '<div style="width:' + t + 'px;height:' + t + 'px;border-radius:' + (t / 2) + 'px;background:' + couleurSure(o.avatar_color) + ';color:#FFF;font-weight:800;font-size:' + Math.round(t * 0.38) + 'px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">' + (o.prenom || 'M').charAt(0).toUpperCase() + '</div>';
   }
   function nomConversation(autre) {
     if (estCanal(autre)) { var p = poleDuCanal(autre); return 'Canal ' + (p ? p.nom : 'du pôle'); }
@@ -1208,7 +1211,7 @@
                 var evDate = ev.eventDate || (ev.metadata && ev.metadata.date) || '';
                 var sel = S.evalEventId === ev.id ? ' selected' : '';
                 var already = findOwnBilan(ev.id) ? ' ✓ déjà noté' : '';
-                return '<option value="' + ev.id + '"' + sel + '>' + safeHtml(evTitle) + (evDate ? ' (' + evDate + ')' : '') + already + '</option>';
+                return '<option value="' + ev.id + '"' + sel + '>' + safeHtml(evTitle) + (evDate ? ' (' + safeHtml(evDate) + ')' : '') + already + '</option>';
               }).join('') +
             '</select>' +
             (S.evalEventId && findOwnBilan(S.evalEventId)
@@ -1819,7 +1822,7 @@
     var online = estEnLigne(freshU);
     var avatarInner = freshU.avatar_url
       ? '<img src="' + safeUrl(freshU.avatar_url) + '" style="width:100%;height:100%;object-fit:cover;display:block;" />'
-      : '<div style="width:100%;height:100%;background:' + (freshU.avatar_color || '#0B5FE0') + ';color:#FFF;font-family:' + UI.fontDisplay + ';font-size:30px;font-weight:800;display:flex;align-items:center;justify-content:center;">' + (freshU.prenom||'M').charAt(0).toUpperCase() + '</div>';
+      : '<div style="width:100%;height:100%;background:' + couleurSure(freshU.avatar_color) + ';color:#FFF;font-family:' + UI.fontDisplay + ';font-size:30px;font-weight:800;display:flex;align-items:center;justify-content:center;">' + (freshU.prenom||'M').charAt(0).toUpperCase() + '</div>';
     var roleLbl = ROLE_LABELS[freshU.role] || 'Membre';
     var elevated = freshU.role && freshU.role !== 'MEMBRE';
     // HERO aux couleurs du pôle (synthèse du design, profil « Équipe ») :
@@ -2096,7 +2099,7 @@
       };
       var rows = members.map(function(m) {
         var name = safeHtml((((m.prenom||'') + ' ' + (m.nom||'')).trim()) || 'Membre');
-        var color = m.avatar_color || '#0B5FE0';
+        var color = couleurSure(m.avatar_color);
         var initial = (m.prenom || 'M').charAt(0).toUpperCase();
         var isMe = m.id === me.id;
         return '<div style="padding:12px 0;border-bottom:1px solid var(--line);">' +
@@ -2219,7 +2222,7 @@
 
     var avatarContent = displayAvatar 
       ? '<img id="editAvatarPreview" src="' + safeUrl(displayAvatar) + '" style="width:100%;height:100%;object-fit:cover;" />'
-      : '<div id="editAvatarPreview" style="width:100%;height:100%;background:linear-gradient(135deg,'+(freshU.avatar_color||'#0B5FE0')+',#0B5FE0);color:#FFF;font-size:32px;font-weight:800;display:flex;align-items:center;justify-content:center;">' + (freshU.prenom||'M').charAt(0).toUpperCase() + '</div>';
+      : '<div id="editAvatarPreview" style="width:100%;height:100%;background:linear-gradient(135deg,'+couleurSure(freshU.avatar_color)+',#0B5FE0);color:#FFF;font-size:32px;font-weight:800;display:flex;align-items:center;justify-content:center;">' + (freshU.prenom||'M').charAt(0).toUpperCase() + '</div>';
 
     var displayCover = S.coverPreview || freshU.cover_url;
     var coverContent = displayCover

@@ -85,6 +85,9 @@ const publications = [
   } },
 ];
 
+// Messages privés servis par le faux serveur (le scénario « sécurité » en ajoute).
+let MESSAGES = [];
+
 function jetonFactice(sub) {
   const b64 = (o) => Buffer.from(JSON.stringify(o)).toString('base64url');
   return b64({ alg: 'HS256', typ: 'JWT' }) + '.' + b64({
@@ -99,8 +102,14 @@ async function intercepterSupabase(page) {
     const json = (corps, code = 200) => route.fulfill({
       status: code, contentType: 'application/json', body: JSON.stringify(corps),
     });
+    const unique = (route.request().headers()['accept'] || '').includes('vnd.pgrst.object');
     if (url.pathname.startsWith('/rest/v1/kun_com_posts')) return json(publications);
-    if (url.pathname.startsWith('/rest/v1/kun_com_profiles')) return json(profils);
+    if (url.pathname.startsWith('/rest/v1/kun_com_profiles')) {
+      if (!unique) return json(profils);
+      const p = profils.find((x) => 'eq.' + x.id === url.searchParams.get('id'));
+      return p ? json(p) : json({ message: 'introuvable' }, 406);
+    }
+    if (url.pathname.startsWith('/rest/v1/kun_com_dms')) return json(MESSAGES);
     if (url.pathname.startsWith('/rest/v1/')) return json([]);
     if (url.pathname.startsWith('/auth/v1/user')) return json({ id: MOI, aud: 'authenticated', app_metadata: { role: 'MEMBRE' } });
     if (url.pathname.startsWith('/auth/v1/')) return json({}, 400);
@@ -213,6 +222,82 @@ try {
     assert.equal(await page.evaluate(() => window.__xss), undefined);
     await contexte.close();
   });
+  await cas('sécurité : profil, mentions, heures, expéditeur et fusion ne laissent rien passer', async () => {
+    const session = {
+      access_token: jetonFactice(MOI), refresh_token: 'r', token_type: 'bearer',
+      expires_in: 3600, expires_at: Math.floor(maintenant / 1000) + 3600,
+      user: { id: MOI, aud: 'authenticated', email: 'awa@commit.aev', app_metadata: { role: 'MEMBRE' }, user_metadata: {} },
+    };
+    // Événement à l'heure piégée et faux expéditeur, pour ce scénario seulement.
+    publications.push({ id: 'ev_piege', created_at: new Date(maintenant - 500).toISOString(), content: {
+      id: 'ev_piege', userId: AUTRE, author: 'O', type: 'EVENT', eventTitle: 'Piège', eventDate: demain,
+      eventStart: '<img src=x onerror="window.__xss=\'heure\'">', eventEnd: '12:00', eventSections: ['cadrage'],
+      assignments: [{ userId: MOI, task: 'Caméra', sectionId: 'cadrage' }], timestamp: maintenant - 500, likedBy: [], comments: [], mediaUrls: [] } });
+    MESSAGES = [{ id: 'dm_faux', from_id: AUTRE, to_id: MOI, sent_at: new Date(maintenant).toISOString(),
+      content: { id: 'dm_faux', fromId: 'dddddddd-0000-4000-8000-000000000004', toId: MOI, text: 'Je suis l\'Admin', timestamp: maintenant } }];
+    try {
+      const { page, erreurs, contexte } = await nouvellePage(nav, base, session);
+      await page.waitForSelector('#post-p_piege', { timeout: 15000 });
+
+      // S3 : l'heure piégée est écartée à la réception, sur le fil comme au planning.
+      await page.evaluate(() => App.tab('planning'));
+      await page.waitForTimeout(300);
+      const evenement = await page.evaluate(() => db(SK.POSTS, []).find((p) => p.id === 'ev_piege'));
+      assert.equal(evenement.eventStart, '', 'une heure au format inattendu doit être écartée');
+      const filtre = await page.evaluate(() => {
+        const p = parsePostItem({ id: 'e', content: { id: 'e', eventStart: '09:00', eventEnd: '<b>', eventDate: '2026-1-1"' } });
+        return [p.eventStart, p.eventEnd, p.eventDate];
+      });
+      assert.deepEqual(filtre, ['09:00', '', null]);
+
+      // S1 : ouvrir le profil d'un membre à la couleur piégée.
+      await page.evaluate((id) => App.openUserProfile(id), AUTRE);
+      await page.waitForTimeout(600);
+      const couleur = await page.evaluate((id) => db(SK.USERS, []).find((u) => u.id === id).avatar_color, AUTRE);
+      assert.equal(couleur, '#0B5FE0', 'la fiche relue doit être assainie avant d\'entrer dans le cache');
+      await page.evaluate(() => document.querySelectorAll('*').forEach((el) => el.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }))));
+
+      // S2 : suggestions de mention avec un nom piégé (apostrophe + HTML).
+      const recues = await page.evaluate(() => {
+        const sortie = [];
+        App.__capteMention = (v) => sortie.push(v);
+        const div = document.createElement('div');
+        div.innerHTML = App.buildMentionSuggestions('o', '__capteMention');
+        document.body.appendChild(div);
+        div.querySelectorAll('button').forEach((b) => b.click());
+        div.remove();
+        return sortie;
+      });
+      assert.ok(recues.includes('@O\'Brien ' + PIEGE_HTML + 'X '), 'la mention doit insérer le nom exact : ' + JSON.stringify(recues));
+
+      // S6 : l'expéditeur affiché est celui de la colonne, pas celui du JSON.
+      await page.evaluate(() => App._chargerMessages());
+      const message = await page.evaluate(() => db(SK.DMS, []).find((m) => m.id === 'dm_faux'));
+      assert.equal(message.fromId, AUTRE, 'l\'expéditeur doit venir de la colonne from_id');
+
+      // C1 : le serveur fait foi, sauf écriture locale en attente.
+      const fusion = await page.evaluate(() => {
+        const distant = [{ id: 'm1', content: { id: 'm1', type: 'EVENT', eventStart: '08:00', likedBy: [], timestamp: 1 } }];
+        const local = [{ id: 'm1', type: 'EVENT', eventStart: '09:00', likedBy: ['x'], viewedBy: ['v'], timestamp: 1 }];
+        const a = mergePostsWithLocal(distant, false, local).find((p) => p.id === 'm1');
+        localStorage.setItem('kc_pending_writes', JSON.stringify([{ table: 'kun_com_posts', row: { id: 'm1' } }]));
+        const b = mergePostsWithLocal(distant, false, local).find((p) => p.id === 'm1');
+        localStorage.setItem('kc_pending_writes', '[]');
+        return { serveur: [a.eventStart, a.likedBy.length, a.viewedBy.join()], enAttente: b.eventStart };
+      });
+      assert.deepEqual(fusion.serveur, ['08:00', 0, 'v'], 'la version du serveur doit l\'emporter (vues locales gardées)');
+      assert.equal(fusion.enAttente, '09:00', 'une écriture locale en attente doit être gardée');
+
+      assert.equal(await page.evaluate(() => window.__xss), undefined, 'un script injecté s\'est exécuté');
+      assert.deepEqual(await page.$$eval('[data-pirate], img[src="x"]', (els) => els.length), 0);
+      assert.deepEqual(erreurs, []);
+      await contexte.close();
+    } finally {
+      publications.pop();
+      MESSAGES = [];
+    }
+  });
+
   await cas('lot 1 : navigation, cloche, mission, Bien démarrer, publier simple', async () => {
     const session = {
       access_token: jetonFactice(MOI), refresh_token: 'r', token_type: 'bearer',

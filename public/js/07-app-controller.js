@@ -1028,11 +1028,14 @@
       if (supabase) {
         try {
           var res = await supabase.from('kun_com_profiles').select('*').eq('id', userId).single();
-          if (res && res.data && res.data.content) {
+          // Fiche relue telle que son propriétaire l'a écrite : assainie comme à
+          // chaque réception (couleur et adresses finissent dans des attributs).
+          var fiche = res && res.data && res.data.content ? parseProfileItem({ id: userId, content: res.data.content }) : null;
+          if (fiche) {
             var users = db(SK.USERS, []);
             var idx = users.findIndex(function(u){ return u.id === userId; });
-            if (idx !== -1) users[idx] = res.data.content;
-            else users.push(res.data.content);
+            if (idx !== -1) users[idx] = fiche;
+            else users.push(fiche);
             dbSet(SK.USERS, users);
           }
           
@@ -1040,7 +1043,8 @@
           if (pres && pres.data && pres.data.length > 0) {
             var allPosts = db(SK.POSTS, []);
             pres.data.forEach(function(up) {
-              var mapped = up.content;
+              var mapped = parsePostItem(up);
+              if (!mapped) return;
               var pIdx = allPosts.findIndex(function(p){ return p.id === mapped.id; });
               if (pIdx !== -1) allPosts[pIdx] = Object.assign(allPosts[pIdx], mapped);
               else allPosts.push(mapped);
@@ -1134,8 +1138,13 @@
         db(SK.DMS, []).forEach(function(m){ if (m && m.id) byId[m.id] = m; });
         var nouveau = false;
         res.data.forEach(function(row) {
-          var m = row.content;
-          if (m && m.id) { if (!byId[m.id]) nouveau = true; byId[m.id] = m; }
+          if (!row || !row.id || !row.content || typeof row.content !== 'object') return;
+          // Expéditeur et destinataire pris dans les colonnes, que la base
+          // contrôle (from_id = l'auteur) : le JSON, lui, est libre et pouvait
+          // faire passer un message pour celui d'un autre.
+          var m = Object.assign({}, row.content, { id: row.id, fromId: row.from_id, toId: row.to_id });
+          if (!byId[m.id]) nouveau = true;
+          byId[m.id] = m;
         });
         dbSet(SK.DMS, Object.keys(byId).map(function(k){ return byId[k]; }));
         return nouveau;
@@ -1219,7 +1228,9 @@
       if (supabase) {
         supabase.from('kun_com_dms').upsert({ id: newMsg.id, from_id: newMsg.fromId, to_id: newMsg.toId, content: newMsg, sent_at: new Date(newMsg.timestamp).toISOString() }, { onConflict: 'id' }).then(function(){}, function(e){ console.warn('Erreur envoi message:', e); });
       }
-      var extrait = txt.slice(0, 40) + (txt.length > 40 ? '…' : '');
+      // Pas d'extrait dans la notification : elle est rangée dans la fiche du
+      // destinataire, que tous les membres peuvent lire. L'aperçu du message
+      // n'apparaît que sur le téléphone, ajouté par le serveur (fonction push).
       if (estCanal(autre)) {
         // Canal : une notification par membre du pôle, et une seule tant qu'il
         // n'a pas lu la précédente (pas de rafale pendant une discussion).
@@ -1232,7 +1243,7 @@
           sendNotificationToUser(m.id, {
             type: 'CANAL',
             title: 'Canal ' + (pole ? pole.nom : 'du pôle'),
-            text: (S.user.prenom || 'Quelqu\'un') + ' : "' + extrait + '"',
+            text: 'a écrit dans le canal.',
             targetId: autre + '#' + newMsg.id
           });
         });
@@ -1247,7 +1258,7 @@
         sendNotificationToUser(autre, {
           type: 'MESSAGE',
           title: 'Nouveau message',
-          text: (S.user.prenom || 'Quelqu\'un') + ' : "' + extrait + '"',
+          text: 't\'a envoyé un message.',
           targetId: newMsg.id
         });
       }
@@ -1722,7 +1733,8 @@
       if (supabase) {
         try {
           var res = await supabase.from('kun_com_posts').select('content').eq('id', postId).single();
-          if (res && res.data && res.data.content) cible = res.data.content;
+          var frais = res && res.data && res.data.content ? parsePostItem({ id: postId, content: res.data.content }) : null;
+          if (frais) cible = frais;
         } catch(e) { /* hors-ligne ou post absent : on mute la version locale */ }
       }
       mutateur(cible);
@@ -1750,7 +1762,13 @@
     // tel qu'enregistré par le serveur, ou null.
     _upsertFiable: function(table, row) {
       if (!supabase) return Promise.resolve(null);
+      // Tant que la réponse n'est pas là, une synchro ne doit pas remplacer la
+      // copie locale par la version du serveur (voir mergePostsWithLocal).
+      var enVol = table === 'kun_com_posts' && row && row.id;
+      if (enVol) ecrituresEnVol[row.id] = Date.now();
+      var fin = function() { if (enVol) delete ecrituresEnVol[row.id]; };
       return supabase.from(table).upsert(row, { onConflict: 'id' }).select('content').single().then(function(r) {
+        fin();
         if (r && r.error) {
           if (estErreurReseau(r.error)) App._mettreEnFileAttenteEcriture({ table: table, row: row });
           else console.warn('Écriture refusée par le serveur (' + table + ') :', r.error);
@@ -1758,6 +1776,7 @@
         }
         return (r && r.data && r.data.content) || null;
       }, function(e) {
+        fin();
         App._mettreEnFileAttenteEcriture({ table: table, row: row });
         console.warn('Écriture mise en file d\'attente (' + table + ') :', e);
         return null;
@@ -3293,7 +3312,8 @@
       // le vote de quelqu'un d'autre publié entre-temps.
       supabase.from('kun_com_posts').select('content').eq('id', postId).single()
         .then(function(res) {
-          var fresh = (res && res.data && res.data.content && res.data.content.poll) ? res.data.content : post;
+          var lu = res && res.data && res.data.content ? parsePostItem({ id: postId, content: res.data.content }) : null;
+          var fresh = (lu && lu.poll) ? lu : post;
           applyIntent(fresh.poll);
           // Recale aussi le cache local sur cette version fusionnée, au cas où
           // d'autres votes concurrents s'y trouvaient déjà.
@@ -3341,7 +3361,7 @@
       }
       SECTIONS.forEach(function(s) {
         if (q && s.nom.toLowerCase().indexOf(q) !== 0 && s.id.toLowerCase().indexOf(q) !== 0) return;
-        collective += '<button type="button" onclick="App.' + insertFn + '(\'@' + safeHtml(s.nom.replace(/\s+/g,'')) + ' \')" style="background:var(--accent-soft);color:var(--lien);border:none;padding:5px 10px;border-radius:12px;font-size:12px;font-weight:700;cursor:pointer;">' + s.emoji + ' Pôle ' + safeHtml(s.nom) + '</button>';
+        collective += '<button type="button" onclick="App.' + insertFn + '(\'@' + jsArg(s.nom.replace(/\s+/g,'')) + ' \')" style="background:var(--accent-soft);color:var(--lien);border:none;padding:5px 10px;border-radius:12px;font-size:12px;font-weight:700;cursor:pointer;">' + s.emoji + ' Pôle ' + safeHtml(s.nom) + '</button>';
       });
       if (collective) {
         out += '<div style="font-size:11px;font-weight:800;color:var(--lien);width:100%;margin-bottom:4px;">Mentionner un groupe :</div>' + collective;
@@ -3354,7 +3374,7 @@
       if (users.length > 0) {
         out += '<div style="font-size:11px;font-weight:800;color:var(--lien);width:100%;margin:6px 0 4px;">Membres :</div>' +
           users.map(function(u) {
-            return '<button type="button" onclick="App.' + insertFn + '(\'@' + safeHtml((u.prenom||'') + (u.nom||'')) + ' \')" style="background:var(--accent-soft);color:var(--lien);border:none;padding:5px 10px;border-radius:12px;font-size:12px;font-weight:700;cursor:pointer;">👤 ' + safeHtml((u.prenom||'') + ' ' + (u.nom||'')) + '</button>';
+            return '<button type="button" onclick="App.' + insertFn + '(\'@' + jsArg((u.prenom||'') + (u.nom||'')) + ' \')" style="background:var(--accent-soft);color:var(--lien);border:none;padding:5px 10px;border-radius:12px;font-size:12px;font-weight:700;cursor:pointer;">👤 ' + safeHtml((u.prenom||'') + ' ' + (u.nom||'')) + '</button>';
           }).join('');
       }
       return out;

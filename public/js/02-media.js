@@ -450,7 +450,7 @@
               // ajoutés entre-temps par d'autres membres. On n'attache au contenu
               // frais QUE la vignette, puis on renvoie CETTE version fraîche.
               supabase.from('kun_com_posts').select('content').eq('id', target.id).single().then(function(res) {
-                var fresh = (res && res.data && res.data.content && typeof res.data.content === 'object') ? res.data.content : null;
+                var fresh = (res && res.data && res.data.content) ? parsePostItem({ id: target.id, content: res.data.content }) : null;
                 if (!fresh) { fallbackLocal(); return; }
                 fresh.videoPoster = poster;
                 try {

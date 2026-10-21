@@ -6,8 +6,11 @@
 //   { action: "cle" }                          → clé publique VAPID (publique)
 //   { action: "notifier", destinataire, notifId } → envoie au téléphone du
 //       destinataire une notification DÉJÀ enregistrée dans sa fiche par
-//       l'appelant (le serveur impose senderId = auteur, migration 06) :
-//       impossible d'envoyer un texte arbitraire à quelqu'un.
+//       l'appelant (le serveur impose senderId = auteur, migration 06). Le
+//       titre et le nom de l'expéditeur sont fixés ici (type connu, nom tiré
+//       de la fiche de l'appelant) ; chaque notification part une seule fois,
+//       au plus 30 par minute et par expéditeur. Seuls les responsables
+//       passent outre les préférences (convocations).
 //   { action: "rappels" }                      → rappels dus (veille, 2 h avant,
 //       oubli de pointage, échéance de tâche). Appelée toutes les 10 min par
 //       pg_cron (08b). Sans effet si on la rappelle : chaque rappel n'est envoyé
@@ -38,6 +41,20 @@ function accepte(prefs: Record<string, boolean> | undefined, cat: string): boole
   const p = prefs ?? {};
   if (cat in p) return p[cat] !== false;
   return cat !== "jaime";
+}
+// Titre de la notification selon son type : jamais le titre libre écrit par
+// l'expéditeur.
+const TITRES: Record<string, string> = {
+  LIKE: "J'aime", COMMENT: "Commentaire", REPLY: "Réponse", MENTION: "Mention",
+  EVENT_ASSIGNED: "Convocation", CONVOCATION: "Convocation", ECHANGE: "Échange de service",
+  EVALUATION: "Bilan", NEW_MEMBER: "Nouveau membre", MESSAGE: "Nouveau message",
+};
+const POLES: Record<string, string> = {
+  cadrage: "Cadrage", regie: "Régie", web: "Web", proj: "Projection", prod: "Prod", photo: "Photo", vente: "Vente",
+};
+function court(t: unknown, n: number): string {
+  const s = String(t ?? "").replace(/\s+/g, " ").trim();
+  return s.length > n ? s.slice(0, n - 1) + "…" : s;
 }
 // Écran à ouvrir au toucher de la notification.
 function cible(type: string, senderId: string, targetId: string): string {
@@ -184,19 +201,47 @@ Deno.serve(async (req) => {
       if (meta.approuve !== true && meta.role !== "GRAND_RESPONSABLE" && meta.role !== "RESP_SECTION")
         return json({ error: "Compte non validé" }, 403);
 
-      const dest = await profil(admin, String(corps.destinataire || ""));
+      const destinataire = String(corps.destinataire || "");
+      const dest = await profil(admin, destinataire);
       if (!dest) return json({ error: "Destinataire introuvable" }, 404);
       const notifs = Array.isArray(dest.notifications) ? dest.notifications as Record<string, string>[] : [];
       const n = notifs.find((x) => x && x.id === corps.notifId && x.senderId === moi.id);
       if (!n) return json({ error: "Notification introuvable" }, 404);
-      if (!accepte(dest.preferencesNotif as Record<string, boolean> | undefined, categorie(n.type)))
+
+      // Limite de débit, puis journal « envoyée une fois » : rejouer l'appel
+      // ne renvoie rien.
+      const depuis = new Date(Date.now() - 60e3).toISOString();
+      const recentes = await admin.from("kun_com_push_envois").select("cle", { count: "exact", head: true })
+        .like("cle", "notif:" + moi.id + ":%").gte("envoye_le", depuis);
+      if ((recentes.count ?? 0) >= 30) return json({ error: "Trop d'envois, réessaie dans une minute." }, 429);
+      const journal = await admin.from("kun_com_push_envois").insert({ cle: "notif:" + moi.id + ":" + destinataire + ":" + n.id });
+      if (journal.error) return json({ ok: true, envoyes: 0, deja: true });
+
+      // Seuls les responsables passent outre les préférences (convocations) ;
+      // pour les autres, c'est la préférence « Le reste » qui décide.
+      const responsable = meta.role === "GRAND_RESPONSABLE" || meta.role === "RESP_SECTION";
+      let cat = categorie(n.type);
+      if (cat === "convocations" && !responsable) cat = "autres";
+      if (!accepte(dest.preferencesNotif as Record<string, boolean> | undefined, cat))
         return json({ ok: true, envoyes: 0, coupe: true });
 
-      const nom = (n.senderName || "").trim();
-      const texte = String(n.text || "");
-      const envoyes = await envoyerA(admin, await clesVapid(admin), String(corps.destinataire), {
-        titre: String(n.title || "Commit"),
-        corps: (nom && !texte.startsWith(nom.split(" ")[0]) ? nom + " " : "") + texte,
+      // Nom de l'expéditeur tiré de SA fiche, jamais du texte de la notification.
+      const fiche = await profil(admin, moi.id);
+      const nom = court((String(fiche?.prenom ?? "") + " " + String(fiche?.nom ?? "")).trim() || "Un membre", 40);
+      let titre = TITRES[n.type] ?? "Commit";
+      let texte = court(n.text, 140);
+      if (n.type === "MESSAGE" || n.type === "CANAL") {
+        // L'aperçu est lu dans le message lui-même (il n'est plus copié dans la
+        // fiche du destinataire) et ne voyage que chiffré jusqu'au téléphone.
+        const [canal, msgId] = n.type === "CANAL" ? String(n.targetId || "").split("#") : [destinataire, String(n.targetId || "")];
+        const msg = await admin.from("kun_com_dms").select("content").eq("id", msgId).eq("from_id", moi.id).eq("to_id", canal).maybeSingle();
+        const apercu = court(msg.data?.content?.text, 80);
+        texte = apercu ? ": « " + apercu + " »" : (n.type === "CANAL" ? "a écrit dans le canal." : "t'a envoyé un message.");
+        if (n.type === "CANAL") titre = "Canal " + (POLES[String(canal).slice(5)] ?? "du pôle");
+      }
+      const envoyes = await envoyerA(admin, await clesVapid(admin), destinataire, {
+        titre,
+        corps: nom + " " + texte,
         cible: cible(n.type, n.senderId, n.targetId),
         tag: n.type === "MESSAGE" ? "dm:" + n.senderId : (n.type === "CANAL" ? String(n.targetId || "").split("#")[0] : n.id),
       });

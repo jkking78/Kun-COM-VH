@@ -161,7 +161,7 @@
       var initial = (u.prenom||'M').charAt(0).toUpperCase();
       var avatarImg = u.avatar_url
         ? '<img src="' + safeUrl(u.avatar_url) + '" style="width:48px;height:48px;border-radius:20px;object-fit:cover;" />'
-        : '<div style="width:48px;height:48px;border-radius:20px;background:' + safeHtml(u.avatar_color||'#0B5FE0') + ';color:#FFF;font-size:17px;font-weight:800;display:flex;align-items:center;justify-content:center;">' + initial + '</div>';
+        : '<div style="width:48px;height:48px;border-radius:20px;background:' + couleurSure(u.avatar_color) + ';color:#FFF;font-size:17px;font-weight:800;display:flex;align-items:center;justify-content:center;">' + initial + '</div>';
       var avatarNode = '<div style="position:relative;flex-shrink:0;">' + avatarImg +
         (estEnLigne(u) ? '<span style="position:absolute;bottom:1px;right:1px;width:12px;height:12px;border-radius:50%;background:#22C55E;border:2.5px solid var(--card);"></span>' : '') +
       '</div>';
