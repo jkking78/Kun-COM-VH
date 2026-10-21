@@ -117,7 +117,7 @@ PGHOST=… PGPORT=… PGUSER=postgres npm run test:sql
 Crée une base PostgreSQL jetable imitant Supabase (`tests/sql/supabase_mock.sql`),
 applique la 06 deux fois, puis lance 50 vérifications (`tests/sql/test_06_durcissement.sql`).
 
-## Migration 07 — réponses aux convocations et validation des comptes (v152)
+## Migration 07 — réponses aux convocations et validation des comptes (v153)
 
 - **Réponses aux convocations** : « Je confirme » / « Je ne peux pas » (avec
   motif) sont enregistrées dans `reponsesConvocation` de l'événement. Comme
@@ -133,7 +133,7 @@ applique la 06 deux fois, puis lance 50 vérifications (`tests/sql/test_06_durci
 ### Ordre de mise en production
 1. **Exécuter `07_convocations_et_validation.sql`** (idempotente, sans DROP).
 2. **Redéployer l'Edge Function `set-role`** (nouvelles actions).
-3. **Déployer le client v152.** Pas avant les deux étapes précédentes : le
+3. **Déployer le client v153.** Pas avant les deux étapes précédentes : le
    nouveau client inscrit les comptes « en attente », et sans `set-role` à jour
    personne ne pourrait les valider.
 

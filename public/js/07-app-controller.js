@@ -2808,7 +2808,7 @@
       S.geoCapturing = true; render();
       var g;
       // Capture FRAÎCHE (la personne peut s'être rapprochée du lieu entre-temps).
-      try { g = await capturePosition(12000, 0, false); }
+      try { g = await capturePosition(15000, 0, true); }
       catch (e) { g = { available: false, reason: 'unavailable' }; }
       S.geoCapturing = false;
       if (!g || !g.available) {
