@@ -332,6 +332,7 @@
           renderSecurityQAFields('signup', '', '') +
         '</div>' +
         '<button type="submit" style="' + btnStyle('#0B63F6') + 'margin-top:6px;">Créer mon compte</button>' +
+        '<p style="font-size:12.5px;color:var(--muted);text-align:center;line-height:1.5;margin:10px 0 0;">En créant un compte, vous acceptez les <button type="button" onclick="ouvrirConditions()" style="background:none;border:none;padding:4px 2px;margin:-4px 0;font:inherit;font-weight:700;color:#0B63F6;cursor:pointer;">conditions d\'utilisation</button>.</p>' +
       '</form>' +
 
       '<p style="text-align:center;font-size:13.5px;color:var(--faint);margin-top:20px;">' +

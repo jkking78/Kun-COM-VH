@@ -1453,7 +1453,7 @@
     return '<div class="safe-top" style="position:fixed;inset:0;background:var(--card);z-index:10000;display:flex;flex-direction:column;animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
       '<header style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--line);background:var(--card);z-index:2;">' +
         '<button onclick="App.closeCreateEvent()" style="background:none;border:none;font-size:16px;color:var(--ink);cursor:pointer;">Annuler</button>' +
-        '<div style="font-weight:700;font-size:16px;">' + (isEdit ? 'Modifier l\'événement' : 'Nouvel Événement') + '</div>' +
+        '<div style="font-weight:700;font-size:16px;color:var(--ink);">' + (isEdit ? 'Modifier l\'événement' : 'Nouvel Événement') + '</div>' +
         '<button onclick="App.saveEvent(this)" style="background:none;border:none;font-size:16px;font-weight:700;color:#0B63F6;cursor:pointer;">' + (isEdit ? 'Enregistrer' : 'Créer') + '</button>' +
       '</header>' +
       '<div style="flex:1;overflow-y:auto;background:var(--tile);padding:16px;">' +

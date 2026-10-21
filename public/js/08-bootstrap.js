@@ -24,6 +24,10 @@
       '*{scrollbar-width:none;-webkit-tap-highlight-color:transparent;box-sizing:border-box;}',
       'button{-webkit-appearance:none;touch-action:manipulation;}',
       'input,textarea,select{-webkit-appearance:none;}',
+      // Mode sombre : un champ sans couleur explicite gardait le fond blanc et le
+      // texte noir du navigateur — illisible (ex. titre et lieu d'un événement).
+      // Les styles en ligne, plus prioritaires, restent maîtres là où ils existent.
+      'input:not([type=checkbox]):not([type=radio]):not([type=range]),textarea,select{background-color:transparent;color:var(--ink);}',
       // Le zoom est désormais autorisé (accessibilité). iOS zoome automatiquement
       // sur tout champ dont le texte fait moins de 16px au moment de la saisie :
       // on garantit donc 16px minimum sur écran tactile pour éviter ce saut.
@@ -33,6 +37,11 @@
       '@keyframes heartFloat{0%{transform:translate(-50%,-50%) scale(0);opacity:1}50%{transform:translate(-50%,-80%) scale(1.2);opacity:1}100%{transform:translate(-50%,-120%) scale(0.8);opacity:0}}',
       '@keyframes heartPop{0%{transform:scale(1)}30%{transform:scale(1.35)}60%{transform:scale(0.9)}100%{transform:scale(1)}}',
       '@keyframes spin{to{transform:rotate(360deg)}}',
+      // Jauge de note du profil : l'arc se remplit depuis zéro à l'affichage.
+      '@keyframes kcJauge{from{stroke-dashoffset:var(--kc-jauge-depart)}}',
+      '.kc-jauge{animation:kcJauge 0.9s cubic-bezier(0.22,1,0.36,1) both;}',
+      // Conditions d'utilisation : le reset global (margin/padding à 0) masquait les puces.
+      '.kc-conditions p{margin:0 0 8px;}.kc-conditions ul{padding-left:20px;margin:4px 0 8px;}.kc-conditions li{margin:4px 0;}',
       // Balayage des cartes squelettes affichées pendant le chargement du fil.
       '@keyframes shimmer{0%{background-position:-400px 0}100%{background-position:400px 0}}',
       // Respecte le réglage système « réduire les animations » (accessibilité,
@@ -53,7 +62,7 @@
   // comporte de façon inexplicable. On vérifie donc que les briques essentielles
   // sont bien là avant de démarrer, et on recharge UNE fois en contournant le
   // cache si ce n'est pas le cas.
-  var APP_VERSION = 'v148'; window.APP_VERSION = APP_VERSION; // Exposé pour l'écran Paramètres (ligne « Version »).
+  var APP_VERSION = 'v149'; window.APP_VERSION = APP_VERSION; // Exposé pour l'écran Paramètres (ligne « Version »).
   // Nom du cache tenu par le service worker pour CETTE version. Doit rester
   // aligné sur CACHE_NAME dans sw.js.
   var CACHE_COURANT = 'kun-com-pwa-' + APP_VERSION;

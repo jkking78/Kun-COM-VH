@@ -1,4 +1,4 @@
-// Edge Function : attribuer un rôle (MEMBRE / RESP_SECTION / GRAND_RESPONSABLE).
+// Edge Function : attribuer un rôle (STAGIAIRE / MEMBRE / RESP_SECTION / GRAND_RESPONSABLE).
 // Le rôle est écrit dans le JWT (app_metadata) via la clé service_role — jamais
 // exposée au navigateur. Seul un GRAND_RESPONSABLE peut appeler cette fonction.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
@@ -17,7 +17,7 @@ const corsBase = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
-const ROLES = ["MEMBRE", "RESP_SECTION", "GRAND_RESPONSABLE"];
+const ROLES = ["STAGIAIRE", "MEMBRE", "RESP_SECTION", "GRAND_RESPONSABLE"];
 
 Deno.serve(async (req) => {
   const cors = { ...corsBase, "Access-Control-Allow-Origin": origineAutorisee(req), "Vary": "Origin" };

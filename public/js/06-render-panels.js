@@ -854,6 +854,9 @@
     // Le total depuis la création du compte est affiché séparément, en haut du
     // profil à côté de l'avatar.
     var h = punctualityHistory(freshU.id, currentCycleStartTs());
+    // La carte s'affiche aussi sur le profil d'un autre membre : les textes
+    // passent alors de « votre » à « sa ».
+    var estMoi = !!(S.user && freshU && S.user.id === freshU.id);
     // NOTE DU CYCLE : total de points ACCUMULÉS pendant le cycle, sur 30.
     // Chaque service et chaque tâche ajoute (ou retire) ses points ; la jauge se
     // remplit donc au fil du travail fourni, au lieu d'afficher une moyenne.
@@ -898,17 +901,21 @@
     // ============================================================
     // GRAPHIQUE 1 — NOTE : jauge demi-cercle + courbe d'évolution
     // ============================================================
-    // JAUGE — reproduction exacte de la maquette (profil_commit/code.html) :
-    // deux dégradés coniques superposés (fond + remplissage) dans un cadre au
-    // rapport 2:1, masqués au centre par un disque de la couleur de la carte.
-    // La rotation du remplissage porte la valeur : -90° = vide, +90° = plein.
+    // JAUGE demi-cercle (aspect de la maquette profil_commit/code.html) tracée
+    // en SVG. L'ancienne version superposait deux dégradés coniques tournés :
+    // le remplissage n'était pas limité à la moitié haute et débordait des deux
+    // côtés (deux « ailes » bleues quelle que soit la note). Ici un seul arc,
+    // dont la longueur visible porte la valeur ; il se remplit à l'affichage.
     var pctJauge = Math.max(0, Math.min(1, score / NOTE_MAX));
-    var rotJauge = -90 + pctJauge * 180;
-    var gauge = '<div style="position:relative;width:100%;max-width:240px;aspect-ratio:2/1;margin:16px auto 0;overflow:hidden;">' +
-      '<div style="position:absolute;top:0;left:0;width:100%;height:200%;border-radius:50%;background:conic-gradient(' + UI.tile + ' 0deg 180deg, transparent 180deg 360deg);transform:rotate(-90deg);"></div>' +
-      '<div style="position:absolute;top:0;left:0;width:100%;height:200%;border-radius:50%;background:conic-gradient(' + UI.accent + ' 0deg 140deg, transparent 140deg 360deg);transform:rotate(' + rotJauge.toFixed(1) + 'deg);transition:transform 1s ease-out;"></div>' +
-      '<div style="position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:80%;height:160%;border-radius:50%;background:' + UI.card + ';"></div>' +
-      '<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;padding-bottom:6px;">' +
+    var arc = 'M 14 106 A 92 92 0 0 1 198 106';
+    var gauge = '<div style="position:relative;width:100%;max-width:240px;margin:16px auto 0;">' +
+      '<svg viewBox="0 0 212 116" width="100%" style="display:block;overflow:visible;" aria-hidden="true">' +
+        '<path d="' + arc + '" fill="none" stroke="' + UI.tile + '" stroke-width="22" stroke-linecap="round"/>' +
+        '<path class="kc-jauge" d="' + arc + '" fill="none" stroke="' + UI.accent + '" stroke-width="22" stroke-linecap="round" ' +
+          'pathLength="100" stroke-dasharray="100" stroke-dashoffset="' + (100 - pctJauge * 100).toFixed(1) + '" ' +
+          'style="--kc-jauge-depart:100;' + (pctJauge === 0 ? 'opacity:0;' : '') + '"/>' +
+      '</svg>' +
+      '<div style="position:absolute;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;">' +
         '<div style="font-family:' + UI.fontDisplay + ';font-size:48px;font-weight:800;letter-spacing:-0.02em;color:' + UI.accent + ';line-height:1;">' + score + '</div>' +
         '<div style="font-size:14px;font-weight:600;color:' + UI.faint + ';margin-top:6px;">/ ' + NOTE_MAX + '</div>' +
       '</div>' +
@@ -949,7 +956,7 @@
     // Phrase de synthèse sous la jauge (maquette).
     // Phrase alignée sur le TOTAL de points du cycle (même seuils que l'étiquette).
     var verdict = !h.count
-      ? 'Votre note de départ, en attendant votre premier service.'
+      ? (estMoi ? 'Votre note de départ, en attendant votre premier service.' : 'Note de départ, en attendant son premier service.')
       : (score >= NOTE_MAX ? 'Cycle au maximum : rien à redire.'
         : score >= 24 ? 'Performance exceptionnelle ce cycle.'
         : score >= 15 ? 'Bon rythme : continuez à cumuler des points.'
@@ -1003,7 +1010,7 @@
           ? '<div style="font-size:11.5px;color:' + UI.muted + ';text-align:center;margin-top:8px;border-top:0.5px solid ' + UI.line + ';padding-top:10px;">Retard moyen de <strong style="color:' + UI.warn + ';">' + h.avgDelay + ' min</strong> sur les services concernés.</div>'
           : '');
     } else {
-      onTimeChart = donut + empty('Aucun service pointé sur ce cycle.<br>La répartition apparaîtra dès votre premier pointage.');
+      onTimeChart = donut + empty('Aucun service pointé sur ce cycle.<br>La répartition apparaîtra dès ' + (estMoi ? 'votre' : 'son') + ' premier pointage.');
     }
 
     // ============================================================
@@ -1039,7 +1046,7 @@
           '<div><div style="font-family:' + UI.fontMono + ';font-size:18px;font-weight:700;color:' + col + ';">' + score + '</div><div style="font-size:10px;color:' + UI.faint + ';">Points</div></div>' +
         '</div>';
     } else {
-      servicesChart = empty('Aucun service sur ce cycle.<br>Vos services assurés s\'afficheront ici, notés étoile par étoile.');
+      servicesChart = empty('Aucun service sur ce cycle.<br>' + (estMoi ? 'Vos' : 'Ses') + ' services assurés s\'afficheront ici, notés étoile par étoile.');
     }
 
     var body = chart === 'ontime' ? onTimeChart : chart === 'services' ? servicesChart : noteChart;
@@ -1047,7 +1054,7 @@
     return '<div style="margin:16px 0 14px;">' +
       '<div style="background:' + UI.card + ';border:1px solid ' + UI.line + ';border-radius:12px;box-shadow:' + UI.sh2 + ';padding:16px;">' +
         '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;">' +
-          '<h2 style="font-family:' + UI.fontDisplay + ';font-size:24px;font-weight:600;color:' + UI.ink + ';letter-spacing:-0.4px;line-height:1.15;margin:0;">Mes engagements</h2>' +
+          '<h2 style="font-family:' + UI.fontDisplay + ';font-size:24px;font-weight:600;color:' + UI.ink + ';letter-spacing:-0.4px;line-height:1.15;margin:0;">' + (estMoi ? 'Mes engagements' : 'Engagements') + '</h2>' +
           '<div style="font-family:' + UI.fontMono + ';font-size:13px;color:' + UI.faint + ';text-align:right;line-height:1.35;max-width:44%;min-width:0;overflow-wrap:anywhere;">Cycle ' + cycleStr + ' · ' + label + '</div>' +
         '</div>' +
         switcher +
@@ -1292,7 +1299,10 @@
     var now = new Date();
     // Numéro de cycle court (maquette : « Cycle 16 »). Deux cycles par mois :
     // 1–15 puis 16–fin. Le libellé long débordait sur trois lignes.
-    var cycleStr = String(now.getMonth() * 2 + (now.getDate() <= 15 ? 1 : 2));
+    // Même libellé que l'écran Bilans (« 16 – fin octobre ») : le profil
+    // affichait un numéro (« Cycle 20 ») qui ne correspondait à rien ailleurs.
+    var cycleStr = now.getDate() <= 15 ? '1er – 15 ' + now.toLocaleDateString('fr-FR',{month:'long'})
+                                       : '16 – fin ' + now.toLocaleDateString('fr-FR',{month:'long'});
 
     // NOTE : l'ancien « indice de confiance » combinait présences et évaluations
     // (score sur 20, bonus/malus, moyenne des bilans). Il a été remplacé par
@@ -1439,6 +1449,10 @@
     // désormais dans la page Paramètres (voir renderSettingsModal).
     var infoBlock = '<div style="background:' + UI.page + ';padding:0 20px 16px;">' +
       renderPunctualityCard(freshU, cycleStr) +
+      // Accès direct aux conditions d'utilisation depuis son propre profil.
+      (isMe ? '<button type="button" onclick="ouvrirConditions()" style="display:flex;align-items:center;justify-content:space-between;width:100%;min-height:44px;margin-top:4px;padding:12px 16px;background:' + UI.card + ';border:1px solid ' + UI.line + ';border-radius:12px;font-size:14px;font-weight:600;color:' + UI.ink + ';cursor:pointer;text-align:left;">' +
+        '<span>📜 Conditions d\'utilisation</span><span style="color:' + UI.faint + ';">›</span>' +
+      '</button>' : '') +
     '</div>';
 
     // ---- Continuous scroll (no tabs) ----
@@ -1884,6 +1898,7 @@
     var infos = ligne(svg('<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>'), 'Église', 'Vase d\'Honneur · Abidjan') +
       (uSecs.length ? ligne(svg('<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>'), 'Pôle', uSecs.map(function(s){ return secNom(s); }).join(' · ')) : '') +
       (freshU.phone ? ligne(svg('<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/>'), 'Numéro', '<span style="font-family:' + UI.fontMono + ';">' + safeHtml(freshU.phone) + '</span>') : '') +
+      ligne(svg('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/>'), 'Conditions d\'utilisation', '›', 'ouvrirConditions()') +
       version;
 
     // Switch iOS (piste 51×31, knob 27) : la piste suit le thème via les
@@ -1941,3 +1956,98 @@
   }
 
 
+
+  // ============================================================
+  // CONDITIONS D'UTILISATION
+  // Consultables à tout moment depuis Paramètres et le bas de son profil, et
+  // depuis l'écran d'inscription (avant même d'avoir un compte) : la fenêtre
+  // est donc injectée directement dans la page, comme le toast, sans dépendre
+  // de render() ni de l'écran affiché.
+  // Toute modification du texte doit faire avancer CONDITIONS_VERSION.
+  // ============================================================
+  var CONDITIONS_VERSION = '21 octobre 2026';
+  var CONDITIONS_SECTIONS = [
+    ['Objet',
+     '<p>Commit VH est l\'application interne du Département Communication de l\'Église Vase d\'Honneur (Abidjan). Elle sert à organiser les services (planning, convocations, pointage), à partager le travail de l\'équipe et à suivre l\'engagement de chacun.</p>' +
+     '<p>En utilisant l\'application, vous acceptez les présentes conditions.</p>'],
+    ['Accès et compte',
+     '<ul><li>L\'application est réservée aux membres du département et aux personnes qu\'il accueille (stagiaires).</li>' +
+     '<li>Un seul compte par personne, à votre vrai nom. Votre numéro de téléphone sert d\'identifiant de connexion.</li>' +
+     '<li>Votre mot de passe et vos réponses aux questions de sécurité sont personnels : ne les communiquez à personne, pas même à un responsable.</li>' +
+     '<li>Vous êtes responsable de ce qui est publié depuis votre compte. En cas de doute (téléphone perdu, compte utilisé par un autre), prévenez un Admin.</li></ul>'],
+    ['Rôles',
+     '<ul><li><b>Stagiaire</b> et <b>Membre</b> : consultent le planning, pointent leurs services, publient et commentent.</li>' +
+     '<li><b>Responsable de pôle</b> : crée des événements et convoque les membres.</li>' +
+     '<li><b>Admin</b> : publie les bilans, attribue les rôles et modère les contenus.</li></ul>' +
+     '<p>Les rôles sont attribués par un Admin ; ils ne se demandent pas dans l\'application.</p>'],
+    ['Règles de publication',
+     '<ul><li>Restez respectueux : pas d\'insultes, de moqueries, de propos discriminants ou contraires aux valeurs de l\'église.</li>' +
+     '<li><b>Droit à l\'image</b> : ne publiez la photo ou la vidéo d\'une personne reconnaissable qu\'avec son accord. Pour un mineur, l\'accord d\'un parent est nécessaire.</li>' +
+     '<li>Les informations internes (plannings, bilans, échanges) restent internes : ne les diffusez pas hors de l\'application sans l\'accord d\'un responsable.</li>' +
+     '<li>Le lien « Copier le lien » d\'une publication montre son auteur, sa légende et une image à toute personne qui l\'ouvre : ne le partagez qu\'à bon escient.</li></ul>'],
+    ['Pointage et localisation',
+     '<ul><li>Votre position n\'est demandée qu\'au moment où vous pointez votre arrivée à un service. Elle n\'est jamais suivie en continu.</li>' +
+     '<li>Elle sert uniquement à vérifier que vous êtes sur place (dans un rayon de 1,5 km du lieu). La distance au lieu est visible des autres membres.</li>' +
+     '<li>L\'heure d\'arrivée est contrôlée par le serveur et ne peut plus être modifiée ensuite.</li>' +
+     '<li>Pointer à distance, ou refuser la localisation, compte comme une absence.</li></ul>'],
+    ['Notes et engagement',
+     '<p>La note se calcule par cycle de 15 jours (du 1er au 15, du 16 à la fin du mois), sur 30 points :</p>' +
+     '<ul><li>Service : de +5 (à l\'heure) à −2 (retard de plus d\'1 h 30, absence ou pointage hors du lieu).</li>' +
+     '<li>Tâche à livrer : +5 à temps, +2 en retard, −2 si elle n\'est jamais livrée.</li>' +
+     '<li>Les bilans de pôle sont publiés par l\'Admin après les services.</li></ul>' +
+     '<p>Ces notes servent à encourager et à organiser l\'équipe, pas à juger les personnes.</p>'],
+    ['Messages privés',
+     '<p>Un message privé n\'est lisible que par vous et votre interlocuteur. Les règles de publication s\'y appliquent aussi.</p>'],
+    ['Vos données',
+     '<ul><li>Sont enregistrés : vos nom, prénom, numéro de téléphone, pôles, photo, bio, vos publications, commentaires, messages, pointages (heure et distance au lieu) et notes.</li>' +
+     '<li>Les membres connectés voient votre fiche, vos publications et vos notes. Sans compte, on ne peut rien consulter, sauf l\'aperçu d\'un lien partagé.</li>' +
+     '<li>Les photos et vidéos sont stockées à une adresse longue et impossible à deviner, mais toute personne qui obtient cette adresse peut les voir.</li>' +
+     '<li>Les données sont hébergées par Supabase (serveurs en Irlande, Union européenne) et l\'application par Vercel. Elles ne sont ni vendues ni utilisées à des fins publicitaires.</li>' +
+     '<li>Vous pouvez modifier votre fiche à tout moment, et supprimer définitivement votre compte depuis Paramètres → Supprimer mon compte.</li></ul>'],
+    ['Modération',
+     '<p>L\'auteur d\'une publication et l\'Admin peuvent supprimer les commentaires qui y sont faits. L\'Admin peut retirer tout contenu contraire à ces règles. En cas de manquement répété, les responsables peuvent retirer l\'accès à l\'application, après en avoir parlé avec la personne.</p>'],
+    ['Évolution des conditions',
+     '<p>Ces conditions peuvent évoluer. La date de la version en vigueur figure en haut de cette page ; les changements importants sont annoncés dans l\'application.</p>' +
+     '<p>Pour toute question, adressez-vous à un responsable du Département Communication.</p>']
+  ];
+
+  function ouvrirConditions() {
+    if (document.getElementById('_kcConditions')) return;
+    var fond = document.createElement('div');
+    fond.id = '_kcConditions';
+    fond.setAttribute('role', 'dialog');
+    fond.setAttribute('aria-modal', 'true');
+    fond.setAttribute('aria-label', 'Conditions d\'utilisation');
+    fond.className = 'safe-top';
+    fond.style.cssText = 'position:fixed;inset:0;z-index:9999990;background:var(--page,#F5F6F8);color:var(--ink,#0C1116);display:flex;flex-direction:column;animation:slideUp 0.28s cubic-bezier(0.22,1,0.36,1);font-family:var(--font-body,sans-serif);';
+    var sommaire = CONDITIONS_SECTIONS.map(function(s, i) {
+      return '<section style="background:var(--card,#FFF);border:1px solid var(--line,#E4E7EC);border-radius:12px;padding:16px;margin-bottom:12px;">' +
+        '<h2 style="font-family:var(--font-display,sans-serif);font-size:17px;font-weight:700;margin:0 0 8px;">' + (i + 1) + '. ' + s[0] + '</h2>' +
+        '<div class="kc-conditions" style="font-size:14.5px;line-height:1.55;color:var(--ink2,#2A313B);">' + s[1] + '</div>' +
+      '</section>';
+    }).join('');
+    fond.innerHTML =
+      '<div style="display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--card,#FFF);border-bottom:1px solid var(--line,#E4E7EC);">' +
+        '<button type="button" data-fermer aria-label="Fermer" style="background:var(--tile,#EFF1F5);border:none;width:44px;height:44px;flex-shrink:0;border-radius:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;">' +
+          '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>' +
+        '</button>' +
+        '<div style="min-width:0;">' +
+          '<h1 style="font-family:var(--font-display,sans-serif);font-size:21px;font-weight:700;margin:0;">Conditions d\'utilisation</h1>' +
+          '<div style="font-size:12.5px;color:var(--faint,#8A93A0);margin-top:2px;">Version du ' + CONDITIONS_VERSION + '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 16px 40px;">' + sommaire + '</div>';
+    document.body.appendChild(fond);
+    var fermer = function() {
+      fond.remove();
+      document.removeEventListener('keydown', echap);
+    };
+    var echap = function(ev) { if (ev.key === 'Escape') fermer(); };
+    document.addEventListener('keydown', echap);
+    fond.querySelector('[data-fermer]').onclick = fermer;
+    // Le focus passe dans la fenêtre (lecteurs d'écran, touche Échap) sans
+    // dessiner de cadre autour du bouton retour.
+    fond.tabIndex = -1;
+    fond.style.outline = 'none';
+    try { fond.focus(); } catch(e) {}
+  }

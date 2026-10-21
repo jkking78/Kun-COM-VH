@@ -133,6 +133,19 @@ try {
     await contexte.close();
   });
 
+  await cas('les conditions d\'utilisation s\'ouvrent depuis l\'inscription', async () => {
+    const { page, erreurs, contexte } = await nouvellePage(nav, base, null);
+    await page.waitForSelector('#loginSubmitBtn', { timeout: 15000 });
+    await page.evaluate("App.nav('signup')");
+    await page.click('text=conditions d\'utilisation');
+    await page.waitForSelector('#_kcConditions');
+    assert.ok((await page.textContent('#_kcConditions')).includes('Droit à l\'image'));
+    await page.click('#_kcConditions [data-fermer]');
+    assert.equal(await page.$('#_kcConditions'), null, 'la fenêtre doit se fermer');
+    assert.deepEqual(erreurs, []);
+    await contexte.close();
+  });
+
   await cas('avec session, le fil s\'affiche et aucune donnée piégée ne s\'exécute', async () => {
     const session = {
       access_token: jetonFactice(MOI), refresh_token: 'r', token_type: 'bearer',
@@ -212,6 +225,7 @@ try {
                     'App.openRolesPanel()', 'App.closeRolesPanel && App.closeRolesPanel()',
                     'App.openStorageStats()', 'App.closeStorageStats()');
       }
+      etapes.push('App.openSettings()', 'ouvrirConditions()', "document.querySelector('#_kcConditions [data-fermer]').click()", 'App.closeSettings()');
       for (const code of etapes) {
         await page.evaluate(code);
         await page.waitForTimeout(150);
