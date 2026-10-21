@@ -1416,8 +1416,8 @@
           .on('postgres_changes', { event: '*', schema: 'public', table: 'kun_com_posts' }, function() {
              fetchPostsSilently();
           })
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'kun_com_profiles' }, function() {
-             fetchProfilesSilently();
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'kun_com_profiles' }, function(payload) {
+             profilRecu(payload);
           })
           .subscribe();
       }
@@ -1469,6 +1469,57 @@
   }
   
   
+  // P1 : une fiche modifiée arrive par le temps réel avec son contenu. On
+  // l'applique telle quelle au lieu de retélécharger toutes les fiches (chaque
+  // battement de présence faisait relire l'annuaire entier à tous les membres
+  // en ligne : un coût qui croissait comme le carré de leur nombre).
+  var _profilsRecus = {};
+  var _profilsRecusTimer = null;
+  var _profilsSupprimes = {};
+  function profilRecu(payload) {
+    if (!payload) return;
+    if (payload.eventType === 'DELETE') {
+      if (payload.old && payload.old.id) _profilsSupprimes[payload.old.id] = true;
+    } else if (payload.new && payload.new.id && payload.new.content) {
+      _profilsRecus[payload.new.id] = payload.new;
+    } else {
+      fetchProfilesSilently();   // ligne incomplète (rare) : relecture complète
+      return;
+    }
+    // Regroupement : plusieurs fiches reçues ensemble ne coûtent qu'un rendu.
+    if (!_profilsRecusTimer) _profilsRecusTimer = setTimeout(appliquerProfilsRecus, 800);
+  }
+  // Seuls l'heure de passage et le drapeau « en ligne » ont changé ?
+  function seulementPresence(avant, apres) {
+    var sans = function(o) { var c = Object.assign({}, o); delete c.last_seen_at; delete c.is_online; return JSON.stringify(c); };
+    try { return sans(avant) === sans(apres); } catch(e) { return false; }
+  }
+  function appliquerProfilsRecus() {
+    _profilsRecusTimer = null;
+    var lignes = Object.keys(_profilsRecus).map(function(k){ return _profilsRecus[k]; });
+    var supprimes = _profilsSupprimes;
+    _profilsRecus = {}; _profilsSupprimes = {};
+    var users = db(SK.USERS, []).filter(function(u){ return !(u && supprimes[u.id]); });
+    var aRedessiner = Object.keys(supprimes).length > 0;
+    lignes.forEach(function(ligne) {
+      var r = parseProfileItem(ligne);
+      if (!r || !r.id) return;
+      var i = users.findIndex(function(u){ return u && u.id === r.id; });
+      var existant = i !== -1 ? users[i] : {};
+      var estMoi = S.user && S.user.id === r.id;
+      if (!estMoi) { delete r.pwd; delete r.sec_a1; delete r.sec_a2; }
+      var fusion = Object.assign({}, existant, r);
+      fusion.notifications = mergeNotifications(existant.notifications, r.notifications);
+      if (estMoi && S.jwtRole) fusion.role = S.jwtRole;   // le JWT reste la référence du rôle
+      if (i === -1 || !seulementPresence(existant, fusion)) aRedessiner = true;
+      if (i === -1) users.push(fusion); else users[i] = fusion;
+      if (estMoi) { S.user = fusion; try { sauverSession(fusion); } catch(e) {} }
+    });
+    dbSet(SK.USERS, users);
+    // Une simple présence ne redessine rien : la pastille suit au rendu suivant.
+    if (aRedessiner && !saisieEnCours()) render();
+  }
+
   var _fetchProfilesInFlight = false;
   async function fetchProfilesSilently() {
     if (!supabase || _fetchProfilesInFlight) return;
@@ -2778,6 +2829,28 @@
     return getUserSections(target).some(function(s){ return mine.indexOf(s) !== -1; });
   }
 
+  // C2 : fusion des assignations par différence. original = la liste au moment
+  // où l'écran a été ouvert, actuelle = la liste éditée, fraiche = la version
+  // relue sur le serveur juste avant d'écrire. On n'applique que ses propres
+  // ajouts et retraits : ceux faits entre-temps par un autre responsable restent.
+  function cleAssignation(a) {
+    return a ? (a.isSection ? 'sec:' + a.sectionId : String(a.userId)) + '|' + String(a.task || '') : '';
+  }
+  function fusionnerAssignations(fraiche, original, actuelle) {
+    var avant = (original || []).map(cleAssignation);
+    var apres = (actuelle || []).map(cleAssignation);
+    var res = (fraiche || []).filter(function(a) {
+      var k = cleAssignation(a);
+      return a && !(avant.indexOf(k) !== -1 && apres.indexOf(k) === -1);
+    });
+    var presentes = res.map(cleAssignation);
+    (actuelle || []).forEach(function(a) {
+      var k = cleAssignation(a);
+      if (avant.indexOf(k) === -1 && presentes.indexOf(k) === -1) { res.push(a); presentes.push(k); }
+    });
+    return res;
+  }
+
   // Combien de temps AVANT le début on peut déjà pointer. Arriver en avance est
   // la situation idéale : il serait absurde d'empêcher de l'enregistrer.
   var CHECKIN_EARLY_WINDOW_MS = 3 * 3600 * 1000;   // 3 h avant
@@ -3315,10 +3388,11 @@
       try { sauverSession(S.user); } catch(e){}
     } catch(e) { return; }
 
+    // Seule l'heure de passage est écrite, côté serveur (kc_battement,
+    // migration 12) : renvoyer toute la fiche écrasait ce qu'un autre appareil
+    // venait d'y enregistrer (C7) et alourdissait chaque battement.
     try {
-      if (supabase) supabase.from('kun_com_profiles')
-        .upsert({ id: S.user.id, content: profilSansSecret(S.user) }, { onConflict: 'id' })
-        .then(function(){}, function(){});
+      if (supabase) supabase.rpc('kc_battement').then(function(){}, function(){});
     } catch(e){}
   }
 

@@ -166,6 +166,22 @@ try {
     await contexte.close();
   });
 
+  await cas('accessibilité : tout élément cliquable est atteignable et activable au clavier', async () => {
+    const { page, erreurs, contexte } = await nouvellePage(nav, base, null);
+    await page.waitForSelector('#loginSubmitBtn', { timeout: 15000 });
+    const oublie = page.locator('[role="button"]', { hasText: 'Mot de passe oublié' }).first();
+    assert.equal(await oublie.getAttribute('tabindex'), '0');
+    await oublie.focus();
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => S.auth === 'forgot');
+    const muets = await page.$$eval('[onclick]', (els) => els.filter((el) =>
+      !/^(BUTTON|A|INPUT|SELECT|TEXTAREA|LABEL)$/.test(el.tagName) && el.getAttribute('tabindex') === null
+      && !/position:\s*fixed/.test(el.getAttribute('style') || '') && !/^\s*event\.stopPropagation/.test(el.getAttribute('onclick'))).length);
+    assert.equal(muets, 0, 'des éléments cliquables restent inaccessibles au clavier');
+    assert.deepEqual(erreurs, []);
+    await contexte.close();
+  });
+
   await cas('les conditions d\'utilisation s\'ouvrent depuis l\'inscription', async () => {
     const { page, erreurs, contexte } = await nouvellePage(nav, base, null);
     await page.waitForSelector('#loginSubmitBtn', { timeout: 15000 });
@@ -507,6 +523,12 @@ try {
     await contexte.grantPermissions(['geolocation']);
     await contexte.setGeolocation({ latitude: 5.37125, longitude: -3.98705, accuracy: 11 });
     await page.waitForSelector('#post-p_piege', { timeout: 15000 });
+    // C2 : la fusion par différence garde le travail d'un autre responsable.
+    const fusion = await page.evaluate(() => fusionnerAssignations(
+      [{ userId: 'b', task: 'Caméra' }, { userId: 'd', task: 'Console' }, { userId: 'e', task: 'Micros' }],
+      [{ userId: 'b', task: 'Caméra' }, { userId: 'd', task: 'Console' }],
+      [{ userId: 'c', task: 'Caméra 2' }, { userId: 'd', task: 'Console' }]).map((a) => a.userId).join(','));
+    assert.equal(fusion, 'd,e,c');
     // Recherche dans les lieux : « l'église » trouve « Église Vase d'Honneur ».
     const trouves = await page.evaluate(() => lieuxCorrespondants("l'église", db(SK.LIEUX, []).length ? db(SK.LIEUX, []) : [
       { id: 'a', nom: "Église Vase d'Honneur", lat: 5, lng: -4, utilisations: 1 }, { id: 'b', nom: 'Salle polyvalente', lat: 5, lng: -4, utilisations: 9 }]).map((l) => l.nom));

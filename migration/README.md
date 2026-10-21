@@ -238,6 +238,21 @@ message par événement et par pôle, qui renvoie au plan. Préférence
 « Rappels de service ». Rien à exécuter en SQL : redéployer `push` (avec
 `etapes.ts`).
 
+## Migration 12 — lot D1 : assignations par pôle et présence (v164)
+
+- **Assignations (C2, S10)** : un Responsable de pôle qui n'est pas l'auteur
+  de l'événement n'ajoute ni ne retire que les assignations de SES pôles
+  (champ `sectionId`, ou pôles du membre assigné pour les anciennes) ; les
+  autres sont conservées depuis la base. L'application applique en plus une
+  fusion par différence (seuls ses ajouts et retraits), pour tout le monde.
+- **Présence (P1, C7)** : `kc_battement()` n'écrit que l'heure de passage ;
+  l'application n'envoie plus toute sa fiche toutes les 2 minutes, et
+  applique la fiche reçue en temps réel au lieu de retélécharger l'annuaire.
+
+### Ordre de mise en production
+1. **Exécuter `12_assignations_par_pole.sql`.**
+2. **Déployer le client v164.**
+
 ## Limites restantes (connues)
 - La **position GPS** d'un pointage est fournie par le téléphone : le serveur
   borne l'heure, mais ne peut pas prouver la présence physique.
