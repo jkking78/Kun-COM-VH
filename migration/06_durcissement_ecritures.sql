@@ -1,6 +1,8 @@
 -- ============================================================
 -- MIGRATION 06 — DURCISSEMENT DES ÉCRITURES (fusion côté serveur)
 -- À exécuter dans le SQL Editor de Supabase. Idempotente : peut être relancée.
+-- APPLIQUÉE en production le 21/10/2026 (migrations durcissement_06a à 06d ;
+-- sauvegarde préalable dans le schéma privé sauvegarde_avant_06).
 --
 -- Problème corrigé (limite connue de la migration 04) :
 --   Les J'aime, commentaires, votes et participations vivent DANS le JSON de la
@@ -610,6 +612,33 @@ from auth.users u
 where u.id::text = p.id
   and jsonb_typeof(p.content) = 'object'
   and p.content ->> 'role' is distinct from coalesce(u.raw_app_meta_data ->> 'role', 'MEMBRE');
+
+-- ------------------------------------------------------------
+-- 6 bis) DROITS DES FONCTIONS (alertes du « Security Advisor » de Supabase)
+--    Les fonctions internes ne doivent pas être appelables via /rest/v1/rpc,
+--    et leur search_path est figé. Un déclencheur s'exécute sans que
+--    l'utilisateur ait le droit EXECUTE sur sa fonction.
+-- ------------------------------------------------------------
+revoke execute on function public.kc_posts_avant_insertion() from public, anon, authenticated;
+revoke execute on function public.kc_posts_avant_maj() from public, anon, authenticated;
+revoke execute on function public.kc_profils_avant_ecriture() from public, anon, authenticated;
+revoke execute on function public.kc_purger_disparus(jsonb, jsonb) from public, anon, authenticated;
+-- Utilisées par les règles d'insertion : nécessaires aux membres connectés seulement.
+revoke execute on function public.kc_post_existe(text) from public, anon;
+revoke execute on function public.kc_profil_existe(text) from public, anon;
+grant execute on function public.kc_post_existe(text) to authenticated;
+grant execute on function public.kc_profil_existe(text) to authenticated;
+
+alter function public.jwt_role() set search_path = public;
+alter function public.kc_maintenant_ms() set search_path = public;
+alter function public.kc_horodatage_sur(jsonb) set search_path = public;
+alter function public.kc_fusion_ids(jsonb, jsonb, text) set search_path = public;
+alter function public.kc_fusion_cle(jsonb, jsonb, text) set search_path = public;
+alter function public.kc_fusion_commentaires(jsonb, jsonb, text, boolean, jsonb) set search_path = public;
+alter function public.kc_appliquer_collaboratif(jsonb, jsonb, jsonb, text, boolean) set search_path = public;
+alter function public.kc_num(jsonb) set search_path = public;
+alter function public.kc_fusion_notifs_proprietaire(jsonb, jsonb) set search_path = public;
+alter function public.kc_fusion_notifs_tiers(jsonb, jsonb, text) set search_path = public;
 
 -- ------------------------------------------------------------
 -- 7) RAPPORT
