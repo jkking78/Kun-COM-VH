@@ -334,7 +334,10 @@
     '</div>';
 
     return '<div class="safe-top" style="position:fixed;inset:0;background:' + UI.page + ';z-index:10000;display:flex;flex-direction:column;animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
-      enTetePleinEcran(isEdit ? 'Modifier l\'événement' : 'Nouvel événement', 'App.closeCreateEvent()', boutonEnTete(isEdit ? 'Enregistrer' : 'Créer', 'App.saveEvent(this)')) +
+      enTetePleinEcran(isEdit ? 'Modifier l\'événement' : S.republierSerie ? 'Republier l\'événement' : 'Nouvel événement', 'App.closeCreateEvent()', boutonEnTete(isEdit ? 'Enregistrer' : S.republierSerie ? 'Publier' : 'Créer', 'App.saveEvent(this)')) +
+      (S.republierSerie && !isEdit
+        ? '<div role="status" style="margin:12px 16px 0;background:var(--accent-soft);color:var(--accent-ink);border-radius:14px;padding:12px 14px;font-size:13px;font-weight:600;line-height:1.45;">Copie de la date du ' + safeHtml(new Date((S.republierDepuis || '') + 'T00:00:00').toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long' })) + '. Change ce que tu veux (date, équipe, heure…), puis touche « Publier ». Elle rejoindra la même série.</div>'
+        : '') +
       '<div style="flex:1;overflow-y:auto;background:' + UI.page + ';padding:8px 16px 32px;">' +
         imageBlock +
 

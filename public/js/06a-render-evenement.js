@@ -33,7 +33,7 @@
               bouton("App.copyPostLink('" + id + "')", SVG.link, 'Copier le lien');
           }
           var jour = new Date(post.eventDate + 'T00:00:00').toLocaleDateString('fr-FR', { weekday:'short', day:'numeric', month:'short' });
-          // Plusieurs dates d'un coup : partager, supprimer, reprogrammer.
+          // Plusieurs dates d'un coup : partager, supprimer ; une seule : republier.
           return bouton("App.selectionnerSerie('" + jsArg(post.recurrenceGroupId) + "','" + id + "')", ico('check', 20, 'var(--lien)'), 'Sélectionner des dates') +
             '<div style="font-size:12px;font-weight:700;color:var(--faint);margin:6px 4px 8px;">Cette date (' + safeHtml(jour) + ')</div>' +
             bouton("App.shareExternal('" + id + "')", SVG.share, 'Partager cette date') +

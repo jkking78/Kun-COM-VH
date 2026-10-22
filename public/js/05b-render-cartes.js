@@ -246,7 +246,7 @@
   // petite animation (le volet glisse puis revient, flèche qui pulse) montre
   // qu'on peut faire défiler. Elle s'arrête dès qu'on a fait glisser une série.
   // Mode « Sélectionner » (menu ⋯) : on coche des dates, puis on les partage,
-  // les supprime ou les reprogramme.
+  // les supprime, ou on en republie une (formulaire pré-rempli).
   function renderSerieCard(serieId, events) {
     var carId = 'evserie-' + String(serieId).replace(/[^A-Za-z0-9_-]/g, '');
     var curIdx = Math.min((S.eventGroupIdx && S.eventGroupIdx[serieId]) || 0, events.length - 1);
@@ -284,32 +284,16 @@
           '<button type="button" onclick="App.ouvrirOptionsSerie(\'' + jsArg(serieId) + '\')" aria-label="Options et partage" style="background:var(--tile);border:none;width:40px;height:40px;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-right:-4px;">' + SVG.dots + '</button>' +
         '</div>';
 
-    // Barre d'actions de la sélection, et panneau de reprogrammation.
+    // Barre d'actions de la sélection. « Republier » ouvre le formulaire
+    // pré-rempli d'UNE date : on y change ce qu'on veut avant de publier.
     var actions = '';
     if (sel) {
-      actions = '<div style="display:flex;gap:6px;padding:0 14px 12px;">' +
+      actions = '<div style="display:flex;gap:6px;padding:0 14px ' + (nbSel > 1 && peutCreer ? '6' : '12') + 'px;">' +
         bouton('App.partagerSelectionSerie()', 'Partager', 'var(--lien)', nbSel > 0) +
-        (peutCreer ? bouton('App.ouvrirReprogrammation()', 'Reprogrammer', 'var(--lien)', nbSel > 0) : '') +
+        (peutCreer ? bouton('App.republierSelectionSerie()', 'Republier', 'var(--lien)', nbSel === 1) : '') +
         bouton('App.supprimerSelectionSerie()', 'Supprimer', 'var(--bad-ink)', !!peutSupprimer) +
-      '</div>';
-      if (sel.reprog && nbSel > 0) {
-        var choisies = events.filter(function(e){ return sel.ids[e.id]; });
-        var prevues = nouvellesDatesSerie(choisies, occurrencesDeSerie(premier), sel.decalage || 'suite');
-        var puce = function(v, libelle) {
-          var on = String(sel.decalage || 'suite') === String(v);
-          return '<button type="button" onclick="App.choisirDecalage(\'' + v + '\')" style="min-height:36px;padding:0 12px;border-radius:999px;border:' + (on ? 'none' : '1px solid var(--line2)') + ';background:' + (on ? UI.accent : 'var(--card)') + ';color:' + (on ? '#FFF' : 'var(--ink)') + ';font-size:13px;font-weight:700;cursor:pointer;">' + libelle + '</button>';
-        };
-        actions += '<div class="kc-apparait" style="margin:0 14px 14px;background:var(--tile);border-radius:14px;padding:12px;">' +
-          '<div style="font-size:13px;font-weight:800;color:var(--ink);margin-bottom:8px;">Reprogrammer ' + (nbSel > 1 ? 'ces ' + nbSel + ' dates' : 'cette date') + '</div>' +
-          '<div style="display:flex;flex-wrap:wrap;gap:6px;">' + puce('suite', 'À la suite de la série') + puce(1, '+1 sem.') + puce(2, '+2 sem.') + puce(4, '+4 sem.') + '</div>' +
-          '<div style="font-size:13px;color:var(--muted);margin-top:10px;line-height:1.5;">' +
-            (prevues.length
-              ? 'Nouvelles dates : <strong style="color:var(--ink);">' + prevues.map(function(x){ return safeHtml(new Date(x.date + 'T00:00:00').toLocaleDateString('fr-FR', { weekday:'short', day:'numeric', month:'short' })); }).join(', ') + '</strong><br>Même heure, même lieu, même équipe ; les convoqués seront prévenus.'
-              : 'Ces dates existent déjà dans la série.') +
-          '</div>' +
-          '<button type="button" ' + (prevues.length ? 'onclick="App.reprogrammerSelectionSerie(this)"' : 'disabled') + ' style="width:100%;min-height:44px;margin-top:10px;border:none;border-radius:999px;background:' + (prevues.length ? UI.accent : 'var(--line2)') + ';color:#FFF;font-size:14px;font-weight:800;cursor:pointer;">Créer ' + prevues.length + ' date' + (prevues.length > 1 ? 's' : '') + '</button>' +
-        '</div>';
-      }
+      '</div>' +
+      (nbSel > 1 && peutCreer ? '<div style="font-size:12px;color:var(--faint);padding:0 16px 12px;">Pour republier, sélectionne une seule date.</div>' : '');
     }
 
     return '<article id="serie-' + safeHtml(serieId) + '" style="background:' + UI.card + ';border-radius:' + UI.r2 + ';box-shadow:' + UI.sh2 + ';margin:0 12px 12px;overflow:hidden;' + (sel ? 'outline:2px solid ' + UI.accent + ';' : '') + '">' +
