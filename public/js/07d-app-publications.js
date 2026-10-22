@@ -1217,6 +1217,24 @@
         (Array.isArray(p.assignments) && p.assignments.length > 0)
       );
 
+      // Un événement supprimé est un événement ANNULÉ pour ceux qui y étaient
+      // convoqués : ils sont prévenus (cloche et téléphone), sinon leur
+      // convocation restait en suspens sans explication.
+      if (p.type === 'EVENT' && Array.isArray(p.assignments)) {
+        var quand = p.eventDate ? new Date(p.eventDate + 'T00:00:00').toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long' }) : '';
+        var prevenus = {};
+        p.assignments.forEach(function(a) {
+          if (!a || !a.userId || a.userId === u.id || prevenus[a.userId]) return;
+          prevenus[a.userId] = true;
+          sendNotificationToUser(a.userId, {
+            type: 'EVENT_CANCELLED',
+            title: 'Événement annulé',
+            text: '« ' + (p.eventTitle || 'Événement') + ' »' + (quand ? ' du ' + quand : '') + ' est annulé. Tu n\'es plus attendu(e).',
+            targetId: p.id
+          });
+        });
+      }
+
       if (hasHistory) {
         p.type = 'EVENT_ARCHIVED';
         p.archivedAt = Date.now();

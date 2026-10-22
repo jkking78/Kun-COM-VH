@@ -6,6 +6,18 @@
   // ============================================================
 
   
+  // Convocation (ou notification d'événement) dont l'événement a été supprimé
+  // depuis : elle reste dans la cloche, mais marquée « Annulé ».
+  var TYPES_EVENEMENT = ['EVENT_ASSIGNED', 'EVENT_SECTION', 'CONVOCATION', 'ECHANGE', 'EVENT_CANCELLED'];
+  function notificationAnnulee(n) {
+    if (!n || TYPES_EVENEMENT.indexOf(n.type) === -1 || !n.targetId) return false;
+    if (n.type === 'EVENT_CANCELLED') return true;
+    var ev = db(SK.POSTS, []).find(function(p){ return p.id === n.targetId; });
+    if (ev) return ev.type === 'EVENT_ARCHIVED' || ev.status === 'deleted';
+    // Absent du cache : supprimé, sauf si la synchronisation n'est pas finie.
+    return !(S.initialLoading || S.syncEnCours);
+  }
+
   function renderNotificationsModal(u) {
     var notifs = (u && Array.isArray(u.notifications)) ? u.notifications : [];
     var unreadCount = notifs.filter(function(n){ return !n.read; }).length;
@@ -53,8 +65,11 @@
           : n.type === 'MESSAGE' ? 'inbox'
           : (n.type === 'FOLLOW' || n.type === 'NEW_MEMBER') ? 'users'
           : 'calendar';
+        var annulee = notificationAnnulee(n);
+        if (annulee) iconName = 'x';
         var icon = ico(iconName, 10, '#FFF', 2.4);
         var bgIcon = n.type === 'LIKE' ? UI.bad : (n.type === 'COMMENT' || n.type === 'REPLY') ? '#0B5FE0' : n.type === 'EVALUATION' ? UI.warnPlein : n.type === 'MENTION' ? UI.warnPlein : n.type === 'MESSAGE' ? '#0E9F6E' : n.type === 'FOLLOW' ? UI.accent : n.type === 'NEW_MEMBER' ? '#0E9F6E' : '#0B5FE0';
+        if (annulee) bgIcon = UI.bad;
         var timeAgoStr = timeAgo(n.timestamp || Date.now());
         var isUnread = !n.read;
 
@@ -76,10 +91,12 @@
             '<div style="position:absolute;bottom:-2px;right:-2px;width:19px;height:19px;border-radius:' + UI.pill + ';background:' + bgIcon + ';display:flex;align-items:center;justify-content:center;border:1.5px solid ' + UI.card + ';">' + icon + '</div>' +
           '</div>' +
           '<div style="flex:1;min-width:0;">' +
-            '<div style="font-size:13px;color:var(--ink);line-height:1.35;word-break:break-word;">' +
+            '<div style="font-size:13px;color:var(--ink);line-height:1.35;word-break:break-word;' + (annulee && n.type !== 'EVENT_CANCELLED' ? 'opacity:0.6;text-decoration:line-through;' : '') + '">' +
               '<strong>' + safeHtml(n.senderName || 'Membre') + '</strong> ' + safeHtml(n.text || '') +
             '</div>' +
-            '<div style="font-size:11px;color:var(--faint);margin-top:3px;">' + timeAgoStr + '</div>' +
+            '<div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--faint);margin-top:3px;">' + timeAgoStr +
+              (annulee ? '<span style="font-size:11px;font-weight:800;color:var(--bad-ink);background:var(--bad-soft);padding:1px 7px;border-radius:999px;">Annulé</span>' : '') +
+            '</div>' +
           '</div>' +
           (isUnread ? '<div style="width:8px;height:8px;border-radius:4px;background:#0B5FE0;flex-shrink:0;"></div>' : '') +
         '</div>';
