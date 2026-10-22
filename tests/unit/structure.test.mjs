@@ -53,6 +53,15 @@ test('Vercel sert public/ (une seule copie du code)', () => {
   assert.ok(!existsSync(join(RACINE, 'js')), 'une copie de js/ traîne à la racine');
 });
 
+test('l\'ancienne adresse redirige vers commitcomaev.app, chemin et paramètres compris', () => {
+  const conf = JSON.parse(lire('vercel.json'));
+  const r = (conf.redirects || []).find((x) => (x.has || []).some((h) => h.type === 'host' && h.value === 'kun-com-vh.vercel.app'));
+  assert.ok(r, 'redirection de l\'ancienne adresse');
+  assert.equal(r.source, '/:chemin*');
+  assert.equal(r.destination, 'https://commitcomaev.app/:chemin*');
+  assert.equal(r.permanent, true);
+});
+
 test('aucun code d\'accès en clair dans le client', () => {
   for (const f of readdirSync(join(RACINE, 'public/js'))) {
     const src = lire('public/js/' + f);
