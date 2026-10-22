@@ -303,6 +303,19 @@ message par événement et par pôle, qui renvoie au plan. Préférence
 1. **Exécuter `15_apercu_evenements.sql`** (remplace la fonction, même signature).
 2. **Déployer le client v175.**
 
+## Migration 16 — une publication supprimée ne garde plus son contenu
+
+La suppression reste « douce » : la ligne garde `status: 'deleted'` pour que
+chaque appareil apprenne la suppression. Mais un déclencheur ne laisse plus
+que `id`, `status`, `type`, `userId`, `timestamp`, `eventDate`,
+`recurrenceGroupId` et `deletedAt` : texte, sondage, commentaires et
+assignations sont effacés. Les publications déjà supprimées sont vidées à
+l'application de la migration. Les fichiers (images, vidéos) étaient déjà
+retirés du stockage par l'application.
+
+### Ordre de mise en production
+1. Appliquer `16_suppression_videe.sql` (aucun changement de l'application).
+
 ## Limites restantes (connues)
 - **Pas de CSP stricte** : les ~270 gestionnaires `onclick` en ligne
   l'empêchent ; seuls `frame-ancestors`, `object-src` et `base-uri` sont posés.

@@ -61,3 +61,6 @@ lancer tests/sql/test_08_temps_reel.sql migration/03_security_questions.sql migr
 # La 15 enrichit l'aperçu public des événements partagés.
 lancer tests/sql/test_15_apercu.sql migration/06_durcissement_ecritures.sql migration/15_apercu_evenements.sql
 lancer tests/sql/test_06_durcissement.sql migration/06_durcissement_ecritures.sql migration/15_apercu_evenements.sql
+# La 16 vide le contenu des publications supprimées.
+lancer tests/sql/test_16_suppression.sql migration/06_durcissement_ecritures.sql migration/07_convocations_et_validation.sql migration/16_suppression_videe.sql
+lancer tests/sql/test_06_durcissement.sql migration/06_durcissement_ecritures.sql migration/16_suppression_videe.sql
