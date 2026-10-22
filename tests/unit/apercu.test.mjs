@@ -27,7 +27,7 @@ test('lien d\'une date : titre, jour et heure de l\'événement', async () => {
 
 test('lien de la série : nombre de dates et période, l\'appli ouvre la série', async () => {
   const html = await page({ id: 'evt_1', serie: '1' }, culte);
-  assert.match(html, /4 dates, du 25 oct\. au 15 nov\./);
+  assert.match(html, /4 dates, du 25 oct\. au 15 nov\. Ouvre Commit/);
   assert.match(html, /\/\?post=evt_1&amp;serie=1"/);
 });
 

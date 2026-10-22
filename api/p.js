@@ -75,7 +75,8 @@ module.exports = async function handler(req, res) {
       } else if (post.eventDate) {
         quand = dateLongue(post.eventDate) + (post.eventStart ? ' à ' + post.eventStart.replace(':', ' h ') : '');
       }
-      description = (quand ? quand.charAt(0).toUpperCase() + quand.slice(1) + '. ' : '') + (caption ? caption.slice(0, 140) : 'Ouvre Commit pour voir les détails.');
+      // « … au 15 nov. » se termine déjà par un point : pas de second.
+      description = (quand ? quand.charAt(0).toUpperCase() + quand.slice(1) + (/\.$/.test(quand) ? ' ' : '. ') : '') + (caption ? caption.slice(0, 140) : 'Ouvre Commit pour voir les détails.');
     }
     if (typeof post.image === 'string') {
       // Média hébergé (Storage, public) : URL directe. Ancien média en base64 :
