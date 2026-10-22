@@ -506,6 +506,111 @@
       var idx = Math.min((S.eventGroupIdx && S.eventGroupIdx[serieId]) || 0, dates.length - 1);
       App.openOptions((dates[idx > 0 ? idx : 0] || membre).id);
     },
+    // ---- Sélection de dates dans le carrousel d'une série ----
+    _datesSerieCourante: function() {
+      var sel = S.selSerie;
+      if (!sel) return [];
+      var membre = db(SK.POSTS, []).find(function(p){ return p.type === 'EVENT' && p.recurrenceGroupId === sel.id; });
+      return membre ? datesDeSerie(occurrencesDeSerie(membre)) : [];
+    },
+    selectionnerSerie: function(serieId, premierId) {
+      S.optionsOpen = false; S.optionsPost = null;
+      S.selSerie = { id: serieId, ids: {}, reprog: false, decalage: 'suite' };
+      if (premierId) S.selSerie.ids[premierId] = true;
+      render();
+    },
+    basculerDateSerie: function(id) {
+      if (!S.selSerie) return;
+      if (S.selSerie.ids[id]) delete S.selSerie.ids[id]; else S.selSerie.ids[id] = true;
+      render();
+    },
+    toutSelectionnerSerie: function() {
+      if (!S.selSerie) return;
+      var dates = App._datesSerieCourante();
+      var toutes = dates.every(function(e){ return S.selSerie.ids[e.id]; });
+      S.selSerie.ids = {};
+      if (!toutes) dates.forEach(function(e){ S.selSerie.ids[e.id] = true; });
+      render();
+    },
+    quitterSelectionSerie: function() { S.selSerie = null; render(); },
+    _datesChoisies: function() {
+      var sel = S.selSerie;
+      return sel ? App._datesSerieCourante().filter(function(e){ return sel.ids[e.id]; }) : [];
+    },
+    // Une date : son lien. Plusieurs : le lien de la série et la liste des dates.
+    partagerSelectionSerie: function() {
+      var choisies = App._datesChoisies();
+      if (!choisies.length) return;
+      if (choisies.length === 1) { App.shareExternal(choisies[0].id); return; }
+      var liste = choisies.map(function(e){ return new Date(e.eventDate + 'T00:00:00').toLocaleDateString('fr-FR', { weekday:'short', day:'numeric', month:'short' }); }).join(', ');
+      var texte = choisies[0].eventTitle + ' : ' + liste;
+      var url = App.postShareUrl(choisies[0].id, true);
+      if (navigator.share) { navigator.share({ title: 'Commit VH', text: texte, url: url }).catch(function(){}); }
+      else App.copyPostLink(choisies[0].id, true);
+    },
+    supprimerSelectionSerie: function() {
+      var choisies = App._datesChoisies();
+      if (!choisies.length) return;
+      var n = choisies.length;
+      if (!window.confirm('Supprimer ' + (n > 1 ? 'ces ' + n + ' dates' : 'cette date') + ' ? Les personnes convoquées seront prévenues de l\'annulation.')) return;
+      choisies.forEach(function(e){ App.deletePost(e.id, true); });
+      S.selSerie = null;
+      if (S.eventGroupIdx && choisies[0]) S.eventGroupIdx[choisies[0].recurrenceGroupId] = 0;
+      render();
+      toast(n > 1 ? n + ' dates supprimées.' : 'Date supprimée.', 'success');
+    },
+    ouvrirReprogrammation: function() {
+      if (!S.selSerie) return;
+      S.selSerie.reprog = !S.selSerie.reprog;
+      render();
+    },
+    choisirDecalage: function(v) {
+      if (!S.selSerie) return;
+      S.selSerie.decalage = v === 'suite' ? 'suite' : (parseInt(v, 10) || 1);
+      render();
+    },
+    // Recopie les dates choisies aux nouvelles dates (même heure, lieu, pôles,
+    // équipe et affiche) dans la même série. Les réponses aux convocations,
+    // pointages et plans de préparation ne sont pas recopiés. La plus proche
+    // des nouvelles dates prévient l'équipe, comme à la création.
+    reprogrammerSelectionSerie: async function(btn) {
+      var u = S.user || {};
+      if (u.role !== 'RESP_SECTION' && u.role !== 'GRAND_RESPONSABLE') { toast('Action non autorisée.', 'error'); return; }
+      var choisies = App._datesChoisies();
+      if (!choisies.length) return;
+      var prevues = nouvellesDatesSerie(choisies, occurrencesDeSerie(choisies[0]), S.selSerie.decalage || 'suite');
+      if (!prevues.length) { toast('Ces dates existent déjà dans la série.', 'info'); return; }
+      if (btn) { btn.disabled = true; btn.textContent = 'Création…'; }
+      var base = Date.now();
+      var crees = prevues.map(function(x, i) {
+        var ev = Object.assign({}, x.source, {
+          id: 'evt_' + (base + i),
+          userId: u.id,
+          author: (u.prenom || '') + ' ' + (u.nom || ''),
+          eventDate: x.date,
+          recurrenceGroupId: x.source.recurrenceGroupId || x.source.id,
+          timestamp: base,
+          likedBy: [], comments: [], mediaUrls: [],
+          is_pinned: false, edited: false
+        });
+        delete ev.reponsesConvocation; delete ev.preparation; delete ev.echanges;
+        delete ev.status; delete ev.archivedAt; delete ev.editedAt; delete ev.assignmentsUpdatedAt;
+        return ev;
+      });
+      dbSet(SK.POSTS, crees.concat(db(SK.POSTS, [])));
+      var proche = crees.slice().sort(function(a, b){ return String(a.eventDate).localeCompare(String(b.eventDate)); })[0];
+      try { sendTargetedEventNotifications(proche); } catch(e) {}
+      if (supabase) {
+        try {
+          await supabase.from('kun_com_posts').upsert(crees.map(function(p) {
+            return { id: p.id, content: p, created_at: new Date().toISOString() };
+          }), { onConflict: 'id' });
+        } catch(e) { console.warn('Reprogrammation :', e); }
+      }
+      S.selSerie = null;
+      render();
+      toast(crees.length > 1 ? crees.length + ' nouvelles dates créées.' : 'Nouvelle date créée.', 'success');
+    },
     goToEvent: function(eventId) {
       var posts = db(SK.POSTS, []);
       var ev = posts.find(function(p){ return p.id === eventId && p.type === 'EVENT'; });
@@ -1196,7 +1301,7 @@
       S.optionsOpen = true; render();
     },
     closeOptions: function() { S.optionsOpen=false; S.optionsPost=null; render(); },
-    deletePost: function(postId) {
+    deletePost: function(postId, silencieux) {
       var u = S.user || {};
       var posts = db(SK.POSTS, []);
       var idx = posts.findIndex(function(p){ return p.id===postId; });
@@ -1265,6 +1370,7 @@
         deleteUnusedMediaFromStorage((p.mediaUrls || []), postId);
       }
       S.optionsOpen=false; S.optionsPost=null;
+      if (silencieux) return;
       render();
       toast(hasHistory ? 'Événement supprimé — les étoiles déjà attribuées restent conservées.' : 'Publication supprimée.', 'success');
     },

@@ -879,6 +879,41 @@ try {
     await contexte.close();
   });
 
+  await cas('carrousel : sélectionner des dates pour les reprogrammer, les partager ou les supprimer', async () => {
+    const { page, erreurs, contexte } = await nouvellePage(nav, base, sessionPour('GRAND_RESPONSABLE'));
+    await page.waitForSelector('#post-p_piege', { timeout: 15000 });
+    page.on('dialog', (d) => d.accept());
+    await page.evaluate(() => {
+      const posts = db(SK.POSTS, []);
+      ['2030-06-02', '2030-06-09', '2030-06-16'].forEach((d, i) => posts.unshift({
+        id: 'sel_' + i, type: 'EVENT', userId: S.user.id, author: 'A', eventTitle: 'Culte sélection', eventDate: d, eventStart: '07:00',
+        recurrenceGroupId: 'sel_0', assignments: [{ userId: 'x', task: 'Son' }], reponsesConvocation: { x: { statut: 'confirme' } },
+        timestamp: Date.now() + 9000, likedBy: [], comments: [], mediaUrls: [] }));
+      dbSet(SK.POSTS, posts);
+      App.tab('home');
+    });
+    await page.waitForSelector('#serie-sel_0');
+    await page.click('#serie-sel_0 [aria-label="Options et partage"]');
+    await page.click('text=Sélectionner des dates');
+    await page.waitForSelector('#serie-sel_0 [role="checkbox"][aria-checked="true"]');
+    await page.click('#serie-sel_0 [data-ev-id="sel_1"] [role="checkbox"]');
+    assert.ok(await page.isVisible('#serie-sel_0 >> text=2 dates sélectionnées'));
+    // Reprogrammer à la suite de la série : 2 nouvelles dates, même série.
+    await page.click('#serie-sel_0 >> text=Reprogrammer');
+    await page.click('#serie-sel_0 >> text=Créer 2 dates');
+    await page.waitForFunction(() => !S.selSerie);
+    const serie = await page.evaluate(() => db(SK.POSTS, []).filter((p) => p.recurrenceGroupId === 'sel_0').map((p) => p.eventDate + (p.reponsesConvocation ? '*' : '')).sort());
+    assert.deepEqual(serie, ['2030-06-02*', '2030-06-09*', '2030-06-16*', '2030-06-23', '2030-06-30']);
+    // Supprimer deux dates d'un coup.
+    await page.evaluate(() => { App.selectionnerSerie('sel_0', 'sel_0'); App.basculerDateSerie('sel_2'); });
+    await page.click('#serie-sel_0 >> text=Supprimer');
+    await page.waitForFunction(() => !S.selSerie);
+    const restent = await page.evaluate(() => db(SK.POSTS, []).filter((p) => p.recurrenceGroupId === 'sel_0' && p.type === 'EVENT').map((p) => p.eventDate).sort());
+    assert.deepEqual(restent, ['2030-06-09', '2030-06-23', '2030-06-30']);
+    assert.deepEqual(erreurs, []);
+    await contexte.close();
+  });
+
   await cas('un membre consulte le plan de préparation sans pouvoir le modifier', async () => {
     const { page, erreurs, contexte } = await nouvellePage(nav, base, sessionPour('MEMBRE'));
     await page.waitForSelector('#post-p_piege', { timeout: 15000 });
