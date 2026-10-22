@@ -87,6 +87,8 @@ const publications = [
 
 // Messages privés servis par le faux serveur (le scénario « sécurité » en ajoute).
 let MESSAGES = [];
+// Fiches envoyées au serveur (upsert de kun_com_profiles).
+const ECRITURES_FICHES = [];
 // user_metadata du compte connecté, et chaque modification reçue.
 let META_COMPTE = {};
 const ENVOIS_META = [];
@@ -115,6 +117,11 @@ async function intercepterSupabase(page) {
     const unique = (route.request().headers()['accept'] || '').includes('vnd.pgrst.object');
     if (url.pathname.startsWith('/rest/v1/kun_com_posts')) return json(publications);
     if (url.pathname.startsWith('/rest/v1/kun_com_profiles')) {
+      if (route.request().method() === 'POST') {
+        ECRITURES_FICHES.push(JSON.parse(route.request().postData() || '{}'));
+        return json([]);
+      }
+      if (!unique && url.searchParams.get('id')) return json(profils.filter((x) => 'eq.' + x.id === url.searchParams.get('id')));
       if (!unique) return json(profils);
       const p = profils.find((x) => 'eq.' + x.id === url.searchParams.get('id'));
       return p ? json(p) : json({ message: 'introuvable' }, 406);
@@ -941,6 +948,29 @@ try {
       MESSAGES = avant;
       META_COMPTE = {};
       publications.splice(publications.findIndex((p) => p.id === 'p_supprimee'), 1);
+    }
+  });
+
+  await cas('nouvel appareil : la fiche du serveur (photo, bio, date d\'arrivée) n\'est jamais écrasée', async () => {
+    const fiche = profils[0].content;
+    Object.assign(fiche, { avatar_url: 'https://exemple.org/photo.jpg', bio: 'Caméraman', joined_at: 1700000000000, following: [AUTRE] });
+    ECRITURES_FICHES.length = 0;
+    try {
+      const { page, erreurs, contexte } = await nouvellePage(nav, base, sessionPour('MEMBRE'));
+      await page.waitForSelector('#post-p_piege', { timeout: 15000 });
+      await page.waitForFunction(() => S.user && S.user.avatar_url === 'https://exemple.org/photo.jpg', null, { timeout: 5000 });
+      const miennes = ECRITURES_FICHES.flat().filter((e) => e && e.id === MOI);
+      assert.ok(miennes.length > 0, 'la présence est bien envoyée');
+      for (const e of miennes) {
+        assert.equal(e.content.avatar_url, 'https://exemple.org/photo.jpg', 'photo écrasée : ' + JSON.stringify(e.content));
+        assert.equal(e.content.bio, 'Caméraman');
+        assert.equal(e.content.joined_at, 1700000000000);
+      }
+      assert.equal(await page.evaluate(() => S.user.joined_at), 1700000000000);
+      assert.deepEqual(erreurs, []);
+      await contexte.close();
+    } finally {
+      delete fiche.avatar_url; delete fiche.bio; delete fiche.joined_at; delete fiche.following;
     }
   });
 

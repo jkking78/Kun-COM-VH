@@ -38,6 +38,36 @@
     return true;
   }
 
+  // À l'ouverture de session, la fiche du SERVEUR fait foi : on la relit
+  // avant d'écrire. Sinon un appareil au cache vide (nouvel appareil,
+  // réinstallation, changement d'adresse) envoyait un squelette qui écrasait
+  // la vraie fiche : photo, bio, abonnements et date d'arrivée perdus. Le
+  // squelette n'est écrit que si le serveur confirme qu'aucune fiche n'existe ;
+  // sur une erreur de lecture, rien n'est écrit.
+  function ecrireMaFicheApresServeur(locale) {
+    if (!supabase || !locale || !locale.id) return;
+    var id = locale.id;
+    try {
+      supabase.from('kun_com_profiles').select('content').eq('id', id).limit(1).then(function(r) {
+        if (!r || r.error || !Array.isArray(r.data)) return;
+        var serveur = r.data[0] && r.data[0].content ? parseProfileItem({ id: id, content: r.data[0].content }) : null;
+        var fiche = serveur
+          ? Object.assign({}, serveur, { id: id, role: locale.role, email: serveur.email || locale.email,
+              is_online: true, last_seen_at: locale.last_seen_at || new Date().toISOString() })
+          : locale;
+        if (serveur && S.user && S.user.id === id) {
+          Object.assign(S.user, fiche);
+          var users = db(SK.USERS, []);
+          var i = users.findIndex(function(u){ return u && u.id === id; });
+          if (i !== -1) users[i] = S.user; else users.push(S.user);
+          try { dbSet(SK.USERS, users); sauverSession(S.user); } catch(e){}
+          try { if (typeof render === 'function') render(); } catch(e){}
+        }
+        return supabase.from('kun_com_profiles').upsert({ id: id, content: profilSansSecret(fiche) }, { onConflict: 'id' });
+      }).then(function(){}, function(){});
+    } catch(e){}
+  }
+
   function applyAuthUser(authUser) {
     if (!authUser) { S.user = null; S.auth = 'login'; return; }
     var role = (authUser.app_metadata && authUser.app_metadata.role) || 'MEMBRE';
@@ -56,11 +86,7 @@
       me.is_online = true;
       me.last_seen_at = new Date().toISOString();
       try { dbSet(SK.USERS, users); } catch(e){}
-      try {
-        if (supabase) supabase.from('kun_com_profiles')
-          .upsert({ id: me.id, content: me }, { onConflict: 'id' })
-          .then(function(){}, function(){});
-      } catch(e){}
+      ecrireMaFicheApresServeur(me);
       S.user = me;
     } else {
       // Profil pas encore dans le cache local : squelette minimal (complété par la
@@ -84,11 +110,7 @@
       try { if (pending) localStorage.removeItem('kc_pending_signup'); } catch(e){}
       users.push(S.user);
       try { dbSet(SK.USERS, users); } catch(e){}
-      try {
-        if (supabase) supabase.from('kun_com_profiles')
-          .upsert({ id: S.user.id, content: profilSansSecret(S.user) }, { onConflict: 'id' })
-          .then(function(){}, function(){});
-      } catch(e){}
+      ecrireMaFicheApresServeur(S.user);
     }
     S.auth = 'app';
     try { sauverSession(S.user); } catch(e){}
