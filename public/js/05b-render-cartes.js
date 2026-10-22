@@ -174,6 +174,13 @@
     return events.slice().sort(tri).reverse();
   }
 
+  // Toutes les dates (non supprimées) de la série d'un événement.
+  function occurrencesDeSerie(ev) {
+    var g = ev && ev.recurrenceGroupId;
+    if (!g) return ev ? [ev] : [];
+    return db(SK.POSTS, []).filter(function(p){ return p && p.type === 'EVENT' && p.recurrenceGroupId === g && p.status !== 'deleted'; });
+  }
+
   function groupSameDayEvents(list) {
     var out = [];
     var indexByDate = {};
@@ -222,18 +229,20 @@
     var premier = events[0];
     var fmt = function(e) { return new Date(e.eventDate + 'T00:00:00').toLocaleDateString('fr-FR', { day:'numeric', month:'short' }); };
     var periode = fmt(events[0]) + ' → ' + fmt(events[events.length - 1]);
-    return '<article style="background:' + UI.card + ';border-radius:' + UI.r2 + ';box-shadow:' + UI.sh2 + ';margin:0 12px 12px;overflow:hidden;">' +
+    return '<article id="serie-' + safeHtml(serieId) + '" style="background:' + UI.card + ';border-radius:' + UI.r2 + ';box-shadow:' + UI.sh2 + ';margin:0 12px 12px;overflow:hidden;">' +
       '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px 8px;">' +
-        '<div onclick="App.goToEvent(\'' + jsArg(premier.id) + '\')" style="min-width:0;cursor:pointer;">' +
+        '<div onclick="App.goToEvent(\'' + jsArg(premier.id) + '\')" style="min-width:0;flex:1;cursor:pointer;">' +
           '<div style="font-size:15px;font-weight:800;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + safeHtml(premier.eventTitle) + '</div>' +
           '<div style="font-size:12px;color:var(--faint);font-weight:600;margin-top:2px;">' + events.length + ' dates · ' + safeHtml(periode) + '</div>' +
         '</div>' +
         '<div id="evgrpBadge-' + carId + '" style="background:var(--accent-soft);color:var(--lien);font-size:12px;font-weight:800;padding:4px 10px;border-radius:20px;flex-shrink:0;">' + (curIdx + 1) + '/' + events.length + '</div>' +
+        // Partager cette date ou toute la série, modifier… (date affichée).
+        '<button type="button" onclick="App.ouvrirOptionsSerie(\'' + jsArg(serieId) + '\')" aria-label="Options et partage" style="background:var(--tile);border:none;width:40px;height:40px;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-right:-4px;">' + SVG.dots + '</button>' +
       '</div>' +
       (indice ? '<div class="kc-glisse-texte" style="display:flex;align-items:center;gap:6px;padding:0 14px 8px;font-size:12px;font-weight:700;color:var(--lien);">Glisse vers la gauche pour voir les autres dates <span class="kc-glisse-fleche" style="display:inline-flex;">' + ico('chevronRight', 14, 'currentColor') + '</span></div>' : '') +
       '<div id="' + carId + '" data-carrousel-ev="1" onscroll="App.eventGroupScroll(\'' + jsArg(serieId) + '\',\'' + jsArg(carId) + '\',this)" style="display:flex;align-items:flex-start;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;gap:10px;padding:0 16px 4px;scroll-padding:0 16px;transition:height 0.18s ease;">' +
         events.map(function(ev) {
-          return '<div class="' + (indice ? 'kc-glisse' : '') + '" style="flex:0 0 86%;scroll-snap-align:start;box-sizing:border-box;">' +
+          return '<div data-ev-id="' + safeHtml(ev.id) + '" class="' + (indice ? 'kc-glisse' : '') + '" style="flex:0 0 86%;scroll-snap-align:start;box-sizing:border-box;">' +
             '<div style="position:relative;">' +
               // Pas de bouton ⋯ par-dessus : il masquait l'état et le lieu. On
               // modifie une date depuis le Planning, où mène la carte.
@@ -279,7 +288,7 @@
         events.map(function(ev) {
           // La carte entière ouvre l'événement dans le Planning, à la bonne date :
           // sans cela il fallait quitter le fil et le retrouver à la main.
-          return '<div style="flex:0 0 100%;scroll-snap-align:start;padding:0 16px 4px;box-sizing:border-box;">' +
+          return '<div data-ev-id="' + safeHtml(ev.id) + '" style="flex:0 0 100%;scroll-snap-align:start;padding:0 16px 4px;box-sizing:border-box;">' +
             '<div style="position:relative;">' +
               '<div onclick="App.goToEvent(\'' + jsArg(ev.id) + '\')" style="cursor:pointer;">' + renderEventCardInner(ev) + '</div>' +
               '<button onclick="event.stopPropagation();App.openOptions(\'' + jsArg(ev.id) + '\')" style="position:absolute;top:8px;right:8px;background:rgba(255,255,255,0.92);border:none;width:44px;height:44px;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.08);">' + SVG.dots + '</button>' +

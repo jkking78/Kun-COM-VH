@@ -248,6 +248,10 @@
       '</div>' +
     '</div>' +
     '<div style="width:100%;max-width:360px;margin:0 auto;padding:28px 24px 40px;box-sizing:border-box;">' +
+      // Arrivé par un lien partagé : la publication s'ouvrira après la connexion.
+      (typeof _deepLinkPostId !== 'undefined' && _deepLinkPostId
+        ? '<div role="status" style="background:var(--accent-soft);color:var(--accent-ink);border-radius:14px;padding:12px 14px;font-size:13px;font-weight:600;line-height:1.45;margin-bottom:18px;">On t\'a partagé une publication. Connecte-toi pour la voir : elle s\'ouvrira juste après.</div>'
+        : '') +
       '<form onsubmit="event.preventDefault(); App.login(event);" style="display:flex;flex-direction:column;gap:14px;">' +
         renderPhoneField('loginPhone', 'Numéro de téléphone', 'tel') +
         renderField('loginPwd', 'password', 'Mot de passe', '••••••••', 'current-password') +

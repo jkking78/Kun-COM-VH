@@ -58,3 +58,6 @@ lancer tests/sql/test_13_securite_fiabilite.sql migration/03_security_questions.
 # La 14 filtre côté serveur les publications ciblées et programmées.
 lancer tests/sql/test_14_visibilite.sql migration/03_security_questions.sql migration/06_durcissement_ecritures.sql migration/07_convocations_et_validation.sql migration/08_temps_reel.sql migration/09_performances_rls.sql migration/10_securite.sql migration/11_lieux_et_preparation.sql migration/12_assignations_par_pole.sql migration/13_securite_fiabilite.sql migration/14_visibilite_ciblee.sql
 lancer tests/sql/test_08_temps_reel.sql migration/03_security_questions.sql migration/06_durcissement_ecritures.sql migration/07_convocations_et_validation.sql migration/08_temps_reel.sql migration/09_performances_rls.sql migration/10_securite.sql migration/11_lieux_et_preparation.sql migration/12_assignations_par_pole.sql migration/13_securite_fiabilite.sql migration/14_visibilite_ciblee.sql
+# La 15 enrichit l'aperçu public des événements partagés.
+lancer tests/sql/test_15_apercu.sql migration/06_durcissement_ecritures.sql migration/15_apercu_evenements.sql
+lancer tests/sql/test_06_durcissement.sql migration/06_durcissement_ecritures.sql migration/15_apercu_evenements.sql
