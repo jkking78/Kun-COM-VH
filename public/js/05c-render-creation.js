@@ -910,6 +910,15 @@
             '</div>' +
           '</div>' +
 
+          // Publication ou événement : les responsables créent un événement
+          // d'ici aussi, sans passer par le Planning.
+          ((u && (u.role === 'RESP_SECTION' || u.role === 'GRAND_RESPONSABLE'))
+            ? '<div role="tablist" aria-label="Type de publication" style="display:flex;gap:4px;background:var(--tile);border-radius:999px;padding:4px;margin-bottom:14px;">' +
+                '<button type="button" role="tab" aria-selected="true" style="flex:1;min-height:40px;border:none;border-radius:999px;background:var(--card);box-shadow:' + UI.sh2 + ';font-size:13px;font-weight:800;color:var(--ink);cursor:default;display:flex;align-items:center;justify-content:center;gap:6px;">' + ico('pencil', 15, 'currentColor') + 'Publication</button>' +
+                '<button type="button" role="tab" aria-selected="false" onclick="App.passerEnEvenement()" style="flex:1;min-height:40px;border:none;border-radius:999px;background:transparent;font-size:13px;font-weight:700;color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;">' + ico('calendar', 15, 'currentColor') + 'Événement</button>' +
+              '</div>'
+            : '') +
+
           // Le pointage passe en tête du formulaire : quand on est de service,
           // c'est l'action la plus urgente, elle ne doit pas être enfouie tout en bas.
           renderCheckInBlock() +
