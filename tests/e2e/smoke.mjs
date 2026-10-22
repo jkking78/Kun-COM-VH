@@ -166,6 +166,20 @@ try {
     await contexte.close();
   });
 
+  await cas('questions de sécurité : une liste pour chaque question', async () => {
+    const { page, erreurs, contexte } = await nouvellePage(nav, base, null);
+    await page.waitForSelector('#loginSubmitBtn', { timeout: 15000 });
+    const listes = await page.evaluate(() => {
+      document.body.insertAdjacentHTML('beforeend', '<div id="qa">' + renderSecurityQAFields('t', '', '') + '</div>');
+      const lire = (id) => [...document.querySelectorAll('#' + id + ' option')].map((o) => o.value).filter(Boolean);
+      return [lire('tSecQ1'), lire('tSecQ2')];
+    });
+    assert.deepEqual(listes[0], ['Ta ville de naissance ?', 'Ton plat préféré ?', 'Ta couleur préférée ?']);
+    assert.deepEqual(listes[1], ['Ton premier lieu de culte ?', 'Ton premier département dans l\'église ?', 'Ta tribu ?']);
+    assert.deepEqual(erreurs, []);
+    await contexte.close();
+  });
+
   await cas('accessibilité : tout élément cliquable est atteignable et activable au clavier', async () => {
     const { page, erreurs, contexte } = await nouvellePage(nav, base, null);
     await page.waitForSelector('#loginSubmitBtn', { timeout: 15000 });

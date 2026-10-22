@@ -80,10 +80,12 @@ test('les questions de sécurité de l\'app et de la fonction de récupération 
   const app = lire('public/js/01e-bilans-outils.js');
   const fn = lire('migration/functions/password-recovery/index.ts');
   const extraire = (src, debut) => [...src.slice(src.indexOf(debut), src.indexOf('];', src.indexOf(debut))).matchAll(/"([^"]+)"/g)].map((m) => m[1]);
-  const a = extraire(app, 'var SECURITY_QUESTIONS = [');
-  const f = extraire(fn, 'const QUESTIONS = [');
-  assert.equal(a.length, 8);
-  assert.deepEqual(f, a);
+  for (const n of [1, 2]) {
+    const a = extraire(app, 'var SECURITY_QUESTIONS_' + n + ' = [');
+    const f = extraire(fn, 'const QUESTIONS_' + n + ' = [');
+    assert.equal(a.length, 3);
+    assert.deepEqual(f, a);
+  }
 });
 
 test('aperçu de liens : adresses internes et origines étrangères refusées', async () => {

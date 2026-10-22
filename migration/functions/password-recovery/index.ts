@@ -50,18 +50,16 @@ async function hashAnswer(answer: string, salt: string): Promise<string> {
 function chiffres(v: unknown): string {
   return String(v ?? "").replace(/[^0-9]/g, "").slice(0, 15);
 }
-// Les questions proposées par l'application (01-core.js) : un numéro inconnu
-// en reçoit deux, toujours les mêmes pour ce numéro.
-const QUESTIONS = [
-  "Le prénom de ton meilleur(e) ami(e) d'enfance ?", "Le nom de ton premier animal de compagnie ?",
-  "Ta ville de naissance ?", "Le prénom de ta grand-mère maternelle ?", "Le nom de ton école primaire ?",
-  "Le titre de ton chant préféré ?", "Le prénom de ton parrain ou de ta marraine ?", "Ton plat préféré ?",
-];
+// Les questions proposées par l'application (01e-bilans-outils.js), une liste
+// par question : un numéro inconnu reçoit une question de chaque liste,
+// toujours les mêmes pour ce numéro.
+const QUESTIONS_1 = ["Ta ville de naissance ?", "Ton plat préféré ?", "Ta couleur préférée ?"];
+const QUESTIONS_2 = ["Ton premier lieu de culte ?", "Ton premier département dans l'église ?", "Ta tribu ?"];
 async function questionsLeurres(id: string): Promise<{ q1: string; q2: string }> {
   const h = await sha256Hex("leurre::" + id);
-  const i = parseInt(h.slice(0, 8), 16) % QUESTIONS.length;
-  const j = (i + 1 + parseInt(h.slice(8, 16), 16) % (QUESTIONS.length - 1)) % QUESTIONS.length;
-  return { q1: QUESTIONS[i], q2: QUESTIONS[j] };
+  const i = parseInt(h.slice(0, 8), 16) % QUESTIONS_1.length;
+  const j = parseInt(h.slice(8, 16), 16) % QUESTIONS_2.length;
+  return { q1: QUESTIONS_1[i], q2: QUESTIONS_2[j] };
 }
 // Adresse du client telle que la passerelle Supabase la transmet ; null si
 // absente (on ne met pas alors tout le monde dans le même compteur).
