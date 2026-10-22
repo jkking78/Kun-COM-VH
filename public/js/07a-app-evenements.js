@@ -39,10 +39,12 @@
     addAssignment: function() {
       var select = document.getElementById('assignUserSelect');
       var taskInput = document.getElementById('assignTaskInput');
-      if (!select || !select.value || !taskInput || !taskInput.value.trim()) {
-        toast('Choisis un membre (ou un pôle) et indique la tâche.', 'error');
+      if (!select || !select.value) {
+        toast('Choisis un membre (ou un pôle).', 'error');
         return;
       }
+      // La tâche est facultative : être de service suffit.
+      if (!taskInput) return;
       var task = taskInput.value.trim();
       // Deadline optionnelle : si renseignée, l'assignation devient une TÂCHE À
       // LIVRER (notée quand le membre coche « fait ») plutôt qu'une simple présence.
@@ -141,6 +143,9 @@
         toast('Tu n\'as pas le droit d\'assigner sur cet événement.', 'error');
         return;
       }
+      // Membre choisi mais pas encore ajouté : on l'ajoute plutôt que de l'oublier.
+      var choixEnAttente = document.getElementById('assignUserSelect');
+      if (choixEnAttente && choixEnAttente.value) App.addAssignment();
       if (btn) { btn.textContent = 'Enregistrement…'; btn.disabled = true; }
 
       var allU = db(SK.USERS, []);
@@ -719,6 +724,10 @@
         return;
       }
       if (S.eventImageProcessing) { toast('L\'image est encore en cours de traitement.', 'info'); return; }
+      // Un membre choisi dans « Qui est de service ? » sans avoir touché
+      // « Ajouter » était oublié : l'événement partait sans personne assignée.
+      var choixEnAttente = document.getElementById('assignUserSelect');
+      if (choixEnAttente && choixEnAttente.value) App.addAssignment();
 
       // Attendre la fin de l'envoi de l'image vers Storage (jamais de base64 en base).
       // Le bouton passe en « Envoi du média… » le temps que Storage réponde.
@@ -1091,6 +1100,7 @@
       var liste = (S.user.indisponibilites || []).filter(function(x){ return x && x.date >= auj && x.date !== date; });
       liste.push({ date: date, motif: motif });
       App._majMonProfil({ indisponibilites: liste });
+      ['indispoDate', 'indispoMotif'].forEach(function(id){ var el = document.getElementById(id); if (el) el.value = ''; });
       toast('Indisponibilité enregistrée.', 'success');
     },
     retirerIndispo: function(date) {

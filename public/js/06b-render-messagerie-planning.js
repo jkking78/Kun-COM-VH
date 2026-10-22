@@ -413,6 +413,7 @@
                 '</div>' +
               '</div>' +
               (ev.caption ? '<p style="font-size:13px;color:var(--ink2);margin:0 0 16px;line-height:1.4;overflow-wrap:anywhere;">' + safeHtml(ev.caption) + '</p>' : '') +
+              renderEquipeService(ev) +
               renderActionsEvenement(ev) +
               renderReponseConvocation(ev) +
               renderEchanges(ev) +

@@ -130,7 +130,7 @@
                 }
                 return '<div style="background:' + (isMeAssigned ? UI.evGoldSoft : 'rgba(255,255,255,0.05)') + ';border:0.5px solid ' + (isMeAssigned ? UI.evGoldLine : 'transparent') + ';border-radius:' + UI.r1 + ';padding:8px 11px;">' +
                   '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">' +
-                    '<div style="font-size:13px;font-weight:600;color:' + (isMeAssigned ? UI.evGold : UI.evInk) + ';min-width:0;">' + safeHtml(a.userName) + (isMeAssigned ? ' · toi' : '') + '</div>' +
+                    '<div style="font-size:13px;font-weight:600;color:' + (isMeAssigned ? UI.evGold : UI.evInk) + ';min-width:0;">' + safeHtml(nomAssignation(a, db(SK.USERS, []))) + (isMeAssigned ? ' · toi' : '') + '</div>' +
                     (function(){
                       var r = a.userId ? reponseConvocation(post, a.userId) : null;
                       if (!r) return '';

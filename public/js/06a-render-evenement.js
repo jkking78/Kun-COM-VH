@@ -294,6 +294,34 @@
 
   // Pour l'organisateur (auteur, Responsable de pôle, Admin) : où en sont les
   // réponses des convoqués.
+  // Qui est de service : visible de tous sur la carte du Planning, avec la
+  // tâche de chacun et sa réponse à la convocation.
+  function nomAssignation(a, users) {
+    if (!a) return '';
+    if (a.isSection) return 'Pôle ' + (a.sectionName || secNom(a.sectionId));
+    var u = (users || []).find(function(x){ return x && x.id === a.userId; });
+    return u ? (u.prenom + ' ' + (u.nom || '').charAt(0) + (u.nom ? '.' : '')).trim() : (a.userName || 'Membre');
+  }
+  function renderEquipeService(ev) {
+    var liste = (ev && ev.assignments || []).filter(Boolean);
+    if (!liste.length) return '';
+    var users = db(SK.USERS, []);
+    var lignes = liste.map(function(a) {
+      var moi = S.user && a.userId === S.user.id;
+      var r = a.userId ? reponseConvocation(ev, a.userId) : null;
+      var point = !r ? 'var(--line2)' : r.statut === 'confirme' ? 'var(--ok)' : 'var(--bad)';
+      return '<div style="display:flex;align-items:center;gap:8px;min-width:0;padding:5px 0;">' +
+        '<span title="' + (!r ? 'En attente' : r.statut === 'confirme' ? 'Confirmé' : 'Indisponible') + '" style="width:8px;height:8px;border-radius:50%;flex-shrink:0;background:' + point + ';"></span>' +
+        '<span style="font-size:13px;font-weight:700;color:var(--ink);white-space:nowrap;">' + safeHtml(nomAssignation(a, users)) + (moi ? ' · toi' : '') + '</span>' +
+        (a.task ? '<span style="font-size:13px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;">' + safeHtml(a.task) + '</span>' : '') +
+      '</div>';
+    }).join('');
+    return '<div style="background:var(--tile);border-radius:14px;padding:8px 12px;margin-bottom:12px;">' +
+      '<div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:0.3px;margin-bottom:2px;">De service (' + liste.length + ')</div>' +
+      lignes +
+    '</div>';
+  }
+
   function renderSuiviConvocations(ev) {
     if (!S.user || !ev || ev.type !== 'EVENT' || !(ev.assignments || []).length) return '';
     var organisateur = ev.userId === S.user.id || canManageEventAssignments(ev, S.user);
@@ -789,7 +817,7 @@
               '<option value="">Sélectionner un membre…</option>' +
               renderAssignSelectOptions(u, post.eventDate) +
             '</select>' +
-            '<input type="text" id="assignTaskInput" class="kc-champ" placeholder="Tâche à confier…" style="' + styleChamp() + '" />' +
+            '<input type="text" id="assignTaskInput" class="kc-champ" placeholder="Tâche (facultatif), ex. : Caméra 2" style="' + styleChamp() + '" />' +
             '<div style="display:flex;gap:8px;">' +
               '<input type="datetime-local" id="assignDeadlineInput" class="kc-champ" style="' + styleChamp() + 'flex:1;min-width:0;" />' +
               '<button type="button" onclick="App.addAssignment()" style="background:' + UI.accent + ';color:#FFF;border:none;border-radius:999px;min-height:52px;padding:0 18px;font-size:15px;font-weight:700;cursor:pointer;white-space:nowrap;">Ajouter</button>' +

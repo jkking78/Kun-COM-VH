@@ -676,6 +676,44 @@ try {
     await contexte.close();
   });
 
+  await cas('événement : la saisie survit aux rafraîchissements, le membre choisi est assigné et visible au Planning', async () => {
+    const { page, erreurs, contexte } = await nouvellePage(nav, base, sessionPour('GRAND_RESPONSABLE'));
+    await page.waitForSelector('#post-p_piege', { timeout: 15000 });
+    await page.evaluate('App.tab(\'planning\')');
+    await page.evaluate('App.openCreateEvent()');
+    await page.waitForSelector('#eventTitle');
+    await page.fill('#eventTitle', '2e Culte');
+    await page.fill('#eventDesc', 'Briefing à 6 h 30');
+    // Rafraîchissement d'arrière-plan (sondage du fil, temps réel…).
+    await page.evaluate(() => render());
+    assert.equal(await page.inputValue('#eventTitle'), '2e Culte', 'le titre tapé reste');
+    assert.equal(await page.inputValue('#eventDesc'), 'Briefing à 6 h 30');
+    // Une valeur changée par l'application elle-même s'applique toujours.
+    await page.evaluate(() => { App.syncCreateEventData(); S.createEventData.title = 'Titre imposé'; render(); });
+    assert.equal(await page.inputValue('#eventTitle'), 'Titre imposé');
+    await page.fill('#eventTitle', '2e Culte');
+    await page.fill('#eventDate', ''); await page.type('#eventDate', '12312030');
+    await page.evaluate(() => { document.getElementById('eventDate').value = '2030-12-31'; });
+    await page.fill('#eventStart', '09:30');
+    const membre = await page.evaluate(() => [...document.querySelectorAll('#assignUserSelect option')].map((o) => o.value).find((v) => v && v.indexOf('sec:') !== 0));
+    await page.selectOption('#assignUserSelect', membre);
+    await page.fill('#assignTaskInput', 'Caméra 2');
+    await page.evaluate(() => render());
+    assert.equal(await page.inputValue('#assignUserSelect'), membre, 'le membre choisi reste sélectionné');
+    // Enregistrer sans avoir touché « Ajouter ».
+    await page.evaluate(() => App.saveEvent(null));
+    await page.waitForFunction(() => !S.createEventOpen);
+    const cree = await page.evaluate(() => db(SK.POSTS, []).find((p) => p.eventTitle === '2e Culte'));
+    assert.equal(cree.assignments.length, 1);
+    assert.equal(cree.assignments[0].userId, membre);
+    assert.equal(cree.assignments[0].task, 'Caméra 2');
+    await page.evaluate(() => { S.selectedDate = '2030-12-31'; S.planningMode = 'tous'; render(); });
+    const carte = await page.evaluate(() => document.body.textContent);
+    assert.ok(/De service \(1\)/.test(carte) && carte.includes('Caméra 2'), 'l\'équipe apparaît sur la carte du Planning');
+    assert.deepEqual(erreurs, []);
+    await contexte.close();
+  });
+
   await cas('un membre consulte le plan de préparation sans pouvoir le modifier', async () => {
     const { page, erreurs, contexte } = await nouvellePage(nav, base, sessionPour('MEMBRE'));
     await page.waitForSelector('#post-p_piege', { timeout: 15000 });
