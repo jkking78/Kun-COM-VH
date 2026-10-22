@@ -145,6 +145,34 @@
   }
   try { document.addEventListener('keydown', activerAuClavier); } catch(e) {}
 
+  // Un rafraîchissement (sondage du fil toutes les 20 s, temps réel, présence)
+  // redessinait les formulaires à partir de leur dernière copie en mémoire :
+  // ce qui avait été tapé depuis, et pas encore recopié, était effacé (titre
+  // d'un événement, membre choisi pour une assignation…). Règle : un champ
+  // garde la saisie de l'utilisateur, SAUF si l'application a elle-même changé
+  // sa valeur depuis le rendu précédent (lieu choisi dans une liste, champ
+  // vidé après un envoi…). _kcModele retient la valeur dessinée la dernière fois.
+  function garderSaisie(fromEl, toEl) {
+    var tag = fromEl.nodeName;
+    if (tag !== 'INPUT' && tag !== 'TEXTAREA' && tag !== 'SELECT') return;
+    var type = String(fromEl.type || '').toLowerCase();
+    if (tag === 'INPUT' && /^(file|button|submit|reset|image|hidden)$/.test(type)) return;
+    var coche = tag === 'INPUT' && (type === 'checkbox' || type === 'radio');
+    var modele = function(el) {
+      if (coche) return el.hasAttribute('checked');
+      if (tag === 'INPUT') return el.getAttribute('value') || '';
+      if (tag === 'TEXTAREA') return el.textContent || '';
+      var o = el.querySelector('option[selected]') || el.querySelector('option');
+      return o ? o.value : '';
+    };
+    var nouveau = modele(toEl);
+    var ancien = Object.prototype.hasOwnProperty.call(fromEl, '_kcModele') ? fromEl._kcModele : modele(fromEl);
+    fromEl._kcModele = nouveau;
+    if (nouveau !== ancien) return;
+    if (coche) toEl.checked = fromEl.checked;
+    else toEl.value = fromEl.value;
+  }
+
   function render() {
     var root = document.getElementById('root');
     if (!root) return;
@@ -201,10 +229,11 @@
     if (typeof morphdom === 'function') {
       try {
         morphdom(root, '<div id="root">' + html + '</div>', {
-          onBeforeElUpdated: function(fromEl) {
+          onBeforeElUpdated: function(fromEl, toEl) {
             // Sous-arbres gérés par une librairie externe qui injecte son propre DOM
             // (ex: Cropper.js) : ne jamais les re-générer / re-differ.
             if (fromEl.getAttribute && fromEl.getAttribute('data-no-morph') === 'true') return false;
+            garderSaisie(fromEl, toEl);
             return true;
           }
         });

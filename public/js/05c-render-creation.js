@@ -467,7 +467,7 @@
               '<option value="">Sélectionner un membre…</option>' +
               renderAssignSelectOptions(S.user, dateVal) +
             '</select>' +
-            '<input type="text" id="assignTaskInput" class="kc-champ" placeholder="Tâche à confier…" style="' + styleChamp() + '" />' +
+            '<input type="text" id="assignTaskInput" class="kc-champ" placeholder="Tâche (facultatif), ex. : Caméra 2" style="' + styleChamp() + '" />' +
             '<div style="display:flex;gap:8px;">' +
               '<input type="datetime-local" id="assignDeadlineInput" class="kc-champ" style="' + styleChamp() + 'flex:1;min-width:0;" />' +
               '<button type="button" onclick="App.addAssignment()" style="background:' + UI.accent + ';color:#FFF;border:none;border-radius:999px;min-height:52px;padding:0 18px;font-size:15px;font-weight:700;cursor:pointer;white-space:nowrap;">Ajouter</button>' +
