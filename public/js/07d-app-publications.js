@@ -515,7 +515,7 @@
     },
     selectionnerSerie: function(serieId, premierId) {
       S.optionsOpen = false; S.optionsPost = null;
-      S.selSerie = { id: serieId, ids: {}, reprog: false, decalage: 'suite' };
+      S.selSerie = { id: serieId, ids: {} };
       if (premierId) S.selSerie.ids[premierId] = true;
       render();
     },
@@ -559,57 +559,24 @@
       render();
       toast(n > 1 ? n + ' dates supprimées.' : 'Date supprimée.', 'success');
     },
-    ouvrirReprogrammation: function() {
-      if (!S.selSerie) return;
-      S.selSerie.reprog = !S.selSerie.reprog;
-      render();
-    },
-    choisirDecalage: function(v) {
-      if (!S.selSerie) return;
-      S.selSerie.decalage = v === 'suite' ? 'suite' : (parseInt(v, 10) || 1);
-      render();
-    },
-    // Recopie les dates choisies aux nouvelles dates (même heure, lieu, pôles,
-    // équipe et affiche) dans la même série. Les réponses aux convocations,
-    // pointages et plans de préparation ne sont pas recopiés. La plus proche
-    // des nouvelles dates prévient l'équipe, comme à la création.
-    reprogrammerSelectionSerie: async function(btn) {
-      var u = S.user || {};
-      if (u.role !== 'RESP_SECTION' && u.role !== 'GRAND_RESPONSABLE') { toast('Action non autorisée.', 'error'); return; }
+    // « Republier » une date : le formulaire de création, pré-rempli avec
+    // cette date (équipe comprise, sans les réponses), proposée la semaine
+    // qui suit la dernière date de la série. Publiée, elle rejoint la série.
+    republierSelectionSerie: function() {
       var choisies = App._datesChoisies();
-      if (!choisies.length) return;
-      var prevues = nouvellesDatesSerie(choisies, occurrencesDeSerie(choisies[0]), S.selSerie.decalage || 'suite');
-      if (!prevues.length) { toast('Ces dates existent déjà dans la série.', 'info'); return; }
-      if (btn) { btn.disabled = true; btn.textContent = 'Création…'; }
-      var base = Date.now();
-      var crees = prevues.map(function(x, i) {
-        var ev = Object.assign({}, x.source, {
-          id: 'evt_' + (base + i),
-          userId: u.id,
-          author: (u.prenom || '') + ' ' + (u.nom || ''),
-          eventDate: x.date,
-          recurrenceGroupId: x.source.recurrenceGroupId || x.source.id,
-          timestamp: base,
-          likedBy: [], comments: [], mediaUrls: [],
-          is_pinned: false, edited: false
-        });
-        delete ev.reponsesConvocation; delete ev.preparation; delete ev.echanges;
-        delete ev.status; delete ev.archivedAt; delete ev.editedAt; delete ev.assignmentsUpdatedAt;
-        return ev;
-      });
-      dbSet(SK.POSTS, crees.concat(db(SK.POSTS, [])));
-      var proche = crees.slice().sort(function(a, b){ return String(a.eventDate).localeCompare(String(b.eventDate)); })[0];
-      try { sendTargetedEventNotifications(proche); } catch(e) {}
-      if (supabase) {
-        try {
-          await supabase.from('kun_com_posts').upsert(crees.map(function(p) {
-            return { id: p.id, content: p, created_at: new Date().toISOString() };
-          }), { onConflict: 'id' });
-        } catch(e) { console.warn('Reprogrammation :', e); }
-      }
+      if (choisies.length !== 1) { toast('Sélectionne une seule date pour la republier.', 'info'); return; }
+      var source = choisies[0];
+      var suivante = nouvellesDatesSerie([source], occurrencesDeSerie(source), 'suite')[0];
       S.selSerie = null;
+      App.openEditEvent(source.id);
+      S.editEventId = null;            // création, pas modification
+      S.assignOriginal = null;
+      S.republierSerie = source.recurrenceGroupId || source.id;
+      S.republierDepuis = source.eventDate;
+      S.eventAssignments = (source.assignments || []).map(function(a){ return Object.assign({}, a); });
+      if (suivante) S.createEventData.date = suivante.date;
+      S.createEventData.pinned = false;
       render();
-      toast(crees.length > 1 ? crees.length + ' nouvelles dates créées.' : 'Nouvelle date créée.', 'success');
     },
     goToEvent: function(eventId) {
       var posts = db(SK.POSTS, []);

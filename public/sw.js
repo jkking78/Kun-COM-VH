@@ -5,7 +5,7 @@
 // même stratégie de cache, juste plus de fichiers listés ci-dessous.
 // ============================================================
 
-const CACHE_NAME = 'kun-com-pwa-v178';
+const CACHE_NAME = 'kun-com-pwa-v179';
 // Numéro de version seul ('102'), tel qu'il apparaît dans les ?v=… de index.html.
 const NUM_V = CACHE_NAME.split('-v')[1];
 const JS_FILES = [

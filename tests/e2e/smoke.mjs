@@ -879,7 +879,7 @@ try {
     await contexte.close();
   });
 
-  await cas('carrousel : sélectionner des dates pour les reprogrammer, les partager ou les supprimer', async () => {
+  await cas('carrousel : sélectionner des dates pour en republier une, les partager ou les supprimer', async () => {
     const { page, erreurs, contexte } = await nouvellePage(nav, base, sessionPour('GRAND_RESPONSABLE'));
     await page.waitForSelector('#post-p_piege', { timeout: 15000 });
     page.on('dialog', (d) => d.accept());
@@ -898,18 +898,26 @@ try {
     await page.waitForSelector('#serie-sel_0 [role="checkbox"][aria-checked="true"]');
     await page.click('#serie-sel_0 [data-ev-id="sel_1"] [role="checkbox"]');
     assert.ok(await page.isVisible('#serie-sel_0 >> text=2 dates sélectionnées'));
-    // Reprogrammer à la suite de la série : 2 nouvelles dates, même série.
-    await page.click('#serie-sel_0 >> text=Reprogrammer');
-    await page.click('#serie-sel_0 >> text=Créer 2 dates');
-    await page.waitForFunction(() => !S.selSerie);
-    const serie = await page.evaluate(() => db(SK.POSTS, []).filter((p) => p.recurrenceGroupId === 'sel_0').map((p) => p.eventDate + (p.reponsesConvocation ? '*' : '')).sort());
-    assert.deepEqual(serie, ['2030-06-02*', '2030-06-09*', '2030-06-16*', '2030-06-23', '2030-06-30']);
+    // Deux dates : « Republier » est désactivé (une seule à la fois).
+    assert.ok(await page.isDisabled('#serie-sel_0 >> text=Republier'));
+    // Une seule date : le formulaire s'ouvre pré-rempli, on change la tâche, on publie.
+    await page.click('#serie-sel_0 [data-ev-id="sel_1"] [role="checkbox"]');
+    await page.click('#serie-sel_0 >> text=Republier');
+    await page.waitForSelector('#eventTitle');
+    assert.equal(await page.inputValue('#eventTitle'), 'Culte sélection');
+    assert.equal(await page.inputValue('#eventDate'), '2030-06-23', 'la semaine après la dernière date');
+    assert.ok(await page.isVisible('text=Republier l\'événement'));
+    await page.evaluate(() => { S.eventAssignments[0].task = 'Caméra 1'; });
+    await page.evaluate(() => App.saveEvent(null));
+    await page.waitForFunction(() => !S.createEventOpen);
+    const serie = await page.evaluate(() => db(SK.POSTS, []).filter((p) => p.recurrenceGroupId === 'sel_0').map((p) => p.eventDate + ':' + p.assignments[0].task + (p.reponsesConvocation ? '*' : '')).sort());
+    assert.deepEqual(serie, ['2030-06-02:Son*', '2030-06-09:Son*', '2030-06-16:Son*', '2030-06-23:Caméra 1']);
     // Supprimer deux dates d'un coup.
-    await page.evaluate(() => { App.selectionnerSerie('sel_0', 'sel_0'); App.basculerDateSerie('sel_2'); });
+    await page.evaluate(() => { App.tab('home'); App.selectionnerSerie('sel_0', 'sel_0'); App.basculerDateSerie('sel_2'); });
     await page.click('#serie-sel_0 >> text=Supprimer');
     await page.waitForFunction(() => !S.selSerie);
     const restent = await page.evaluate(() => db(SK.POSTS, []).filter((p) => p.recurrenceGroupId === 'sel_0' && p.type === 'EVENT').map((p) => p.eventDate).sort());
-    assert.deepEqual(restent, ['2030-06-09', '2030-06-23', '2030-06-30']);
+    assert.deepEqual(restent, ['2030-06-09', '2030-06-23']);
     assert.deepEqual(erreurs, []);
     await contexte.close();
   });

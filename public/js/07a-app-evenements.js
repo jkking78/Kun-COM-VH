@@ -575,7 +575,7 @@
       render();
     },
     openCreateEvent: function() {
-      S.createEventOpen = true; S.editEventId = null;
+      S.createEventOpen = true; S.editEventId = null; S.republierSerie = null; S.republierDepuis = null;
       S.eventSections = []; S.eventAssignments = []; S.createEventData = null;
       S.eventImage = null; S.eventImageProcessing = false;
       S.eventSaveChoiceOpen = false; S.eventSaveMode = null;
@@ -621,6 +621,7 @@
     },
     closeCreateEvent: function() {
       S.createEventOpen = false; S.createEventData = null; S.editEventId = null;
+      S.republierSerie = null; S.republierDepuis = null;
       S.eventImage = null; S.eventImageProcessing = false;
       S.eventSaveChoiceOpen = false; S.eventSaveMode = null;
       render();
@@ -856,7 +857,9 @@
       var recurWeeksEl = document.getElementById('eventRecurWeeks');
       var recurWeekly = recurWeeklyEl ? recurWeeklyEl.checked : false;
       var recurWeeks = recurWeekly ? Math.max(2, Math.min(52, parseInt(recurWeeksEl && recurWeeksEl.value, 10) || 8)) : 1;
-      if (recurWeekly) newPost.recurrenceGroupId = newPost.id;
+      // Date republiée depuis une série : elle rejoint cette série.
+      if (S.republierSerie) newPost.recurrenceGroupId = S.republierSerie;
+      else if (recurWeekly) newPost.recurrenceGroupId = newPost.id;
       var createdPosts = [newPost];
       for (var w = 1; w < recurWeeks; w++) {
         var occDateObj = new Date(date + 'T00:00:00');
@@ -890,6 +893,8 @@
         }
       }
       var wasDuplicate = S.eventSaveMode === 'duplicate';
+      var republie = !!S.republierSerie;
+      S.republierSerie = null; S.republierDepuis = null;
       S.createEventOpen = false;
       S.eventImage = null;
       S.eventSaveMode = null;
@@ -898,7 +903,7 @@
       S.tab = pinned ? 'home' : 'planning';
       render();
       setTimeout(function() { window.scrollTo({ top: 0, behavior: 'smooth' }); }, 50);
-      toast(wasDuplicate ? 'Nouvel événement créé, l\'ancien est conservé ! '
+      toast(republie ? 'Date republiée dans la série.' : wasDuplicate ? 'Nouvel événement créé, l\'ancien est conservé ! '
         : (recurWeekly ? recurWeeks + ' occurrences créées (chaque semaine) ! ' : 'Événement créé avec succès ! '), 'success');
     },
     // Choix proposé à l'enregistrement d'une modification.
