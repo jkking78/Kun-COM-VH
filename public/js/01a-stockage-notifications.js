@@ -123,6 +123,35 @@
     return copie;
   }
 
+  // Écrit SA fiche sans jamais renvoyer la copie entière de l'appareil : la
+  // fiche du serveur est relue, seuls les champs modifiés y sont posés. Une
+  // copie locale ancienne (autre appareil, cache vide, session ouverte depuis
+  // longtemps) écrasait sinon photo, bio, abonnements ou date d'arrivée.
+  // champs : objet, ou fonction(ficheServeur) -> objet (fusions, ex. notifications).
+  // Sur une erreur de lecture, rien n'est écrit.
+  function ecrireMaFiche(champs) {
+    if (!supabase || !S.user || !S.user.id) return Promise.resolve();
+    var id = S.user.id;
+    return supabase.from('kun_com_profiles').select('content').eq('id', id).limit(1).then(function(r) {
+      if (!r || r.error || !Array.isArray(r.data)) return null;
+      var serveur = r.data[0] && r.data[0].content;
+      if (typeof serveur === 'string') { try { serveur = JSON.parse(serveur); } catch(e) { serveur = null; } }
+      var base = (serveur && typeof serveur === 'object') ? serveur : profilSansSecret(S.user);
+      var modifs = typeof champs === 'function' ? (champs(base) || {}) : (champs || {});
+      var fiche = Object.assign({}, base, modifs, { id: id });
+      if (S.user && S.user.id === id) {
+        Object.assign(S.user, base, modifs);
+        try {
+          var users = db(SK.USERS, []);
+          var i = users.findIndex(function(u){ return u && u.id === id; });
+          if (i !== -1) { users[i] = S.user; dbSet(SK.USERS, users); }
+          sauverSession(S.user);
+        } catch(e) {}
+      }
+      return supabase.from('kun_com_profiles').upsert({ id: id, content: profilSansSecret(fiche) }, { onConflict: 'id' });
+    }).then(function(){}, function(e){ console.warn('Enregistrement de la fiche :', e); });
+  }
+
   // Allège une liste de notifications déjà stockée. Sert au nettoyage des
   // données existantes : les notifications écrites par les anciennes versions
   // portent toutes une image en base64 qu'il faut évacuer une bonne fois.

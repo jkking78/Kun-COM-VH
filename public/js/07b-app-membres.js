@@ -64,7 +64,7 @@
       if (uIdx !== -1) Object.assign(allUsers[uIdx], champs);
       dbSet(SK.USERS, allUsers);
       sauverSession(S.user);
-      App._upsertFiable('kun_com_profiles', { id: S.user.id, content: profilSansSecret(S.user) });
+      ecrireMaFiche(champs);
       try { render(); } catch(e) {}
     },
     toggleFollow: function(targetUserId) {
@@ -79,7 +79,7 @@
       if (uIdx !== -1) allUsers[uIdx] = S.user;
       dbSet(SK.USERS, allUsers);
       sauverSession(S.user);
-      if (supabase) supabase.from('kun_com_profiles').upsert({ id: S.user.id, content: profilSansSecret(S.user) }, { onConflict: 'id' }).then(function(){}, function(e){});
+      ecrireMaFiche({ following: S.user.following.slice() });
       if (nowFollowing) {
         sendNotificationToUser(targetUserId, {
           type: 'FOLLOW',
@@ -479,7 +479,8 @@
       // Upsert to Supabase safely
       if (supabase) {
         try {
-          await supabase.from('kun_com_profiles').upsert({ id: updatedUser.id, content: updatedUser }, { onConflict: 'id' });
+          await ecrireMaFiche({ prenom: prenom, nom: nom, bio: bio, skills: skills, sections: S.editSections.slice(),
+            avatar_url: avatar_url, cover_url: cover_url, role: updatedUser.role, section_id: null, section_nom: null });
         } catch(supErr) {
           console.warn("Supabase profile save error:", supErr);
         }
@@ -555,13 +556,10 @@
       dbSet(SK.USERS, allUsers);
       sauverSession(moi);
       if (!supabase) return;
-      supabase.from('kun_com_profiles').select('content').eq('id', moi.id).single()
-        .then(function(res) {
-          var distant = (res && res.data && res.data.content) ? res.data.content : null;
-          if (distant) moi.notifications = mergeNotifications(moi.notifications, distant.notifications);
-          return supabase.from('kun_com_profiles').upsert({ id: moi.id, content: moi }, { onConflict: 'id' });
-        })
-        .then(function(){}, function(e){ console.warn('Notifications :', e); });
+      var locales = moi.notifications;
+      ecrireMaFiche(function(serveur) {
+        return { notifications: mergeNotifications(locales, serveur.notifications) };
+      });
     },
 
     markAllNotificationsRead: function() {
