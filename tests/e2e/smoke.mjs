@@ -756,6 +756,37 @@ try {
     await contexte.close();
   });
 
+  await cas('un convoqué qui touche la carte arrive sur « Je confirme » et peut répondre', async () => {
+    const { page, erreurs, contexte } = await nouvellePage(nav, base, sessionPour('MEMBRE'));
+    await page.waitForSelector('#post-p_piege', { timeout: 15000 });
+    // Beaucoup d'événements avant, pour que la carte soit loin dans la liste.
+    await page.evaluate(() => {
+      const posts = db(SK.POSTS, []);
+      const d = new Date(Date.now() + 3600e3 * 2).toISOString().slice(0, 10);
+      for (let i = 0; i < 8; i++) posts.push({ id: 'avant' + i, type: 'EVENT', userId: 'x', author: 'X', eventTitle: 'Réunion ' + i, eventDate: d, eventStart: '23:5' + i, timestamp: 1, likedBy: [], comments: [], mediaUrls: [] });
+      dbSet(SK.POSTS, posts);
+      S.planningFiltre = 'miens';
+    });
+    await page.click('#post-ev_mission >> text=Culte du dimanche');
+    await page.waitForSelector('#reponse-ev_mission');
+    await page.waitForTimeout(900);
+    const vue = await page.evaluate(() => {
+      const r = document.getElementById('reponse-ev_mission').getBoundingClientRect();
+      return { tab: S.tab, visible: r.top >= 0 && r.bottom <= innerHeight, texte: document.getElementById('reponse-ev_mission').textContent };
+    });
+    assert.equal(vue.tab, 'planning');
+    assert.ok(vue.visible, 'les boutons de réponse sont à l\'écran');
+    assert.ok(vue.texte.includes('Je confirme'));
+    await page.click('#reponse-ev_mission >> text=Je confirme');
+    await page.waitForFunction(() => /Présence confirmée/.test(document.getElementById('reponse-ev_mission').textContent));
+    // Un non-convoqué arrive sur la carte même depuis le filtre « Mes services ».
+    await page.evaluate(() => { S.planningFiltre = 'miens'; App.goToEvent('avant3'); });
+    await page.waitForTimeout(300);
+    assert.equal(await page.evaluate(() => [S.planningFiltre, !!document.getElementById('planev-avant3')].join()), 'tous,true');
+    assert.deepEqual(erreurs, []);
+    await contexte.close();
+  });
+
   await cas('un membre consulte le plan de préparation sans pouvoir le modifier', async () => {
     const { page, erreurs, contexte } = await nouvellePage(nav, base, sessionPour('MEMBRE'));
     await page.waitForSelector('#post-p_piege', { timeout: 15000 });

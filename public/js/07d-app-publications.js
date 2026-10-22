@@ -498,27 +498,30 @@
       S.selectedDate = ev.eventDate || todayIso;
       S.tab = 'planning';
       S.createOpen = false; S.commentOpen = false; S.optionsOpen = false;
-      // Le carrousel du jour s'ouvre sur l'événement demandé, et non sur le premier.
-      var sameDay = posts.filter(function(p) {
-        return p.type === 'EVENT' && p.eventDate === S.selectedDate;
-      }).sort(function(a,b) {
-        var ap = isEventPast(a) ? 1 : 0, bp = isEventPast(b) ? 1 : 0;
-        if (ap !== bp) return ap - bp;
-        var as = a.eventStart || '', bs = b.eventStart || '';
-        return ap ? bs.localeCompare(as) : as.localeCompare(bs);
-      });
-      var idx = sameDay.findIndex(function(p){ return p.id === eventId; });
-      if (!S.eventGroupIdx) S.eventGroupIdx = {};
-      S.eventGroupIdx[S.selectedDate] = idx > 0 ? idx : 0;
+      // Le filtre « Mes services » cacherait un événement où l'on n'est pas convoqué.
+      var convoque = !!(S.user && (ev.assignments || []).some(function(a){ return a && a.userId === S.user.id; }));
+      if (S.planningFiltre === 'miens' && !convoque) S.planningFiltre = 'tous';
       render();
-      // Le carrousel est un conteneur défilant : on le positionne après le rendu.
-      if (idx > 0) {
-        setTimeout(function() {
-          var carId = 'evgrpplan-' + String(S.selectedDate || '').replace(/-/g, '');
-          var el = document.getElementById(carId);
-          if (el && el.clientWidth) el.scrollLeft = idx * el.clientWidth;
-        }, 60);
-      }
+      // On amène l'écran sur la carte de l'événement. Pour un convoqué, sur
+      // « Je confirme / Je ne peux pas » (ou sa réponse, modifiable), mis en
+      // évidence un instant : c'est la raison pour laquelle il a touché la carte.
+      setTimeout(function() {
+        var carte = document.getElementById('planev-' + eventId);
+        if (!carte) { toast('Événement introuvable dans le Planning.', 'info'); return; }
+        var reponse = convoque ? document.getElementById('reponse-' + eventId) : null;
+        (reponse || carte).scrollIntoView({ behavior: 'smooth', block: reponse ? 'center' : 'start' });
+        var halo = carte.firstElementChild && carte.firstElementChild.firstElementChild;
+        if (halo) {
+          halo.style.transition = 'box-shadow 0.35s ease';
+          halo.style.boxShadow = '0 0 0 2px ' + UI.accent;
+          setTimeout(function(){ halo.style.boxShadow = ''; }, 1800);
+        }
+        if (reponse) {
+          reponse.style.boxShadow = '0 0 0 6px var(--accent-soft)';
+          reponse.style.background = 'var(--accent-soft)';
+          setTimeout(function(){ reponse.style.boxShadow = ''; reponse.style.background = ''; }, 1800);
+        }
+      }, 80);
     },
     openEditPost: function(postId) {
       var posts = db(SK.POSTS, []);
