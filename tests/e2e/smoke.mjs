@@ -787,6 +787,49 @@ try {
     await contexte.close();
   });
 
+  await cas('liens partagés : une date ou toute la série, ouverts sur l\'Accueil ; connexion d\'abord', async () => {
+    // Série servie par le faux serveur (une donnée locale seule serait purgée).
+    const serieServeur = ['2030-04-07', '2030-04-14', '2030-04-21'].map((d, i) => ({ id: 'lien_' + i, created_at: new Date(maintenant - 9e6).toISOString(), content: {
+      id: 'lien_' + i, type: 'EVENT', userId: AUTRE, author: 'X', eventTitle: 'Culte partagé', eventDate: d, eventStart: '07:00',
+      recurrenceGroupId: 'lien_0', timestamp: maintenant - 9e6, likedBy: [], comments: [], mediaUrls: [] } }));
+    publications.push(...serieServeur);
+    const { page, erreurs, contexte } = await nouvellePage(nav, base, sessionPour('MEMBRE'));
+    await page.waitForSelector('[id^="evserie-"]', { timeout: 15000 });
+    // Le menu ⋯ d'une date de série propose cette date ou toute la série.
+    await page.evaluate(() => App.ouvrirOptionsSerie('lien_0'));
+    const options = await page.evaluate(() => document.body.textContent);
+    assert.ok(options.includes('Partager cette date') && options.includes('Copier le lien de la série'));
+    assert.equal(await page.evaluate(() => App.postShareUrl('lien_1', true)), base + '/api/p/lien_1?serie=1');
+    assert.ok((await page.evaluate(() => App._texteDePartage(db(SK.POSTS, []).find((p) => p.id === 'lien_0'), true))).includes('3 dates'));
+    await page.evaluate(() => App.closeOptions());
+    // Lien d'une date : l'Accueil, le carrousel positionné sur cette date.
+    const ouvrir = async (requete) => {
+      await page.goto(base + '/' + requete);
+      await page.waitForFunction(() => !!document.querySelector('[id^="evserie-"]') && S.tab === 'home' && !location.search, null, { timeout: 15000 });
+      await page.waitForTimeout(500);
+      return page.evaluate(() => {
+        const rail = document.querySelector('[id^="evserie-"]');
+        return { idx: S.eventGroupIdx && S.eventGroupIdx.lien_0, defile: rail.scrollLeft };
+      });
+    };
+    const date = await ouvrir('?post=lien_2');
+    assert.equal(date.idx, 2);
+    assert.ok(date.defile > 0, 'le carrousel est sur la date partagée');
+    const serie = await ouvrir('?post=lien_2&serie=1');
+    assert.equal(serie.idx, 0, 'le lien de la série ouvre le début du carrousel');
+    assert.deepEqual(erreurs, []);
+    await contexte.close();
+    // Sans compte : l'écran de connexion l'annonce, le lien est gardé.
+    const anonyme = await nouvellePage(nav, base, null);
+    await anonyme.page.goto(base + '/?post=lien_1&serie=1');
+    await anonyme.page.waitForSelector('#loginSubmitBtn', { timeout: 15000 });
+    assert.ok(await anonyme.page.isVisible('text=On t\'a partagé une publication'));
+    assert.equal(await anonyme.page.evaluate(() => sessionStorage.getItem('kc_lien')), '{"id":"lien_1","serie":true}');
+    assert.deepEqual(anonyme.erreurs, []);
+    await anonyme.contexte.close();
+    publications.splice(publications.length - serieServeur.length, serieServeur.length);
+  });
+
   await cas('un membre consulte le plan de préparation sans pouvoir le modifier', async () => {
     const { page, erreurs, contexte } = await nouvellePage(nav, base, sessionPour('MEMBRE'));
     await page.waitForSelector('#post-p_piege', { timeout: 15000 });

@@ -290,6 +290,19 @@ message par événement et par pôle, qui renvoie au plan. Préférence
 2. **Redéployer `delete-account`.**
 3. **Déployer le client v166.**
 
+## Migration 15 — aperçu des événements partagés (v175)
+
+- `kc_apercu_publication` renvoie aussi, pour un événement visible de tous,
+  son titre, sa date, son heure de début et son affiche ; pour une série
+  (« Répéter chaque semaine »), le nombre de ses dates à venir et leur
+  période. Ni le lieu ni l'équipe ne sont exposés.
+- `api/p.js` : `/api/p/<id>` partage une date, `/api/p/<id>?serie=1` toute
+  la série ; l'aperçu WhatsApp affiche titre et date (ou période).
+
+### Ordre de mise en production
+1. **Exécuter `15_apercu_evenements.sql`** (remplace la fonction, même signature).
+2. **Déployer le client v175.**
+
 ## Limites restantes (connues)
 - **Pas de CSP stricte** : les ~270 gestionnaires `onclick` en ligne
   l'empêchent ; seuls `frame-ancestors`, `object-src` et `base-uri` sont posés.

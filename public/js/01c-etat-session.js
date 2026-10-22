@@ -196,29 +196,74 @@
   // Utilisé quand quelqu'un ouvre un lien copié/partagé (ex: WhatsApp) via
   // /api/p/:id, qui redirige vers l'appli avec ce paramètre.
   // ============================================================
+  // Le lien est gardé le temps de la session de l'onglet : une personne qui
+  // doit d'abord se connecter (ou recharger la page) y arrive quand même.
   var _deepLinkPostId = (function() {
-    try { return new URLSearchParams(location.search).get('post'); } catch(e) { return null; }
+    try {
+      var q = new URLSearchParams(location.search);
+      var id = q.get('post');
+      if (id) sessionStorage.setItem('kc_lien', JSON.stringify({ id: id, serie: q.get('serie') === '1' }));
+      var gard = JSON.parse(sessionStorage.getItem('kc_lien') || 'null');
+      return gard && gard.id ? String(gard.id) : null;
+    } catch(e) { return null; }
   })();
+  var _deepLinkSerie = (function() {
+    try { return !!(JSON.parse(sessionStorage.getItem('kc_lien') || 'null') || {}).serie; } catch(e) { return false; }
+  })();
+
+  // Ouvre le lien partagé sur l'ACCUEIL, sur la publication elle-même : une
+  // carte ordinaire, la bonne date d'un carrousel (série ou journée), ou le
+  // début du carrousel pour le lien d'une série. On touche ensuite la carte
+  // pour voir les détails. Réservé aux personnes connectées.
   function tryOpenDeepLinkedPost() {
-    if (!_deepLinkPostId || !S.user) return;
+    if (!_deepLinkPostId || !S.user || S.auth !== 'app') return;
     var posts = db(SK.POSTS, []);
     var target = posts.find(function(p){ return p.id === _deepLinkPostId; });
     if (!target) return; // Pas encore chargé (sync en cours) : on retentera au prochain appel.
-    var id = _deepLinkPostId;
+    var id = _deepLinkPostId, serie = _deepLinkSerie;
     _deepLinkPostId = null;
-    S.tab = 'home'; S.q = ''; S.story = 'all';
-    render();
-    setTimeout(function() {
-      var el = document.getElementById('post-' + id);
-      if (el) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        el.style.transition = 'box-shadow 0.4s';
-        el.style.boxShadow = '0 0 0 3px #0B5FE0 inset';
-        setTimeout(function(){ el.style.boxShadow = ''; }, 2200);
-      }
-    }, 350);
+    try { sessionStorage.removeItem('kc_lien'); } catch(e) {}
     // Nettoie l'URL pour éviter de rejouer le scroll à chaque rafraîchissement.
     try { history.replaceState(null, '', location.pathname); } catch(e){}
+    S.tab = 'home'; S.q = ''; S.story = 'all';
+    S.createOpen = false; S.commentOpen = false; S.optionsOpen = false; S.viewUserProfileId = null;
+    var trouver = function() {
+      var carte = document.getElementById('post-' + id);
+      if (carte) return { carte: carte };
+      var volet = document.querySelector('[data-ev-id="' + String(id).replace(/["\\]/g, '') + '"]');
+      if (volet) return { carte: volet.closest('article') || volet, volet: volet, rail: volet.parentNode };
+      return null;
+    };
+    // Le fil ne dessine que 25 cartes à la fois : on en affiche davantage
+    // jusqu'à trouver la publication.
+    render();
+    var cible = trouver();
+    for (var essais = 0; !cible && essais < 40; essais++) {
+      S.filLimite = (S.filLimite || 25) + 25;
+      render();
+      cible = trouver();
+    }
+    if (!cible) {
+      // Date passée d'une série (hors du carrousel) : on l'ouvre au Planning.
+      if (target.type === 'EVENT' && window.App && App.goToEvent) App.goToEvent(id);
+      return;
+    }
+    if (cible.rail) {
+      var volets = Array.prototype.slice.call(cible.rail.children);
+      var idx = serie ? 0 : Math.max(0, volets.indexOf(cible.volet));
+      var cle = target.recurrenceGroupId && cible.rail.id.indexOf('evserie-') === 0 ? target.recurrenceGroupId : target.eventDate;
+      if (!S.eventGroupIdx) S.eventGroupIdx = {};
+      S.eventGroupIdx[cle] = idx;
+      cible.rail.scrollLeft = volets[idx].offsetLeft - (parseFloat(getComputedStyle(cible.rail).paddingLeft) || 0);
+    }
+    setTimeout(function() {
+      var el = cible.carte;
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.style.transition = 'box-shadow 0.4s';
+      el.style.boxShadow = '0 0 0 3px #0B5FE0';
+      setTimeout(function(){ el.style.boxShadow = ''; }, 2200);
+      if (window.App && App.recalerCarrousels) App.recalerCarrousels();
+    }, 350);
   }
 
   // ============================================================

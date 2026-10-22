@@ -19,15 +19,27 @@
         '<div style="display:flex;justify-content:center;margin-bottom:16px;"><div style="width:40px;height:4px;background:var(--line);border-radius:2px;"></div></div>' +
         '<p style="text-align:center;font-size:12px;color:var(--faint);margin:0 0 14px;font-weight:600;">' + safeHtml(post.author||'Publication') + '</p>' +
 
-        // Share
-        '<button onclick="App.shareExternal(\''+jsArg(post.id)+'\');App.closeOptions();" style="width:100%;background:var(--tile);border:none;border-radius:999px;padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;margin-bottom:10px;text-align:left;">' +
-          SVG.share + '<span style="font-size:15px;font-weight:600;color:var(--ink);">Partager</span>' +
-        '</button>' +
-
-        // Copier le lien (utilisable sur WhatsApp etc., avec aperçu miniature)
-        '<button onclick="App.copyPostLink(\''+jsArg(post.id)+'\');App.closeOptions();" style="width:100%;background:var(--tile);border:none;border-radius:999px;padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;margin-bottom:10px;text-align:left;">' +
-          SVG.link + '<span style="font-size:15px;font-weight:600;color:var(--ink);">Copier le lien</span>' +
-        '</button>' +
+        // Partage. Pour une date d'une série : cette date, ou toute la série.
+        (function() {
+          var serie = isEventPost && occurrencesDeSerie(post).length > 1;
+          var bouton = function(action, icone, libelle) {
+            return '<button onclick="' + action + ';App.closeOptions();" style="width:100%;background:var(--tile);border:none;border-radius:999px;padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;margin-bottom:10px;text-align:left;">' +
+              icone + '<span style="font-size:15px;font-weight:600;color:var(--ink);">' + libelle + '</span></button>';
+          };
+          var id = jsArg(post.id);
+          if (!serie) {
+            return bouton("App.shareExternal('" + id + "')", SVG.share, 'Partager') +
+              // Copier le lien (utilisable sur WhatsApp etc., avec aperçu miniature)
+              bouton("App.copyPostLink('" + id + "')", SVG.link, 'Copier le lien');
+          }
+          var jour = new Date(post.eventDate + 'T00:00:00').toLocaleDateString('fr-FR', { weekday:'short', day:'numeric', month:'short' });
+          return '<div style="font-size:12px;font-weight:700;color:var(--faint);margin:0 4px 8px;">Cette date (' + safeHtml(jour) + ')</div>' +
+            bouton("App.shareExternal('" + id + "')", SVG.share, 'Partager cette date') +
+            bouton("App.copyPostLink('" + id + "')", SVG.link, 'Copier le lien de cette date') +
+            '<div style="font-size:12px;font-weight:700;color:var(--faint);margin:6px 4px 8px;">Toute la série</div>' +
+            bouton("App.shareExternal('" + id + "',true)", SVG.share, 'Partager toute la série') +
+            bouton("App.copyPostLink('" + id + "',true)", SVG.link, 'Copier le lien de la série');
+        })() +
 
         // Save / Unsave
         '<button onclick="App.save(\''+jsArg(post.id)+'\');App.closeOptions();" style="width:100%;background:var(--tile);border:none;border-radius:999px;padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;margin-bottom:10px;text-align:left;">' +

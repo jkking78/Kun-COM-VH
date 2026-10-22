@@ -303,22 +303,33 @@
     // Construit le lien public d'une publication (page de prévisualisation avec
     // miniature Open Graph, via la fonction serverless /api/p/:id), utilisable
     // en dehors de l'appli (WhatsApp, SMS, etc.).
-    postShareUrl: function(postId) {
-      return location.origin + '/api/p/' + encodeURIComponent(postId);
+    // serie = lien de toute la série d'un événement répété, plutôt que d'une date.
+    postShareUrl: function(postId, serie) {
+      return location.origin + '/api/p/' + encodeURIComponent(postId) + (serie ? '?serie=1' : '');
     },
-    shareExternal: function(postId) {
-      var posts = db(SK.POSTS, []);
-      var post = posts.find(function(p){ return p.id===postId; });
-      var txt = post ? (post.caption||'').slice(0,100) : '';
-      var url = App.postShareUrl(postId);
+    // Texte qui accompagne le lien : pour un événement, son titre et sa date
+    // (ou la période de sa série).
+    _texteDePartage: function(post, serie) {
+      if (!post) return '';
+      if (post.type !== 'EVENT' || !post.eventTitle) return (post.caption || '').slice(0, 100);
+      var fmt = function(e, o) { return new Date(e.eventDate + 'T00:00:00').toLocaleDateString('fr-FR', o); };
+      if (serie) {
+        var dates = datesDeSerie(occurrencesDeSerie(post));
+        if (dates.length > 1) return post.eventTitle + ' · ' + dates.length + ' dates, du ' + fmt(dates[0], { day:'numeric', month:'short' }) + ' au ' + fmt(dates[dates.length - 1], { day:'numeric', month:'short' });
+      }
+      return post.eventTitle + ' · ' + fmt(post, { weekday:'long', day:'numeric', month:'long' }) + (post.eventStart ? ' à ' + post.eventStart : '');
+    },
+    shareExternal: function(postId, serie) {
+      var post = db(SK.POSTS, []).find(function(p){ return p.id === postId; });
+      var url = App.postShareUrl(postId, serie);
       if (navigator.share) {
-        navigator.share({ title:'Commit VH', text:txt, url:url }).catch(function(){});
+        navigator.share({ title: 'Commit VH', text: App._texteDePartage(post, serie), url: url }).catch(function(){});
       } else {
-        App.copyPostLink(postId);
+        App.copyPostLink(postId, serie);
       }
     },
-    copyPostLink: function(postId) {
-      var url = App.postShareUrl(postId);
+    copyPostLink: function(postId, serie) {
+      var url = App.postShareUrl(postId, serie);
       function done(ok) { toast(ok ? 'Lien copié. Colle-le sur WhatsApp ou ailleurs.' : 'Impossible de copier le lien.', ok ? 'success' : 'error'); }
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(url).then(function(){ done(true); }, function(){ done(false); });
@@ -486,6 +497,14 @@
       if (onsite && evP) { try { announceArrival(p, evP); } catch(e){} }   // présence validée → tout le monde est prévenu
       render();
       toast(onsite ? 'Présence confirmée sur place. ' : 'Position enregistrée, mais hors zone.', onsite ? 'success' : 'info');
+    },
+    // ⋯ de l'en-tête d'un carrousel de série : options de la date affichée.
+    ouvrirOptionsSerie: function(serieId) {
+      var membre = db(SK.POSTS, []).find(function(p){ return p.type === 'EVENT' && p.recurrenceGroupId === serieId; });
+      if (!membre) return;
+      var dates = datesDeSerie(occurrencesDeSerie(membre));
+      var idx = Math.min((S.eventGroupIdx && S.eventGroupIdx[serieId]) || 0, dates.length - 1);
+      App.openOptions((dates[idx > 0 ? idx : 0] || membre).id);
     },
     goToEvent: function(eventId) {
       var posts = db(SK.POSTS, []);

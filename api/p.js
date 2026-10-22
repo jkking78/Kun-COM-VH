@@ -34,12 +34,25 @@ async function fetchApercu(id) {
   return apercu && typeof apercu === 'object' ? apercu : null;
 }
 
+// « 2026-10-25 » → « dimanche 25 octobre » / « 25 oct. ».
+function dateLongue(iso) {
+  var d = new Date(iso + 'T00:00:00Z');
+  return isNaN(d) ? '' : d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+}
+function dateCourte(iso) {
+  var d = new Date(iso + 'T00:00:00Z');
+  return isNaN(d) ? '' : d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', timeZone: 'UTC' });
+}
+
 module.exports = async function handler(req, res) {
   var id = (req.query && req.query.id) || '';
+  // Lien d'une série d'événements (« Répéter chaque semaine ») plutôt que
+  // d'une seule date : l'appli ouvre alors le carrousel à son début.
+  var serie = !!(req.query && req.query.serie === '1');
   var proto = req.headers['x-forwarded-proto'] || 'https';
   var host = req.headers['x-forwarded-host'] || req.headers.host;
   var origin = proto + '://' + host;
-  var appUrl = origin + '/?post=' + encodeURIComponent(id);
+  var appUrl = origin + '/?post=' + encodeURIComponent(id) + (serie ? '&serie=1' : '');
 
   var post = null;
   try { post = await fetchApercu(id); } catch (e) { post = null; }
@@ -53,6 +66,17 @@ module.exports = async function handler(req, res) {
     title = authorName + ' · Commit VH';
     var caption = (post.caption || '').trim();
     description = caption ? caption.slice(0, 180) : 'Découvrez cette publication sur Commit VH.';
+    // Événement : son titre et sa date (ou la période de sa série).
+    if (post.eventTitle) {
+      title = post.eventTitle + ' · Commit VH';
+      var quand = '';
+      if (serie && post.serie && post.serie.nb > 1) {
+        quand = post.serie.nb + ' dates, du ' + dateCourte(post.serie.debut) + ' au ' + dateCourte(post.serie.fin);
+      } else if (post.eventDate) {
+        quand = dateLongue(post.eventDate) + (post.eventStart ? ' à ' + post.eventStart.replace(':', ' h ') : '');
+      }
+      description = (quand ? quand.charAt(0).toUpperCase() + quand.slice(1) + '. ' : '') + (caption ? caption.slice(0, 140) : 'Ouvre Commit pour voir les détails.');
+    }
     if (typeof post.image === 'string') {
       // Média hébergé (Storage, public) : URL directe. Ancien média en base64 :
       // servi par /api/p-image, les robots ne lisant pas les data:URL.
