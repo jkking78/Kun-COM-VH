@@ -31,16 +31,12 @@
           }
           
           var pres = await supabase.from('kun_com_posts').select('*').eq('content->>userId', userId).order('created_at', {ascending:false});
+          // Même fusion que le fil : une publication supprimée (status
+          // 'deleted', gardée en base comme marqueur) est retirée, jamais
+          // recopiée. Recopier la ligne brute faisait revenir sur le profil et
+          // l'accueil des publications supprimées depuis longtemps.
           if (pres && pres.data && pres.data.length > 0) {
-            var allPosts = db(SK.POSTS, []);
-            pres.data.forEach(function(up) {
-              var mapped = parsePostItem(up);
-              if (!mapped) return;
-              var pIdx = allPosts.findIndex(function(p){ return p.id === mapped.id; });
-              if (pIdx !== -1) allPosts[pIdx] = Object.assign(allPosts[pIdx], mapped);
-              else allPosts.push(mapped);
-            });
-            dbSet(SK.POSTS, allPosts);
+            dbSet(SK.POSTS, mergePostsWithLocal(pres.data, false));
           }
         } catch(e) {
           console.error("Erreur chargement profil:", e);

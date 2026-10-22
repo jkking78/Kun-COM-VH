@@ -87,6 +87,9 @@ const publications = [
 
 // Messages privés servis par le faux serveur (le scénario « sécurité » en ajoute).
 let MESSAGES = [];
+// user_metadata du compte connecté, et chaque modification reçue.
+let META_COMPTE = {};
+const ENVOIS_META = [];
 
 // Lieux enregistrés (migration 11) et appels de mémorisation reçus.
 const LIEUX = [
@@ -123,7 +126,15 @@ async function intercepterSupabase(page) {
       return json('22222222-0000-4000-8000-000000000009');
     }
     if (url.pathname.startsWith('/rest/v1/')) return json([]);
-    if (url.pathname.startsWith('/auth/v1/user')) return json({ id: MOI, aud: 'authenticated', app_metadata: { role: 'MEMBRE' } });
+    if (url.pathname.startsWith('/auth/v1/user')) {
+      // Métadonnées du compte (lectures des messages) : relues et modifiées comme sur Supabase.
+      if (route.request().method() === 'PUT') {
+        const corps = JSON.parse(route.request().postData() || '{}');
+        META_COMPTE = Object.assign({}, META_COMPTE, corps.data || {});
+        ENVOIS_META.push(corps.data || {});
+      }
+      return json({ id: MOI, aud: 'authenticated', app_metadata: { role: 'MEMBRE' }, user_metadata: META_COMPTE });
+    }
     if (url.pathname.startsWith('/auth/v1/')) return json({}, 400);
     return route.abort();
   });
@@ -891,6 +902,46 @@ try {
     assert.notEqual(await page.evaluate(() => S.tab), 'planning');
     assert.deepEqual(erreurs, []);
     await contexte.close();
+  });
+
+  await cas('nouvel appareil : rien de supprimé ne revient par un profil, les messages lus restent lus', async () => {
+    // Une publication supprimée reste en base comme marqueur, contenu compris.
+    publications.push({ id: 'p_supprimee', created_at: new Date(maintenant - 9e6).toISOString(), content: {
+      id: 'p_supprimee', userId: AUTRE, author: 'O', status: 'deleted', caption: 'Publication retirée depuis longtemps',
+      timestamp: maintenant - 9e6, likedBy: [], comments: [], mediaUrls: [] } });
+    // Un message déjà lu sur un autre appareil : la lecture est dans le compte.
+    const avant = MESSAGES;
+    MESSAGES = [{ id: 'dm_lu', from_id: AUTRE, to_id: MOI, sent_at: new Date(maintenant - 6e4).toISOString(),
+      content: { id: 'dm_lu', fromId: AUTRE, toId: MOI, text: 'Déjà lu ailleurs', timestamp: maintenant - 6e4 } },
+      { id: 'dm_neuf', from_id: ATTENTE, to_id: MOI, sent_at: new Date(maintenant - 3e4).toISOString(),
+      content: { id: 'dm_neuf', fromId: ATTENTE, toId: MOI, text: 'Pas encore lu', timestamp: maintenant - 3e4 } }];
+    META_COMPTE = { dm_lus: { [AUTRE]: maintenant } };
+    try {
+      const { page, erreurs, contexte } = await nouvellePage(nav, base, sessionPour('MEMBRE'));
+      await page.waitForSelector('#post-p_piege', { timeout: 15000 });
+      await page.waitForFunction(() => db(SK.DMS, []).length >= 2, null, { timeout: 10000 });
+      await page.waitForFunction(() => totalNonLus() === 1, null, { timeout: 5000 });
+
+      await page.evaluate((id) => App.openUserProfile(id), AUTRE);
+      await page.waitForTimeout(600);
+      assert.equal(await page.evaluate(() => db(SK.POSTS, []).some((p) => p.id === 'p_supprimee')), false,
+        'une publication supprimée ne doit pas être recopiée en ouvrant le profil');
+      assert.equal(await page.locator('text=Publication retirée depuis longtemps').count(), 0);
+      await page.evaluate(() => { App.closeUserProfile(); App.tab('home'); });
+      assert.equal(await page.locator('text=Publication retirée depuis longtemps').count(), 0);
+
+      // Lire la conversation non lue l'enregistre dans le compte.
+      await page.evaluate((id) => App.openDirectMessage(id), ATTENTE);
+      await page.waitForTimeout(4600);
+      const envoi = ENVOIS_META[ENVOIS_META.length - 1];
+      assert.ok(envoi && envoi.dm_lus && envoi.dm_lus[ATTENTE] > 0 && envoi.dm_lus[AUTRE] === maintenant, JSON.stringify(ENVOIS_META));
+      assert.deepEqual(erreurs, []);
+      await contexte.close();
+    } finally {
+      MESSAGES = avant;
+      META_COMPTE = {};
+      publications.splice(publications.findIndex((p) => p.id === 'p_supprimee'), 1);
+    }
   });
 
   await cas('carrousel : sélectionner des dates pour en republier une, les partager ou les supprimer', async () => {
