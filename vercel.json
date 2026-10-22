@@ -2,6 +2,19 @@
   "outputDirectory": "public",
   "cleanUrls": true,
   "trailingSlash": false,
+  "redirects": [
+    {
+      "source": "/:chemin*",
+      "has": [
+        {
+          "type": "host",
+          "value": "kun-com-vh.vercel.app"
+        }
+      ],
+      "destination": "https://commitcomaev.app/:chemin*",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     {
       "source": "/api/p/:id",
