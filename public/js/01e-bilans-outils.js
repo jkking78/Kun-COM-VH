@@ -212,24 +212,27 @@
   // ============================================================
   // Liste proposée à l'inscription et dans le profil. Le TEXTE choisi est ce qui
   // est stocké (et réaffiché lors de la récupération) — pas un identifiant.
-  var SECURITY_QUESTIONS = [
-    "Le prénom de ton meilleur(e) ami(e) d'enfance ?",
-    "Le nom de ton premier animal de compagnie ?",
+  // Deux listes : la première question se choisit dans la première, la
+  // seconde dans la deuxième. Les questions déjà enregistrées avec l'ancienne
+  // liste restent valables pour la récupération (le serveur garde le texte).
+  var SECURITY_QUESTIONS_1 = [
     "Ta ville de naissance ?",
-    "Le prénom de ta grand-mère maternelle ?",
-    "Le nom de ton école primaire ?",
-    "Le titre de ton chant préféré ?",
-    "Le prénom de ton parrain ou de ta marraine ?",
-    "Ton plat préféré ?"
+    "Ton plat préféré ?",
+    "Ta couleur préférée ?"
+  ];
+  var SECURITY_QUESTIONS_2 = [
+    "Ton premier lieu de culte ?",
+    "Ton premier département dans l'église ?",
+    "Ta tribu ?"
   ];
 
   // Deux blocs question (menu déroulant) + réponse, réutilisés à l'inscription et
   // dans « Modifier le profil ». prefix distingue les identifiants (« signup » /
   // « edit »). q1/q2 pré-sélectionnent une question déjà définie.
   function renderSecurityQAFields(prefix, q1, q2) {
-    var opts = function(sel) {
+    var opts = function(sel, liste) {
       return '<option value="">Choisir une question…</option>' +
-        SECURITY_QUESTIONS.map(function(q){
+        liste.map(function(q){
           return '<option value="' + safeHtml(q) + '"' + (q === sel ? ' selected' : '') + '>' + safeHtml(q) + '</option>';
         }).join('');
     };
@@ -237,11 +240,11 @@
     var inpStyle = styleChamp() + 'margin-top:8px;';
     return '<div style="display:flex;flex-direction:column;gap:16px;">' +
       '<div>' +
-        '<select id="' + prefix + 'SecQ1" class="kc-champ" style="' + selStyle + '">' + opts(q1) + '</select>' +
+        '<select id="' + prefix + 'SecQ1" class="kc-champ" style="' + selStyle + '">' + opts(q1, SECURITY_QUESTIONS_1) + '</select>' +
         '<input id="' + prefix + 'SecA1" type="text" class="kc-champ" placeholder="Ta réponse" autocomplete="off" style="' + inpStyle + '" />' +
       '</div>' +
       '<div>' +
-        '<select id="' + prefix + 'SecQ2" class="kc-champ" style="' + selStyle + '">' + opts(q2) + '</select>' +
+        '<select id="' + prefix + 'SecQ2" class="kc-champ" style="' + selStyle + '">' + opts(q2, SECURITY_QUESTIONS_2) + '</select>' +
         '<input id="' + prefix + 'SecA2" type="text" class="kc-champ" placeholder="Ta réponse" autocomplete="off" style="' + inpStyle + '" />' +
       '</div>' +
     '</div>';
