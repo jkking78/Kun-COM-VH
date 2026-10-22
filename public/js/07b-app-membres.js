@@ -596,6 +596,10 @@
         return;
       }
 
+      if (notif && notificationAnnulee(notif)) {
+        toast('Cet événement a été annulé : tu n\'es plus attendu(e).', 'info');
+        return;
+      }
       if (!targetId) return;
       var posts = db(SK.POSTS, []);
       var targetPost = posts.find(function(p){ return p.id === targetId; });

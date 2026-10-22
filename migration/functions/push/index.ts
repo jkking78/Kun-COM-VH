@@ -32,7 +32,7 @@ const corsBase = {
 // Catégorie de préférence de chaque type de notification. Les convocations
 // sont toujours envoyées ; les J'aime sont coupés par défaut (trop fréquents).
 function categorie(type: string): string {
-  if (type === "EVENT_ASSIGNED" || type === "CONVOCATION" || type === "ECHANGE") return "convocations";
+  if (type === "EVENT_ASSIGNED" || type === "CONVOCATION" || type === "ECHANGE" || type === "EVENT_CANCELLED") return "convocations";
   if (type === "MENTION") return "mentions";
   if (type === "LIKE") return "jaime";
   if (type === "COMMENT" || type === "REPLY") return "commentaires";
@@ -50,6 +50,7 @@ function accepte(prefs: Record<string, boolean> | undefined, cat: string): boole
 const TITRES: Record<string, string> = {
   LIKE: "J'aime", COMMENT: "Commentaire", REPLY: "Réponse", MENTION: "Mention",
   EVENT_ASSIGNED: "Convocation", CONVOCATION: "Convocation", ECHANGE: "Échange de service",
+  EVENT_CANCELLED: "Événement annulé",
   EVALUATION: "Bilan", NEW_MEMBER: "Nouveau membre", MESSAGE: "Nouveau message",
 };
 const POLES: Record<string, string> = {

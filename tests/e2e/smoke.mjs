@@ -850,6 +850,35 @@ try {
     await membre.contexte.close();
   });
 
+  await cas('événement supprimé : les convoqués sont prévenus, la convocation est marquée « Annulé »', async () => {
+    const { page, erreurs, contexte } = await nouvellePage(nav, base, sessionPour('GRAND_RESPONSABLE'));
+    await page.waitForSelector('#post-p_piege', { timeout: 15000 });
+    // L'Admin supprime un événement où AUTRE est convoqué.
+    const prevenu = await page.evaluate((autre) => {
+      const posts = db(SK.POSTS, []);
+      posts.unshift({ id: 'ev_annule', type: 'EVENT', userId: S.user.id, author: 'A', eventTitle: 'Répétition', eventDate: '2030-05-05', eventStart: '18:00',
+        assignments: [{ userId: autre, task: 'Son' }], timestamp: Date.now(), likedBy: [], comments: [], mediaUrls: [] });
+      dbSet(SK.POSTS, posts);
+      App.deletePost('ev_annule');
+      const fiche = db(SK.USERS, []).find((u) => u.id === autre);
+      const n = (fiche.notifications || []).find((x) => x.type === 'EVENT_CANCELLED' && x.targetId === 'ev_annule');
+      return n && n.text;
+    }, AUTRE);
+    assert.ok(prevenu && prevenu.includes('Répétition') && prevenu.includes('annulé'), String(prevenu));
+    assert.equal(await page.evaluate(() => db(SK.POSTS, []).find((p) => p.id === 'ev_annule').type), 'EVENT_ARCHIVED');
+    // Dans la cloche du convoqué : sa convocation marquée « Annulé », et la toucher l'explique.
+    await page.evaluate(() => {
+      S.user.notifications = [{ id: 'n_conv', type: 'EVENT_ASSIGNED', senderId: 'x', senderName: 'Admin', text: 'Tu es convoqué : Répétition', targetId: 'ev_annule', timestamp: Date.now(), read: false }];
+      App.openNotifications();
+    });
+    await page.waitForSelector('text=Annulé');
+    await page.click('text=Tu es convoqué : Répétition');
+    await page.waitForSelector('text=Cet événement a été annulé');
+    assert.notEqual(await page.evaluate(() => S.tab), 'planning');
+    assert.deepEqual(erreurs, []);
+    await contexte.close();
+  });
+
   await cas('un membre consulte le plan de préparation sans pouvoir le modifier', async () => {
     const { page, erreurs, contexte } = await nouvellePage(nav, base, sessionPour('MEMBRE'));
     await page.waitForSelector('#post-p_piege', { timeout: 15000 });
