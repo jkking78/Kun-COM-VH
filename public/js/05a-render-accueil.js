@@ -596,6 +596,7 @@
       var masques = Math.max(0, elements.length - limite);
       var cartes = elements.slice(0, limite).map(function(item) {
         if (item.kind === 'post') return renderPostCard(item.post);
+        if (item.kind === 'serie') return renderSerieCard(item.id, item.events);
         if (item.events.length === 1) return renderPostCard(item.events[0]);
         return renderEventGroupCard(item.date, item.events);
       }).join('');
