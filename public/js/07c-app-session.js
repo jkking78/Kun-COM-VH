@@ -17,8 +17,9 @@
         var listes = document.querySelectorAll('[data-carrousel-ev="1"]');
         for (var i = 0; i < listes.length; i++) {
           var el = listes[i];
-          var largeur = el.clientWidth;
-          if (!largeur || !el.children.length) continue;
+          if (!el.children.length) continue;
+          var largeur = el.children[0].offsetWidth + (parseFloat(getComputedStyle(el).columnGap) || 0);
+          if (!largeur) continue;
           var idx = Math.round(el.scrollLeft / largeur);
           if (idx < 0) idx = 0;
           if (idx > el.children.length - 1) idx = el.children.length - 1;

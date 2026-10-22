@@ -320,6 +320,7 @@
   // d'un téléphone à l'autre et jurait avec les autres icônes. Les emoji
   // restent dans le CONTENU (badges, réactions, publications).
   var ICO_PATHS = {
+    chevronRight: '<path d="M9 6l6 6-6 6"/>',
     pin:      '<path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/>',
     calendar: '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>',
     clock:    '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',

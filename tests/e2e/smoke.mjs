@@ -714,6 +714,48 @@ try {
     await contexte.close();
   });
 
+  await cas('série d\'événements : un seul carrousel dans le fil, statuts de présence, tout est cliquable', async () => {
+    const { page, erreurs, contexte } = await nouvellePage(nav, base, sessionPour('GRAND_RESPONSABLE'));
+    await page.waitForSelector('#post-p_piege', { timeout: 15000 });
+    await page.evaluate(({ autre, moi }) => {
+      const posts = db(SK.POSTS, []);
+      ['2030-03-03', '2030-03-10', '2030-03-17'].forEach((d, i) => posts.unshift({
+        id: 'serie_' + i, type: 'EVENT', userId: moi, author: 'A', eventTitle: 'Culte en série', eventDate: d,
+        eventStart: '07:00', eventEnd: '09:00', eventSections: ['regie'], recurrenceGroupId: 'serie_0',
+        assignments: [{ userId: autre, userName: 'O', task: 'Son' }, { userId: moi, userName: 'Moi', task: 'Régie' }],
+        reponsesConvocation: { [moi]: { statut: 'confirme' } },
+        timestamp: Date.now() + 5000, likedBy: [], comments: [], mediaUrls: [] }));
+      dbSet(SK.POSTS, posts);
+      try { localStorage.removeItem('kc_glisse_vu'); } catch (e) {}
+      App.tab('home');
+    }, { autre: AUTRE, moi: MOI });
+    await page.waitForSelector('[id^="evserie-"]');
+    const etat = await page.evaluate(() => {
+      const car = document.querySelector('[id^="evserie-"]');
+      return {
+        cartes: document.querySelectorAll('[id^="evserie-"]').length,
+        volets: car.children.length,
+        indice: !!document.querySelector('.kc-glisse-texte') && !!car.querySelector('.kc-glisse'),
+        texte: car.textContent,
+        seules: ['serie_0', 'serie_1', 'serie_2'].filter((id) => document.getElementById('post-' + id)).length,
+      };
+    });
+    assert.equal(etat.cartes, 1, 'une seule carte pour la série');
+    assert.equal(etat.volets, 3);
+    assert.equal(etat.seules, 0, 'pas de carte séparée par date');
+    assert.ok(etat.indice, 'indication « glisse » animée');
+    assert.ok(etat.texte.includes('Confirmé') && etat.texte.includes('En attente'), 'statut de chaque assigné');
+    // Glisser enregistre que l'indication a été comprise.
+    await page.evaluate(() => { const car = document.querySelector('[id^="evserie-"]'); car.scrollLeft = car.children[1].offsetLeft; car.dispatchEvent(new Event('scroll')); });
+    assert.equal(await page.evaluate(() => localStorage.getItem('kc_glisse_vu')), '1');
+    // Le nom d'un assigné ouvre son profil, sans ouvrir l'événement.
+    await page.evaluate(() => [...document.querySelectorAll('[id^="evserie-"] button')].find((b) => b.textContent.includes('O\'Brien')).click());
+    assert.equal(await page.evaluate(() => S.viewUserProfileId), AUTRE);
+    assert.equal(await page.evaluate(() => S.tab), 'home');
+    assert.deepEqual(erreurs, []);
+    await contexte.close();
+  });
+
   await cas('un membre consulte le plan de préparation sans pouvoir le modifier', async () => {
     const { page, erreurs, contexte } = await nouvellePage(nav, base, sessionPour('MEMBRE'));
     await page.waitForSelector('#post-p_piege', { timeout: 15000 });

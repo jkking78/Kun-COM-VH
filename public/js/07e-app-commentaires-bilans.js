@@ -260,8 +260,14 @@
     // compteur et les pastilles directement dans le DOM (pas de render() global,
     // qui interromprait le défilement en cours).
     eventGroupScroll: function(dateIso, carId, el) {
-      var w = el.clientWidth; if (!w) return;
+      // Largeur d'un volet (pas du conteneur) : les volets d'une série laissent
+      // dépasser le suivant, et sont séparés d'un espace.
+      var premier = el.children && el.children[0];
+      var w = premier ? premier.offsetWidth + (parseFloat(getComputedStyle(el).columnGap) || 0) : el.clientWidth;
+      if (!w) return;
       var idx = Math.round(el.scrollLeft / w);
+      // Une série a été parcourue : l'indication « glisse » n'est plus utile.
+      if (idx > 0 && carId.indexOf('evserie-') === 0) { try { localStorage.setItem('kc_glisse_vu', '1'); } catch(e) {} }
       if (!S.eventGroupIdx) S.eventGroupIdx = {};
       if (S.eventGroupIdx[dateIso] === idx) return;
       S.eventGroupIdx[dateIso] = idx;

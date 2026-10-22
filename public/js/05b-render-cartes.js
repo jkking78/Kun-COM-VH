@@ -54,7 +54,8 @@
     var evDay = evDate ? evDate.getDate() : '';
     // Pôles concernés, en pastilles discrètes plutôt qu'en texte violet brut.
     var evSections = (post.eventSections || []).slice(0, 3).map(function(s) {
-      return '<span style="font-size:11px;color:#CBD9D3;background:' + UI.evTag + ';padding:3px 9px;border-radius:' + UI.pill + ';white-space:nowrap;">' + safeHtml(secNom(s)) + '</span>';
+      // Un pôle ouvre son fil.
+      return '<button type="button" onclick="event.stopPropagation();App.tab(\'home\');App.story(\'' + jsArg(s) + '\')" style="font:inherit;font-size:11px;color:#CBD9D3;background:' + UI.evTag + ';border:none;padding:3px 9px;border-radius:' + UI.pill + ';white-space:nowrap;cursor:pointer;">' + safeHtml(secNom(s)) + '</button>';
     }).join('');
     var evMore = (post.eventSections || []).length > 3
       ? '<span style="font-size:11px;color:' + UI.evMuted + ';padding:3px 4px;">+' + ((post.eventSections || []).length - 3) + '</span>'
@@ -130,11 +131,16 @@
                 }
                 return '<div style="background:' + (isMeAssigned ? UI.evGoldSoft : 'rgba(255,255,255,0.05)') + ';border:0.5px solid ' + (isMeAssigned ? UI.evGoldLine : 'transparent') + ';border-radius:' + UI.r1 + ';padding:8px 11px;">' +
                   '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">' +
-                    '<div style="font-size:13px;font-weight:600;color:' + (isMeAssigned ? UI.evGold : UI.evInk) + ';min-width:0;">' + safeHtml(nomAssignation(a, db(SK.USERS, []))) + (isMeAssigned ? ' · toi' : '') + '</div>' +
+                    // Le nom ouvre le profil du membre (ou le fil du pôle).
+                    '<button type="button" onclick="event.stopPropagation();' + (a.isSection ? 'App.story(\'' + jsArg(a.sectionId) + '\')' : 'App.openUserProfile(\'' + jsArg(a.userId) + '\')') + '" style="background:none;border:none;padding:4px 0;margin:-4px 0;font:inherit;text-align:left;cursor:pointer;font-size:13px;font-weight:700;color:' + (isMeAssigned ? UI.evGold : UI.evInk) + ';min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-decoration:underline;text-decoration-color:rgba(255,255,255,0.25);text-underline-offset:3px;">' + safeHtml(nomAssignation(a, db(SK.USERS, []))) + (isMeAssigned ? ' · toi' : '') + '</button>' +
                     (function(){
-                      var r = a.userId ? reponseConvocation(post, a.userId) : null;
-                      if (!r) return '';
-                      return '<span style="flex-shrink:0;font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;' + (r.statut === 'confirme' ? 'background:rgba(14,159,110,0.22);color:#8FE9C4;">Confirmé' : 'background:rgba(226,68,92,0.22);color:#F5A3AF;">Indisponible') + '</span>';
+                      // Présence validée ou non : toujours affichée pour un membre.
+                      if (!a.userId) return '';
+                      var r = reponseConvocation(post, a.userId);
+                      var st = !r ? ['En attente', 'rgba(255,255,255,0.10)', UI.evMuted]
+                        : r.statut === 'confirme' ? ['Confirmé ✓', 'rgba(14,159,110,0.22)', '#8FE9C4']
+                        : ['Indisponible', 'rgba(226,68,92,0.22)', '#F5A3AF'];
+                      return '<span style="flex-shrink:0;font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;background:' + st[1] + ';color:' + st[2] + ';">' + st[0] + '</span>';
                     })() +
                   '</div>' +
                   '<div style="font-size:12px;color:' + UI.evMuted + ';margin-top:1px;">' + safeHtml(a.task) + '</div>' +
@@ -153,12 +159,41 @@
   // seul carrousel plutôt qu'en cartes successives. Le groupe prend la place du
   // premier événement rencontré, et les événements y sont ordonnés par heure de
   // début croissante (de la première à la dernière de la journée).
+  // Un même événement programmé sur plusieurs semaines (« Répéter chaque
+  // semaine » : recurrenceGroupId commun) n'occupe qu'UNE carte du fil : un
+  // carrousel de ses prochaines dates, à faire glisser de droite à gauche.
+  // Les dates déjà passées restent dans le Planning (Historique) ; si toute la
+  // série est passée, le carrousel montre ses dates de la plus récente à la
+  // plus ancienne.
+  function datesDeSerie(events, maintenant) {
+    var now = maintenant || Date.now();
+    var fin = function(e) { return eventEndTimestamp(e) || eventStartTimestamp(e) || 0; };
+    var aVenir = events.filter(function(e){ return fin(e) >= now; });
+    var tri = function(a, b) { return String(a.eventDate).localeCompare(String(b.eventDate)) || String(a.eventStart || '').localeCompare(String(b.eventStart || '')); };
+    if (aVenir.length) return aVenir.sort(tri);
+    return events.slice().sort(tri).reverse();
+  }
+
   function groupSameDayEvents(list) {
     var out = [];
     var indexByDate = {};
+    var series = {};
+    (list || []).forEach(function(p) {
+      var g = p && p.type === 'EVENT' && p.recurrenceGroupId;
+      if (g) (series[g] = series[g] || []).push(p);
+    });
+    var serieVue = {};
     (list || []).forEach(function(p) {
       var isEvent = p && p.type === 'EVENT' && p.eventTitle && p.eventDate;
       if (!isEvent) { out.push({ kind: 'post', post: p }); return; }
+      var g = p.recurrenceGroupId;
+      if (g && series[g].length > 1) {
+        if (serieVue[g]) return;
+        serieVue[g] = true;
+        var dates = datesDeSerie(series[g]);
+        out.push(dates.length > 1 ? { kind: 'serie', id: g, events: dates } : { kind: 'eventGroup', date: dates[0].eventDate, events: dates });
+        return;
+      }
       if (indexByDate[p.eventDate] === undefined) {
         indexByDate[p.eventDate] = out.length;
         out.push({ kind: 'eventGroup', date: p.eventDate, events: [p] });
@@ -175,7 +210,47 @@
     return out;
   }
 
-  // Carrousel horizontal des événements d'une même journée.
+  // Carrousel d'une série : chaque volet laisse dépasser le suivant, et une
+  // petite animation (le volet glisse puis revient, flèche qui pulse) montre
+  // qu'on peut faire défiler. Elle s'arrête dès qu'on a fait glisser une série.
+  function renderSerieCard(serieId, events) {
+    var carId = 'evserie-' + String(serieId).replace(/[^A-Za-z0-9_-]/g, '');
+    var curIdx = Math.min((S.eventGroupIdx && S.eventGroupIdx[serieId]) || 0, events.length - 1);
+    if (!(curIdx > 0)) curIdx = 0;
+    var indice = false;
+    try { indice = localStorage.getItem('kc_glisse_vu') !== '1'; } catch(e) {}
+    var premier = events[0];
+    var fmt = function(e) { return new Date(e.eventDate + 'T00:00:00').toLocaleDateString('fr-FR', { day:'numeric', month:'short' }); };
+    var periode = fmt(events[0]) + ' → ' + fmt(events[events.length - 1]);
+    return '<article style="background:' + UI.card + ';border-radius:' + UI.r2 + ';box-shadow:' + UI.sh2 + ';margin:0 12px 12px;overflow:hidden;">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px 8px;">' +
+        '<div onclick="App.goToEvent(\'' + jsArg(premier.id) + '\')" style="min-width:0;cursor:pointer;">' +
+          '<div style="font-size:15px;font-weight:800;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + safeHtml(premier.eventTitle) + '</div>' +
+          '<div style="font-size:12px;color:var(--faint);font-weight:600;margin-top:2px;">' + events.length + ' dates · ' + safeHtml(periode) + '</div>' +
+        '</div>' +
+        '<div id="evgrpBadge-' + carId + '" style="background:var(--accent-soft);color:var(--lien);font-size:12px;font-weight:800;padding:4px 10px;border-radius:20px;flex-shrink:0;">' + (curIdx + 1) + '/' + events.length + '</div>' +
+      '</div>' +
+      (indice ? '<div class="kc-glisse-texte" style="display:flex;align-items:center;gap:6px;padding:0 14px 8px;font-size:12px;font-weight:700;color:var(--lien);">Glisse vers la gauche pour voir les autres dates <span class="kc-glisse-fleche" style="display:inline-flex;">' + ico('chevronRight', 14, 'currentColor') + '</span></div>' : '') +
+      '<div id="' + carId + '" data-carrousel-ev="1" onscroll="App.eventGroupScroll(\'' + jsArg(serieId) + '\',\'' + jsArg(carId) + '\',this)" style="display:flex;align-items:flex-start;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;gap:10px;padding:0 16px 4px;scroll-padding:0 16px;transition:height 0.18s ease;">' +
+        events.map(function(ev) {
+          return '<div class="' + (indice ? 'kc-glisse' : '') + '" style="flex:0 0 86%;scroll-snap-align:start;box-sizing:border-box;">' +
+            '<div style="position:relative;">' +
+              // Pas de bouton ⋯ par-dessus : il masquait l'état et le lieu. On
+              // modifie une date depuis le Planning, où mène la carte.
+              '<div onclick="App.goToEvent(\'' + jsArg(ev.id) + '\')" style="cursor:pointer;">' + renderEventCardInner(ev) + '</div>' +
+            '</div>' +
+          '</div>';
+        }).join('') +
+      '</div>' +
+      '<div id="evgrpDots-' + carId + '" style="display:flex;justify-content:center;gap:5px;padding:8px 0 12px;">' +
+        events.map(function(_, di) {
+          var a = di === curIdx;
+          return '<div style="width:' + (a?'18':'6') + 'px;height:6px;border-radius:3px;background:' + (a?'#0B5FE0':'var(--line)') + ';transition:all 0.25s;"></div>';
+        }).join('') +
+      '</div>' +
+    '</article>';
+  }
+
   function renderEventGroupCard(dateIso, events) {
     var d = new Date(dateIso + 'T00:00:00');
     var dateLabel = d.toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long' });
