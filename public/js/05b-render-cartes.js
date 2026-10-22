@@ -220,33 +220,115 @@
   // Carrousel d'une série : chaque volet laisse dépasser le suivant, et une
   // petite animation (le volet glisse puis revient, flèche qui pulse) montre
   // qu'on peut faire défiler. Elle s'arrête dès qu'on a fait glisser une série.
+  // Reprogrammation de dates d'une série : chaque date choisie est recopiée
+  // décalée d'un même nombre de jours. « suite » = juste après la dernière
+  // date de la série (une semaine après), en gardant l'écart entre les dates
+  // choisies ; sinon un nombre de semaines. Une date déjà dans la série est
+  // ignorée.
+  function nouvellesDatesSerie(choisies, serie, decalage) {
+    var jour = function(iso) { return Date.parse(iso + 'T00:00:00Z') / 86400000; };
+    var iso = function(j) { return new Date(j * 86400000).toISOString().slice(0, 10); };
+    var tri = choisies.slice().sort(function(a, b){ return String(a.eventDate).localeCompare(String(b.eventDate)); });
+    if (!tri.length) return [];
+    var dernier = Math.max.apply(null, serie.map(function(e){ return jour(e.eventDate); }));
+    var ecart = decalage === 'suite' ? (dernier - jour(tri[0].eventDate) + 7) : (parseInt(decalage, 10) || 1) * 7;
+    var prises = {};
+    serie.forEach(function(e){ prises[e.eventDate] = true; });
+    var out = [];
+    tri.forEach(function(e) {
+      var d = iso(jour(e.eventDate) + ecart);
+      if (!prises[d]) { prises[d] = true; out.push({ source: e, date: d }); }
+    });
+    return out;
+  }
+
+  // Carrousel d'une série : chaque volet laisse dépasser le suivant, et une
+  // petite animation (le volet glisse puis revient, flèche qui pulse) montre
+  // qu'on peut faire défiler. Elle s'arrête dès qu'on a fait glisser une série.
+  // Mode « Sélectionner » (menu ⋯) : on coche des dates, puis on les partage,
+  // les supprime ou les reprogramme.
   function renderSerieCard(serieId, events) {
     var carId = 'evserie-' + String(serieId).replace(/[^A-Za-z0-9_-]/g, '');
     var curIdx = Math.min((S.eventGroupIdx && S.eventGroupIdx[serieId]) || 0, events.length - 1);
     if (!(curIdx > 0)) curIdx = 0;
+    var sel = S.selSerie && S.selSerie.id === serieId ? S.selSerie : null;
+    var nbSel = sel ? events.filter(function(e){ return sel.ids[e.id]; }).length : 0;
     var indice = false;
-    try { indice = localStorage.getItem('kc_glisse_vu') !== '1'; } catch(e) {}
+    try { indice = !sel && localStorage.getItem('kc_glisse_vu') !== '1'; } catch(e) {}
     var premier = events[0];
     var fmt = function(e) { return new Date(e.eventDate + 'T00:00:00').toLocaleDateString('fr-FR', { day:'numeric', month:'short' }); };
     var periode = fmt(events[0]) + ' → ' + fmt(events[events.length - 1]);
-    return '<article id="serie-' + safeHtml(serieId) + '" style="background:' + UI.card + ';border-radius:' + UI.r2 + ';box-shadow:' + UI.sh2 + ';margin:0 12px 12px;overflow:hidden;">' +
-      '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px 8px;">' +
-        '<div onclick="App.goToEvent(\'' + jsArg(premier.id) + '\')" style="min-width:0;flex:1;cursor:pointer;">' +
-          '<div style="font-size:15px;font-weight:800;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + safeHtml(premier.eventTitle) + '</div>' +
-          '<div style="font-size:12px;color:var(--faint);font-weight:600;margin-top:2px;">' + events.length + ' dates · ' + safeHtml(periode) + '</div>' +
-        '</div>' +
-        '<div id="evgrpBadge-' + carId + '" style="background:var(--accent-soft);color:var(--lien);font-size:12px;font-weight:800;padding:4px 10px;border-radius:20px;flex-shrink:0;">' + (curIdx + 1) + '/' + events.length + '</div>' +
-        // Partager cette date ou toute la série, modifier… (date affichée).
-        '<button type="button" onclick="App.ouvrirOptionsSerie(\'' + jsArg(serieId) + '\')" aria-label="Options et partage" style="background:var(--tile);border:none;width:40px;height:40px;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-right:-4px;">' + SVG.dots + '</button>' +
-      '</div>' +
+    var u = S.user || {};
+    var peutCreer = u.role === 'RESP_SECTION' || u.role === 'GRAND_RESPONSABLE';
+    var peutSupprimer = sel && nbSel > 0 && events.every(function(e){ return !sel.ids[e.id] || u.role === 'GRAND_RESPONSABLE' || e.userId === u.id; });
+    var bouton = function(action, libelle, couleur, actif) {
+      return '<button type="button" ' + (actif ? 'onclick="' + action + '"' : 'disabled') + ' style="flex:1;min-height:44px;border:none;border-radius:999px;background:var(--tile);color:' + (actif ? couleur : 'var(--faint)') + ';font-size:13px;font-weight:800;cursor:' + (actif ? 'pointer' : 'default') + ';">' + libelle + '</button>';
+    };
+
+    var entete = sel
+      ? '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px 8px;">' +
+          '<div style="min-width:0;flex:1;">' +
+            '<div style="font-size:15px;font-weight:800;color:var(--ink);">' + (nbSel ? nbSel + ' date' + (nbSel > 1 ? 's' : '') + ' sélectionnée' + (nbSel > 1 ? 's' : '') : 'Touche les dates à choisir') + '</div>' +
+            '<div style="font-size:12px;color:var(--faint);font-weight:600;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + safeHtml(premier.eventTitle) + '</div>' +
+          '</div>' +
+          '<button type="button" onclick="App.toutSelectionnerSerie()" style="background:none;border:none;min-height:40px;padding:0 6px;font-size:13px;font-weight:800;color:var(--lien);cursor:pointer;">' + (nbSel === events.length ? 'Aucune' : 'Toutes') + '</button>' +
+          '<button type="button" onclick="App.quitterSelectionSerie()" style="background:var(--tile);border:none;min-height:40px;padding:0 12px;border-radius:12px;font-size:13px;font-weight:800;color:var(--ink);cursor:pointer;">Terminé</button>' +
+        '</div>'
+      : '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px 8px;">' +
+          '<div onclick="App.goToEvent(\'' + jsArg(premier.id) + '\')" style="min-width:0;flex:1;cursor:pointer;">' +
+            '<div style="font-size:15px;font-weight:800;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + safeHtml(premier.eventTitle) + '</div>' +
+            '<div style="font-size:12px;color:var(--faint);font-weight:600;margin-top:2px;">' + events.length + ' dates · ' + safeHtml(periode) + '</div>' +
+          '</div>' +
+          '<div id="evgrpBadge-' + carId + '" style="background:var(--accent-soft);color:var(--lien);font-size:12px;font-weight:800;padding:4px 10px;border-radius:20px;flex-shrink:0;">' + (curIdx + 1) + '/' + events.length + '</div>' +
+          // Sélectionner, partager, modifier… (date affichée).
+          '<button type="button" onclick="App.ouvrirOptionsSerie(\'' + jsArg(serieId) + '\')" aria-label="Options et partage" style="background:var(--tile);border:none;width:40px;height:40px;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-right:-4px;">' + SVG.dots + '</button>' +
+        '</div>';
+
+    // Barre d'actions de la sélection, et panneau de reprogrammation.
+    var actions = '';
+    if (sel) {
+      actions = '<div style="display:flex;gap:6px;padding:0 14px 12px;">' +
+        bouton('App.partagerSelectionSerie()', 'Partager', 'var(--lien)', nbSel > 0) +
+        (peutCreer ? bouton('App.ouvrirReprogrammation()', 'Reprogrammer', 'var(--lien)', nbSel > 0) : '') +
+        bouton('App.supprimerSelectionSerie()', 'Supprimer', 'var(--bad-ink)', !!peutSupprimer) +
+      '</div>';
+      if (sel.reprog && nbSel > 0) {
+        var choisies = events.filter(function(e){ return sel.ids[e.id]; });
+        var prevues = nouvellesDatesSerie(choisies, occurrencesDeSerie(premier), sel.decalage || 'suite');
+        var puce = function(v, libelle) {
+          var on = String(sel.decalage || 'suite') === String(v);
+          return '<button type="button" onclick="App.choisirDecalage(\'' + v + '\')" style="min-height:36px;padding:0 12px;border-radius:999px;border:' + (on ? 'none' : '1px solid var(--line2)') + ';background:' + (on ? UI.accent : 'var(--card)') + ';color:' + (on ? '#FFF' : 'var(--ink)') + ';font-size:13px;font-weight:700;cursor:pointer;">' + libelle + '</button>';
+        };
+        actions += '<div class="kc-apparait" style="margin:0 14px 14px;background:var(--tile);border-radius:14px;padding:12px;">' +
+          '<div style="font-size:13px;font-weight:800;color:var(--ink);margin-bottom:8px;">Reprogrammer ' + (nbSel > 1 ? 'ces ' + nbSel + ' dates' : 'cette date') + '</div>' +
+          '<div style="display:flex;flex-wrap:wrap;gap:6px;">' + puce('suite', 'À la suite de la série') + puce(1, '+1 sem.') + puce(2, '+2 sem.') + puce(4, '+4 sem.') + '</div>' +
+          '<div style="font-size:13px;color:var(--muted);margin-top:10px;line-height:1.5;">' +
+            (prevues.length
+              ? 'Nouvelles dates : <strong style="color:var(--ink);">' + prevues.map(function(x){ return safeHtml(new Date(x.date + 'T00:00:00').toLocaleDateString('fr-FR', { weekday:'short', day:'numeric', month:'short' })); }).join(', ') + '</strong><br>Même heure, même lieu, même équipe ; les convoqués seront prévenus.'
+              : 'Ces dates existent déjà dans la série.') +
+          '</div>' +
+          '<button type="button" ' + (prevues.length ? 'onclick="App.reprogrammerSelectionSerie(this)"' : 'disabled') + ' style="width:100%;min-height:44px;margin-top:10px;border:none;border-radius:999px;background:' + (prevues.length ? UI.accent : 'var(--line2)') + ';color:#FFF;font-size:14px;font-weight:800;cursor:pointer;">Créer ' + prevues.length + ' date' + (prevues.length > 1 ? 's' : '') + '</button>' +
+        '</div>';
+      }
+    }
+
+    return '<article id="serie-' + safeHtml(serieId) + '" style="background:' + UI.card + ';border-radius:' + UI.r2 + ';box-shadow:' + UI.sh2 + ';margin:0 12px 12px;overflow:hidden;' + (sel ? 'outline:2px solid ' + UI.accent + ';' : '') + '">' +
+      entete +
       (indice ? '<div class="kc-glisse-texte" style="display:flex;align-items:center;gap:6px;padding:0 14px 8px;font-size:12px;font-weight:700;color:var(--lien);">Glisse vers la gauche pour voir les autres dates <span class="kc-glisse-fleche" style="display:inline-flex;">' + ico('chevronRight', 14, 'currentColor') + '</span></div>' : '') +
       '<div id="' + carId + '" data-carrousel-ev="1" onscroll="App.eventGroupScroll(\'' + jsArg(serieId) + '\',\'' + jsArg(carId) + '\',this)" style="display:flex;align-items:flex-start;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;scrollbar-width:none;gap:10px;padding:0 16px 4px;scroll-padding:0 16px;transition:height 0.18s ease;">' +
         events.map(function(ev) {
+          var coche = sel && sel.ids[ev.id];
           return '<div data-ev-id="' + safeHtml(ev.id) + '" class="' + (indice ? 'kc-glisse' : '') + '" style="flex:0 0 86%;scroll-snap-align:start;box-sizing:border-box;">' +
             '<div style="position:relative;">' +
               // Pas de bouton ⋯ par-dessus : il masquait l'état et le lieu. On
               // modifie une date depuis le Planning, où mène la carte.
               '<div onclick="App.goToEvent(\'' + jsArg(ev.id) + '\')" style="cursor:pointer;">' + renderEventCardInner(ev) + '</div>' +
+              // En sélection, toucher la date la coche (rien d'autre ne réagit).
+              (sel
+                ? '<button type="button" role="checkbox" aria-checked="' + (coche ? 'true' : 'false') + '" aria-label="Sélectionner le ' + safeHtml(fmt(ev)) + '" onclick="App.basculerDateSerie(\'' + jsArg(ev.id) + '\')" style="position:absolute;inset:0;width:100%;border:' + (coche ? '3px solid ' + UI.accent : 'none') + ';border-radius:20px;background:' + (coche ? 'rgba(11,95,224,0.12)' : 'rgba(255,255,255,0.18)') + ';cursor:pointer;padding:0;">' +
+                    '<span style="position:absolute;top:10px;right:10px;width:30px;height:30px;border-radius:50%;background:' + (coche ? UI.accent : 'rgba(255,255,255,0.92)') + ';border:2px solid ' + (coche ? UI.accent : 'var(--line2)') + ';display:flex;align-items:center;justify-content:center;">' + (coche ? ico('check', 16, '#FFF', 3) : '') + '</span>' +
+                  '</button>'
+                : '') +
             '</div>' +
           '</div>';
         }).join('') +
@@ -257,8 +339,10 @@
           return '<div style="width:' + (a?'18':'6') + 'px;height:6px;border-radius:3px;background:' + (a?'#0B5FE0':'var(--line)') + ';transition:all 0.25s;"></div>';
         }).join('') +
       '</div>' +
+      actions +
     '</article>';
   }
+
 
   function renderEventGroupCard(dateIso, events) {
     var d = new Date(dateIso + 'T00:00:00');
