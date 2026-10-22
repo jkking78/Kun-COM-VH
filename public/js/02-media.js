@@ -677,8 +677,14 @@
       S.user = u;
       try { localStorage.setItem(SK.SESS, JSON.stringify(u)); } catch(e){}
     }
-    if (supabase) {
-      supabase.from('kun_com_profiles').upsert({ id: u.id, content: profilSansSecret(u) }, { onConflict: 'id' }).then(function(){}, function(e){});
+    if (supabase && S.user && S.user.id === u.id) {
+      var liens = u.sharedLinks;
+      ecrireMaFiche(function(serveur) {
+        var vus = {};
+        liens.forEach(function(l){ if (l && l.url) vus[l.url] = true; });
+        var tous = liens.concat((serveur.sharedLinks || []).filter(function(l){ return l && l.url && !vus[l.url]; }));
+        return { sharedLinks: tous.slice(0, 100) };
+      });
     }
   }
 

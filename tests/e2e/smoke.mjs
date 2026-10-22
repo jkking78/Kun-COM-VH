@@ -967,6 +967,26 @@ try {
         assert.equal(e.content.joined_at, 1700000000000);
       }
       assert.equal(await page.evaluate(() => S.user.joined_at), 1700000000000);
+
+      // Copie locale périmée (sans photo, date d'arrivée d'aujourd'hui) : les
+      // écritures ordinaires de sa fiche ne doivent poser que leurs champs.
+      ECRITURES_FICHES.length = 0;
+      await page.evaluate((autre) => {
+        delete S.user.avatar_url; delete S.user.bio; S.user.joined_at = Date.now();
+        App._majMonProfil({ conditionsLues: 'v-test' });
+        App.toggleFollow(autre);
+        App.markAllNotificationsRead();
+      }, AUTRE);
+      await page.waitForFunction(() => S.user.avatar_url === 'https://exemple.org/photo.jpg', null, { timeout: 5000 });
+      await page.waitForTimeout(500);
+      const ecrites = ECRITURES_FICHES.flat().filter((e) => e && e.id === MOI);
+      assert.ok(ecrites.length >= 3, 'trois écritures attendues : ' + ecrites.length);
+      for (const e of ecrites) {
+        assert.equal(e.content.avatar_url, 'https://exemple.org/photo.jpg', 'photo écrasée : ' + JSON.stringify(e.content));
+        assert.equal(e.content.bio, 'Caméraman');
+        assert.equal(e.content.joined_at, 1700000000000);
+      }
+      assert.ok(ecrites.some((e) => e.content.conditionsLues === 'v-test'), 'la préférence est enregistrée');
       assert.deepEqual(erreurs, []);
       await contexte.close();
     } finally {
