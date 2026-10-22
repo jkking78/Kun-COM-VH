@@ -93,7 +93,7 @@ function fetchUneFois(url, signal) {
       // Beaucoup de sites ne servent les balises Open Graph qu'aux robots
       // sociaux ; se présenter comme un navigateur classique donne souvent
       // une page sans métadonnées.
-      'User-Agent': 'Mozilla/5.0 (compatible; CommitVH-LinkPreview/1.0; +https://kun-com-vh.vercel.app)',
+      'User-Agent': 'Mozilla/5.0 (compatible; CommitVH-LinkPreview/1.0; +https://commitcomaev.app)',
       'Accept': 'text/html,application/xhtml+xml'
     }
   });
@@ -113,7 +113,8 @@ async function lireReponse(r, url) {
 // site ne peut plus s'en servir de relais (S12).
 function origineAutorisee(origine) {
   if (!origine) return true;                       // appel de même origine
-  return /^https:\/\/kun-com-vh(-[a-z0-9-]+)?\.vercel\.app$/.test(origine) || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origine);
+  return /^https:\/\/(www\.)?commitcomaev\.app$/.test(origine) ||
+    /^https:\/\/kun-com-vh(-[a-z0-9-]+)?\.vercel\.app$/.test(origine) || /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origine);
 }
 
 module.exports = async function handler(req, res) {

@@ -85,6 +85,9 @@ test('aperçu de liens : adresses internes et origines étrangères refusées', 
   }
   for (const ip of ['8.8.8.8', '41.202.219.1', '2606:4700::1111']) assert.equal(ipPrivee(ip), false, ip);
   assert.equal(origineAutorisee('https://kun-com-vh.vercel.app'), true);
+  assert.equal(origineAutorisee('https://commitcomaev.app'), true);
+  assert.equal(origineAutorisee('https://www.commitcomaev.app'), true);
+  assert.equal(origineAutorisee('https://commitcomaev.app.evil.com'), false);
   assert.equal(origineAutorisee(''), true);
   assert.equal(origineAutorisee('https://pirate.example'), false);
   assert.equal(isPublicHttpUrl('file:///etc/passwd'), null);
