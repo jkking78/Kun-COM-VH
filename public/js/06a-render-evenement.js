@@ -274,7 +274,7 @@
     }
 
     if (!r) {
-      return '<div style="margin-bottom:10px;">' +
+      return '<div id="reponse-' + safeHtml(ev.id) + '" style="margin-bottom:10px;border-radius:14px;transition:box-shadow 0.35s ease, background 0.35s ease;">' +
         '<div style="font-size:13px;font-weight:600;color:var(--muted);margin-bottom:8px;">Tu es convoqué(e)' + (a.task ? ' · ' + safeHtml(a.task) : '') + '. Tu confirmes&nbsp;?</div>' +
         '<div style="display:flex;gap:8px;">' +
           bouton('App.repondreConvocation(\'' + jsArg(ev.id) + '\',\'confirme\')', 'Je confirme', UI.accent, '#FFF') +
@@ -284,7 +284,7 @@
     }
 
     var ok = r.statut === 'confirme';
-    return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:' + (ok ? 'var(--ok-soft)' : 'var(--bad-soft)') + ';border:1px solid ' + (ok ? 'var(--ok-line)' : 'var(--bad-line)') + ';border-radius:12px;padding:8px 8px 8px 12px;margin-bottom:10px;">' +
+    return '<div id="reponse-' + safeHtml(ev.id) + '" style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:' + (ok ? 'var(--ok-soft)' : 'var(--bad-soft)') + ';border:1px solid ' + (ok ? 'var(--ok-line)' : 'var(--bad-line)') + ';border-radius:12px;padding:8px 8px 8px 12px;margin-bottom:10px;">' +
       '<span class="kc-apparait" style="font-size:13px;font-weight:800;color:' + (ok ? 'var(--ok-ink)' : 'var(--bad-ink)') + ';min-width:0;overflow-wrap:anywhere;">' +
         (ok ? '✓ Présence confirmée' : 'Indisponible' + (r.motif ? ' · ' + safeHtml(r.motif) : '')) +
       '</span>' +

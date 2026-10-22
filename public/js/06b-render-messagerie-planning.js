@@ -395,7 +395,7 @@
         var couleurEv = secColor((ev.eventSections || [])[0]) || UI.accent;
         var duree = (evStartTs && evEndTs) ? Math.max(0, Math.round((evEndTs - evStartTs) / 3600000 * 10) / 10) : null;
 
-        planBlocks.push('<div style="margin-bottom:10px;max-width:100%;">' +
+        planBlocks.push('<div id="planev-' + safeHtml(ev.id) + '" style="margin-bottom:10px;max-width:100%;scroll-margin-top:12px;">' +
           '<div style="min-width:0;">' +
             '<div style="background:var(--card);border-radius:20px;padding:16px;box-shadow:' + UI.sh2 + ';overflow:hidden;">' +
               '<div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:12px;">' +
