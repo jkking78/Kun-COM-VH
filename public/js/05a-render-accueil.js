@@ -10,7 +10,7 @@
   // compte des publications que le membre ne verra jamais et affiche des
   // badges mensongers. Une seule source de vérité pour les deux.
   function publicationVisiblePour(p, u) {
-    if (!p) return false;
+    if (!p || p.status === 'deleted') return false;
     // Événement supprimé mais archivé pour préserver les étoiles déjà
     // attribuées (voir App.deletePost) : invisible dans le fil, comme une
     // suppression normale — seuls les calculs de ponctualité le retrouvent.

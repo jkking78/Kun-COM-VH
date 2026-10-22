@@ -44,6 +44,7 @@
     S.jwtRole = role;                     // rôle de référence pour l'utilisateur courant
     S.jwtApprouve = !!(authUser.app_metadata && authUser.app_metadata.approuve === true);
     var meta = authUser.user_metadata || {};
+    if (meta.dm_lus && typeof fusionnerLecturesCompte === 'function') fusionnerLecturesCompte(meta.dm_lus);
     var users = db(SK.USERS, []);
     var me = users.find(function(x){ return x && x.id === authUser.id; });
     if (me) {

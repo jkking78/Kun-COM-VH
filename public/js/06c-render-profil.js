@@ -144,7 +144,7 @@
     var theme = ROLE_THEMES[freshU.role] || ROLE_THEMES['MEMBRE'];
 
     // ---- Stats ----
-    var myPosts = posts.filter(function(p){ return p.userId === freshU.id && p.type !== 'TASK_DONE' && p.type !== 'EVENT_ARCHIVED'; }).sort(function(a,b){return (b.timestamp||0)-(a.timestamp||0)});
+    var myPosts = posts.filter(function(p){ return p.userId === freshU.id && p.type !== 'TASK_DONE' && p.type !== 'EVENT_ARCHIVED' && p.status !== 'deleted'; }).sort(function(a,b){return (b.timestamp||0)-(a.timestamp||0)});
     var photosPosts = myPosts.filter(function(p){ return p.mediaUrls && p.mediaUrls.length > 0; });
     var eventPosts = myPosts.filter(function(p){ return p.type === 'EVENT'; });
     var myLikesCount = posts.filter(function(p){ return Array.isArray(p.likedBy) && p.likedBy.indexOf(freshU.id) !== -1; }).length;

@@ -20,12 +20,50 @@
       : getUserSections(u).filter(function(id){ return SECTIONS.some(function(s){ return s.id === id; }); });
     return ids.map(function(id){ return 'pole:' + id; });
   }
-  // Dernière lecture de chaque conversation (sur cet appareil).
+  // Dernière lecture de chaque conversation. Gardée sur l'appareil ET dans le
+  // compte (user_metadata.dm_lus, visible de soi seul) : sinon un nouvel
+  // appareil, une réinstallation ou un changement d'adresse faisait revenir
+  // en « non lus » tous les messages déjà lus.
   function dmLus() { return db('kc_dm_lus', {}) || {}; }
+  var _dmLusCompte = null;     // dernière version connue côté compte
+  var _dmLusEnvoi = null;
+  function fusionnerLecturesCompte(distant) {
+    if (!distant || typeof distant !== 'object') return;
+    _dmLusCompte = Object.assign({}, distant);
+    var lus = Object.assign({}, dmLus());
+    var change = false;
+    Object.keys(distant).forEach(function(k) {
+      var t = Number(distant[k]) || 0;
+      if (t > (lus[k] || 0)) { lus[k] = t; change = true; }
+    });
+    if (change) dbSet('kc_dm_lus', lus);
+  }
+  function envoyerLecturesCompte() {
+    if (_dmLusEnvoi || !supabase || !supabase.auth || !S.user) return;
+    _dmLusEnvoi = setTimeout(function() {
+      _dmLusEnvoi = null;
+      var lus = dmLus();
+      supabase.auth.updateUser({ data: { dm_lus: lus } }).then(function(r) {
+        if (r && !r.error) _dmLusCompte = Object.assign({}, lus);
+      }, function(){});
+    }, 4000);
+  }
+  // Au démarrage : relit le compte (la session en cache peut être ancienne).
+  function recupererLecturesCompte() {
+    if (!supabase || !supabase.auth || !S.user) return Promise.resolve();
+    return supabase.auth.getUser().then(function(r) {
+      var meta = r && r.data && r.data.user && r.data.user.user_metadata;
+      if (meta) fusionnerLecturesCompte(meta.dm_lus || {});
+    }, function(){});
+  }
   function marquerConversationLue(autre) {
     var lus = Object.assign({}, dmLus());
+    var avaitNonLus = nonLusConversation(autre) > 0;
     lus[autre] = Date.now();
     dbSet('kc_dm_lus', lus);
+    // Pas d'envoi à chaque relève (toutes les 4 s) : seulement quand des
+    // messages viennent d'être lus ou que le compte ne connaît pas encore la conversation.
+    if (avaitNonLus || !_dmLusCompte || !_dmLusCompte[autre]) envoyerLecturesCompte();
   }
   function nonLusConversation(autre, tous) {
     var depuis = dmLus()[autre] || 0;
