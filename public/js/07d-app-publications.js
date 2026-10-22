@@ -675,6 +675,21 @@
       // de l'application (il en retardait l'affichage), mais l'avoir prêt dès l'ouverture
       // du composeur rend le recadrage instantané au moment de choisir une photo.
       try { chargerCropper(); } catch(e){} },
+    // « Événement » dans Nouvelle publication : on passe au formulaire
+    // d'événement en emportant le texte (description) et la première photo
+    // (affiche) déjà saisis.
+    passerEnEvenement: function() {
+      var champ = document.getElementById('newPostText');
+      var texte = ((champ ? champ.value : S.postText) || '').trim();
+      var photo = (S.pendingMedia || []).find(function(m){ return typeof m === 'string' && !isVideoUrl(m) && m.indexOf('https://') === 0; }) || null;
+      S.postText = ''; S.pendingMedia = []; S.pollQuestion = '';   // brouillon emporté : pas de confirmation
+      App.closeCreate();
+      App.openCreateEvent();
+      S.createEventData = { desc: texte };
+      if (photo) S.eventImage = photo;
+      render();
+      setTimeout(function(){ var t = document.getElementById('eventTitle'); if (t) t.focus(); }, 120);
+    },
     closeCreate: function() {
       // Un brouillon substantiel mérite une confirmation : le fond du composeur
       // est cliquable et un tap mal placé effaçait un long texte sans retour.

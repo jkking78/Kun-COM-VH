@@ -830,6 +830,26 @@ try {
     publications.splice(publications.length - serieServeur.length, serieServeur.length);
   });
 
+  await cas('« Nouvelle publication » : un responsable passe à « Événement » en gardant son texte', async () => {
+    const { page, erreurs, contexte } = await nouvellePage(nav, base, sessionPour('GRAND_RESPONSABLE'));
+    await page.waitForSelector('#post-p_piege', { timeout: 15000 });
+    await page.evaluate(() => App.openCreate());
+    await page.fill('#newPostText', 'Répétition générale avant le concert');
+    await page.click('[role="tab"] >> text=Événement');
+    await page.waitForSelector('#eventTitle');
+    assert.equal(await page.evaluate(() => S.createOpen), false);
+    assert.equal(await page.inputValue('#eventDesc'), 'Répétition générale avant le concert');
+    assert.deepEqual(erreurs, []);
+    await contexte.close();
+    // Un membre n'a pas ce choix (il ne crée pas d'événement).
+    const membre = await nouvellePage(nav, base, sessionPour('MEMBRE'));
+    await membre.page.waitForSelector('#post-p_piege', { timeout: 15000 });
+    await membre.page.evaluate(() => App.openCreate());
+    await membre.page.waitForSelector('#newPostText');
+    assert.equal(await membre.page.$('[role="tab"]'), null);
+    await membre.contexte.close();
+  });
+
   await cas('un membre consulte le plan de préparation sans pouvoir le modifier', async () => {
     const { page, erreurs, contexte } = await nouvellePage(nav, base, sessionPour('MEMBRE'));
     await page.waitForSelector('#post-p_piege', { timeout: 15000 });
