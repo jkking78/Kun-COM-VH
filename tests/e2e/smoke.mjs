@@ -87,6 +87,8 @@ const publications = [
 
 // Messages privés servis par le faux serveur (le scénario « sécurité » en ajoute).
 let MESSAGES = [];
+// Nombre de lectures de kun_com_posts reçues par le faux serveur.
+const LECTURES_POSTS = { n: 0 };
 // Vues envoyées par kc_marquer_vues (migration 17).
 const VUES_ENVOYEES = [];
 // Fiches envoyées au serveur (upsert de kun_com_profiles).
@@ -117,7 +119,7 @@ async function intercepterSupabase(page) {
       status: code, contentType: 'application/json', body: JSON.stringify(corps),
     });
     const unique = (route.request().headers()['accept'] || '').includes('vnd.pgrst.object');
-    if (url.pathname.startsWith('/rest/v1/kun_com_posts')) return json(publications);
+    if (url.pathname.startsWith('/rest/v1/kun_com_posts')) { LECTURES_POSTS.n++; return json(publications); }
     if (url.pathname.startsWith('/rest/v1/kun_com_profiles')) {
       if (route.request().method() === 'POST') {
         ECRITURES_FICHES.push(JSON.parse(route.request().postData() || '{}'));
@@ -1009,6 +1011,37 @@ try {
     await page.waitForTimeout(4600);
     assert.ok(VUES_ENVOYEES.includes('p_piege'), 'vue non envoyée : ' + JSON.stringify(VUES_ENVOYEES));
     assert.equal(VUES_ENVOYEES.filter((id) => id === 'p_piege').length, 1, 'une seule fois');
+    assert.deepEqual(erreurs, []);
+    await contexte.close();
+  });
+
+  await cas('temps réel : une vue reçue met à jour le compteur sans retélécharger ni redessiner', async () => {
+    const { page, erreurs, contexte } = await nouvellePage(nav, base, sessionPour('MEMBRE'));
+    await page.waitForSelector('#post-p_piege', { timeout: 15000 });
+    await page.waitForTimeout(500);
+    const avant = LECTURES_POSTS.n;
+    const rendus = await page.evaluate(async () => {
+      let n = 0; const r0 = window.render; window.render = function(){ n++; return r0.apply(this, arguments); };
+      const p = db(SK.POSTS, []).find((x) => x.id === 'p_piege');
+      const ligne = (vues) => ({ eventType: 'UPDATE', new: { id: p.id, created_at: p.created_at, content: Object.assign({}, p, { viewedBy: vues }) } });
+      publicationRecue(ligne(['x1']));
+      publicationRecue(ligne(['x1', 'x2', 'x3']));
+      await new Promise((ok) => setTimeout(ok, 1100));
+      window.render = r0;
+      return n;
+    });
+    assert.equal(await page.textContent('#viewCount-p_piege'), '3');
+    assert.equal(rendus, 0, 'une simple vue ne doit pas redessiner l\'écran');
+    assert.equal(LECTURES_POSTS.n, avant, 'aucun retéléchargement des publications');
+
+    // Un vrai changement (légende) redessine, toujours sans retéléchargement.
+    await page.evaluate(async () => {
+      const p = db(SK.POSTS, []).find((x) => x.id === 'p_piege');
+      publicationRecue({ eventType: 'UPDATE', new: { id: p.id, created_at: p.created_at, content: Object.assign({}, p, { caption: 'Légende modifiée en direct' }) } });
+      await new Promise((ok) => setTimeout(ok, 1100));
+    });
+    await page.waitForSelector('text=Légende modifiée en direct');
+    assert.equal(LECTURES_POSTS.n, avant);
     assert.deepEqual(erreurs, []);
     await contexte.close();
   });
