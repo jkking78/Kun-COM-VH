@@ -704,7 +704,10 @@
         '<p style="font-size:13px;color:var(--faint);margin:0 0 16px;line-height:1.5;">Note les performances des pôles pour un événement, critère par critère. Si tu as déjà publié un bilan pour cet événement, il sera mis à jour.</p>' +
 
         (function(){
-          var eventPosts = db(SK.POSTS, []).filter(function(p){ return p.type === 'EVENT'; });
+          // Seuls les événements terminés se notent (un événement à venir donnait
+          // −2★ de ponctualité à tous ses convoqués), du plus récent au plus ancien.
+          var eventPosts = db(SK.POSTS, []).filter(function(p){ return p.type === 'EVENT' && isEventPast(p); })
+            .sort(function(a, b){ return (eventStartTimestamp(b) || 0) - (eventStartTimestamp(a) || 0); });
           return '<div style="background:var(--card);border-radius:20px;padding:16px;margin-bottom:14px;border:1px solid var(--line);box-shadow:0 2px 8px rgba(0,0,0,0.04);">' +
             '<label style="font-size:13px;font-weight:800;color:var(--ink);display:block;margin-bottom:8px;">Événement concerné <span style="color:#D92D20;">*</span></label>' +
             '<select id="evalEventSelect" onchange="App.selectEvalEvent(this.value)" class="kc-champ" style="' + styleSelect() + 'font-weight:600;">' +

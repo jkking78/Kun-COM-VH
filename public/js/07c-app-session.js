@@ -64,7 +64,19 @@
     // valeur absolue (état final voulu, pas un basculement), puis on réécrit —
     // le même schéma que votePoll, généralisé.
     // apresServeur(post) : appelé avec la version retenue par le serveur.
-    ecrirePostFrais: async function(postId, mutateur, apresServeur) {
+    // Les écritures sur une même publication passent l'une après l'autre : sans
+    // cela, deux actions rapides (deux étapes du plan, épingler puis modifier)
+    // relisaient le serveur avant que la première y soit arrivée, et la seconde
+    // effaçait la première.
+    ecrirePostFrais: function(postId, mutateur, apresServeur) {
+      var precedente = ecrituresEnChaine[postId] || Promise.resolve();
+      var suivante = precedente.then(function() { return App._ecrirePostFraisMaintenant(postId, mutateur, apresServeur); });
+      var fin = suivante.catch(function(){});
+      ecrituresEnChaine[postId] = fin;
+      fin.then(function() { if (ecrituresEnChaine[postId] === fin) delete ecrituresEnChaine[postId]; });
+      return suivante;
+    },
+    _ecrirePostFraisMaintenant: async function(postId, mutateur, apresServeur) {
       var posts = db(SK.POSTS, []);
       var local = posts.find(function(p){ return p.id === postId; });
       if (!local) return null;
@@ -76,22 +88,35 @@
           if (frais) cible = frais;
         } catch(e) { /* hors-ligne ou post absent : on mute la version locale */ }
       }
+      var avantMutation = JSON.parse(JSON.stringify(cible));
       mutateur(cible);
+      var champs = champsModifies(avantMutation, cible);
       var allPosts = db(SK.POSTS, []);
       var idx = allPosts.findIndex(function(p){ return p.id === postId; });
       if (idx !== -1) { allPosts[idx] = cible; dbSet(SK.POSTS, allPosts); }
       if (supabase) {
         // Le serveur fusionne lui-même l'écriture (migration 06) et renvoie la
         // version retenue : le cache local s'y recale aussitôt.
-        App._upsertFiable('kun_com_posts', { id: postId, content: cible }).then(function(contenuServeur) {
-          if (!contenuServeur) return;
+        var contenuServeur = await App._upsertFiable('kun_com_posts', { id: postId, content: cible }, champs);
+        if (contenuServeur) {
           var posts2 = db(SK.POSTS, []);
           var i2 = posts2.findIndex(function(p){ return p.id === postId; });
           if (i2 !== -1) { posts2[i2] = parsePostItem({ id: postId, content: contenuServeur }) || posts2[i2]; dbSet(SK.POSTS, posts2); }
-          if (apresServeur && i2 !== -1) apresServeur(posts2[i2]);
-        });
+          if (apresServeur && i2 !== -1) { try { apresServeur(posts2[i2]); } catch(eApres) { console.warn(eApres); } }
+        }
       }
       return cible;
+    },
+    // Modification d'une publication existante faite sur une copie (formulaire,
+    // épingle, archivage...) : seuls les champs qui diffèrent entre « avant » et
+    // « apres » sont posés sur la version fraîche du serveur. Renvoyer la copie
+    // entière écrasait, pour l'auteur ou l'Admin, ce que d'autres avaient changé
+    // entre-temps (assignations, heure...), ou ressuscitait une publication.
+    ecrireModifications: function(avant, apres, apresServeur) {
+      if (!apres || !apres.id) return Promise.resolve(null);
+      var champs = champsModifies(avant || {}, apres);
+      if (!Object.keys(champs).length) return Promise.resolve(null);
+      return App.ecrirePostFrais(apres.id, function(f) { Object.assign(f, champs); }, apresServeur);
     },
 
     // Upsert qui ne perd rien : supabase-js ne REJETTE pas sa promesse en cas
@@ -100,7 +125,9 @@
     // recevait presque rien. Ici : erreur réseau → file d'attente ; refus du
     // serveur → journalisé (le rejouer ne changerait rien). Renvoie le contenu
     // tel qu'enregistré par le serveur, ou null.
-    _upsertFiable: function(table, row) {
+    // champs (facultatif) : les seuls champs modifiés. Hors ligne, c'est eux qui
+    // partent en file d'attente, réappliqués plus tard sur une version relue.
+    _upsertFiable: function(table, row, champs) {
       if (!supabase) return Promise.resolve(null);
       // Tant que la réponse n'est pas là, une synchro ne doit pas remplacer la
       // copie locale par la version du serveur (voir mergePostsWithLocal).
@@ -110,14 +137,14 @@
       return supabase.from(table).upsert(row, { onConflict: 'id' }).select('content').single().then(function(r) {
         fin();
         if (r && r.error) {
-          if (estErreurReseau(r.error)) App._mettreEnFileAttenteEcriture({ table: table, row: row });
+          if (estErreurReseau(r.error)) App._mettreEnFileAttenteEcriture({ table: table, row: row, champs: champs });
           else console.warn('Écriture refusée par le serveur (' + table + ') :', r.error);
           return null;
         }
         return (r && r.data && r.data.content) || null;
       }, function(e) {
         fin();
-        App._mettreEnFileAttenteEcriture({ table: table, row: row });
+        App._mettreEnFileAttenteEcriture({ table: table, row: row, champs: champs });
         console.warn('Écriture mise en file d\'attente (' + table + ') :', e);
         return null;
       });
@@ -156,7 +183,16 @@
         // Au-delà d'une semaine, une écriture en attente est abandonnée.
         if (w.at && Date.now() - w.at > 7 * 24 * 3600 * 1000) continue;
         try {
-          var r = await supabase.from(w.table).upsert(w.row, { onConflict: 'id' });
+          var ligne = w.row;
+          // Modification d'une publication : réappliquée sur la version du
+          // serveur relue maintenant, jamais la copie entière d'il y a des jours.
+          if (w.table === 'kun_com_posts' && w.champs && w.row && w.row.id) {
+            var lu = await supabase.from('kun_com_posts').select('content').eq('id', w.row.id).limit(1);
+            if (lu && lu.error) throw lu.error;
+            var actuel = lu && lu.data && lu.data[0] && lu.data[0].content;
+            if (actuel && typeof actuel === 'object') ligne = { id: w.row.id, content: Object.assign({}, actuel, w.champs) };
+          }
+          var r = await supabase.from(w.table).upsert(ligne, { onConflict: 'id' });
           if (r && r.error) throw r.error;
         } catch(e) {
           // Seule une panne réseau mérite un nouvel essai. Un refus du serveur
@@ -504,11 +540,9 @@
           // propage jamais la disparition aux autres appareils.
           toDelete.forEach(function(p) {
             var tombstone = Object.assign({}, p, { status: 'deleted' });
-            supabase.from('kun_com_posts').upsert({ id: p.id, content: tombstone }, { onConflict: 'id' })
-              .then(function(){}, function(e){
-                console.warn('Bulk delete post error:', e);
-                App._mettreEnFileAttenteEcriture({ table: 'kun_com_posts', row: { id: p.id, content: tombstone } });
-              });
+            // _upsertFiable : supabase-js ne rejette jamais, il renvoie { error } ;
+            // hors ligne, la suppression part en file d'attente au lieu d'être perdue.
+            App._upsertFiable('kun_com_posts', { id: p.id, content: tombstone });
           });
         }
         toDelete.forEach(function(p) {
@@ -579,7 +613,7 @@
           // propage jamais la disparition aux autres appareils.
           myPosts.forEach(function(p) {
             var tombstone = Object.assign({}, p, { status: 'deleted' });
-            supabase.from('kun_com_posts').upsert({ id: p.id, content: tombstone }, { onConflict: 'id' }).then(function(){}, function(e){ console.warn('Delete post error:', e); });
+            App._upsertFiable('kun_com_posts', { id: p.id, content: tombstone });
           });
         }
         // Nettoie les fichiers médias associés dans Storage (sauf s'ils sont encore
@@ -596,16 +630,19 @@
         var restantsNettoyes = retirerTracesDUnCompte(remainingPosts, userId);
         dbSet(SK.POSTS, restantsNettoyes.posts);
         if (supabase && restantsNettoyes.modifies.length) {
-          restantsNettoyes.modifies.forEach(function(p) {
+          await Promise.all(restantsNettoyes.modifies.map(function(p) {
             // Ses commentaires sont désignés explicitement : le serveur ne
             // supprime jamais un commentaire sur sa seule absence (migration 06).
             var avant = remainingPosts.find(function(x){ return x && x.id === p.id; }) || {};
             var miens = (avant.comments || []).filter(function(c){ return c && c.userId === userId && c.id; })
               .map(function(c){ return c.id; });
-            var contenu = miens.length ? Object.assign({}, p, { _supprimerCommentaires: miens }) : p;
-            supabase.from('kun_com_posts').upsert({ id: p.id, content: contenu }, { onConflict: 'id' })
-              .then(function(){}, function(e){ console.warn('Nettoyage des traces sur ' + p.id + ' :', e); });
-          });
+            // Recalculé sur la version du serveur (pas la copie locale entière).
+            return App.ecrirePostFrais(p.id, function(f) {
+              var propre = retirerTracesDUnCompte([f], userId).posts[0];
+              if (propre) Object.assign(f, propre);
+              if (miens.length) f._supprimerCommentaires = miens;
+            }).catch(function(e){ console.warn('Nettoyage des traces sur ' + p.id + ' :', e); });
+          }));
         }
 
         // 2) Supprime le profil utilisateur (local + Supabase)

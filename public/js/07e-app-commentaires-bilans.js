@@ -162,13 +162,17 @@
       if (!c) return;
       var canDelete = u.role === 'GRAND_RESPONSABLE' || c.userId === u.id || post.userId === u.id;
       if (!canDelete) { toast('Action non autorisée.', 'error'); return; }
-      post.comments = post.comments.filter(function(x){ return x.id !== commentId && x.parentId !== commentId; });
+      var retire = function(x){ return x.id !== commentId && x.parentId !== commentId; };
+      post.comments = post.comments.filter(retire);
       dbSet(SK.POSTS, posts);
       // Le serveur ne déduit JAMAIS une suppression de l'absence d'un commentaire
       // (une copie locale périmée en manque toujours) : elle se demande
       // explicitement, et il vérifie le droit de la faire (migration 06).
       if (supabase) {
-        App._upsertFiable('kun_com_posts', { id: post.id, content: Object.assign({}, post, { _supprimerCommentaires: [commentId] }) });
+        App.ecrirePostFrais(post.id, function(f) {
+          f.comments = (f.comments || []).filter(retire);
+          f._supprimerCommentaires = [commentId];
+        }, function(retenu) { if (retenu) delete retenu._supprimerCommentaires; });
       }
       render();
       toast('Commentaire supprimé.', 'success');
@@ -390,6 +394,10 @@
       }
       var posts = db(SK.POSTS, []);
       var selectedEv = posts.find(function(p){ return p.id === eventId; });
+      if (selectedEv && !isEventPast(selectedEv)) {
+        toast('Cet événement n\'est pas encore terminé : tu pourras le noter après.', 'error');
+        return;
+      }
       var eventTitle = selectedEv ? (selectedEv.eventTitle || (selectedEv.metadata && selectedEv.metadata.title) || 'Événement') : 'Événement';
 
       var allUsers = db(SK.USERS, []);

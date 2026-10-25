@@ -627,6 +627,13 @@
   var CHECKIN_EARLY_WINDOW_MS = 3 * 3600 * 1000;   // 3 h avant
   var CHECKIN_LATE_WINDOW_MS  = 3 * 3600 * 1000;   // 3 h après la fin
 
+  // Le membre a-t-il répondu « Indisponible » à sa convocation ? Il est alors
+  // excusé : ni attendu au pointage, ni compté absent, ni pénalisé.
+  function aDecline(ev, userId) {
+    var r = ev && ev.reponsesConvocation && ev.reponsesConvocation[userId];
+    return !!(r && r.statut === 'decline');
+  }
+
   // Un membre a-t-il déjà pointé pour cet événement ?
   function hasCheckedIn(userId, eventId, allPosts) {
     var posts = allPosts || db(SK.POSTS, []);
@@ -644,6 +651,7 @@
     return posts.filter(function(ev) {
       if (ev.type !== 'EVENT') return false;
       if (!(ev.assignments || []).some(function(a){ return a && a.userId === user.id; })) return false;
+      if (aDecline(ev, user.id)) return false;
       var startTs = eventStartTimestamp(ev);
       if (!startTs) return false;
       if (now < startTs - CHECKIN_EARLY_WINDOW_MS) return false;   // trop tôt
@@ -668,6 +676,7 @@
       // sur un membre précis, donc ni présence ni tâche individuelle).
       var mine = (ev.assignments || []).find(function(a){ return a && a.userId === userId; });
       if (!mine) return;
+      if (aDecline(ev, userId)) return;               // excusé : rien à compter
       var startTs = eventStartTimestamp(ev);
       if (!startTs) return;
 
@@ -712,7 +721,11 @@
       // Un événement à venir ne compte pas encore… SAUF si le membre a déjà pointé
       // (arrivée en avance) : sans cette exception, ses étoiles n'apparaissaient
       // nulle part dans son profil avant l'heure de début.
-      if (startTs > now && !hasCheckedIn(userId, ev.id, posts)) return;
+      // Sans pointage, le service ne compte qu'une fois le pointage fermé (fin +
+      // délai de retard) : avant, il apparaissait « Manqué −2★ » alors que le
+      // membre pouvait encore pointer.
+      var finPointage = (eventEndTimestamp(ev) || startTs) + CHECKIN_LATE_WINDOW_MS;
+      if (now <= finPointage && !hasCheckedIn(userId, ev.id, posts)) return;
       if (sinceTs && startTs < sinceTs) return;        // hors période
       var p = punctualityStars(userId, ev.id, posts);
       if (!p) return;
@@ -756,6 +769,8 @@
     return {
       entries: entries,
       count: entries.length,
+      // Services réellement assurés (les manqués n'en sont pas) : badges et tuile.
+      assures: entries.filter(function(e){ return e.status !== 'missed'; }).length,
       total: total,
       average: average,
       avgDelay: avgDelay,
@@ -815,6 +830,7 @@
 
     var members = (ev.assignments || []).filter(function(a) {
       if (!a || !a.userId) return false;
+      if (aDecline(ev, a.userId)) return false;      // excusé
       var u = users.find(function(x){ return x.id === a.userId; });
       if (!u) return false;
       return getUserSections(u).indexOf(sectionId) !== -1;

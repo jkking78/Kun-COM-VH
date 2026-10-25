@@ -41,12 +41,12 @@
     var serie = 0;
     for (var i = 0; i < h.entries.length && h.entries[i].status === 'ontime'; i++) serie++;
     return [
-      { id:'premier', emoji:'🎬', nom:'Premier service', cond:'Assurer un premier service', ok: h.count >= 1 },
-      { id:'dix', emoji:'🔟', nom:'10 services', cond:'Assurer 10 services', ok: h.count >= 10 },
+      { id:'premier', emoji:'🎬', nom:'Premier service', cond:'Assurer un premier service', ok: h.assures >= 1 },
+      { id:'dix', emoji:'🔟', nom:'10 services', cond:'Assurer 10 services', ok: h.assures >= 10 },
       { id:'serie', emoji:'🔥', nom:'Série de 5', cond:'5 services d\'affilée à l\'heure', ok: serie >= 5 },
       { id:'cycle', emoji:'⏱️', nom:'Cycle à l\'heure', cond:'Au moins 3 services ce cycle, tous à l\'heure', ok: cycle.count >= 3 && cycle.onTimeCount === cycle.count },
       { id:'tache', emoji:'📦', nom:'Livré à temps', cond:'Livrer une tâche avant sa date limite', ok: h.entries.some(function(e){ return e.kind === 'task' && e.status === 'ontime'; }) },
-      { id:'pilier', emoji:'🏛️', nom:'Pilier', cond:'Assurer 25 services', ok: h.count >= 25 }
+      { id:'pilier', emoji:'🏛️', nom:'Pilier', cond:'Assurer 25 services', ok: h.assures >= 25 }
     ];
   }
 
@@ -263,7 +263,7 @@
       '</div>' +
       '<div style="display:flex;gap:8px;margin-top:18px;">' +
         tuile('<span style="font-size:15px;">' + niveauProfil + '</span>', 'Niveau') +
-        tuile(hStats.count, 'Services') +
+        tuile(hStats.assures, 'Services') +
         tuile(serie, 'Série à l\'heure') +
       '</div>' +
     '</div>' +

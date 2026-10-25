@@ -733,6 +733,7 @@
     if (!S.user || !ev || ev.type !== 'EVENT') return '';
     var isAssigned = (ev.assignments || []).some(function(a){ return a && a.userId === S.user.id; });
     if (!isAssigned) return '';
+    if (aDecline(ev, S.user.id) && !hasCheckedIn(S.user.id, ev.id)) return '';   // excusé
 
     var posts = db(SK.POSTS, []);
     var now = Date.now();

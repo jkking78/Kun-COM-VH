@@ -439,7 +439,8 @@
           // la vignette générée.
           var fallbackLocal = function() {
             try {
-              supabase.from('kun_com_posts').upsert({ id: target.id, content: target }, { onConflict: 'id' }).then(function(){}, function(){});
+              var vignette = target.videoPoster;
+              App.ecrirePostFrais(target.id, function(f) { if (!f.videoPoster) f.videoPoster = vignette; });
             } catch(e3){}
             render();
           };

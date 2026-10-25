@@ -88,8 +88,12 @@ const publications = [
 
 // Messages privés servis par le faux serveur (le scénario « sécurité » en ajoute).
 let MESSAGES = [];
+// Écritures (upsert) reçues sur kun_com_posts, et contenu d'origine des
+// publications modifiées pendant le test en cours.
+const ECRITURES_POSTS = [];
+const ORIGINAUX_POSTS = new Map();
 // Nombre de lectures de kun_com_posts reçues par le faux serveur.
-const LECTURES_POSTS = { n: 0 };
+const LECTURES_POSTS = { n: 0, urls: [] };
 // Vues envoyées par kc_marquer_vues (migration 17).
 const VUES_ENVOYEES = [];
 // Fiches envoyées au serveur (upsert de kun_com_profiles).
@@ -120,7 +124,29 @@ async function intercepterSupabase(page) {
       status: code, contentType: 'application/json', body: JSON.stringify(corps),
     });
     const unique = (route.request().headers()['accept'] || '').includes('vnd.pgrst.object');
-    if (url.pathname.startsWith('/rest/v1/kun_com_posts')) { LECTURES_POSTS.n++; return json(publications); }
+    if (url.pathname.startsWith('/rest/v1/kun_com_posts')) {
+      if (route.request().method() === 'POST') {
+        const corps = JSON.parse(route.request().postData() || '[]');
+        const lignes = Array.isArray(corps) ? corps : [corps];
+        ECRITURES_POSTS.push(...lignes);
+        // Comme le vrai serveur : une mise à jour est relue ensuite.
+        // Annulé à la fin du test (voir cas) : chaque test repart des données de départ.
+        for (const l of lignes) {
+          const ex = publications.find((p) => p.id === l.id);
+          if (ex && l.content) {
+            if (!ORIGINAUX_POSTS.has(ex)) ORIGINAUX_POSTS.set(ex, ex.content);
+            ex.content = l.content;
+          }
+        }
+        return json(unique ? lignes[0] : lignes);
+      }
+      LECTURES_POSTS.n++;
+      LECTURES_POSTS.urls.push(decodeURIComponent(url.search));
+      const filtreId = url.searchParams.get('id');
+      const lues = filtreId && filtreId.startsWith('eq.') ? publications.filter((p) => p.id === filtreId.slice(3)) : publications;
+      if (unique) return lues[0] ? json(lues[0]) : json({ message: 'introuvable' }, 406);
+      return json(lues);
+    }
     if (url.pathname.startsWith('/rest/v1/kun_com_profiles')) {
       if (route.request().method() === 'POST') {
         ECRITURES_FICHES.push(JSON.parse(route.request().postData() || '{}'));
@@ -183,6 +209,10 @@ let echecs = 0;
 async function cas(nom, fn) {
   try { await fn(); console.log('ok —', nom); }
   catch (e) { echecs++; console.error('ÉCHEC —', nom, '\n', e); }
+  finally {
+    for (const [p, contenu] of ORIGINAUX_POSTS) p.content = contenu;
+    ORIGINAUX_POSTS.clear();
+  }
 }
 
 try {
@@ -575,18 +605,22 @@ try {
       { id: 'a', nom: "Église Vase d'Honneur", lat: 5, lng: -4, utilisations: 1 }, { id: 'b', nom: 'Salle polyvalente', lat: 5, lng: -4, utilisations: 9 }]).map((l) => l.nom));
     assert.deepEqual(trouves, ["Église Vase d'Honneur"]);
     // Plan piégé reçu du serveur : pôle inconnu et date invalide écartés, titres affichés comme du texte.
-    await page.evaluate(([piege]) => {
+    const planPiege = {
+      cadrage: { v: 1, taches: [{ id: 't1', titre: 'Tâche ' + PIEGE_HTML, etapes: [{ id: 'e1', titre: 'Étape ' + PIEGE_HTML, date: '2026-01-01");alert(1)//', fait: false }] }] },
+      regie: { v: 2, taches: [{ id: 't2', titre: 'Sonorisation', etapes: [{ id: 'e2', titre: 'Tester la console', date: '2020-01-01', fait: false }] }] },
+      pirate: { v: 1, taches: [{ id: 't3', titre: 'Intrus', etapes: [] }] },
+    };
+    const evServeur = publications.find((p) => p.id === 'ev_mission');
+    if (!ORIGINAUX_POSTS.has(evServeur)) ORIGINAUX_POSTS.set(evServeur, evServeur.content);
+    evServeur.content = Object.assign({}, evServeur.content, { preparation: planPiege });
+    await page.evaluate(([plan]) => {
       S.user.sections = ['cadrage'];
       const posts = db(SK.POSTS, []);
       const ev = posts.find((p) => p.id === 'ev_mission');
-      ev.preparation = assainirPreparation({
-        cadrage: { v: 1, taches: [{ id: 't1', titre: 'Tâche ' + piege, etapes: [{ id: 'e1', titre: 'Étape ' + piege, date: '2026-01-01");alert(1)//', fait: false }] }] },
-        regie: { v: 2, taches: [{ id: 't2', titre: 'Sonorisation', etapes: [{ id: 'e2', titre: 'Tester la console', date: '2020-01-01', fait: false }] }] },
-        pirate: { v: 1, taches: [{ id: 't3', titre: 'Intrus', etapes: [] }] },
-      });
+      ev.preparation = assainirPreparation(plan);
       dbSet(SK.POSTS, posts);
       App.tab('planning');
-    }, [PIEGE_HTML]);
+    }, [planPiege]);
     assert.ok((await page.textContent('body')).includes('Préparation · 0/2'), 'le lien Préparation résume l\'avancement');
     await page.click('text=Préparation · 0/2');
     const plan = await page.textContent('#preparation');
@@ -1020,6 +1054,9 @@ try {
     const { page, erreurs, contexte } = await nouvellePage(nav, base, sessionPour('MEMBRE'));
     await page.waitForSelector('#post-p_piege', { timeout: 15000 });
     await page.waitForTimeout(500);
+    // La relève de secours (sans temps réel dans ce banc d'essai) ne doit pas
+    // tomber pendant la mesure.
+    await page.evaluate(() => clearInterval(window._postsPollInterval));
     const avant = LECTURES_POSTS.n;
     const rendus = await page.evaluate(async () => {
       let n = 0; const r0 = window.render; window.render = function(){ n++; return r0.apply(this, arguments); };
@@ -1043,6 +1080,132 @@ try {
     });
     await page.waitForSelector('text=Légende modifiée en direct');
     assert.equal(LECTURES_POSTS.n, avant);
+    assert.deepEqual(erreurs, []);
+    await contexte.close();
+  });
+
+  await cas('copie périmée : épingler ou modifier ne renvoie que ses champs, sur la version du serveur', async () => {
+    const { page, erreurs, contexte } = await nouvellePage(nav, base, sessionPour('GRAND_RESPONSABLE'));
+    await page.waitForSelector('#post-p_piege', { timeout: 15000 });
+    const ev = publications.find((p) => p.id === 'ev_mission');
+    const origine = JSON.parse(JSON.stringify(ev.content));
+    try {
+      // Entre-temps, sur le serveur : un Responsable a ajouté AUTRE.
+      ev.content.assignments = ev.content.assignments.concat([{ userId: AUTRE, task: 'Son', sectionId: 'cadrage' }]);
+      ECRITURES_POSTS.length = 0;
+      await page.evaluate(() => App.togglePin('ev_mission'));
+      await page.waitForFunction(() => true, null, { timeout: 100 });
+      await page.waitForTimeout(800);
+      const ecrite = ECRITURES_POSTS.find((r) => r.id === 'ev_mission');
+      assert.ok(ecrite, 'l\'épingle est envoyée');
+      assert.equal(ecrite.content.is_pinned, true);
+      assert.equal(ecrite.content.assignments.length, 2, 'l\'assignation ajoutée ailleurs est conservée : ' + JSON.stringify(ecrite.content.assignments));
+
+      // Modification d'une publication : la légende part, sans écraser le reste.
+      ev.content.caption = 'Ajouté ailleurs';
+      ECRITURES_POSTS.length = 0;
+      await page.evaluate(async () => {
+        const avant = JSON.parse(JSON.stringify(db(SK.POSTS, []).find((p) => p.id === 'ev_mission')));
+        const apres = Object.assign({}, avant, { eventTitle: 'Culte du dimanche (modifié)' });
+        await App.ecrireModifications(avant, apres);
+      });
+      await page.waitForTimeout(500);
+      const modif = ECRITURES_POSTS.find((r) => r.id === 'ev_mission');
+      assert.equal(modif.content.eventTitle, 'Culte du dimanche (modifié)');
+      assert.equal(modif.content.caption, 'Ajouté ailleurs', 'un champ non modifié garde la valeur du serveur');
+      assert.equal(modif.content.assignments.length, 2);
+      assert.deepEqual(erreurs, []);
+    } finally {
+      ev.content = origine;
+      await contexte.close();
+    }
+  });
+
+  await cas('hors ligne : la file d\'attente réapplique ses champs sur la version relue', async () => {
+    const { page, erreurs, contexte } = await nouvellePage(nav, base, sessionPour('MEMBRE'));
+    await page.waitForSelector('#post-p_piege', { timeout: 15000 });
+    const ev = publications.find((p) => p.id === 'ev_mission');
+    const origine = JSON.parse(JSON.stringify(ev.content));
+    try {
+      await page.evaluate(() => {
+        localStorage.setItem('kc_pending_writes', JSON.stringify([{ at: Date.now(), table: 'kun_com_posts',
+          row: { id: 'ev_mission', content: { id: 'ev_mission', eventTitle: 'Très vieille copie', assignments: [] } },
+          champs: { is_pinned: true } }]));
+      });
+      ev.content.eventStart = '10:30';
+      ECRITURES_POSTS.length = 0;
+      await page.evaluate(() => App.viderFileAttenteEcriture());
+      const rejouee = ECRITURES_POSTS.find((r) => r.id === 'ev_mission');
+      assert.ok(rejouee, 'écriture rejouée');
+      assert.equal(rejouee.content.is_pinned, true);
+      assert.equal(rejouee.content.eventStart, '10:30', 'version du serveur conservée');
+      assert.equal(rejouee.content.eventTitle, 'Culte du dimanche', 'la vieille copie n\'est pas renvoyée');
+      assert.deepEqual(erreurs, []);
+    } finally {
+      ev.content = origine;
+      await contexte.close();
+    }
+  });
+
+  await cas('annulation : la relève lit aussi les événements à venir, annulés compris', async () => {
+    const { page, erreurs, contexte } = await nouvellePage(nav, base, sessionPour('MEMBRE'));
+    await page.waitForSelector('#post-p_piege', { timeout: 15000 });
+    const ev = publications.find((p) => p.id === 'ev_mission');
+    ORIGINAUX_POSTS.set(ev, ev.content);
+    ev.content = Object.assign({}, ev.content, { type: 'EVENT_ARCHIVED', archivedAt: Date.now() });
+    LECTURES_POSTS.urls.length = 0;
+    await page.evaluate(() => fetchPostsSilently());
+    assert.ok(LECTURES_POSTS.urls.some((u) => u.includes('content->>type=in.(EVENT,EVENT_ARCHIVED)') && u.includes('content->>eventDate=gte.')),
+      'requête des événements à venir : ' + JSON.stringify(LECTURES_POSTS.urls));
+    await page.evaluate(() => App.tab('planning'));
+    assert.equal(await page.locator('text=Culte du dimanche').count(), 0, 'l\'événement annulé quitte le Planning');
+    assert.deepEqual(erreurs, []);
+    await contexte.close();
+  });
+
+  await cas('notation juste : excusé, service en cours, événement futur ou passé, badges', async () => {
+    const { page, erreurs, contexte } = await nouvellePage(nav, base, sessionPour('GRAND_RESPONSABLE'));
+    await page.waitForSelector('#post-p_piege', { timeout: 15000 });
+    const r = await page.evaluate((moi) => {
+      const iso = (ms) => new Date(ms).toISOString();
+      const ev = (id, debutMs, dureeH, extra) => Object.assign({ id, type: 'EVENT', eventTitle: id,
+        eventDate: iso(debutMs).slice(0, 10), eventStart: iso(debutMs).slice(11, 16),
+        eventEnd: iso(debutMs + dureeH * 3600e3).slice(11, 16), assignments: [{ userId: moi, task: 'Caméra' }] }, extra || {});
+      const h = Date.now();
+      const posts = [
+        ev('excuse', h - 3 * 86400e3, 2, { reponsesConvocation: { [moi]: { statut: 'decline', motif: 'Voyage', le: h } } }),
+        ev('manque', h - 2 * 86400e3, 2),
+        ev('encours', h - 3600e3, 3),
+      ];
+      const hist = punctualityHistory(moi, 0, posts);
+      return {
+        ids: hist.entries.map((e) => e.eventId),
+        assures: hist.assures,
+        enAttente: pendingCheckIns({ id: moi }, posts).map((e) => e.id),
+        excuseDuPole: sectionPunctuality('cadrage', 'excuse', posts, [{ id: moi, sections: ['cadrage'] }]),
+      };
+    }, MOI);
+    assert.deepEqual(r.ids, ['manque'], 'ni le service excusé, ni celui en cours : ' + JSON.stringify(r.ids));
+    assert.equal(r.assures, 0, 'un service manqué n\'est pas un service assuré');
+    assert.deepEqual(r.enAttente, ['encours'], 'le pointage du service en cours reste ouvert');
+    assert.equal(r.excuseDuPole, null, 'un membre excusé ne pèse pas sur la ponctualité de son pôle');
+
+    // Bilans : seuls les événements terminés se notent (ev_mission est demain).
+    await page.evaluate(() => { App.tab('bilans'); });
+    const options = await page.evaluate(() => { const el = document.getElementById('evalEventSelect'); return el ? [...el.options].map((o) => o.value) : null; });
+    if (options) assert.ok(!options.includes('ev_mission'), 'un événement à venir n\'est pas proposé à la notation');
+    await page.evaluate(() => { S.evalEventId = 'ev_mission'; App.publishBilan(); });
+    await page.waitForSelector('text=pas encore terminé');
+
+    // Création : un nouvel événement ne commence pas dans le passé.
+    const avant = await page.evaluate(() => db(SK.POSTS, []).length);
+    await page.evaluate(() => App.openCreateEvent());
+    await page.fill('#eventTitle', 'Répétition d\'hier');
+    await page.fill('#eventDate', new Date(Date.now() - 86400e3).toISOString().slice(0, 10));
+    await page.fill('#eventStart', '09:00');
+    await page.evaluate(() => App.saveEvent());
+    await page.waitForSelector('text=déjà passées');
+    assert.equal(await page.evaluate(() => db(SK.POSTS, []).length), avant, 'aucun événement créé');
     assert.deepEqual(erreurs, []);
     await contexte.close();
   });

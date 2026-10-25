@@ -341,6 +341,18 @@ publications programmées. `/api/p-image` applique la même liste et ajoute
 1. Appliquer `18_apercu_sans_svg.sql`.
 2. Déployer l'application (v186).
 
+## Migration 19 — une publication supprimée le reste (v187)
+
+Pour l'auteur ou l'Admin, le serveur prenait le contenu envoyé tel quel,
+`status` compris : un appareil qui avait encore la publication en cache
+(épingler, modifier, file hors ligne) la faisait revenir en ligne. Le
+déclencheur de la migration 16 garde désormais le marqueur de suppression
+quelle que soit l'écriture suivante.
+
+### Ordre de mise en production
+1. Appliquer `19_suppression_definitive.sql`.
+2. Déployer l'application (v187).
+
 ## Limites restantes (connues)
 - **Pas de CSP stricte** : les ~270 gestionnaires `onclick` en ligne
   l'empêchent ; seuls `frame-ancestors`, `object-src` et `base-uri` sont posés.
