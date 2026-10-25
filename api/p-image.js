@@ -30,13 +30,18 @@ module.exports = async function handler(req, res) {
     var dataUrl = await fetchImage(id);
     if (!dataUrl) { res.status(404).send('No image'); return; }
 
-    var match = /^data:(image\/[a-zA-Z0-9.+-]+);base64,(.*)$/.exec(dataUrl);
+    // Photos seulement : une image SVG servie depuis notre domaine exécuterait
+    // son script avec les droits de l'application (vol de session).
+    var match = /^data:(image\/(?:png|jpeg|jpg|webp|gif));base64,([A-Za-z0-9+/=\s]*)$/.exec(dataUrl);
     if (!match) { res.status(404).send('No image'); return; }
 
-    var mime = match[1];
+    var mime = match[1] === 'image/jpg' ? 'image/jpeg' : match[1];
     var buffer = Buffer.from(match[2], 'base64');
 
     res.setHeader('Content-Type', mime);
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Content-Security-Policy', "default-src 'none'; sandbox");
+    res.setHeader('Content-Disposition', 'inline');
     res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=86400');
     res.status(200).send(buffer);
   } catch (e) {

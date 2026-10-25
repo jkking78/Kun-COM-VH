@@ -783,7 +783,7 @@
         mediaZone = '<div ondblclick="App.doubleTapLike(\''+jsArg(post.id)+'\')" style="background:linear-gradient(135deg,#1A1A2E,#2D2D44);min-height:120px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;text-align:center;position:relative;">' +
           '<div style="width:44px;height:44px;border-radius:20px;background:rgba(255,255,255,0.12);display:flex;align-items:center;justify-content:center;margin-bottom:8px;">' + icoPole(sec.id, 22, '#FFF') + '</div>' +
           (post.isVedette ? '<div style="background:linear-gradient(135deg,#FFD700,#D98A0B);color:#5D3A00;font-size:11px;font-weight:800;padding:4px 12px;border-radius:20px;letter-spacing:0.8px;margin-bottom:6px;">SECTION VEDETTE</div>' : '') +
-          (post.scoreText ? '<div style="background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);padding:5px 12px;border-radius:12px;position:absolute;bottom:12px;right:12px;"><strong style="font-size:13px;color:var(--ink);">★ ' + post.scoreText + '</strong></div>' : '') +
+          (post.scoreText ? '<div style="background:rgba(255,255,255,0.92);backdrop-filter:blur(8px);padding:5px 12px;border-radius:12px;position:absolute;bottom:12px;right:12px;"><strong style="font-size:13px;color:var(--ink);">★ ' + safeHtml(post.scoreText) + '</strong></div>' : '') +
         '</div>';
       } else {
         // Plain text post — no background, caption shown below
