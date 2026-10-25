@@ -844,9 +844,15 @@
       // à 3 s, chaque cycle re-téléchargeait tout le lot et reconstruisait tout le DOM,
       // ce qui faisait planter Safari mobile. Le temps réel (ci-dessous) reste la voie
       // principale pour les mises à jour instantanées. En pause quand l'onglet est masqué.
+      // Quand le temps réel est connecté, la relève complète n'est plus qu'un
+      // filet espacé (3 min) : à 20 s, chaque téléphone retéléchargeait toute la
+      // page même quand rien n'avait changé.
       if (!window._postsPollInterval) {
+        var _derniereReleve = Date.now();
         window._postsPollInterval = setInterval(function() {
           if (document.hidden) return;
+          if (_tempsReelPret && Date.now() - _derniereReleve < 180000) return;
+          _derniereReleve = Date.now();
           fetchPostsSilently();
         }, 20000);
       }
@@ -857,13 +863,18 @@
       if (!window._realtimeSubscribed) {
         window._realtimeSubscribed = true;
         supabase.channel('public:kun_com_realtime')
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'kun_com_posts' }, function() {
-             fetchPostsSilently();
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'kun_com_posts' }, function(payload) {
+             publicationRecue(payload);
           })
           .on('postgres_changes', { event: '*', schema: 'public', table: 'kun_com_profiles' }, function(payload) {
              profilRecu(payload);
           })
-          .subscribe();
+          .subscribe(function(etat) {
+             var avant = _tempsReelPret;
+             _tempsReelPret = etat === 'SUBSCRIBED';
+             // Reconnexion : on rattrape une fois ce qui a pu être manqué.
+             if (_tempsReelPret && avant === false) fetchPostsSilently();
+          });
       }
         
       // Clean up expired ephemeral posts
@@ -917,6 +928,56 @@
   // l'applique telle quelle au lieu de retélécharger toutes les fiches (chaque
   // battement de présence faisait relire l'annuaire entier à tous les membres
   // en ligne : un coût qui croissait comme le carré de leur nombre).
+  // Publications reçues en temps réel : la ligne envoyée par le serveur est
+  // appliquée telle quelle (RLS déjà appliquée par Supabase), au lieu de
+  // retélécharger toute la page à chaque changement. C'était coûteux depuis
+  // l'enregistrement des vues : une vue = un changement chez tous les membres.
+  // Regroupées sur 800 ms ; si seules les vues ont changé, on ne met à jour
+  // que les compteurs, sans redessiner l'écran.
+  var _tempsReelPret = null;
+  var _publicationsRecues = {};
+  var _publicationsRecuesTimer = null;
+  function publicationRecue(payload) {
+    if (!payload) return;
+    if (payload.eventType === 'DELETE' || !(payload.new && payload.new.id && payload.new.content)) {
+      fetchPostsSilently();   // suppression réelle ou ligne incomplète : relecture
+      return;
+    }
+    _publicationsRecues[payload.new.id] = payload.new;
+    if (!_publicationsRecuesTimer) _publicationsRecuesTimer = setTimeout(appliquerPublicationsRecues, 800);
+  }
+  function sansVues(p) {
+    var c = Object.assign({}, p); delete c.viewedBy;
+    try { return JSON.stringify(c); } catch(e) { return String(Math.random()); }
+  }
+  function appliquerPublicationsRecues() {
+    _publicationsRecuesTimer = null;
+    var lignes = Object.keys(_publicationsRecues).map(function(k){ return _publicationsRecues[k]; });
+    _publicationsRecues = {};
+    if (!lignes.length || !S.user) return;
+    var avant = {};
+    db(SK.POSTS, []).forEach(function(p){ if (p && p.id) avant[p.id] = p; });
+    var fusion = mergePostsWithLocal(lignes, false);
+    var apres = {};
+    fusion.forEach(function(p){ apres[p.id] = p; });
+    var aRedessiner = false;
+    lignes.forEach(function(l) {
+      var a = avant[l.id], b = apres[l.id];
+      if (!a || !b || sansVues(a) !== sansVues(b)) aRedessiner = true;
+    });
+    dbSet(SK.POSTS, fusion);
+    _lastPostsFingerprint = postsFingerprint(fusion);
+    if (aRedessiner) {
+      if (!saisieEnCours()) render();
+      return;
+    }
+    lignes.forEach(function(l) {
+      var b = apres[l.id];
+      var el = document.getElementById('viewCount-' + l.id);
+      if (el && b) el.textContent = Array.isArray(b.viewedBy) ? b.viewedBy.length : 0;
+    });
+  }
+
   var _profilsRecus = {};
   var _profilsRecusTimer = null;
   var _profilsSupprimes = {};
@@ -1016,7 +1077,7 @@
       if (!p || !p.id) return;
       parts.push(p.id + ':' + (p.timestamp||0) + ':' + ((p.comments||[]).length) + ':' +
         ((p.likedBy||[]).length) + ':' + (p.is_edited?1:0) + ':' + ((p.caption||'').length) +
-        ':' + (p.videoPoster?1:0));
+        ':' + (p.videoPoster?1:0) + ':' + ((p.viewedBy||[]).length));
     });
     return parts.join('|');
   }
@@ -1034,9 +1095,10 @@
       if (res && res.error) { console.warn('Supabase posts poll error:', res.error); }
       if (res && res.data) {
         if (res.data.length < POSTS_PAGE_SIZE) S.postsAllLoaded = true;
-        if (res.data.length > 0 && res.data[res.data.length - 1] && res.data[res.data.length - 1].created_at) {
-          S.postsRemoteCursor = res.data[res.data.length - 1].created_at;
-        }
+        // Le curseur de « Charger plus » ne recule jamais : remis à la fin de la
+        // page 1 à chaque relève, il faisait retélécharger la page 2 sans fin.
+        var finPage = res.data.length > 0 && res.data[res.data.length - 1] && res.data[res.data.length - 1].created_at;
+        if (finPage && (!S.postsRemoteCursor || finPage < S.postsRemoteCursor)) S.postsRemoteCursor = finPage;
         // Profite d'une synchro réussie pour rejouer les écritures restées en
         // file d'attente pendant une coupure réseau.
         try { App.viderFileAttenteEcriture(); } catch(eFlush){}

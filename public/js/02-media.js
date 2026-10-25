@@ -506,7 +506,10 @@
       ids.forEach(function(id){ delete _vuesAEnvoyer[id]; });
       supabase.rpc('kc_marquer_vues', { p_ids: ids }).then(function(r) {
         // Échec (réseau) : les vues repartiront au prochain envoi.
-        if (r && r.error) ids.forEach(function(id){ _vuesAEnvoyer[id] = true; });
+        if (r && r.error) {
+          ids.forEach(function(id){ _vuesAEnvoyer[id] = true; });
+          setTimeout(function(){ if (Object.keys(_vuesAEnvoyer).length) envoyerVue(Object.keys(_vuesAEnvoyer)[0]); }, 60000);
+        }
       }, function() {});
       if (Object.keys(_vuesAEnvoyer).length) envoyerVue(Object.keys(_vuesAEnvoyer)[0]);
     }, 4000);
