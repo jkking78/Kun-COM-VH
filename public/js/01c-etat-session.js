@@ -235,11 +235,13 @@
       return null;
     };
     // Le fil ne dessine que 25 cartes à la fois : on en affiche davantage
-    // jusqu'à trouver la publication.
+    // jusqu'à trouver la publication, en doublant à chaque essai (au plus
+    // 6 rendus, contre 41 auparavant, chacun redessinant tout le fil).
     render();
     var cible = trouver();
-    for (var essais = 0; !cible && essais < 40; essais++) {
-      S.filLimite = (S.filLimite || 25) + 25;
+    var totalPosts = db(SK.POSTS, []).length;
+    for (var essais = 0; !cible && essais < 6 && (S.filLimite || 25) < totalPosts; essais++) {
+      S.filLimite = (S.filLimite || 25) * 2;
       render();
       cible = trouver();
     }

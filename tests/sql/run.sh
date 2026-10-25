@@ -72,3 +72,5 @@ lancer tests/sql/test_15_apercu.sql migration/06_durcissement_ecritures.sql migr
 # La 19 rend la suppression définitive.
 lancer tests/sql/test_16_suppression.sql migration/06_durcissement_ecritures.sql migration/07_convocations_et_validation.sql migration/16_suppression_videe.sql migration/19_suppression_definitive.sql
 lancer tests/sql/test_06_durcissement.sql migration/06_durcissement_ecritures.sql migration/16_suppression_videe.sql migration/19_suppression_definitive.sql
+# La 20 retire des publications les photos de profil recopiées en base64.
+lancer tests/sql/test_20_photo_copiee.sql migration/06_durcissement_ecritures.sql migration/20_publications_sans_photo_copiee.sql

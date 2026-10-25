@@ -260,7 +260,7 @@
         author: S.user.prenom + ' ' + S.user.nom,
         authorAvatar: S.user.prenom.charAt(0).toUpperCase(),
         avatarColor: S.user.avatar_color || '#0B5FE0',
-        avatar_url: S.user.avatar_url || null,
+        avatar_url: avatarLeger(S.user.avatar_url),   // photo hébergée seulement, jamais de base64 recopié
         sectionId: post.sectionId || 'general', sectionNom: post.sectionNom || '',
         type: 'REPOST', originalPostId: postId,
         originalAuthor: post.author || 'Membre',
@@ -446,7 +446,7 @@
         author: S.user.prenom + ' ' + S.user.nom,
         authorAvatar: (S.user.prenom || 'M').charAt(0).toUpperCase(),
         avatarColor: S.user.avatar_color || '#0B5FE0',
-        avatar_url: S.user.avatar_url || null,
+        avatar_url: avatarLeger(S.user.avatar_url),   // photo hébergée seulement, jamais de base64 recopié
         sectionId: 'general', sectionNom: secNom('general'),
         caption: '📍 Arrivé(e) pour « ' + (ev.eventTitle || 'le service') + ' ».',
         mediaUrls: [], likes: 0, likedBy: [], comments: [], visibility: 'all', targetSections: [],
@@ -974,9 +974,10 @@
           toast('Impossible de mélanger une vidéo avec des photos dans la même publication. Retire d\'abord les photos.', 'error');
           return;
         }
-        var maxVideoBytes = 60 * 1024 * 1024;
+        // Limite du stockage (bucket post-media) : 50 Mo.
+        var maxVideoBytes = 50 * 1024 * 1024;
         if (videoFile.size > maxVideoBytes) {
-          toast('Vidéo trop volumineuse (60 Mo au plus). Choisis une vidéo plus courte ou plus légère.', 'error');
+          toast('Vidéo trop volumineuse (50 Mo au plus). Choisis une vidéo plus courte ou plus légère.', 'error');
           return;
         }
         S.pendingMedia = [];
@@ -991,21 +992,34 @@
         generateVideoPoster(videoFile, function(poster) {
           S.pendingVideoPoster = poster;
           render();
+          // La vignette part aussi dans Storage (jamais de base64 dans la
+          // publication) ; « Publier » attend la fin de l'envoi.
+          if (poster) uploadMediaToStorage(poster, function(url) {
+            if (url && S.pendingVideoPoster === poster) S.pendingVideoPoster = url;
+          });
         });
 
-        var finishVideo = function(dataUrl) {
-          if (!dataUrl) { S.videoProcessing = false; toast('Impossible de traiter cette vidéo.', 'error'); render(); return; }
+        var finishVideo = function(source) {
+          if (!source) { S.videoProcessing = false; toast('Impossible de traiter cette vidéo.', 'error'); render(); return; }
           // 2) Envoie la vidéo vers Supabase Storage (vraie URL hébergée) plutôt que
           //    de la garder en base64 — c'est le plus gros contributeur au poids d'une
           //    publication. En cas d'échec (bucket pas créé, hors-ligne...), on retombe
           //    sur le data:URL pour ne jamais bloquer la publication.
-          uploadMediaToStorage(dataUrl, function(hostedUrl) {
+          uploadMediaToStorage(source, function(hostedUrl) {
             // Le composeur a pu être fermé pendant l'envoi (vidéo jusqu'à 60 Mo) :
             // sans ce garde, l'URL arrivait trop tard et se retrouvait poussée
             // dans le tableau fraîchement vidé — média fantôme pré-chargé dans
             // la PROCHAINE publication. La branche image se protège déjà.
             if (!S.createOpen && !S.editPostId) { S.videoProcessing = false; clearPendingLocalCopies(); return; }
-            S.pendingMedia.push(hostedUrl || dataUrl);
+            // Envoi impossible : on prévient, sans glisser la vidéo en base64
+            // dans la publication (des dizaines de Mo chez chaque membre).
+            if (!hostedUrl) {
+              S.videoProcessing = false;
+              toast('La vidéo n\'a pas pu être envoyée. Vérifie ta connexion et réessaie.', 'error');
+              render();
+              return;
+            }
+            S.pendingMedia.push(hostedUrl);
             S.videoProcessing = false;
             render();
           });
@@ -1013,10 +1027,7 @@
         if (S.reduceVideoQuality) {
           compressVideo(videoFile, finishVideo);
         } else {
-          var vReader = new FileReader();
-          vReader.onload = function(ev){ finishVideo(ev.target.result); };
-          vReader.onerror = function(){ finishVideo(null); };
-          vReader.readAsDataURL(videoFile);
+          finishVideo(videoFile);
         }
         return;
       }
@@ -1167,7 +1178,7 @@
         author: S.user.prenom + ' ' + S.user.nom,
         authorAvatar: S.user.prenom.charAt(0).toUpperCase(),
         avatarColor: S.user.avatar_color || '#0B5FE0',
-        avatar_url: S.user.avatar_url || null,
+        avatar_url: avatarLeger(S.user.avatar_url),   // photo hébergée seulement, jamais de base64 recopié
         sectionId: secId, sectionNom: secNom(secId),
         isVedette: false, scoreText: '',
         caption: txt, mediaUrls: S.pendingMedia.slice(),

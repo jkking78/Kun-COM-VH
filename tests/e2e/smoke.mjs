@@ -1210,6 +1210,26 @@ try {
     await contexte.close();
   });
 
+  await cas('stockage local : jamais de base64 sur le disque, 150 publications au plus', async () => {
+    const { page, erreurs, contexte } = await nouvellePage(nav, base, sessionPour('MEMBRE'));
+    await page.waitForSelector('#post-p_piege', { timeout: 15000 });
+    const r = await page.evaluate(() => {
+      const lourd = 'data:image/jpeg;base64,' + 'A'.repeat(5000);
+      const posts = [];
+      for (let i = 0; i < 200; i++) posts.push({ id: 'x' + i, timestamp: 1e12 - i, avatar_url: lourd, videoPoster: lourd,
+        mediaUrls: [lourd, 'https://x/photo.jpg'], comments: [{ id: 'c', imageUrl: lourd, text: 't' }] });
+      dbSet(SK.POSTS, posts);
+      const disque = JSON.parse(localStorage.getItem(SK.POSTS));
+      return { n: disque.length, base64: JSON.stringify(disque).includes('data:image'), memoire: db(SK.POSTS, []).length, media: disque[0].mediaUrls };
+    });
+    assert.equal(r.n, 150);
+    assert.equal(r.base64, false, 'aucune image base64 sur le disque');
+    assert.equal(r.memoire, 200, 'la mémoire garde tout');
+    assert.deepEqual(r.media, ['https://x/photo.jpg']);
+    assert.deepEqual(erreurs, []);
+    await contexte.close();
+  });
+
   await cas('carrousel : sélectionner des dates pour en republier une, les partager ou les supprimer', async () => {
     const { page, erreurs, contexte } = await nouvellePage(nav, base, sessionPour('GRAND_RESPONSABLE'));
     await page.waitForSelector('#post-p_piege', { timeout: 15000 });

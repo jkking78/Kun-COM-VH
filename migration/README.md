@@ -353,6 +353,17 @@ quelle que soit l'écriture suivante.
 1. Appliquer `19_suppression_definitive.sql`.
 2. Déployer l'application (v187).
 
+## Migration 20 — publications sans photo de profil recopiée (v188)
+
+La photo de profil (base64) était recopiée dans chaque publication et
+téléchargée par tous à chaque synchronisation. L'application ne recopie plus
+qu'une adresse hébergée, et envoie désormais les photos de profil dans
+Storage ; cette migration retire les copies base64 déjà enregistrées.
+
+### Ordre de mise en production
+1. Déployer l'application (v188).
+2. Appliquer `20_publications_sans_photo_copiee.sql`.
+
 ## Limites restantes (connues)
 - **Pas de CSP stricte** : les ~270 gestionnaires `onclick` en ligne
   l'empêchent ; seuls `frame-ancestors`, `object-src` et `base-uri` sont posés.

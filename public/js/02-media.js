@@ -101,12 +101,23 @@
     });
   }
 
-  function uploadMediaToStorage(dataUrl, callback) {
+  // source : data:URL, ou directement un fichier (File/Blob). Une vidéo part
+  // telle quelle : la convertir en base64 (×1,33) puis la décoder faisait
+  // dépasser 250 Mo de mémoire à Safari sur iPhone pour 60 Mo de vidéo.
+  function uploadMediaToStorage(source, callback) {
     if (!supabase || !supabase.storage) { callback(null); return; }
     var path, blob;
     try {
-      var ext = extFromDataUrl(dataUrl);
-      blob = dataUrlToBlob(dataUrl);
+      var ext;
+      if (typeof Blob !== 'undefined' && source instanceof Blob) {
+        blob = source;
+        var nom = (source.name || '').toLowerCase();
+        var finNom = /\.([a-z0-9]{2,5})$/.exec(nom);
+        ext = finNom ? finNom[1] : extFromDataUrl('data:' + (source.type || 'application/octet-stream') + ';');
+      } else {
+        ext = extFromDataUrl(source);
+        blob = dataUrlToBlob(source);
+      }
       var folder = (S.user && S.user.id) ? S.user.id : 'anon';
       path = folder + '/' + Date.now() + '_' + Math.random().toString(36).slice(2, 8) + '.' + ext;
     } catch (e) { callback(null); return; }
@@ -121,7 +132,8 @@
       callback(url);
     };
     try {
-      supabase.storage.from('post-media').upload(path, blob, { contentType: blob.type || undefined, upsert: false }).then(
+      // Noms uniques : le fichier ne change jamais, il peut rester un an en cache.
+      supabase.storage.from('post-media').upload(path, blob, { contentType: blob.type || undefined, upsert: false, cacheControl: '31536000' }).then(
         function(res) {
           if (!res || res.error) { console.warn('Storage upload error:', res && res.error); done(null); return; }
           try {
@@ -133,6 +145,38 @@
         function(err) { console.warn('Storage upload exception:', err); done(null); }
       );
     } catch (e) { done(null); }
+  }
+
+  // Photo de profil ou de couverture vers le bucket « avatars » (nom imposé par
+  // la règle d'écriture : avatar_<id>_… / cover_<id>_…). Renvoie l'adresse
+  // publique, ou null si l'envoi échoue.
+  function envoyerPhotoProfil(dataUrl, genre) {
+    return new Promise(function(resolve) {
+      if (!supabase || !supabase.storage || !S.user || typeof dataUrl !== 'string' || dataUrl.indexOf('data:image/') !== 0) { resolve(null); return; }
+      try {
+        var nom = (genre === 'cover' ? 'cover_' : 'avatar_') + S.user.id + '_' + Date.now() + '.' + extFromDataUrl(dataUrl);
+        var blob = dataUrlToBlob(dataUrl);
+        supabase.storage.from('avatars').upload(nom, blob, { contentType: blob.type, upsert: false, cacheControl: '31536000' }).then(function(r) {
+          if (!r || r.error) { console.warn('Photo de profil :', r && r.error); resolve(null); return; }
+          var pub = supabase.storage.from('avatars').getPublicUrl(nom);
+          resolve(pub && pub.data ? pub.data.publicUrl : null);
+        }, function() { resolve(null); });
+      } catch (e) { resolve(null); }
+    });
+  }
+
+  // Ancienne photo de profil encore en base64 dans SA fiche : envoyée une fois
+  // dans Storage, la fiche ne garde que l'adresse (la fiche entière était
+  // diffusée à tous les membres à chaque mise à jour).
+  var _photoMigree = false;
+  function migrerMaPhotoProfil() {
+    if (_photoMigree || !S.user || typeof S.user.avatar_url !== 'string' || S.user.avatar_url.indexOf('data:image/') !== 0) return;
+    _photoMigree = true;
+    var ancienne = S.user.avatar_url;
+    envoyerPhotoProfil(ancienne, 'avatar').then(function(url) {
+      if (!url || !S.user || S.user.avatar_url !== ancienne) return;
+      ecrireMaFiche({ avatar_url: url });
+    });
   }
 
   // Extrait le chemin interne (bucket path) d'une URL publique Supabase Storage,
@@ -169,10 +213,8 @@
     var canSupport = (typeof MediaRecorder !== 'undefined') &&
       document.createElement('canvas').captureStream;
     function passthrough() {
-      var reader = new FileReader();
-      reader.onload = function(e) { callback(e.target.result); };
-      reader.onerror = function() { callback(null); };
-      reader.readAsDataURL(file);
+      // Fichier d'origine tel quel (pas de base64 : voir uploadMediaToStorage).
+      callback(file);
     }
     if (!canSupport) { passthrough(); return; }
 
@@ -354,10 +396,13 @@
         var w = v.videoWidth, h = v.videoHeight;
         if (!w || !h) return; // Dimensions pas encore connues : on retentera.
         try {
+          // Vignette réduite à 640 px de large : à la taille de la vidéo (1080p),
+          // elle pesait 200 à 400 Ko.
+          var echelle = Math.min(1, 640 / w);
           var c = document.createElement('canvas');
-          c.width = w; c.height = h;
+          c.width = Math.round(w * echelle); c.height = Math.round(h * echelle);
           var ctx = c.getContext('2d');
-          ctx.drawImage(v, 0, 0, w, h);
+          ctx.drawImage(v, 0, 0, c.width, c.height);
           var dataUrl = c.toDataURL('image/jpeg', 0.72);
           // Un canvas vide produit une image très courte : on la rejette pour ne pas
           // enregistrer une vignette noire/transparente inutile.
