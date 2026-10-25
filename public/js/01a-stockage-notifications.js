@@ -50,6 +50,8 @@
     var debut = u.slice(0, 40).replace(/[\s\u0000-\u001f]/g, '').toLowerCase();
     if (/^(javascript|vbscript|file):/.test(debut)) return '';
     if (debut.indexOf('data:') === 0 && !/^data:(image|video)\//.test(debut)) return '';
+    // Une image SVG peut porter du script : jamais en data:URL.
+    if (debut.indexOf('data:image/svg') === 0) return '';
     return u;
   }
   // Couleur venue des données (avatar, fond...) placée dans un attribut style :
@@ -105,6 +107,8 @@
       if (p[k] && !/^([01]\d|2[0-3]):[0-5]\d$/.test(String(p[k]))) p[k] = '';
     });
     if (p.eventDate && !/^\d{4}-\d{2}-\d{2}$/.test(String(p.eventDate))) p.eventDate = null;
+    // Note affichée sur la carte : texte court seulement (échappé au rendu).
+    if (p.scoreText !== undefined) p.scoreText = typeof p.scoreText === 'string' ? p.scoreText.slice(0, 40) : '';
     if (p.preparation !== undefined) p.preparation = assainirPreparation(p.preparation);
     if (Array.isArray(p.comments)) {
       p.comments.forEach(function(c){ assainirAuteur(c, ['avatarColor'], ['avatar_url', 'imageUrl']); });

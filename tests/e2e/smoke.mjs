@@ -79,6 +79,7 @@ const publications = [
     avatarColor: 'blue;" onclick="window.__xss=\'couleurPost\'" data-pirate="',
     postBg: null,
     mediaUrls: ['javascript:window.__xss="media"'],
+    scoreText: PIEGE_HTML,
     likedBy: [], comments: [{
       id: 'c1', userId: AUTRE, author: "');window.__xss='commentaire';//", text: PIEGE_HTML, timestamp: maintenant,
     }],

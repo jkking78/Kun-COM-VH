@@ -329,6 +329,18 @@ compte pas. L'application regroupe les vues et les envoie toutes les 4 s.
 1. Appliquer `17_vues.sql`.
 2. Déployer l'application (v184).
 
+## Migration 18 — aperçu public sans image SVG ni publication programmée (v186)
+
+`/api/p-image` sert, depuis le domaine de l'application, l'image renvoyée par
+`kc_apercu_publication`. Une image `data:image/svg+xml` y exécutait son script.
+L'aperçu ne renvoie plus que des photos (png, jpeg, webp, gif), et ignore les
+publications programmées. `/api/p-image` applique la même liste et ajoute
+`nosniff` et une CSP `sandbox`.
+
+### Ordre de mise en production
+1. Appliquer `18_apercu_sans_svg.sql`.
+2. Déployer l'application (v186).
+
 ## Limites restantes (connues)
 - **Pas de CSP stricte** : les ~270 gestionnaires `onclick` en ligne
   l'empêchent ; seuls `frame-ancestors`, `object-src` et `base-uri` sont posés.

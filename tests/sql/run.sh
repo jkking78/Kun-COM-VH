@@ -66,3 +66,6 @@ lancer tests/sql/test_16_suppression.sql migration/06_durcissement_ecritures.sql
 lancer tests/sql/test_06_durcissement.sql migration/06_durcissement_ecritures.sql migration/16_suppression_videe.sql
 # La 17 enregistre les vues des publications sur le serveur.
 lancer tests/sql/test_17_vues.sql migration/03_security_questions.sql migration/06_durcissement_ecritures.sql migration/07_convocations_et_validation.sql migration/08_temps_reel.sql migration/09_performances_rls.sql migration/10_securite.sql migration/11_lieux_et_preparation.sql migration/12_assignations_par_pole.sql migration/13_securite_fiabilite.sql migration/14_visibilite_ciblee.sql migration/16_suppression_videe.sql migration/17_vues.sql
+# La 18 écarte les images SVG et les publications programmées de l'aperçu public.
+lancer tests/sql/test_18_apercu_sans_svg.sql migration/06_durcissement_ecritures.sql migration/15_apercu_evenements.sql migration/18_apercu_sans_svg.sql
+lancer tests/sql/test_15_apercu.sql migration/06_durcissement_ecritures.sql migration/15_apercu_evenements.sql migration/18_apercu_sans_svg.sql

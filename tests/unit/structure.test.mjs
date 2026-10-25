@@ -103,3 +103,27 @@ test('aperçu de liens : adresses internes et origines étrangères refusées', 
   assert.equal(origineAutorisee('https://pirate.example'), false);
   assert.equal(isPublicHttpUrl('file:///etc/passwd'), null);
 });
+
+test('/api/p-image ne sert que des photos, jamais une image SVG', async () => {
+  const mod = await import(join(RACINE, 'api/p-image.js'));
+  const handler = mod.default || mod;
+  const servir = async (image) => {
+    const avant = globalThis.fetch;
+    globalThis.fetch = async () => ({ ok: true, json: async () => ({ image }) });
+    const rep = { code: 0, entetes: {}, corps: null };
+    const res = {
+      setHeader(k, v) { rep.entetes[k.toLowerCase()] = v; },
+      status(c) { rep.code = c; return this; },
+      send(b) { rep.corps = b; return this; },
+    };
+    try { await handler({ query: { id: 'x' } }, res); } finally { globalThis.fetch = avant; }
+    return rep;
+  };
+  const svg = await servir('data:image/svg+xml;base64,' + Buffer.from('<svg onload="alert(1)"/>').toString('base64'));
+  assert.equal(svg.code, 404);
+  const jpeg = await servir('data:image/jpeg;base64,/9j/4AAQ');
+  assert.equal(jpeg.code, 200);
+  assert.equal(jpeg.entetes['content-type'], 'image/jpeg');
+  assert.equal(jpeg.entetes['x-content-type-options'], 'nosniff');
+  assert.match(jpeg.entetes['content-security-policy'], /sandbox/);
+});
