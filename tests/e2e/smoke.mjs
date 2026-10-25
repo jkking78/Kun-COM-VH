@@ -87,6 +87,8 @@ const publications = [
 
 // Messages privés servis par le faux serveur (le scénario « sécurité » en ajoute).
 let MESSAGES = [];
+// Vues envoyées par kc_marquer_vues (migration 17).
+const VUES_ENVOYEES = [];
 // Fiches envoyées au serveur (upsert de kun_com_profiles).
 const ECRITURES_FICHES = [];
 // user_metadata du compte connecté, et chaque modification reçue.
@@ -128,6 +130,10 @@ async function intercepterSupabase(page) {
     }
     if (url.pathname.startsWith('/rest/v1/kun_com_dms')) return json(MESSAGES);
     if (url.pathname.startsWith('/rest/v1/kun_com_lieux')) return json(LIEUX);
+    if (url.pathname.startsWith('/rest/v1/rpc/kc_marquer_vues')) {
+      VUES_ENVOYEES.push(...(JSON.parse(route.request().postData() || '{}').p_ids || []));
+      return json(1);
+    }
     if (url.pathname.startsWith('/rest/v1/rpc/kc_memoriser_lieu')) {
       LIEUX_MEMORISES.push(JSON.parse(route.request().postData() || '{}'));
       return json('22222222-0000-4000-8000-000000000009');
@@ -992,6 +998,19 @@ try {
     } finally {
       delete fiche.avatar_url; delete fiche.bio; delete fiche.joined_at; delete fiche.following;
     }
+  });
+
+  await cas('vues : une publication vue est envoyée au serveur (« j\'ai vu » seulement)', async () => {
+    VUES_ENVOYEES.length = 0;
+    const { page, erreurs, contexte } = await nouvellePage(nav, base, sessionPour('MEMBRE'));
+    await page.waitForSelector('#post-p_piege', { timeout: 15000 });
+    await page.evaluate(() => document.getElementById('post-p_piege').scrollIntoView());
+    await page.waitForFunction(() => document.getElementById('viewCount-p_piege') && document.getElementById('viewCount-p_piege').textContent === '1', null, { timeout: 5000 });
+    await page.waitForTimeout(4600);
+    assert.ok(VUES_ENVOYEES.includes('p_piege'), 'vue non envoyée : ' + JSON.stringify(VUES_ENVOYEES));
+    assert.equal(VUES_ENVOYEES.filter((id) => id === 'p_piege').length, 1, 'une seule fois');
+    assert.deepEqual(erreurs, []);
+    await contexte.close();
   });
 
   await cas('carrousel : sélectionner des dates pour en republier une, les partager ou les supprimer', async () => {

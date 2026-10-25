@@ -316,6 +316,19 @@ retirés du stockage par l'application.
 ### Ordre de mise en production
 1. Appliquer `16_suppression_videe.sql` (aucun changement de l'application).
 
+## Migration 17 — vues des publications enregistrées sur le serveur (v184)
+
+`viewedBy` n'était tenu que sur chaque appareil : chacun ne voyait que sa
+propre vue. `kc_marquer_vues(ids)` ajoute la personne connectée à `viewedBy`
+et rien d'autre. Elle s'exécute avec les droits de l'appelant, donc RLS
+(compte validé, publication visible) et le déclencheur de la migration 06
+(chacun n'ajoute que son propre identifiant) s'appliquent. L'auteur ne se
+compte pas. L'application regroupe les vues et les envoie toutes les 4 s.
+
+### Ordre de mise en production
+1. Appliquer `17_vues.sql`.
+2. Déployer l'application (v184).
+
 ## Limites restantes (connues)
 - **Pas de CSP stricte** : les ~270 gestionnaires `onclick` en ligne
   l'empêchent ; seuls `frame-ancestors`, `object-src` et `base-uri` sont posés.
