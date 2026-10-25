@@ -494,6 +494,23 @@
       try { dbSet(SK.POSTS, db(SK.POSTS, [])); } catch(e) {}
     }, 1500);
   }
+  var _vuesAEnvoyer = {};
+  var _vuesTimer = null;
+  function envoyerVue(postId) {
+    _vuesAEnvoyer[postId] = true;
+    if (_vuesTimer || !supabase) return;
+    _vuesTimer = setTimeout(function() {
+      _vuesTimer = null;
+      var ids = Object.keys(_vuesAEnvoyer).slice(0, 100);
+      if (!ids.length) return;
+      ids.forEach(function(id){ delete _vuesAEnvoyer[id]; });
+      supabase.rpc('kc_marquer_vues', { p_ids: ids }).then(function(r) {
+        // Échec (réseau) : les vues repartiront au prochain envoi.
+        if (r && r.error) ids.forEach(function(id){ _vuesAEnvoyer[id] = true; });
+      }, function() {});
+      if (Object.keys(_vuesAEnvoyer).length) envoyerVue(Object.keys(_vuesAEnvoyer)[0]);
+    }, 4000);
+  }
   function markPostViewed(postId) {
     if (!S.user || !S.user.id) return;
     if (_viewMarkedThisSession[postId]) return;
@@ -511,12 +528,10 @@
     // sérialise TOUT le cache) est regroupée au lieu d'avoir lieu à chaque
     // carte qui défile.
     planifierSauvegardePosts();
-    // PAS d'upsert vers Supabase ici : cette fonction est déclenchée au simple
-    // DÉFILEMENT, et renvoyer le post ENTIER depuis le cache local écraserait
-    // les commentaires/likes ajoutés entre-temps par d'autres membres. Le champ
-    // « viewedBy » n'est consommé que localement (compteur d'affichage et modale
-    // des lecteurs dans 05-render-feed.js), donc le partage réseau n'apporte rien
-    // face au risque d'écrasement.
+    // Vers le serveur : jamais la publication entière (elle écraserait les
+    // écritures des autres), seulement « j'ai vu », par kc_marquer_vues
+    // (migration 17), regroupé toutes les quelques secondes.
+    envoyerVue(post.id);
     // Met à jour le compteur affiché sans re-rendre tout le fil (évite de
     // perturber le défilement pendant la lecture).
     try {

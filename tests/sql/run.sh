@@ -64,3 +64,5 @@ lancer tests/sql/test_06_durcissement.sql migration/06_durcissement_ecritures.sq
 # La 16 vide le contenu des publications supprimées.
 lancer tests/sql/test_16_suppression.sql migration/06_durcissement_ecritures.sql migration/07_convocations_et_validation.sql migration/16_suppression_videe.sql
 lancer tests/sql/test_06_durcissement.sql migration/06_durcissement_ecritures.sql migration/16_suppression_videe.sql
+# La 17 enregistre les vues des publications sur le serveur.
+lancer tests/sql/test_17_vues.sql migration/03_security_questions.sql migration/06_durcissement_ecritures.sql migration/07_convocations_et_validation.sql migration/08_temps_reel.sql migration/09_performances_rls.sql migration/10_securite.sql migration/11_lieux_et_preparation.sql migration/12_assignations_par_pole.sql migration/13_securite_fiabilite.sql migration/14_visibilite_ciblee.sql migration/16_suppression_videe.sql migration/17_vues.sql
