@@ -381,47 +381,15 @@
       var avatar_url = u.avatar_url;
       var cover_url = u.cover_url;
       
+      // Photos envoyées dans Storage : la fiche ne garde que leur adresse. En
+      // cas d'échec seulement, l'aperçu (petit, déjà compressé) sert de secours.
       if (S.avatarPreview) {
-        avatar_url = S.avatarPreview;
+        avatar_url = (await envoyerPhotoProfil(S.avatarPreview, 'avatar')) || S.avatarPreview;
       }
       if (S.coverPreview) {
-        cover_url = S.coverPreview;
+        cover_url = (await envoyerPhotoProfil(S.coverPreview, 'cover')) || S.coverPreview;
       }
 
-      if (supabase) {
-        if (S.avatarFile) {
-          try {
-            var ext = (S.avatarFile.name || 'img.jpg').split('.').pop();
-            var fileName = 'avatar_' + u.id + '_' + Date.now() + '.' + ext;
-            var res = await supabase.storage.from('avatars').upload(fileName, S.avatarFile, { upsert: true });
-            if (!res.error) {
-              var urlRes = supabase.storage.from('avatars').getPublicUrl(fileName);
-              if (urlRes && urlRes.data && urlRes.data.publicUrl) {
-                avatar_url = urlRes.data.publicUrl;
-              }
-            }
-          } catch(err) {
-            // Keep base64 fallback in avatar_url
-          }
-        }
-        
-        if (S.coverFile) {
-          try {
-            var ext2 = (S.coverFile.name || 'img.jpg').split('.').pop();
-            var fileName2 = 'cover_' + u.id + '_' + Date.now() + '.' + ext2;
-            var res2 = await supabase.storage.from('avatars').upload(fileName2, S.coverFile, { upsert: true });
-            if (!res2.error) {
-              var urlRes2 = supabase.storage.from('avatars').getPublicUrl(fileName2);
-              if (urlRes2 && urlRes2.data && urlRes2.data.publicUrl) {
-                cover_url = urlRes2.data.publicUrl;
-              }
-            }
-          } catch(err) {
-            // Keep base64 fallback in cover_url
-          }
-        }
-      }
-      
       var updatedUser = Object.assign({}, u, {
         prenom: prenom,
         nom: nom,

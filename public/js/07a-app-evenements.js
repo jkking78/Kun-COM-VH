@@ -833,7 +833,7 @@
         authorAvatar: (S.user.prenom||'M').charAt(0).toUpperCase(),
         avatarColor: S.user.avatar_color || '#0B5FE0',
         avatar_color: S.user.avatar_color || '#0B5FE0',
-        avatar_url: S.user.avatar_url || null,
+        avatar_url: avatarLeger(S.user.avatar_url),   // photo hébergée seulement, jamais de base64 recopié
         role: S.user.role,
         type: 'EVENT',
         eventTitle: title,

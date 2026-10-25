@@ -1148,22 +1148,33 @@
     if (DB_CACHE[key] !== undefined) return DB_CACHE[key];
     try { var r = localStorage.getItem(key); var parsed = r ? JSON.parse(r) : def; DB_CACHE[key] = parsed; return parsed; } catch(e) { return def; }
   }
-  // Allège une publication avant sauvegarde locale : les médias encore en base64
-  // (ancien format) pèsent des dizaines de Mo chacun et faisaient exploser le quota
-  // localStorage — et, plus grave, saturaient la mémoire de Safari mobile jusqu'au
-  // plantage de l'onglet. Ils restent disponibles depuis le serveur ; on ne garde
-  // en local que les URL hébergées (légères) et les vignettes.
-  function stripHeavyMediaForStorage(posts) {
+  // Copie pour le DISQUE : aucune image en base64 (photo recopiée, vignette,
+  // image de commentaire, média non hébergé) et au plus 150 publications, les
+  // plus récentes. La mémoire garde tout ; le reste se retélécharge au
+  // démarrage. Sans cela, le stockage (5 Mo sur Safari) finissait plein et
+  // Safari mobile pouvait planter.
+  var MAX_POSTS_DISQUE = 150;
+  function sansBase64(u) { return !(typeof u === 'string' && u.indexOf('data:') === 0); }
+  function allegerPourDisque(posts) {
     if (!Array.isArray(posts)) return posts;
-    return posts.map(function(p) {
-      if (!p) return p;
-      var hasHeavy = (p.mediaUrls || []).some(function(u){ return typeof u === 'string' && u.indexOf('data:') === 0 && u.length > 100000; }) ||
-                     (p.originalMediaUrls || []).some(function(u){ return typeof u === 'string' && u.indexOf('data:') === 0 && u.length > 100000; });
-      if (!hasHeavy) return p;
-      var copy = Object.assign({}, p);
-      copy.mediaUrls = (p.mediaUrls || []).filter(function(u){ return !(typeof u === 'string' && u.indexOf('data:') === 0 && u.length > 100000); });
-      copy.originalMediaUrls = (p.originalMediaUrls || []).filter(function(u){ return !(typeof u === 'string' && u.indexOf('data:') === 0 && u.length > 100000); });
-      return copy;
+    return posts.slice(0, MAX_POSTS_DISQUE).map(function(p) {
+      if (!p || typeof p !== 'object') return p;
+      var c = Object.assign({}, p);
+      ['avatar_url', 'videoPoster', 'originalVideoPoster', 'eventImage'].forEach(function(k) {
+        if (!sansBase64(c[k])) c[k] = null;
+      });
+      if (Array.isArray(c.mediaUrls)) c.mediaUrls = c.mediaUrls.filter(sansBase64);
+      if (Array.isArray(c.originalMediaUrls)) c.originalMediaUrls = c.originalMediaUrls.filter(sansBase64);
+      if (Array.isArray(c.comments) && c.comments.some(function(x){ return x && !sansBase64(x.imageUrl || x.avatar_url); })) {
+        c.comments = c.comments.map(function(x) {
+          if (!x) return x;
+          var y = Object.assign({}, x);
+          if (!sansBase64(y.imageUrl)) y.imageUrl = null;
+          if (!sansBase64(y.avatar_url)) y.avatar_url = null;
+          return y;
+        });
+      }
+      return c;
     });
   }
 
@@ -1225,9 +1236,9 @@
     var essais = [];
     if (key === SK.POSTS) {
       essais = [
-        function(){ return stripHeavyMediaForStorage(val); },
-        function(){ return stripHeavyMediaForStorage(val).slice(0, 40); },
-        function(){ return stripHeavyMediaForStorage(val).slice(0, 15); }
+        function(){ return allegerPourDisque(val); },
+        function(){ return allegerPourDisque(val).slice(0, 40); },
+        function(){ return allegerPourDisque(val).slice(0, 15); }
       ];
     } else if (key === SK.USERS) {
       essais = [

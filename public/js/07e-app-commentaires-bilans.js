@@ -15,6 +15,10 @@
       if (!file) return;
       compressImage(file, 800, 800, 0.7, function(dataUrl) {
         S.pendingCommentImage = dataUrl;
+        // L'image part dans Storage : le commentaire n'en garde que l'adresse.
+        uploadMediaToStorage(dataUrl, function(url) {
+          if (url && S.pendingCommentImage === dataUrl) S.pendingCommentImage = url;
+        });
         var prev = document.getElementById('commentImagePreview');
         if (prev) {
           prev.style.padding = '10px 14px 0';
@@ -78,6 +82,12 @@
       var input = document.getElementById('commentInput');
       var txt = input ? input.value.trim() : '';
       if ((!txt && !S.pendingCommentImage) || !S.user || !S.commentPostId) return;
+      // Image encore en cours d'envoi : on attend, puis on reprend.
+      if (S.pendingCommentImage && S.pendingCommentImage.indexOf('data:') === 0) {
+        if (mediaUploadsPending()) { waitForMediaUploads(null).then(function(){ App.submitComment(); }); return; }
+        toast('L\'image n\'a pas pu être envoyée. Vérifie ta connexion et réessaie.', 'error');
+        return;
+      }
       var posts = db(SK.POSTS, []);
       var post = posts.find(function(p){ return p.id===S.commentPostId; });
       if (!post) return;
@@ -475,7 +485,7 @@
           author: S.user.prenom + ' ' + S.user.nom,
           authorAvatar: S.user.prenom.charAt(0).toUpperCase(),
           avatarColor: S.user.avatar_color || '#0B5FE0',
-          avatar_url: S.user.avatar_url || null,
+          avatar_url: avatarLeger(S.user.avatar_url),   // photo hébergée seulement, jamais de base64 recopié
           sectionId: S.user.section_id || 'general', sectionNom: secNom(S.user.section_id || 'general'),
           type: 'EVALUATION',
           metadata: metadata,

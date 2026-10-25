@@ -738,13 +738,12 @@
             // carré) : width/height:auto + object-fit:contain, limité par max-height pour
             // ne pas laisser une vidéo très verticale envahir tout l'écran.
             var mediaTag = isVideoUrl(url)
-              // Avec une vignette, preload="metadata" : la vidéo n'est téléchargée
-              // qu'à la lecture (jusqu'à 19 Mo, sur données mobiles). Sans vignette,
-              // preload="auto" + onloadeddata : on force le navigateur à afficher la
-              // première image plutôt qu'un écran noir.
+              // preload="metadata" : la vidéo n'est téléchargée qu'à la lecture
+              // (jusqu'à 60 Mo, sur données mobiles). Sans vignette, onloadeddata
+              // (primeVideoFrame) affiche si possible la première image.
               // onerror : URL expirée/supprimée = encart « Média indisponible »
               // (voir App.mediaEchoue) au lieu d'un média cassé définitif.
-              ? '<video src="'+safeUrl(url)+'"' + (post.videoPoster ? ' poster="'+safeUrl(post.videoPoster)+'" preload="metadata"' : ' preload="auto"') + ' controls playsinline onloadedmetadata="App.mediaCharge(this,\''+jsArg(url)+'\')" onloadeddata="App.primeVideoFrame(this)" onerror="App.mediaEchoue(this)" style="display:block;width:auto;height:auto;max-width:100%;max-height:640px;object-fit:contain;margin:0 auto;background:#000;"></video>'
+              ? '<video src="'+safeUrl(url)+'"' + (post.videoPoster ? ' poster="'+safeUrl(post.videoPoster)+'" preload="metadata"' : ' preload="metadata"') + ' controls playsinline onloadedmetadata="App.mediaCharge(this,\''+jsArg(url)+'\')" onloadeddata="App.primeVideoFrame(this)" onerror="App.mediaEchoue(this)" style="display:block;width:auto;height:auto;max-width:100%;max-height:640px;object-fit:contain;margin:0 auto;background:#000;"></video>'
               : '<img src="'+safeUrl(url)+'" loading="lazy" onload="App.mediaCharge(this,\''+jsArg(url)+'\')" onerror="App.mediaEchoue(this)" onclick="App.openImageViewer(\''+jsArg(url)+'\')" style="display:block;width:auto;height:auto;max-width:100%;max-height:640px;object-fit:contain;margin:0 auto;cursor:pointer;"/>';
             // Réservation de la hauteur AVANT que le média n'arrive : avec sa
             // proportion connue, la place est exacte et rien ne bouge ; sinon on
