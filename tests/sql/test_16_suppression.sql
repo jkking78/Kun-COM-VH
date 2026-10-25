@@ -57,4 +57,11 @@ select tst_verifier((select not (content ? 'eventTitle') and not (content ? 'ass
 select tst_verifier((select content ->> 'caption' from kun_com_posts where id = 'p2') = 'Reste',
   'une publication active garde son contenu');
 
+-- Migration 19 (si appliquée) : l'auteur ne peut pas faire revenir sa publication supprimée.
+select tst_en_tant_que('B');
+update kun_com_posts set content = jsonb_build_object('id', 'p1', 'userId', tst_qui('B'), 'caption', 'Revenue !', 'status', 'published') where id = 'p1';
+select tst_verifier((select content ->> 'status' = 'deleted' and not (content ? 'caption') from kun_com_posts where id = 'p1')
+    or not exists (select 1 from pg_proc where proname = 'kc_posts_pierre_tombale' and prosrc like '%old.content ->> ''status'' = ''deleted''%'),
+  'une publication supprimée reste supprimée, même réécrite par son auteur');
+
 \echo 'Tous les tests de la migration 16 sont passés.'

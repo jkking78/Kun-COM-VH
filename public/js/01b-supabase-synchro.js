@@ -410,6 +410,8 @@
   // (id → heure d'envoi), tenues par App._upsertFiable. Les écritures en file
   // d'attente hors connexion sont lues dans kc_pending_writes.
   var ecrituresEnVol = {};
+  // Dernière écriture en cours par publication (voir App.ecrirePostFrais).
+  var ecrituresEnChaine = {};
   function idsEcrituresLocalesEnCours() {
     var ids = {};
     Object.keys(ecrituresEnVol).forEach(function(id) {
@@ -671,9 +673,13 @@
   function enregistrerNettoyageTraces(modifies) {
     if (!supabase || !modifies || !modifies.length) return;
     if (!S.user || S.user.role !== 'GRAND_RESPONSABLE') return;
+    // Recalculé sur la version du serveur : renvoyer la copie locale entière
+    // écrasait ce que d'autres avaient changé entre-temps (assignations...).
     modifies.forEach(function(p) {
-      supabase.from('kun_com_posts').upsert({ id: p.id, content: p }, { onConflict: 'id' })
-        .then(function(){}, function(e){ console.warn('Nettoyage des traces sur ' + p.id + ' :', e); });
+      App.ecrirePostFrais(p.id, function(f) {
+        var propre = nettoyerTracesComptesSupprimes([f]).posts[0];
+        if (propre) Object.assign(f, propre);
+      });
     });
     console.log('Traces d\'un compte supprimé retirées de ' + modifies.length + ' publication(s).');
   }
@@ -743,10 +749,7 @@
       var _results = await Promise.all([
         supabase.from('kun_com_posts').select('*').order('created_at', { ascending: false }).range(0, POSTS_PAGE_SIZE - 1),
         supabase.from('kun_com_profiles').select('*'),
-        supabase.from('kun_com_posts').select('*')
-          .eq('content->>type', 'EVENT')
-          .gte('content->>eventDate', _todayIso)
-          .order('created_at', { ascending: false }).limit(400)
+        requeteEvenementsAVenir()
       ]);
       var res = _results[0];
       var resProf = _results[1];
@@ -1082,6 +1085,16 @@
     return parts.join('|');
   }
 
+  // Événements à venir, quelle que soit leur ancienneté dans le fil : une série
+  // créée d'un coup sort vite des 60 publications récentes. Annulés
+  // (EVENT_ARCHIVED) et supprimés compris, pour que l'annulation se propage.
+  function requeteEvenementsAVenir() {
+    return supabase.from('kun_com_posts').select('*')
+      .in('content->>type', ['EVENT', 'EVENT_ARCHIVED'])
+      .gte('content->>eventDate', isoLocal())
+      .order('created_at', { ascending: false }).limit(400);
+  }
+
   var _lastPostsFingerprint = '';
   var _fetchPostsInFlight = false;
   async function fetchPostsSilently() {
@@ -1091,7 +1104,12 @@
     if (!S.user || S.auth !== 'app') return;
     _fetchPostsInFlight = true;
     try {
-      var res = await supabase.from('kun_com_posts').select('*').order('created_at', { ascending: false }).range(0, POSTS_PAGE_SIZE - 1);
+      var lots = await Promise.all([
+        supabase.from('kun_com_posts').select('*').order('created_at', { ascending: false }).range(0, POSTS_PAGE_SIZE - 1),
+        requeteEvenementsAVenir()
+      ]);
+      var res = lots[0];
+      var resEv = lots[1];
       if (res && res.error) { console.warn('Supabase posts poll error:', res.error); }
       if (res && res.data) {
         if (res.data.length < POSTS_PAGE_SIZE) S.postsAllLoaded = true;
@@ -1103,6 +1121,7 @@
         // file d'attente pendant une coupure réseau.
         try { App.viderFileAttenteEcriture(); } catch(eFlush){}
         var mergedPosts = mergePostsWithLocal(res.data, true);
+        if (resEv && resEv.data && resEv.data.length) mergedPosts = mergePostsWithLocal(resEv.data, false, mergedPosts);
         var triSilencieux = separerOrphelines(mergedPosts);
         mergedPosts = triSilencieux.gardees;
         tombaliserOrphelines(triSilencieux.orphelines);

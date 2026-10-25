@@ -724,6 +724,15 @@
         toast('L\'heure de fin ne peut pas être identique à l\'heure de début.', 'error');
         return;
       }
+      // Un NOUVEL événement ne peut pas commencer dans le passé : il partait
+      // directement dans l'historique et ses convoqués prenaient −2★ aussitôt.
+      // Corriger un événement existant reste possible.
+      var creation = !S.editEventId || S.eventSaveMode === 'duplicate';
+      var debutVoulu = eventStartTimestamp({ eventDate: date, eventStart: start });
+      if (creation && debutVoulu && debutVoulu < Date.now()) {
+        toast('Cette date et cette heure sont déjà passées. Choisis un créneau à venir.', 'error');
+        return;
+      }
       if (S.eventImageProcessing) { toast('L\'image est encore en cours de traitement.', 'info'); return; }
       // Un membre choisi dans « Qui est de service ? » sans avoir touché
       // « Ajouter » était oublié : l'événement partait sans personne assignée.
@@ -802,11 +811,9 @@
         if (updated.eventLocation !== avant.eventLocation || updated.eventLat !== avant.eventLat || updated.eventLng !== avant.eventLng) {
           App._memoriserLieu(App._nomDuLieu(loc, S.createEventData), (S.createEventData||{}).placeLabel, updated.eventLat, updated.eventLng, updated.eventGeoAccuracy);
         }
-        if (supabase) {
-          try {
-            await supabase.from('kun_com_posts').upsert({ id: updated.id, content: updated }, { onConflict: 'id' });
-          } catch(e) { console.warn('Update event supabase error:', e); }
-        }
+        // Seuls les champs modifiés partent, posés sur la version du serveur.
+        allP[idxE] = avant; dbSet(SK.POSTS, allP);
+        await App.ecrireModifications(avant, updated);
         S.createEventOpen = false;
         S.editEventId = null;
         S.eventSaveMode = null;
@@ -929,9 +936,9 @@
         toast('Seul l\'auteur peut épingler cette publication.', 'error');
         return;
       }
-      p.is_pinned = !p.is_pinned;
-      dbSet(SK.POSTS, posts);
-      if (supabase) supabase.from('kun_com_posts').upsert({ id: p.id, content: p }, { onConflict: 'id' }).then(function(){}, function(e){ console.warn('Épingle :', e); });
+      var epingle = !p.is_pinned;
+      App.ecrirePostFrais(p.id, function(f) { f.is_pinned = epingle; });
+      p.is_pinned = epingle;
       S.optionsOpen = false; S.optionsPost = null;
       render();
       toast(p.is_pinned ? 'Épinglé en haut du fil.' : 'Épingle retirée.', 'success');

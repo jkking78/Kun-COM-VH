@@ -120,6 +120,22 @@
   // legacy du mot de passe et les réponses aux questions de sécurité n'ont
   // rien à faire sur un serveur partagé (l'authentification passe désormais
   // par Supabase Auth, côté serveur).
+  // Champs qui diffèrent entre deux versions d'un objet (un champ retiré vaut
+  // null). Sert à n'écrire QUE ce qu'on a changé sur la version du serveur.
+  function champsModifies(avant, apres) {
+    var champs = {};
+    var cles = {};
+    Object.keys(avant || {}).forEach(function(k){ cles[k] = true; });
+    Object.keys(apres || {}).forEach(function(k){ cles[k] = true; });
+    Object.keys(cles).forEach(function(k) {
+      var a = avant ? avant[k] : undefined, b = apres ? apres[k] : undefined;
+      if (JSON.stringify(a === undefined ? null : a) !== JSON.stringify(b === undefined ? null : b)) {
+        champs[k] = b === undefined ? null : b;
+      }
+    });
+    return champs;
+  }
+
   function profilSansSecret(u) {
     if (!u || typeof u !== 'object') return u;
     var copie = Object.assign({}, u);
@@ -467,7 +483,7 @@
     var posts = db(SK.POSTS, []);
     var pp = posts.find(function(x){ return x.id === post.id; });
     if (pp) { pp.arrivalAnnounced = true; dbSet(SK.POSTS, posts); post.arrivalAnnounced = true;
-      if (supabase) supabase.from('kun_com_posts').upsert({ id: pp.id, content: pp }, { onConflict: 'id' }).then(function(){}, function(){}); }
+      if (supabase && window.App && App.ecrirePostFrais) App.ecrirePostFrais(pp.id, function(f) { f.arrivalAnnounced = true; }); }
     else { post.arrivalAnnounced = true; }
 
     var allUsers = db(SK.USERS, []);

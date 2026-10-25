@@ -490,8 +490,7 @@
         return;
       }
       p.geo = g;                 // on n'écrase PAS checkInAt : la ponctualité est inchangée
-      dbSet(SK.POSTS, posts);
-      if (supabase) supabase.from('kun_com_posts').upsert({ id: p.id, content: p }, { onConflict: 'id' }).then(function(){}, function(e){});
+      App.ecrirePostFrais(p.id, function(f) { f.geo = g; });
       var evP = posts.find(function(x){ return x.id === p.checkInEventId && isEventLike(x); });
       var onsite = evP ? (checkInPresence(p, evP) === 'onsite') : true;
       if (onsite && evP) { try { announceArrival(p, evP); } catch(e){} }   // présence validée → tout le monde est prévenu
@@ -657,6 +656,7 @@
       // mais la sauvegarde reste le point d'écriture réel — on y revérifie.
       var uSave = S.user || {};
       if (uSave.role !== 'GRAND_RESPONSABLE' && post.userId !== uSave.id) { toast('Action non autorisée.', 'error'); return; }
+      var avantEdition = JSON.parse(JSON.stringify(post));
 
       post.caption = txt;
       post.is_edited = true;
@@ -714,12 +714,13 @@
         }
       }
 
+      // Seuls les champs modifiés partent, posés sur la version du serveur.
+      var apresEdition = JSON.parse(JSON.stringify(post));
+      Object.keys(post).forEach(function(k){ delete post[k]; });
+      Object.assign(post, avantEdition);
       dbSet(SK.POSTS, posts);
-      if (supabase) {
-        try {
-          await supabase.from('kun_com_posts').upsert({ id: post.id, content: post, created_at: new Date(post.timestamp).toISOString() }, { onConflict: 'id' });
-        } catch(e){}
-      }
+      await App.ecrireModifications(avantEdition, apresEdition);
+      post = db(SK.POSTS, []).find(function(p){ return p.id === postId; }) || apresEdition;
 
       // Notifie et enregistre les liens si la publication ciblée/modifiée en contient
       if (post.visibility === 'sections' && (!post.status || post.status !== 'scheduled')) {
@@ -1308,12 +1309,10 @@
       }
 
       if (hasHistory) {
+        var archiveLe = Date.now();
+        App.ecrirePostFrais(p.id, function(f) { f.type = 'EVENT_ARCHIVED'; f.archivedAt = archiveLe; });
         p.type = 'EVENT_ARCHIVED';
-        p.archivedAt = Date.now();
-        dbSet(SK.POSTS, posts);
-        if (supabase) {
-          supabase.from('kun_com_posts').upsert({ id: p.id, content: p }, { onConflict: 'id' }).then(function(){}, function(e){ console.warn('Archive event error:', e); });
-        }
+        p.archivedAt = archiveLe;
       } else {
         posts.splice(idx, 1); dbSet(SK.POSTS, posts);
         if (supabase) {
@@ -1324,15 +1323,10 @@
           // tronquée. Une suppression réelle doit donc laisser une trace explicite,
           // sans quoi elle disparaît seulement de CET appareil : les autres membres la
           // revoient indéfiniment, ressuscitée à chaque synchronisation.
+          // Hors ligne, le marqueur part en file d'attente (_upsertFiable) : sans
+          // lui, la publication ressusciterait à chaque synchro.
           var tombstone = Object.assign({}, p, { status: 'deleted' });
-          supabase.from('kun_com_posts').upsert({ id: p.id, content: tombstone }, { onConflict: 'id' })
-            .then(function(){}, function(eDel){
-              // Si le marqueur status:'deleted' n'arrive pas au serveur, la
-              // publication ressuscite à chaque synchro (fusion additive) :
-              // on l'empile pour rejeu au retour du réseau.
-              console.warn('Delete post error:', eDel);
-              App._mettreEnFileAttenteEcriture({ table: 'kun_com_posts', row: { id: p.id, content: tombstone } });
-            });
+          App._upsertFiable('kun_com_posts', { id: p.id, content: tombstone });
         }
         deleteUnusedMediaFromStorage((p.mediaUrls || []), postId);
       }

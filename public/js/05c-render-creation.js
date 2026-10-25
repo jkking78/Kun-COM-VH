@@ -305,7 +305,10 @@
     var isEdit = !!S.editEventId;
     var titleVal = cData.title !== undefined ? cData.title : '';
     var locVal = cData.location !== undefined ? cData.location : '';
-    var dateVal = cData.date !== undefined ? cData.date : today;
+    // Par défaut, le prochain 09:00 encore à venir (le lendemain si l'heure est passée).
+    var jourParDefaut = (eventStartTimestamp({ eventDate: today, eventStart: '09:00' }) || 0) > Date.now()
+      ? today : isoLocal(new Date(Date.now() + 864e5));
+    var dateVal = cData.date !== undefined ? cData.date : jourParDefaut;
     var startVal = cData.start !== undefined ? cData.start : '09:00';
     var endVal = cData.end !== undefined ? cData.end : '11:30';
     var descVal = cData.desc !== undefined ? cData.desc : '';
