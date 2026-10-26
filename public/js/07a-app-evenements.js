@@ -878,6 +878,9 @@
         createdPosts.push(Object.assign({}, newPost, {
           id: 'evt_' + (Date.now() + w),
           eventDate: occDateIso,
+          // L'échéance d'une tâche avance avec sa date : recopiée telle quelle,
+          // elle était déjà dépassée pour les dates suivantes (−2★ d'office).
+          assignments: (newPost.assignments || []).map(function(a) { return decalerEcheance(a, w * 7); }),
           timestamp: Date.now(),
           likedBy: [],
           comments: []

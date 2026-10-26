@@ -235,8 +235,9 @@
         db(SK.USERS, []).forEach(function(m) {
           if (!m || m.id === S.user.id || compteEnAttente(m)) return;
           if (getUserSections(m).indexOf(autre.slice(5)) === -1) return;
-          var dejaNonLue = (m.notifications || []).some(function(n){ return n.type === 'CANAL' && !n.read && String(n.targetId || '').indexOf(autre + '#') === 0; });
-          if (dejaNonLue) return;
+          // Une seule notification de canal par membre toutes les 10 minutes
+          // (on ne voit plus ses notifications : on retient ses propres envois).
+          if (dejaNotifie(['canal', m.id, autre].join('|'))) return;
           sendNotificationToUser(m.id, {
             type: 'CANAL',
             title: 'Canal ' + (pole ? pole.nom : 'du pôle'),
@@ -512,35 +513,26 @@
       S.notificationsOpen = false;
       render();
     },
-    // Enregistre l'état de lecture. On relit d'abord le profil côté serveur pour
-    // ne pas effacer une notification arrivée pendant qu'on lisait, puis on
-    // fusionne : une notification lue le reste, quelle que soit la version.
-    _persistNotifications: function() {
-      var moi = S.user;
-      if (!moi) return;
-      var allUsers = db(SK.USERS, []);
-      var uIdx = allUsers.findIndex(function(u){ return u.id === moi.id; });
-      if (uIdx !== -1) allUsers[uIdx] = moi;
-      dbSet(SK.USERS, allUsers);
-      sauverSession(moi);
-      if (!supabase) return;
-      var locales = moi.notifications;
-      ecrireMaFiche(function(serveur) {
-        return { notifications: mergeNotifications(locales, serveur.notifications) };
-      });
+    // Enregistre l'état « lu » : sur l'appareil, puis dans kun_com_notifications.
+    _persistNotifications: function(ids) {
+      if (!S.user) return;
+      enregistrerMesNotificationsLocalement();
+      enregistrerLectures(ids || []);
     },
 
     markAllNotificationsRead: function() {
       if (!S.user || !Array.isArray(S.user.notifications)) return;
+      var ids = S.user.notifications.filter(function(n){ return n && !n.read; }).map(function(n){ return n.id; });
       S.user.notifications.forEach(function(n){ n.read = true; });
-      this._persistNotifications();
+      this._persistNotifications(ids);
       render();
     },
     clickNotification: function(notifId, targetId) {
       if (!S.user || !Array.isArray(S.user.notifications)) return;
       var notif = S.user.notifications.find(function(n){ return n.id === notifId; });
+      var etaitNonLue = notif && !notif.read;
       if (notif) notif.read = true;
-      this._persistNotifications();
+      this._persistNotifications(etaitNonLue ? [notifId] : []);
       
       S.notificationsOpen = false;
       render();

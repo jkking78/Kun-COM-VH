@@ -91,7 +91,7 @@
   // comporte de façon inexplicable. On vérifie donc que les briques essentielles
   // sont bien là avant de démarrer, et on recharge UNE fois en contournant le
   // cache si ce n'est pas le cas.
-  var APP_VERSION = 'v190'; window.APP_VERSION = APP_VERSION; // Exposé pour l'écran Paramètres (ligne « Version »).
+  var APP_VERSION = 'v191'; window.APP_VERSION = APP_VERSION; // Exposé pour l'écran Paramètres (ligne « Version »).
   // Nom du cache tenu par le service worker pour CETTE version. Doit rester
   // aligné sur CACHE_NAME dans sw.js.
   var CACHE_COURANT = 'kun-com-pwa-' + APP_VERSION;
@@ -209,6 +209,14 @@
           .gt('sent_at', new Date(dernier - 300000).toISOString()).order('sent_at', { ascending: false }).limit(300) : undefined;
         App._chargerMessages(requete).then(function(nouveau){ if (nouveau && !saisieEnCours()) render(); });
       };
+      // Retour au premier plan : le temps réel a pu décrocher, on relit ses
+      // notifications (au plus une fois par minute).
+      var derniereRelecture = 0;
+      document.addEventListener('visibilitychange', function() {
+        if (document.hidden || !S.user || Date.now() - derniereRelecture < 60000) return;
+        derniereRelecture = Date.now();
+        try { chargerMesNotifications(); } catch(e) {}
+      });
       setTimeout(function() {
         Promise.resolve(S.user ? recupererLecturesCompte() : null).then(releverMessages, releverMessages);
         try { migrerMaPhotoProfil(); } catch(e) {}

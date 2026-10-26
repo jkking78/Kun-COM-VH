@@ -270,9 +270,12 @@ Deno.serve(async (req) => {
       const destinataire = String(corps.destinataire || "");
       const dest = await profil(admin, destinataire);
       if (!dest) return json({ error: "Destinataire introuvable" }, 404);
-      const notifs = Array.isArray(dest.notifications) ? dest.notifications as Record<string, string>[] : [];
-      const n = notifs.find((x) => x && x.id === corps.notifId && x.senderId === moi.id);
-      if (!n) return json({ error: "Notification introuvable" }, 404);
+      // Notification lue dans kun_com_notifications (migration 22), signée par
+      // la base : son expéditeur doit être l'appelant.
+      const ligne = await admin.from("kun_com_notifications").select("content")
+        .eq("destinataire", destinataire).eq("id", String(corps.notifId || "")).maybeSingle();
+      const n = ligne.data?.content as Record<string, string> | undefined;
+      if (!n || n.senderId !== moi.id) return json({ error: "Notification introuvable" }, 404);
 
       // Limite de débit, puis journal « envoyée une fois » : rejouer l'appel
       // ne renvoie rien.

@@ -381,6 +381,22 @@ Storage ; cette migration retire les copies base64 déjà enregistrées.
 1. Appliquer `21_securite_poles_notifications.sql`.
 2. Déployer l'application (v190).
 
+## Migration 22 — les notifications quittent les fiches (v191)
+
+Table `kun_com_notifications` (une ligne par notification) : lecture, « lu »
+et suppression par le seul destinataire ; création par un membre validé,
+signée par la base (expéditeur, nom, type, texte borné, 150 par heure) ;
+100 gardées par destinataire ; diffusée en temps réel. Les notifications
+existantes sont reprises, puis retirées des fiches : une fiche n'est plus
+lisible avec les notifications de son titulaire, et elle redevient légère
+pour le temps réel. Une notification écrite dans une fiche par une ancienne
+version de l'application est convertie en ligne de la table.
+
+### Ordre de mise en production
+1. Appliquer `22_notifications_table.sql`.
+2. Déployer la fonction `push` (lit la notification dans la table).
+3. Déployer l'application (v191).
+
 ## Limites restantes (connues)
 - **Pas de CSP stricte** : les ~270 gestionnaires `onclick` en ligne
   l'empêchent ; seuls `frame-ancestors`, `object-src` et `base-uri` sont posés.

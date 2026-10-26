@@ -94,6 +94,10 @@ const ECRITURES_POSTS = [];
 const ORIGINAUX_POSTS = new Map();
 // Nombre de lectures de kun_com_posts reçues par le faux serveur.
 const LECTURES_POSTS = { n: 0, urls: [] };
+// Notifications (migration 22) : servies, déposées, marquées lues.
+const NOTIFS_SERVEUR = [];
+const NOTIFS_DEPOSEES = [];
+const NOTIFS_LUES = [];
 // Vues envoyées par kc_marquer_vues (migration 17).
 const VUES_ENVOYEES = [];
 // Fiches envoyées au serveur (upsert de kun_com_profiles).
@@ -156,6 +160,21 @@ async function intercepterSupabase(page) {
       if (!unique) return json(profils);
       const p = profils.find((x) => 'eq.' + x.id === url.searchParams.get('id'));
       return p ? json(p) : json({ message: 'introuvable' }, 406);
+    }
+    if (url.pathname.startsWith('/rest/v1/kun_com_notifications')) {
+      const m = route.request().method();
+      if (m === 'POST') {
+        const corps = JSON.parse(route.request().postData() || '{}');
+        const lignes = Array.isArray(corps) ? corps : [corps];
+        NOTIFS_DEPOSEES.push(...lignes);
+        return json([]);
+      }
+      if (m === 'PATCH') {
+        NOTIFS_LUES.push({ ids: url.searchParams.get('id'), corps: JSON.parse(route.request().postData() || '{}') });
+        return json([]);
+      }
+      const dest = (url.searchParams.get('destinataire') || '').replace(/^eq\./, '');
+      return json(NOTIFS_SERVEUR.filter((n) => n.destinataire === dest).map((n) => ({ id: n.id, content: n.content })));
     }
     if (url.pathname.startsWith('/rest/v1/kun_com_dms')) return json(MESSAGES);
     if (url.pathname.startsWith('/rest/v1/kun_com_lieux')) return json(LIEUX);
@@ -935,11 +954,11 @@ try {
         assignments: [{ userId: autre, task: 'Son' }], timestamp: Date.now(), likedBy: [], comments: [], mediaUrls: [] });
       dbSet(SK.POSTS, posts);
       App.deletePost('ev_annule');
-      const fiche = db(SK.USERS, []).find((u) => u.id === autre);
-      const n = (fiche.notifications || []).find((x) => x.type === 'EVENT_CANCELLED' && x.targetId === 'ev_annule');
-      return n && n.text;
-    }, AUTRE);
-    assert.ok(prevenu && prevenu.includes('Répétition') && prevenu.includes('annulé'), String(prevenu));
+      return true;
+    }, AUTRE).catch(() => null);
+    await page.waitForTimeout(400);
+    const deposee = NOTIFS_DEPOSEES.find((r) => r.destinataire === AUTRE && r.content && r.content.type === 'EVENT_CANCELLED' && r.content.targetId === 'ev_annule');
+    assert.ok(prevenu && deposee && deposee.content.text.includes('Répétition') && deposee.content.text.includes('annulé'), JSON.stringify(NOTIFS_DEPOSEES));
     assert.equal(await page.evaluate(() => db(SK.POSTS, []).find((p) => p.id === 'ev_annule').type), 'EVENT_ARCHIVED');
     // Dans la cloche du convoqué : sa convocation marquée « Annulé », et la toucher l'explique.
     await page.evaluate(() => {
@@ -1023,7 +1042,8 @@ try {
       await page.waitForFunction(() => S.user.avatar_url === 'https://exemple.org/photo.jpg', null, { timeout: 5000 });
       await page.waitForTimeout(500);
       const ecrites = ECRITURES_FICHES.flat().filter((e) => e && e.id === MOI);
-      assert.ok(ecrites.length >= 3, 'trois écritures attendues : ' + ecrites.length);
+      assert.ok(ecrites.length >= 2, 'deux écritures de fiche attendues : ' + ecrites.length);
+      assert.ok(ecrites.every((e) => !('notifications' in e.content)), 'aucune notification n\'est écrite dans la fiche');
       for (const e of ecrites) {
         assert.equal(e.content.avatar_url, 'https://exemple.org/photo.jpg', 'photo écrasée : ' + JSON.stringify(e.content));
         assert.equal(e.content.bio, 'Caméraman');
@@ -1176,6 +1196,9 @@ try {
         ev('excuse', h - 3 * 86400e3, 2, { reponsesConvocation: { [moi]: { statut: 'decline', motif: 'Voyage', le: h } } }),
         ev('manque', h - 2 * 86400e3, 2),
         ev('encours', h - 3600e3, 3),
+        // Date d'une série supprimée avant d'avoir eu lieu (archivée), avec une tâche.
+        Object.assign(ev('archive', h - 86400e3, 2, { type: 'EVENT_ARCHIVED', archivedAt: h - 5 * 86400e3 }),
+          { assignments: [{ userId: moi, task: 'Régie', deadline: new Date(h - 86400e3).toISOString().slice(0, 16) }] }),
       ];
       const hist = punctualityHistory(moi, 0, posts);
       return {
@@ -1183,9 +1206,11 @@ try {
         assures: hist.assures,
         enAttente: pendingCheckIns({ id: moi }, posts).map((e) => e.id),
         excuseDuPole: sectionPunctuality('cadrage', 'excuse', posts, [{ id: moi, sections: ['cadrage'] }]),
+        echeanceDecalee: decalerEcheance({ task: 'Régie', deadline: '2026-10-25T09:30' }, 7).deadline,
       };
     }, MOI);
-    assert.deepEqual(r.ids, ['manque'], 'ni le service excusé, ni celui en cours : ' + JSON.stringify(r.ids));
+    assert.deepEqual(r.ids, ['manque'], 'ni le service excusé, ni celui en cours, ni la date supprimée avant d\'avoir eu lieu : ' + JSON.stringify(r.ids));
+    assert.equal(r.echeanceDecalee, '2026-11-01T09:30', 'l\'échéance d\'une tâche avance avec la date de la série');
     assert.equal(r.assures, 0, 'un service manqué n\'est pas un service assuré');
     assert.deepEqual(r.enAttente, ['encours'], 'le pointage du service en cours reste ouvert');
     assert.equal(r.excuseDuPole, null, 'un membre excusé ne pèse pas sur la ponctualité de son pôle');
@@ -1271,6 +1296,41 @@ try {
     assert.ok(prevenus.includes('eeeeeeee-0000-4000-8000-000000000005'), 'responsable du pôle prévenu : ' + JSON.stringify(prevenus));
     assert.deepEqual(erreurs, []);
     await contexte.close();
+  });
+
+  await cas('notifications : table à part, lecture, temps réel, « lu » et envoi', async () => {
+    NOTIFS_SERVEUR.length = 0; NOTIFS_DEPOSEES.length = 0; NOTIFS_LUES.length = 0;
+    NOTIFS_SERVEUR.push({ destinataire: MOI, id: 'n_tab_1', content: { id: 'n_tab_1', senderId: AUTRE, senderName: 'O. X.', type: 'LIKE', text: 'a aimé ta publication.', timestamp: maintenant, read: false } });
+    const fiche = profils.find((p) => p.id === AUTRE).content;
+    fiche.notifications = [{ id: 'secret', text: 'Notification privée d\'un autre' }];
+    const ECRITURES_AVANT = ECRITURES_FICHES.length;
+    try {
+      const { page, erreurs, contexte } = await nouvellePage(nav, base, sessionPour('MEMBRE'));
+      await page.waitForSelector('#post-p_piege', { timeout: 15000 });
+      await page.waitForFunction(() => (S.user.notifications || []).some((n) => n.id === 'n_tab_1'), null, { timeout: 8000 });
+      // Les notifications des autres ne sont pas gardées.
+      assert.equal(await page.evaluate((autre) => 'notifications' in (db(SK.USERS, []).find((u) => u.id === autre) || {}), AUTRE), false);
+      // Temps réel : une nouvelle arrive.
+      await page.evaluate((moi) => notificationRecue({ eventType: 'INSERT', new: { destinataire: moi, id: 'n_tab_2',
+        content: { id: 'n_tab_2', senderId: 'x', senderName: 'Rita R.', type: 'MENTION', text: 't\'a mentionné.', timestamp: Date.now(), read: false } } }), MOI);
+      assert.equal(await page.evaluate(() => S.user.notifications.filter((n) => !n.read).length), 2);
+      // « Tout lire » : enregistré dans la table, pas dans la fiche.
+      await page.evaluate(() => App.markAllNotificationsRead());
+      await page.waitForTimeout(300);
+      const lu = NOTIFS_LUES[NOTIFS_LUES.length - 1];
+      assert.ok(lu && lu.corps.content.read === true && lu.ids.includes('n_tab_1') && lu.ids.includes('n_tab_2'), JSON.stringify(NOTIFS_LUES));
+      assert.ok(ECRITURES_FICHES.slice(ECRITURES_AVANT).flat().every((e) => !e || !e.content || !('notifications' in e.content)), 'aucune notification écrite dans une fiche');
+      // Envoi : une ligne déposée chez le destinataire.
+      await page.evaluate(() => App.like('p_piege'));
+      await page.waitForTimeout(400);
+      const depot = NOTIFS_DEPOSEES.find((r) => r.destinataire === AUTRE && r.content.type === 'LIKE');
+      assert.ok(depot && depot.id === depot.content.id, JSON.stringify(NOTIFS_DEPOSEES));
+      assert.deepEqual(erreurs, []);
+      await contexte.close();
+    } finally {
+      delete fiche.notifications;
+      NOTIFS_SERVEUR.length = 0;
+    }
   });
 
   await cas('carrousel : sélectionner des dates pour en republier une, les partager ou les supprimer', async () => {

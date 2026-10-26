@@ -367,7 +367,10 @@
         if (estMoi && existing.pwd && !merged.pwd) merged.pwd = existing.pwd;
         if (estMoi && existing.sec_a1 && !merged.sec_a1) merged.sec_a1 = existing.sec_a1;
         if (estMoi && existing.sec_a2 && !merged.sec_a2) merged.sec_a2 = existing.sec_a2;
-        merged.notifications = mergeNotifications(existing.notifications, rUser.notifications);
+        // Ses notifications viennent de kun_com_notifications (migration 22) ;
+        // celles des autres ne sont plus lisibles ni gardées.
+        if (estMoi) merged.notifications = mergeNotifications(existing.notifications, rUser.notifications);
+        else delete merged.notifications;
         map[rUser.id] = merged;
       }
     });
@@ -821,10 +824,8 @@
         // qui ne s'arrêtait jamais, l'absence d'abonnement temps réel, et la perte
         // silencieuse de la liste des membres et des notifications lues.
         dbSet(SK.USERS, mergedProfiles);
-        // Répare les profils distants encore lourds (voir purgerNotificationsBloateesServeur)
-        // pendant que la synchronisation est déjà en cours — aucun coût réseau
-        // additionnel, cela ne fait qu'écrire les profils déjà téléchargés.
-        try { purgerNotificationsBloateesServeur(resProf.data); } catch(e) {}
+        // Ses notifications (table à part, migration 22) et leur temps réel.
+        try { chargerMesNotifications(); } catch(eNotifs) {}
         if (S.user) {
           var freshMe = mergedProfiles.find(function(x){ return x.id === S.user.id; });
           if (freshMe) {
@@ -1017,7 +1018,8 @@
       var estMoi = S.user && S.user.id === r.id;
       if (!estMoi) { delete r.pwd; delete r.sec_a1; delete r.sec_a2; }
       var fusion = Object.assign({}, existant, r);
-      fusion.notifications = mergeNotifications(existant.notifications, r.notifications);
+      if (estMoi) fusion.notifications = mergeNotifications(existant.notifications, r.notifications);
+      else delete fusion.notifications;
       if (estMoi && S.jwtRole) fusion.role = S.jwtRole;   // le JWT reste la référence du rôle
       if (i === -1 || !seulementPresence(existant, fusion)) aRedessiner = true;
       if (i === -1) users.push(fusion); else users[i] = fusion;

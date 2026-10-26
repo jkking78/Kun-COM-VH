@@ -627,6 +627,16 @@
   var CHECKIN_EARLY_WINDOW_MS = 3 * 3600 * 1000;   // 3 h avant
   var CHECKIN_LATE_WINDOW_MS  = 3 * 3600 * 1000;   // 3 h après la fin
 
+  // Copie d'une assignation dont l'échéance (« AAAA-MM-JJTHH:MM ») avance de
+  // jours (séries d'événements). Sans échéance, inchangée.
+  function decalerEcheance(a, jours) {
+    if (!a || typeof a.deadline !== 'string' || !/^\d{4}-\d{2}-\d{2}/.test(a.deadline)) return Object.assign({}, a);
+    var d = new Date(a.deadline.slice(0, 10) + 'T00:00:00Z');
+    if (isNaN(d.getTime())) return Object.assign({}, a);
+    d = new Date(d.getTime() + jours * 864e5);
+    return Object.assign({}, a, { deadline: d.toISOString().slice(0, 10) + a.deadline.slice(10) });
+  }
+
   // Le membre a-t-il répondu « Indisponible » à sa convocation ? Il est alors
   // excusé : ni attendu au pointage, ni compté absent, ni pénalisé.
   function aDecline(ev, userId) {
@@ -685,9 +695,14 @@
       //                     (à temps / en retard) ou quand la deadline est passée
       //                     sans livraison. La présence physique n'entre pas en jeu.
       //  - sans deadline  → PRÉSENCE : ponctualité fondée sur l'heure de pointage.
+      // Événement supprimé (archivé pour garder les étoiles déjà gagnées) : ne
+      // compte que ce qui avait eu lieu AVANT la suppression. Une date future
+      // supprimée comptait sinon « tâche non livrée » ou « absent » (−2★).
+      var archiveLe = ev.type === 'EVENT_ARCHIVED' && typeof ev.archivedAt === 'number' ? ev.archivedAt : null;
       if (mine.deadline) {
         var dlTs = echeanceTs(mine.deadline);
         if (isNaN(dlTs)) return;
+        if (archiveLe && dlTs >= archiveLe) return;
         var doneP = posts.find(function(p){
           return p.type === 'TASK_DONE' && p.userId === userId && p.taskEventId === ev.id;
         });
@@ -724,6 +739,7 @@
       // Sans pointage, le service ne compte qu'une fois le pointage fermé (fin +
       // délai de retard) : avant, il apparaissait « Manqué −2★ » alors que le
       // membre pouvait encore pointer.
+      if (archiveLe && startTs >= archiveLe) return;
       var finPointage = (eventEndTimestamp(ev) || startTs) + CHECKIN_LATE_WINDOW_MS;
       if (now <= finPointage && !hasCheckedIn(userId, ev.id, posts)) return;
       if (sinceTs && startTs < sinceTs) return;        // hors période

@@ -140,6 +140,7 @@
     if (!u || typeof u !== 'object') return u;
     var copie = Object.assign({}, u);
     delete copie.pwd; delete copie.sec_a1; delete copie.sec_a2;
+    delete copie.notifications;   // elles vivent dans kun_com_notifications
     return copie;
   }
 
@@ -187,64 +188,95 @@
     });
   }
 
-  // Guérison passive des profils DISTANTS encore bloqués sur l'ancien format : le
-  // nettoyage au démarrage (nettoyerStockageHerite) n'allège que le disque de CET
-  // appareil ; il ne réécrit rien côté serveur. Tant qu'un membre n'a pas lui-même
-  // rouvert une version qui sait alléger ses notifications, son profil reste lourd
-  // sur Supabase — et TOUT appareil qui télécharge la liste complète des profils
-  // (démarrage, ou filet de secours à la connexion) doit retélécharger ces
-  // mégaoctets hérités à chaque fois. Sur un réseau mobile lent, c'est précisément
-  // ce qui rend une connexion interminable. On répare donc discrètement le profil
-  // distant dès qu'il paraît anormalement lourd, pour que les téléchargements
-  // suivants — les siens comme ceux des autres appareils — soient enfin légers.
-  function purgerNotificationsBloateesServeur(remoteData) {
-    if (!supabase || !Array.isArray(remoteData)) return;
-    remoteData.forEach(function(item) {
-      try {
-        var brut = typeof item.content === 'string' ? item.content : JSON.stringify(item.content || {});
-        // Un profil sain (photo hébergée, jamais en base64) tient largement sous
-        // 50 Ko. Au-delà, il porte presque toujours des notifications héritées
-        // avec photo recopiée en base64 (jusqu'à 4 Mo relevés pour un seul compte).
-        if (!brut || brut.length < 50000) return;
-        var propre = parseProfileItem(item);
-        if (!propre || !propre.id) return;
-        // Depuis la migration 06, le serveur n'accepte de modifier les
-        // notifications existantes que sur SA propre fiche : réécrire celle des
-        // autres ne ferait que consommer du réseau pour rien.
-        if (!S.user || propre.id !== S.user.id) return;
-        var allegees = allegerNotifications(propre.notifications);
-        var copie = Object.assign({}, propre, { notifications: allegees });
-        supabase.from('kun_com_profiles').upsert({ id: propre.id, content: copie }, { onConflict: 'id' })
-          .then(function(){}, function(e){ console.warn('Nettoyage serveur (notifications) échoué pour ' + propre.id + ':', e); });
-      } catch(e) {}
-    });
+  // ============================================================
+  // NOTIFICATIONS DANS L'APP : table kun_com_notifications (migration 22)
+  // ============================================================
+  // Une ligne par notification, lisible par son seul destinataire. Elles
+  // vivaient auparavant dans la fiche du destinataire : lisibles par tous, et
+  // chaque ajout renvoyait la fiche entière à tous les membres connectés.
+  // La base signe chaque notification (expéditeur, nom, type, heure).
+
+  // Anti-doublon d'envoi (même fait, même destinataire, moins de 10 min) : on
+  // ne voit plus les notifications des autres, on retient donc ses envois.
+  var _notifsEnvoyees = {};
+  function dejaNotifie(cle) {
+    var t = _notifsEnvoyees[cle];
+    if (t && Date.now() - t < 10 * 60 * 1000) return true;
+    _notifsEnvoyees[cle] = Date.now();
+    return false;
   }
 
-  // Écrit une notification dans le profil DISTANT d'un utilisateur en relisant
-  // D'ABORD sa version serveur la plus fraîche, puis en n'écrivant QUE le
-  // résultat fusionné. C'est le correctif central contre les notifications déjà
-  // lues qui redevenaient non lues : avant cette fonction, sendNotificationToUser
-  // et announceNewMember écrivaient directement leur copie LOCALE (potentiellement
-  // vieille de plusieurs minutes sur l'appareil de l'expéditeur) du profil complet
-  // du destinataire — écrasant au passage toute lecture qu'il avait faite ailleurs,
-  // ou toute autre notification reçue entre-temps. mergeNotifications (utilisé
-  // pendant la synchronisation normale) ne pouvait rien y faire : le mal était déjà
-  // fait côté serveur avant même que le destinataire ne synchronise quoi que ce soit.
-  function pushNotificationToProfile(userId, notif, fallbackProfile) {
-    if (!supabase || !userId) return Promise.resolve();
-    return supabase.from('kun_com_profiles').select('content').eq('id', userId).single().then(function(res) {
-      var fresh = res && res.data && res.data.content;
-      if (typeof fresh === 'string') { try { fresh = JSON.parse(fresh); } catch(e){ fresh = null; } }
-      var base = (fresh && typeof fresh === 'object') ? fresh : fallbackProfile;
-      if (!base) return null;
-      var baseNotifs = Array.isArray(base.notifications) ? base.notifications.slice() : [];
-      if (!baseNotifs.some(function(n){ return n.id === notif.id; })) {
-        baseNotifs.unshift(notif);
-        if (baseNotifs.length > 50) baseNotifs = baseNotifs.slice(0, 50);
-      }
-      var toWrite = Object.assign({}, base, { id: userId, notifications: baseNotifs });
-      return supabase.from('kun_com_profiles').upsert({ id: userId, content: toWrite }, { onConflict: 'id' });
-    }, function(e){ console.warn('pushNotificationToProfile error:', e); });
+  // Dépose une notification chez un membre, puis la relaie sur son téléphone.
+  function deposerNotification(destinataire, notif) {
+    if (!supabase || !destinataire || !notif || !notif.id) return Promise.resolve(null);
+    return supabase.from('kun_com_notifications').insert({ destinataire: destinataire, id: notif.id, content: notif }).then(function(r) {
+      if (r && r.error) { console.warn('Notification non déposée :', r.error); return null; }
+      if (!(S.user && S.user.id === destinataire)) notifierTelephone(destinataire, notif.id);
+      return true;
+    }, function(e) { console.warn('Notification non déposée :', e); return null; });
+  }
+
+  // Ses notifications, telles que le serveur les garde ; un « lu » local pas
+  // encore arrivé au serveur est conservé.
+  function chargerMesNotifications() {
+    if (!supabase || !S.user || !S.user.id) return Promise.resolve();
+    var moi = S.user.id;
+    return supabase.from('kun_com_notifications').select('id, content').eq('destinataire', moi)
+      .order('cree_le', { ascending: false }).limit(100).then(function(r) {
+        if (!r || r.error || !Array.isArray(r.data) || !S.user || S.user.id !== moi) return;
+        var lues = {};
+        (S.user.notifications || []).forEach(function(n){ if (n && n.read) lues[n.id] = true; });
+        S.user.notifications = r.data.map(function(l) {
+          var n = Object.assign({}, l.content || {}, { id: l.id });
+          if (lues[n.id]) n.read = true;
+          return n;
+        });
+        enregistrerMesNotificationsLocalement();
+        try { if (typeof render === 'function' && !saisieEnCours()) render(); } catch(e) {}
+        ecouterMesNotifications();
+      }, function(){});
+  }
+  function enregistrerMesNotificationsLocalement() {
+    if (!S.user) return;
+    try {
+      var users = db(SK.USERS, []);
+      var i = users.findIndex(function(u){ return u && u.id === S.user.id; });
+      if (i !== -1) { users[i] = S.user; dbSet(SK.USERS, users); }
+      sauverSession(S.user);
+    } catch(e) {}
+  }
+  // Temps réel : seulement les siennes (filtre + règles de la base).
+  var _canalNotifs = null, _canalNotifsPour = null;
+  function ecouterMesNotifications() {
+    if (!supabase || !S.user || !supabase.channel) return;
+    if (_canalNotifsPour === S.user.id) return;
+    try { if (_canalNotifs) supabase.removeChannel(_canalNotifs); } catch(e) {}
+    _canalNotifsPour = S.user.id;
+    _canalNotifs = supabase.channel('kc_notifs_' + S.user.id)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'kun_com_notifications', filter: 'destinataire=eq.' + S.user.id }, notificationRecue)
+      .subscribe();
+  }
+  function notificationRecue(payload) {
+    if (!payload || !S.user) return;
+    var liste = Array.isArray(S.user.notifications) ? S.user.notifications.slice() : [];
+    if (payload.eventType === 'DELETE') {
+      var idSuppr = payload.old && payload.old.id;
+      liste = liste.filter(function(n){ return n.id !== idSuppr; });
+    } else if (payload.new && payload.new.id && payload.new.destinataire === S.user.id) {
+      var n = Object.assign({}, payload.new.content || {}, { id: payload.new.id });
+      var i = liste.findIndex(function(x){ return x.id === n.id; });
+      if (i === -1) liste.unshift(n); else liste[i] = Object.assign({}, liste[i], n, { read: liste[i].read || n.read });
+    } else return;
+    S.user.notifications = liste.slice(0, 100);
+    enregistrerMesNotificationsLocalement();
+    try { if (typeof render === 'function' && !saisieEnCours()) render(); } catch(e) {}
+  }
+  // Enregistre « lu » sur le serveur pour ces notifications.
+  function enregistrerLectures(ids) {
+    if (!supabase || !S.user || !ids || !ids.length) return;
+    supabase.from('kun_com_notifications').update({ content: { read: true } })
+      .eq('destinataire', S.user.id).in('id', ids.slice(0, 100))
+      .then(function(r){ if (r && r.error) console.warn('Lecture des notifications :', r.error); }, function(){});
   }
 
   // ============================================================
@@ -289,8 +321,6 @@
     var targetUser = allUsers.find(function(u){ return u.id === targetUserId; });
     if (!targetUser) return;
     
-    if (!Array.isArray(targetUser.notifications)) targetUser.notifications = [];
-    
     // Anti-doublon : évite deux notifications identiques pour le MÊME fait (ex.
     // un like retiré puis remis tout de suite ne doit pas spammer). Mais quand un
     // commentaire/réponse est fourni, il DOIT entrer dans la comparaison : sinon
@@ -299,12 +329,7 @@
     // silencieusement ignoré.
     // C9 : l'anti-doublon ne vaut que pour 10 minutes ; au-delà, une deuxième
     // relance ou une ré-assignation au même événement est une vraie nouvelle.
-    var depuis = Date.now() - 10 * 60 * 1000;
-    var exists = targetUser.notifications.find(function(n){
-      return n.targetId === notifData.targetId && n.type === notifData.type && n.senderId === (S.user ? S.user.id : 'system')
-        && (n.commentId || null) === (notifData.commentId || null) && (n.timestamp || 0) > depuis;
-    });
-    if (exists) return;
+    if (dejaNotifie([targetUserId, notifData.type, notifData.targetId || '', notifData.commentId || ''].join('|'))) return;
     
     var newNotif = {
       id: 'n_' + Date.now() + '_' + Math.floor(Math.random()*1000),
@@ -321,29 +346,19 @@
       title: notifData.title,
       text: notifData.text,
       targetId: notifData.targetId,
+      commentId: notifData.commentId || null,
       timestamp: Date.now(),
       read: false
     };
     
-    targetUser.notifications.unshift(newNotif);
-    if (targetUser.notifications.length > 50) {
-      targetUser.notifications = targetUser.notifications.slice(0, 50);
-    }
-    
-    var uIdx = allUsers.findIndex(function(u){ return u.id === targetUserId; });
-    if (uIdx !== -1) allUsers[uIdx] = targetUser;
-    dbSet(SK.USERS, allUsers);
-    
+    // À soi-même : affichée tout de suite. Dans tous les cas, déposée dans la
+    // table (la base la signe), puis relayée sur le téléphone du destinataire.
     if (S.user && S.user.id === targetUserId) {
-      S.user = targetUser;
-      sauverSession(targetUser);
+      if (!Array.isArray(S.user.notifications)) S.user.notifications = [];
+      S.user.notifications.unshift(newNotif);
+      enregistrerMesNotificationsLocalement();
     }
-    
-    pushNotificationToProfile(targetUserId, newNotif, targetUser).then(function(r){
-      // Une fois la notification enregistrée dans la fiche du destinataire, le
-      // serveur peut la relayer sur son téléphone (il vérifie qu'elle y est).
-      if (!(r && r.error) && !(S.user && S.user.id === targetUserId)) notifierTelephone(targetUserId, newNotif.id);
-    }, function(e){ console.warn('sendNotificationToUser push error:', e); });
+    deposerNotification(targetUserId, newNotif);
 
     if (S.user && S.user.id === targetUserId) {
       toast(notifData.title + ' : ' + notifData.text, 'info');
@@ -420,42 +435,23 @@
   // Écriture groupée : une seule sauvegarde locale et un seul aller-retour par
   // profil, plutôt qu'une réécriture complète du fichier des membres par personne.
   function announceNewMember(newUser) {
-    if (!newUser || !newUser.id) return;
-    var allUsers = db(SK.USERS, []);
+    if (!newUser || !newUser.id || !S.user) return;
     var secs = getUserSections(newUser).map(function(s){ return secNom(s); }).filter(Boolean).join(' · ');
-    var notif = {
-      id: 'n_new_' + newUser.id,
-      senderId: newUser.id,
-      senderName: (newUser.prenom || '') + ' ' + (newUser.nom ? newUser.nom.charAt(0) + '.' : ''),
-      senderAvatar: avatarLeger(newUser.avatar_url),
-      senderColor: newUser.avatar_color || '#0B5FE0',
-      type: 'NEW_MEMBER',
-      title: 'Nouveau membre',
-      text: 'a rejoint Commit' + (secs ? ' · ' + secs : '') + '.',
-      targetId: newUser.id,
-      timestamp: Date.now(),
-      read: false
-    };
-
-    var touched = [];
-    allUsers.forEach(function(u) {
-      if (!u || !u.id || u.id === newUser.id) return;
-      if (!Array.isArray(u.notifications)) u.notifications = [];
-      if (u.notifications.some(function(n){ return n.id === notif.id; })) return;
-      u.notifications.unshift(Object.assign({}, notif));
-      if (u.notifications.length > 50) u.notifications = u.notifications.slice(0, 50);
-      touched.push(u);
-    });
-    if (touched.length === 0) return;
-
-    dbSet(SK.USERS, allUsers);
-    // Un envoi par profil touché (voir pushNotificationToProfile) : chacun relit sa
-    // propre version serveur fraîche avant d'y ajouter la notification, au lieu
-    // d'écraser tout le monde avec cette copie locale potentiellement périmée.
-    touched.forEach(function(u) {
-      pushNotificationToProfile(u.id, Object.assign({}, notif), u).then(function(r){
-        if (!(r && r.error)) notifierTelephone(u.id, notif.id);
-      }, function(e){ console.warn('Annonce nouveau membre :', e); });
+    var nom = ((newUser.prenom || '') + ' ' + (newUser.nom || '')).trim() || 'Un nouveau membre';
+    // Envoyée par celui qui valide l'inscription (la base signe à son nom) :
+    // écrite au nom du nouveau membre, elle était refusée par le serveur.
+    db(SK.USERS, []).forEach(function(u) {
+      if (!u || !u.id || u.id === newUser.id || u.id === S.user.id || compteEnAttente(u)) return;
+      deposerNotification(u.id, {
+        id: 'n_new_' + newUser.id,
+        senderId: S.user.id,
+        type: 'NEW_MEMBER',
+        title: 'Nouveau membre',
+        text: 'a validé l\'arrivée de ' + nom + (secs ? ' · ' + secs : '') + '.',
+        targetId: newUser.id,
+        timestamp: Date.now(),
+        read: false
+      });
     });
   }
 
@@ -486,20 +482,11 @@
       if (supabase && window.App && App.ecrirePostFrais) App.ecrirePostFrais(pp.id, function(f) { f.arrivalAnnounced = true; }); }
     else { post.arrivalAnnounced = true; }
 
-    var allUsers = db(SK.USERS, []);
-    var touched = [];
-    allUsers.forEach(function(u) {
-      if (!u || !u.id || u.id === post.userId) return;
-      if (!Array.isArray(u.notifications)) u.notifications = [];
-      if (u.notifications.some(function(n){ return n.id === notif.id; })) return;
-      u.notifications.unshift(Object.assign({}, notif));
-      if (u.notifications.length > 50) u.notifications = u.notifications.slice(0, 50);
-      touched.push(u);
-    });
-    if (touched.length === 0) return;
-    dbSet(SK.USERS, allUsers);
-    touched.forEach(function(u) {
-      pushNotificationToProfile(u.id, Object.assign({}, notif), u).then(function(){}, function(e){ console.warn('Annonce arrivée :', e); });
+    // Seul l'auteur du pointage l'annonce (la base signe à son nom).
+    if (!S.user || S.user.id !== post.userId) return;
+    db(SK.USERS, []).forEach(function(u) {
+      if (!u || !u.id || u.id === post.userId || compteEnAttente(u)) return;
+      deposerNotification(u.id, Object.assign({}, notif));
     });
   }
 
