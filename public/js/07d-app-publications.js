@@ -196,7 +196,7 @@
         sendNotificationToUser(post.userId, {
           type: 'LIKE',
           title: "Nouveau J'aime",
-          text: (S.user.prenom + ' ' + (S.user.nom||'')) + ' a aimé ta publication.',
+          text: 'a aimé ta publication.',
           targetId: post.id
         });
       }

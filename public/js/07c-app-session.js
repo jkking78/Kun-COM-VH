@@ -885,7 +885,7 @@
       try {
         if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(r.password);
         toast('Mot de passe copié.', 'success');
-      } catch(e) { toast('Copie impossible — notez-le manuellement.', 'info'); }
+      } catch(e) { toast('Copie impossible — note-le à la main.', 'info'); }
     },
     // Additionne la taille de tous les fichiers du bucket post-media, page par page
     // (l'API Storage limite à 1000 résultats par appel).

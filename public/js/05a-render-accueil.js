@@ -289,14 +289,15 @@
     return 'Dans ' + h + ' h' + (min % 60 ? ' ' + String(min % 60).padStart(2, '0') : '');
   }
 
+  // Jours comptés à l'heure d'Abidjan (= UTC), quel que soit le fuseau du téléphone.
   function jourMission(ev, now) {
-    var d = new Date((ev.eventDate || '') + 'T00:00:00');
+    var d = new Date((ev.eventDate || '') + 'T00:00:00Z');
     if (isNaN(d.getTime())) return '';
-    var auj = new Date(now); auj.setHours(0, 0, 0, 0);
+    var auj = new Date(isoLocal(new Date(now)) + 'T00:00:00Z');
     var ecart = Math.round((d - auj) / 86400000);
     if (ecart === 0) return 'Aujourd\'hui';
     if (ecart === 1) return 'Demain';
-    var t = d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+    var t = d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
     return t.charAt(0).toUpperCase() + t.slice(1);
   }
 
@@ -470,8 +471,8 @@
     // À 34 px et 6 px d'écart, comme auparavant, on visait la cloche et on
     // touchait le « + » — d'autant que ces boutons n'ont plus de fond visible,
     // donc rien n'indique où commence la zone sensible.
-    var iconBtn = function(action, svg, badgeCount) {
-      return '<button onclick="' + action + '" style="position:relative;width:44px;height:44px;border-radius:' + UI.pill + ';background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;flex-shrink:0;touch-action:manipulation;-webkit-tap-highlight-color:rgba(0,0,0,0.06);">' +
+    var iconBtn = function(action, svg, badgeCount, libelle) {
+      return '<button onclick="' + action + '"' + (libelle ? ' aria-label="' + libelle + '"' : '') + ' style="position:relative;width:44px;height:44px;border-radius:' + UI.pill + ';background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;flex-shrink:0;touch-action:manipulation;-webkit-tap-highlight-color:rgba(0,0,0,0.06);">' +
         svg +
         (badgeCount > 0 ? '<span style="position:absolute;top:7px;right:8px;width:8px;height:8px;border-radius:50%;background:' + UI.accent + ';border:1.5px solid ' + UI.card + ';"></span>' : '') +
       '</button>';
@@ -488,7 +489,7 @@
           '<h1 style="font-size:28px;font-weight:800;color:' + UI.ink + ';margin:2px 0 0;letter-spacing:-0.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Bonjour ' + safeHtml(u.prenom || '') + '</h1>' +
         '</div>' +
         '<div style="display:flex;gap:2px;align-items:center;flex-shrink:0;margin-right:-8px;">' +
-          iconBtn('App.openMembersList()', '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="' + UI.muted + '" stroke-width="1.9" stroke-linecap="round"><circle cx="11" cy="11" r="7.5"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>', 0) +
+          iconBtn('App.openMembersList()', '<svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="' + UI.muted + '" stroke-width="1.9" stroke-linecap="round"><circle cx="11" cy="11" r="7.5"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>', 0, 'Rechercher') +
           renderBoiteBouton() +
           renderCloche() +
         '</div>' +
@@ -577,7 +578,7 @@
         '</p>' +
         (S.q
           ? '<button onclick="App.search(\'\')" style="' + btnStyle('#0B5FE0') + 'height:44px;width:auto;padding:0 22px;font-size:15px;">Réinitialiser la recherche</button>'
-          : '<button onclick="App.openCreate()" style="' + btnStyle('#0B5FE0') + 'height:44px;width:auto;padding:0 22px;font-size:15px;">Créer un post</button>') +
+          : '<button onclick="App.openCreate()" style="' + btnStyle('#0B5FE0') + 'height:44px;width:auto;padding:0 22px;font-size:15px;">Créer une publication</button>') +
       '</div>';
     } else {
       // Les événements d'une même journée sont fusionnés en un carrousel unique ;

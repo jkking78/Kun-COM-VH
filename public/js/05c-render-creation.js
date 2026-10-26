@@ -18,6 +18,20 @@
     return !(S.initialLoading || S.syncEnCours);
   }
 
+  // Le nom de l'expéditeur est déjà affiché en gras : les anciennes
+  // notifications le répétaient en tête du texte (« Bob K. Bob Kouassi a aimé… »).
+  function texteSansNomRepete(n, expediteur) {
+    var texte = String(n.text || '');
+    var noms = [];
+    if (expediteur) noms.push(((expediteur.prenom || '') + ' ' + (expediteur.nom || '')).trim(), expediteur.prenom || '');
+    noms.push(String(n.senderName || ''));
+    for (var i = 0; i < noms.length; i++) {
+      var nom = noms[i];
+      if (nom && texte.indexOf(nom + ' ') === 0) return texte.slice(nom.length + 1);
+    }
+    return texte;
+  }
+
   function renderNotificationsModal(u) {
     var notifs = (u && Array.isArray(u.notifications)) ? u.notifications : [];
     var unreadCount = notifs.filter(function(n){ return !n.read; }).length;
@@ -92,7 +106,7 @@
           '</div>' +
           '<div style="flex:1;min-width:0;">' +
             '<div style="font-size:13px;color:var(--ink);line-height:1.35;word-break:break-word;' + (annulee && n.type !== 'EVENT_CANCELLED' ? 'opacity:0.6;text-decoration:line-through;' : '') + '">' +
-              '<strong>' + safeHtml(n.senderName || 'Membre') + '</strong> ' + safeHtml(n.text || '') +
+              '<strong>' + safeHtml(n.senderName || 'Membre') + '</strong> ' + safeHtml(texteSansNomRepete(n, expediteur)) +
             '</div>' +
             '<div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--faint);margin-top:3px;">' + timeAgoStr +
               (annulee ? '<span style="font-size:11px;font-weight:800;color:var(--bad-ink);background:var(--bad-soft);padding:1px 7px;border-radius:999px;">Annulé</span>' : '') +
@@ -228,7 +242,7 @@
 
         '<button type="button" onclick="App.chooseEventSaveMode(\'duplicate\')" style="width:100%;background:var(--accent-soft);border:1px solid var(--line2);border-radius:999px;padding:14px;margin-bottom:14px;cursor:pointer;text-align:left;">' +
           '<div style="font-size:15px;font-weight:800;color:var(--lien);margin-bottom:2px;display:flex;align-items:center;gap:6px;">' + ico('plus', 15, 'currentColor') + 'Créer un nouvel événement</div>' +
-          '<div style="font-size:12px;color:#5A7BAA;line-height:1.4;">L\'ancien reste intact. Idéal pour répéter un événement : changez la date et dupliquez.</div>' +
+          '<div style="font-size:12px;color:#5A7BAA;line-height:1.4;">L\'ancien reste intact. Idéal pour répéter un événement : change la date et duplique.</div>' +
         '</button>' +
 
         '<button type="button" onclick="App.cancelEventSaveChoice()" style="width:100%;background:none;border:none;padding:8px;font-size:13px;font-weight:700;color:var(--faint);cursor:pointer;">Annuler</button>' +

@@ -184,8 +184,8 @@ async function intercepterSupabase(page) {
   await page.route(/fonts\.(googleapis|gstatic)\.com/, (route) => route.abort());
 }
 
-async function nouvellePage(nav, base, session) {
-  const contexte = await nav.newContext({ serviceWorkers: 'block', viewport: { width: 390, height: 844 } });
+async function nouvellePage(nav, base, session, options) {
+  const contexte = await nav.newContext(Object.assign({ serviceWorkers: 'block', viewport: { width: 390, height: 844 } }, options || {}));
   const page = await contexte.newPage();
   const erreurs = [];
   page.on('pageerror', (e) => erreurs.push(e.message));
@@ -819,7 +819,7 @@ try {
     assert.equal(etat.volets, 3);
     assert.equal(etat.seules, 0, 'pas de carte séparée par date');
     assert.ok(etat.indice, 'indication « glisse » animée');
-    assert.ok(etat.texte.includes('Confirmé') && etat.texte.includes('En attente'), 'statut de chaque assigné');
+    assert.ok(etat.texte.includes('Confirmé') && etat.texte.includes('À confirmer'), 'statut de chaque assigné');
     // Glisser enregistre que l'indication a été comprise.
     await page.evaluate(() => { const car = document.querySelector('[id^="evserie-"]'); car.scrollLeft = car.children[1].offsetLeft; car.dispatchEvent(new Event('scroll')); });
     assert.equal(await page.evaluate(() => localStorage.getItem('kc_glisse_vu')), '1');
@@ -1226,6 +1226,49 @@ try {
     assert.equal(r.base64, false, 'aucune image base64 sur le disque');
     assert.equal(r.memoire, 200, 'la mémoire garde tout');
     assert.deepEqual(r.media, ['https://x/photo.jpg']);
+    assert.deepEqual(erreurs, []);
+    await contexte.close();
+  });
+
+  await cas('ergonomie : notifications, pluriel, Échap, désistement et fuseau horaire', async () => {
+    // Téléphone réglé sur Paris, juste après minuit : le jour reste celui d'Abidjan.
+    const { page, erreurs, contexte } = await nouvellePage(nav, base, sessionPour('MEMBRE'), { timezoneId: 'Europe/Paris' });
+    await page.waitForSelector('#post-p_piege', { timeout: 15000 });
+    const jour = await page.evaluate(() => jourMission({ eventDate: '2026-10-27' }, Date.parse('2026-10-26T23:30:00Z')));
+    assert.equal(jour, 'Demain', 'à 23 h 30 à Abidjan (00 h 30 à Paris), le 27 est demain');
+
+    // Ancienne notification au nom répété : il n'apparaît qu'une fois.
+    const texte = await page.evaluate((autre) => texteSansNomRepete({ senderName: 'Bob K.', text: 'Bob Kouassi a aimé ta publication.' },
+      { prenom: 'Bob', nom: 'Kouassi' }), AUTRE);
+    assert.equal(texte, 'a aimé ta publication.');
+
+    // Un seul commentaire : « Voir le commentaire ».
+    assert.ok((await page.textContent('#post-p_piege')).includes('Voir le commentaire'));
+
+    // Échap ferme « Mes indisponibilités ».
+    await page.evaluate(() => { App.tab('planning'); App.ouvrirIndispos(); });
+    await page.waitForSelector('[aria-label="Mes indisponibilités"] h2');
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => !document.querySelector('#indispoDate'));
+
+    // Désistement : le responsable du pôle de l'assignation est prévenu aussi.
+    const prevenus = await page.evaluate((ids) => {
+      const users = db(SK.USERS, []);
+      users.push({ id: ids.resp, prenom: 'Rita', nom: 'R', role: 'RESP_SECTION', sections: ['cadrage'] });
+      dbSet(SK.USERS, users);
+      const envoyes = [];
+      const avant = window.sendNotificationToUser;
+      window.sendNotificationToUser = function(id) { envoyes.push(id); };
+      S.declinerEvId = 'ev_mission';
+      App.tab('home');
+      const champ = document.createElement('input'); champ.id = 'motifDecline'; champ.value = 'Voyage'; document.body.appendChild(champ);
+      App.repondreConvocation('ev_mission', 'decline');
+      champ.remove();
+      window.sendNotificationToUser = avant;
+      return envoyes;
+    }, { resp: 'eeeeeeee-0000-4000-8000-000000000005' });
+    assert.ok(prevenus.includes(AUTRE), 'organisateur prévenu');
+    assert.ok(prevenus.includes('eeeeeeee-0000-4000-8000-000000000005'), 'responsable du pôle prévenu : ' + JSON.stringify(prevenus));
     assert.deepEqual(erreurs, []);
     await contexte.close();
   });

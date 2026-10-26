@@ -253,7 +253,6 @@
     var mesServices = (db(SK.POSTS, [])).filter(function(p) {
       return p.type === 'EVENT' && !isEventPast(p) && S.user && (p.assignments || []).some(function(a){ return a && a.userId === S.user.id; });
     }).length;
-    var moisCourant = new Date().toLocaleDateString('fr-FR', { month: 'long' });
     var mesIndispos = ((db(SK.USERS, []).find(function(x){ return S.user && x.id === S.user.id; }) || S.user || {}).indisponibilites || [])
       .filter(function(x){ return x && x.date >= isoLocal(); });
     // Ligne 1 : grand titre à gauche, cloche et « + » à droite.
@@ -265,7 +264,7 @@
         '<div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">' + renderCloche() + rightBtn + '</div>' +
       '</div>' +
       '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px;">' +
-        '<p style="font-size:13px;color:' + UI.muted + ';margin:0;min-width:0;">' + moisCourant.charAt(0).toUpperCase() + moisCourant.slice(1) + ' · ' + (mesServices ? mesServices + ' service' + (mesServices > 1 ? 's' : '') + ' pour toi' : 'aucun service pour toi') + '</p>' +
+        '<p style="font-size:13px;color:' + UI.muted + ';margin:0;min-width:0;">' + (mesServices ? mesServices + ' service' + (mesServices > 1 ? 's' : '') + ' à venir pour toi' : 'Aucun service à venir pour toi') + '</p>' +
         '<button type="button" onclick="App.ouvrirIndispos()" aria-label="Mes indisponibilités' + (mesIndispos.length ? ' : ' + mesIndispos.length : '') + '" style="height:36px;flex-shrink:0;display:inline-flex;align-items:center;gap:6px;background:' + UI.card + ';border:none;border-radius:999px;padding:0 12px;font-size:13px;font-weight:700;color:' + UI.ink + ';cursor:pointer;white-space:nowrap;">' +
           '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="9" y1="14" x2="15" y2="18"/><line x1="15" y1="14" x2="9" y2="18"/></svg>' +
           'Mes indispos' + (mesIndispos.length ? ' · ' + mesIndispos.length : '') +
@@ -311,20 +310,21 @@
       return header + modeSwitch + historyHtml;
     }
 
-    var baseDate = new Date();
-    var todayIso = isoLocal(baseDate);
+    // Jours à l'heure d'Abidjan (= UTC), comme isoLocal et les événements :
+    // lire un jour avec le fuseau du téléphone décalait la frise d'un jour
+    // sur un téléphone réglé ailleurs (Europe, voyage).
+    var jourUTC = function(iso) { return new Date(iso + 'T00:00:00Z'); };
+    var todayIso = isoLocal();
     var dateMap = {};
-    // Add today + next 6 days automatically
-    for(var i = 0; i < 7; i++) {
-      var d = new Date(baseDate);
-      d.setDate(baseDate.getDate() + i);
-      dateMap[isoLocal(d)] = d;
+    for (var i = 0; i < 7; i++) {
+      var isoJ = isoLocal(new Date(Date.now() + i * 864e5));
+      dateMap[isoJ] = jourUTC(isoJ);
     }
     
     // Add any future dates that have events
     allPosts.forEach(function(p) {
       if (p.type === 'EVENT' && p.eventDate && p.eventDate >= todayIso) {
-         if (!dateMap[p.eventDate]) dateMap[p.eventDate] = new Date(p.eventDate);
+         if (!dateMap[p.eventDate]) dateMap[p.eventDate] = jourUTC(p.eventDate);
       }
     });
     var dates = Object.keys(dateMap).sort().map(function(k){ return dateMap[k]; });
@@ -341,9 +341,9 @@
         var aDesEv = allPosts.some(function(p){ return p.type === 'EVENT' && p.eventDate === iso && !isEventPast(p, nowTsSlider); });
         var fond = estAuj ? 'var(--ink)' : (aMoi ? 'var(--accent-soft)' : UI.card);
         var encre = estAuj ? 'var(--page)' : (aMoi ? UI.accentInk : UI.ink);
-        return '<button type="button" role="listitem" onclick="App.allerAuJour(\'' + jsArg(iso) + '\')" aria-label="' + safeHtml(d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })) + '" style="flex:1;min-width:0;padding:8px 0;border:none;border-radius:16px;background:' + fond + ';color:' + encre + ';cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:1px;">' +
-          '<span style="font-size:11px;font-weight:600;opacity:0.85;">' + d.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', '') + '</span>' +
-          '<span style="font-size:17px;font-weight:800;">' + d.getDate() + '</span>' +
+        return '<button type="button" role="listitem" onclick="App.allerAuJour(\'' + jsArg(iso) + '\')" aria-label="' + safeHtml(d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })) + '" style="flex:1;min-width:0;padding:8px 0;border:none;border-radius:16px;background:' + fond + ';color:' + encre + ';cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:1px;">' +
+          '<span style="font-size:11px;font-weight:600;opacity:0.85;">' + d.toLocaleDateString('fr-FR', { weekday: 'short', timeZone: 'UTC' }).replace('.', '') + '</span>' +
+          '<span style="font-size:17px;font-weight:800;">' + d.getUTCDate() + '</span>' +
           '<span style="width:4px;height:4px;border-radius:2px;background:' + (aDesEv ? (estAuj ? 'var(--page)' : UI.accent) : 'transparent') + ';"></span>' +
         '</button>';
       }).join('') +
@@ -626,7 +626,7 @@
     var key = cardKey || sec.id;
     var open = S.scoreboardOpen === key;
     var has = board.count > 0;
-    var col = !has ? 'var(--line)' : board.average >= 4 ? '#0E9F6E' : board.average >= 2 ? '#D98A0B' : '#D92D20';
+    var col = !has ? 'var(--line)' : board.average >= 4 ? 'var(--ok-ink)' : board.average >= 2 ? 'var(--warn-ink)' : 'var(--bad-ink)';
 
     var trendHtml = '';
     if (has && board.count >= 2 && board.trend !== 0) {
@@ -655,7 +655,7 @@
     }).join('');
 
     var listHtml = board.entries.slice(0, 8).map(function(e) {
-      var ec = e.globalScore >= 4 ? '#0E9F6E' : e.globalScore >= 2 ? '#D98A0B' : '#D92D20';
+      var ec = e.globalScore >= 4 ? 'var(--ok-ink)' : e.globalScore >= 2 ? 'var(--warn-ink)' : 'var(--bad-ink)';
       var d = new Date(e.timestamp).toLocaleDateString('fr-FR', {day:'numeric', month:'short'});
       return '<div onclick="App.openBilan(\'' + jsArg(e.postId) + '\')" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-top:1px solid var(--tile);cursor:pointer;">' +
         '<div style="min-width:0;">' +
@@ -663,7 +663,7 @@
           '<div style="font-size:11px;color:var(--faint);">' + d + (e.author ? ' · ' + safeHtml(e.author) : '') + '</div>' +
         '</div>' +
         '<div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">' +
-          '<span style="font-size:13px;font-weight:800;color:' + ec + ';">' + e.globalScore + '/5</span>' +
+          '<span style="font-size:13px;font-weight:800;color:' + ec + ';">' + String(e.globalScore).replace('.', ',') + '/5</span>' +
           '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--line)" stroke-width="2.5"><path d="M9 18l6-6-6-6"/></svg>' +
         '</div>' +
       '</div>';
@@ -680,7 +680,7 @@
         '</div>' +
         '<div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">' +
           trendHtml +
-          '<div style="font-family:' + UI.fontMono + ';font-size:22px;font-weight:700;color:' + col + ';">' + (has ? board.average + '/5' : '—') + '</div>' +
+          '<div style="font-family:' + UI.fontMono + ';font-size:22px;font-weight:700;color:' + col + ';">' + (has ? String(board.average).replace('.', ',') + '/5' : '—') + '</div>' +
           '<span style="font-size:13px;color:var(--line);transform:rotate(' + (open?'90':'0') + 'deg);transition:transform 0.2s;">›</span>' +
         '</div>' +
       '</div>' +
@@ -856,20 +856,20 @@
 
     var ratedCount = EVAL_CRITERIA.filter(function(c){ return (r.criteria[c.id]||0) > 0; }).length;
     var expanded = S.evalExpandedSection === sec.id;
-    var scoreColor = avg >= 4 ? '#0E9F6E' : avg >= 2 ? '#D98A0B' : avg > 0 ? '#D92D20' : 'var(--line)';
+    var scoreColor = avg >= 4 ? 'var(--ok-ink)' : avg >= 2 ? 'var(--warn-ink)' : avg > 0 ? 'var(--bad-ink)' : 'var(--line)';
 
     var puncHtml = '';
     if (S.evalEventId) {
       if (punc) {
-        var pc = punc.average >= 4 ? '#0E9F6E' : punc.average >= 2 ? '#D98A0B' : punc.average > 0 ? '#D92D20' : '#D92D20';
+        var pc = punc.average >= 4 ? 'var(--ok-ink)' : punc.average >= 2 ? 'var(--warn-ink)' : punc.average > 0 ? 'var(--bad-ink)' : 'var(--bad-ink)';
         puncHtml = '<div style="padding:10px 0;border-top:1px solid var(--tile);">' +
           '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
             '<span style="font-size:13px;font-weight:700;color:var(--ink);">Ponctualité <span style="font-size:11px;font-weight:800;color:var(--faint);background:var(--tile);padding:2px 6px;border-radius:8px;">AUTO</span></span>' +
-            '<span style="font-size:13px;font-weight:800;color:' + pc + ';">' + punc.average + '/5</span>' +
+            '<span style="font-size:13px;font-weight:800;color:' + pc + ';">' + String(punc.average).replace('.', ',') + '/5</span>' +
           '</div>' +
           '<div style="display:flex;flex-direction:column;gap:4px;margin-top:6px;">' +
             punc.details.map(function(d) {
-              var dc = d.stars >= 4 ? '#0E9F6E' : d.stars >= 2 ? '#D98A0B' : '#D92D20';
+              var dc = d.stars >= 4 ? 'var(--ok-ink)' : d.stars >= 2 ? 'var(--warn-ink)' : 'var(--bad-ink)';
               var when = d.absent ? 'aucune publication' : (d.delayMinutes <= 0 ? "à l'heure" : '+' + d.delayMinutes + ' min');
               return '<div style="display:flex;justify-content:space-between;align-items:flex-start;font-size:12px;color:var(--muted);gap:8px;">' +
                 '<span style="min-width:0;">' + safeHtml(d.name) + (d.task ? ' · ' + safeHtml(d.task) : '') +
@@ -915,7 +915,7 @@
           '<span id="evalsub-' + sec.id + '" style="font-size:12px;color:var(--faint);">' + (ratedCount > 0 ? ratedCount + '/' + EVAL_CRITERIA.length + ' critères notés' : 'Touche pour noter les critères') + '</span></div>' +
         '</div>' +
         '<div style="display:flex;align-items:center;gap:8px;">' +
-          '<div id="evalavg-' + sec.id + '" style="font-family:' + UI.fontMono + ';font-size:22px;font-weight:700;color:' + scoreColor + ';">' + (avg > 0 ? avg+'/5' : '—') + '</div>' +
+          '<div id="evalavg-' + sec.id + '" style="font-family:' + UI.fontMono + ';font-size:22px;font-weight:700;color:' + scoreColor + ';">' + (avg > 0 ? String(avg).replace('.', ',') + '/5' : '—') + '</div>' +
           '<span style="font-size:13px;color:var(--line);transform:rotate(' + (expanded?'90':'0') + 'deg);transition:transform 0.2s;">›</span>' +
         '</div>' +
       '</div>' +

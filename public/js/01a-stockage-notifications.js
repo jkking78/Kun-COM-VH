@@ -404,7 +404,7 @@
         sendNotificationToUser(u.id, {
           type: 'POST_SECTION',
           title: 'Nouvelle publication de pôle',
-          text: (S.user ? S.user.prenom : 'Quelqu\'un') + ' a publié pour ton pôle "' + post.sectionNom + '".',
+          text: 'a publié pour ton pôle "' + post.sectionNom + '".',
           targetId: post.id
         });
       }

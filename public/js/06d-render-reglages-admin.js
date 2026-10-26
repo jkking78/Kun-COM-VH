@@ -304,8 +304,8 @@
     return '<div onclick="App.closePostOptions()" style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:10000;display:flex;justify-content:center;align-items:flex-end;">' +
       '<div onclick="event.stopPropagation()" style="width:100%;max-width:460px;background:var(--card);border-top-left-radius:20px;border-top-right-radius:20px;padding:16px;animation:slideUp 0.3s cubic-bezier(0.34,1.2,0.64,1);">' +
         '<div style="width:40px;height:4px;background:var(--line);border-radius:2px;margin:0 auto 20px;"></div>' +
-        (isMine ? '<button onclick="App.deletePost(\''+jsArg(post.id)+'\')" style="width:100%;padding:14px;color:#D92D20;font-size:15px;font-weight:600;background:var(--tile);border:none;border-radius:999px;margin-bottom:8px;cursor:pointer;">Supprimer le post</button>' : '') +
-        '<button onclick="App.viewPost(\''+jsArg(post.id)+'\')" style="width:100%;padding:14px;color:var(--ink);font-size:15px;font-weight:600;background:var(--tile);border:none;border-radius:999px;margin-bottom:8px;cursor:pointer;">Voir le post</button>' +
+        (isMine ? '<button onclick="App.deletePost(\''+jsArg(post.id)+'\')" style="width:100%;padding:14px;color:#D92D20;font-size:15px;font-weight:600;background:var(--tile);border:none;border-radius:999px;margin-bottom:8px;cursor:pointer;">Supprimer la publication</button>' : '') +
+        '<button onclick="App.viewPost(\''+jsArg(post.id)+'\')" style="width:100%;padding:14px;color:var(--ink);font-size:15px;font-weight:600;background:var(--tile);border:none;border-radius:999px;margin-bottom:8px;cursor:pointer;">Voir la publication</button>' +
         '<button onclick="App.closePostOptions()" style="width:100%;padding:14px;color:var(--ink);font-size:15px;font-weight:600;background:var(--tile);border:none;border-radius:999px;cursor:pointer;">Annuler</button>' +
       '</div>' +
     '</div>';
@@ -321,44 +321,45 @@
   // de render() ni de l'écran affiché.
   // Toute modification du texte doit faire avancer CONDITIONS_VERSION.
   // ============================================================
-  var CONDITIONS_VERSION = '21 octobre 2026 (révisée)';
+  var CONDITIONS_VERSION = '25 octobre 2026';
   var CONDITIONS_SECTIONS = [
     ['Objet',
      '<p>Commit VH est l\'application interne du Département Communication de l\'Église Vase d\'Honneur (Abidjan). Elle sert à organiser les services (planning, convocations, pointage), à partager le travail de l\'équipe et à suivre l\'engagement de chacun.</p>' +
-     '<p>Leur acceptation est demandée à la création du compte ; en utilisant l\'application, vous vous engagez à les respecter.</p>'],
+     '<p>Leur acceptation est demandée à la création du compte ; en utilisant l\'application, tu t\'engages à les respecter.</p>'],
     ['Accès et compte',
      '<ul><li>L\'application est réservée aux membres du département et aux personnes qu\'il accueille (stagiaires).</li>' +
-     '<li>Un seul compte par personne, à votre vrai nom. Votre numéro de téléphone sert d\'identifiant de connexion.</li>' +
-     '<li>Votre mot de passe et vos réponses aux questions de sécurité sont personnels : ne les communiquez à personne, pas même à un responsable.</li>' +
-     '<li>Vous êtes responsable de ce qui est publié depuis votre compte. En cas de doute (téléphone perdu, compte utilisé par un autre), prévenez un Admin.</li></ul>'],
+     '<li>Un seul compte par personne, à ton vrai nom. Ton numéro de téléphone sert d\'identifiant de connexion.</li>' +
+     '<li>Ton mot de passe et tes réponses aux questions de sécurité sont personnels : ne les communique à personne, pas même à un responsable.</li>' +
+     '<li>Tu es responsable de ce qui est publié depuis ton compte. En cas de doute (téléphone perdu, compte utilisé par un autre), préviens un Admin.</li></ul>'],
     ['Rôles',
      '<ul><li><b>Stagiaire</b> et <b>Membre</b> : consultent le planning, pointent leurs services, publient et commentent.</li>' +
      '<li><b>Responsable de pôle</b> : crée des événements et convoque les membres.</li>' +
      '<li><b>Admin</b> : publie les bilans, attribue les rôles et modère les contenus.</li></ul>' +
      '<p>Les rôles sont attribués par un Admin ; ils ne se demandent pas dans l\'application.</p>'],
     ['Règles de publication',
-     '<ul><li>Restez respectueux : pas d\'insultes, de moqueries, de propos discriminants ou contraires aux valeurs de l\'église.</li>' +
-     '<li><b>Droit à l\'image</b> : ne publiez la photo ou la vidéo d\'une personne reconnaissable qu\'avec son accord. Pour un mineur, l\'accord d\'un parent est nécessaire.</li>' +
-     '<li>Les informations internes (plannings, bilans, échanges) restent internes : ne les diffusez pas hors de l\'application sans l\'accord d\'un responsable.</li>' +
-     '<li>Le lien « Copier le lien » d\'une publication montre son auteur, sa légende et une image à toute personne qui l\'ouvre : ne le partagez qu\'à bon escient.</li></ul>'],
+     '<ul><li>Reste respectueux : pas d\'insultes, de moqueries, de propos discriminants ou contraires aux valeurs de l\'église.</li>' +
+     '<li><b>Droit à l\'image</b> : ne publie la photo ou la vidéo d\'une personne reconnaissable qu\'avec son accord. Pour un mineur, l\'accord d\'un parent est nécessaire.</li>' +
+     '<li>Les informations internes (plannings, bilans, échanges) restent internes : ne les diffuse pas hors de l\'application sans l\'accord d\'un responsable.</li>' +
+     '<li>Le lien « Copier le lien » d\'une publication montre son auteur, sa légende et une image à toute personne qui l\'ouvre : ne le partage qu\'à bon escient.</li></ul>'],
     ['Pointage et localisation',
-     '<ul><li>Votre position n\'est demandée qu\'au moment où vous pointez votre arrivée à un service. Elle n\'est jamais suivie en continu.</li>' +
-     '<li>Elle sert uniquement à vérifier que vous êtes sur place (dans un rayon de 500 m du lieu). La distance au lieu est visible des autres membres.</li>' +
+     '<ul><li>Ta position n\'est demandée qu\'au moment où tu pointes ton arrivée à un service. Elle n\'est jamais suivie en continu.</li>' +
+     '<li>Elle sert uniquement à vérifier que tu es sur place (dans un rayon de 500 m du lieu). La distance au lieu est visible des autres membres.</li>' +
      '<li>L\'heure d\'arrivée est contrôlée par le serveur et ne peut plus être modifiée ensuite.</li>' +
-     '<li>Pointer à distance, ou refuser la localisation, compte comme une absence.</li></ul>'],
+     '<li>Pointer à distance, ou refuser la localisation, compte comme une absence.</li>' +
+     '<li>Si tu as répondu « Indisponible » à une convocation, tu es excusé : ce service ne compte pas.</li></ul>'],
     ['Engagement et bilans',
-     '<p>Votre niveau d\'engagement (Engagé, Fiable, Exemplaire) se calcule sur vos 10 derniers services et tâches :</p>' +
-     '<ul><li>Un engagement est tenu quand vous arrivez à l\'heure ou que vous livrez votre tâche à temps. Un retard, une absence ou un pointage hors du lieu ne compte pas comme tenu, sans rien retirer.</li>' +
+     '<p>Ton niveau d\'engagement (Engagé, Fiable, Exemplaire) se calcule sur tes 10 derniers services et tâches :</p>' +
+     '<ul><li>Un engagement est tenu quand tu arrives à l\'heure ou que tu livres ta tâche à temps. Un retard, une absence ou un pointage hors du lieu ne compte pas comme tenu, sans rien retirer.</li>' +
      '<li>Les bilans de pôle sont publiés par l\'Admin après les services ; la ponctualité y est calculée automatiquement.</li></ul>' +
      '<p>Ces informations servent à encourager et à organiser l\'équipe, pas à juger les personnes.</p>'],
     ['Messages privés',
-     '<p>Un message privé n\'est lisible que par vous et votre interlocuteur. Les règles de publication s\'y appliquent aussi.</p>'],
-    ['Vos données',
-     '<ul><li>Sont enregistrés : vos nom, prénom, numéro de téléphone, pôles, photo, bio, vos publications, commentaires, messages, pointages (heure et distance au lieu) et votre niveau d\'engagement.</li>' +
-     '<li>Les membres connectés voient votre fiche, vos publications et votre niveau d\'engagement. Sans compte, on ne peut rien consulter, sauf l\'aperçu d\'un lien partagé.</li>' +
+     '<p>Un message privé n\'est lisible que par toi et ton interlocuteur. Les règles de publication s\'y appliquent aussi.</p>'],
+    ['Tes données',
+     '<ul><li>Sont enregistrés : tes nom, prénom, numéro de téléphone, pôles, photo, bio, tes publications, commentaires, messages, pointages (heure et distance au lieu) et ton niveau d\'engagement.</li>' +
+     '<li>Les membres connectés voient ta fiche, tes publications et ton niveau d\'engagement. Sans compte, on ne peut rien consulter, sauf l\'aperçu d\'un lien partagé.</li>' +
      '<li>Les photos et vidéos sont stockées à une adresse longue et impossible à deviner, mais toute personne qui obtient cette adresse peut les voir.</li>' +
      '<li>Les données sont hébergées par Supabase (serveurs en Irlande, Union européenne) et l\'application par Vercel. Elles ne sont ni vendues ni utilisées à des fins publicitaires.</li>' +
-     '<li>Vous pouvez modifier votre fiche à tout moment, et supprimer définitivement votre compte depuis Paramètres → Supprimer mon compte.</li></ul>'],
+     '<li>Tu peux modifier ta fiche à tout moment, et supprimer définitivement ton compte depuis Paramètres → Supprimer mon compte.</li></ul>'],
     ['Modération',
      '<p>L\'auteur d\'une publication et l\'Admin peuvent supprimer les commentaires qui y sont faits. L\'Admin peut retirer tout contenu contraire à ces règles. En cas de manquement répété, les Admin peuvent retirer l\'accès à l\'application, après en avoir parlé avec la personne.</p>'],
     ['Évolution des conditions',
@@ -698,7 +699,10 @@
     return '<div onclick="App.fermerIndispos()" style="position:fixed;inset:0;background:rgba(15,15,20,0.55);z-index:10000;display:flex;justify-content:center;align-items:flex-end;">' +
       '<div onclick="event.stopPropagation()" role="dialog" aria-modal="true" aria-label="Mes indisponibilités" style="width:100%;max-width:460px;max-height:85vh;overflow-y:auto;background:var(--card);border-radius:20px 20px 0 0;padding:16px 20px calc(24px + env(safe-area-inset-bottom));animation:slideUp 0.28s cubic-bezier(0.22,1,0.36,1);">' +
         '<div style="width:40px;height:4px;background:var(--line);border-radius:2px;margin:0 auto 16px;"></div>' +
-        '<h2 style="font-family:' + UI.fontDisplay + ';font-size:22px;font-weight:700;color:var(--ink);margin:0 0 4px;">Mes indisponibilités</h2>' +
+        '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 4px;">' +
+          '<h2 style="font-family:' + UI.fontDisplay + ';font-size:22px;font-weight:700;color:var(--ink);margin:0;">Mes indisponibilités</h2>' +
+          '<button type="button" onclick="App.fermerIndispos()" aria-label="Fermer" style="width:44px;height:44px;flex-shrink:0;border:none;border-radius:999px;background:var(--tile);color:var(--ink);font-size:18px;cursor:pointer;">✕</button>' +
+        '</div>' +
         '<p style="font-size:13px;color:var(--muted);line-height:1.5;margin:0 0 14px;">Les responsables les voient quand ils convoquent l\'équipe.</p>' +
         '<div style="display:flex;flex-direction:column;gap:8px;background:var(--tile);border-radius:16px;padding:12px;">' +
           '<label for="indispoDate" style="font-size:13px;font-weight:700;color:var(--ink);">Date</label>' +
