@@ -949,7 +949,7 @@
       var idx = S.signupSections.indexOf(sec);
       if (idx !== -1) { S.signupSections.splice(idx, 1); }
       else {
-        if (S.signupSections.length >= 2) { toast('Maximum 2 sections autorisées.', 'error'); return; }
+        if (S.signupSections.length >= 2) { toast('2 pôles au plus.', 'error'); return; }
         S.signupSections.push(sec);
       }
       var container = document.getElementById('signupSectionBadgesContainer');
@@ -963,7 +963,7 @@
       var idx = S.editSections.indexOf(sec);
       if (idx !== -1) { S.editSections.splice(idx, 1); }
       else {
-        if (S.editSections.length >= 2) { toast('Maximum 2 sections autorisées.', 'error'); return; }
+        if (S.editSections.length >= 2) { toast('2 pôles au plus.', 'error'); return; }
         S.editSections.push(sec);
       }
       var container = document.getElementById('editSectionBadgesContainer');
