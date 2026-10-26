@@ -84,7 +84,7 @@
         sendNotificationToUser(targetUserId, {
           type: 'FOLLOW',
           title: 'Nouvel abonné',
-          text: (S.user.prenom || 'Quelqu\'un') + ' a commencé à te suivre.',
+          text: 'a commencé à te suivre.',
           targetId: targetUserId
         });
       }

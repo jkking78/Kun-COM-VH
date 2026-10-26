@@ -137,7 +137,7 @@
                       // Présence validée ou non : toujours affichée pour un membre.
                       if (!a.userId) return '';
                       var r = reponseConvocation(post, a.userId);
-                      var st = !r ? ['En attente', 'rgba(255,255,255,0.10)', UI.evMuted]
+                      var st = !r ? ['À confirmer', 'rgba(255,255,255,0.10)', UI.evMuted]
                         : r.statut === 'confirme' ? ['Confirmé ✓', 'rgba(14,159,110,0.22)', '#8FE9C4']
                         : ['Indisponible', 'rgba(226,68,92,0.22)', '#F5A3AF'];
                       return '<span style="flex-shrink:0;font-size:11px;font-weight:800;padding:2px 8px;border-radius:999px;background:' + st[1] + ';color:' + st[2] + ';">' + st[0] + '</span>';
@@ -359,7 +359,7 @@
           return '<div data-ev-id="' + safeHtml(ev.id) + '" style="flex:0 0 100%;scroll-snap-align:start;padding:0 16px 4px;box-sizing:border-box;">' +
             '<div style="position:relative;">' +
               '<div onclick="App.goToEvent(\'' + jsArg(ev.id) + '\')" style="cursor:pointer;">' + renderEventCardInner(ev) + '</div>' +
-              '<button onclick="event.stopPropagation();App.openOptions(\'' + jsArg(ev.id) + '\')" style="position:absolute;top:8px;right:8px;background:rgba(255,255,255,0.92);border:none;width:44px;height:44px;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.08);">' + SVG.dots + '</button>' +
+              '<button onclick="event.stopPropagation();App.openOptions(\'' + jsArg(ev.id) + '\')" aria-label="Options de l\'événement" style="position:absolute;top:8px;right:8px;background:rgba(255,255,255,0.92);border:none;width:44px;height:44px;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,0.08);">' + SVG.dots + '</button>' +
             '</div>' +
           '</div>';
         }).join('') +
@@ -894,11 +894,11 @@
     // Lien vers les commentaires. L'heure n'est PLUS répétée ici : elle figure
     // déjà dans l'en-tête, à côté de l'auteur (elle apparaissait deux fois).
     var commentsLinkLabel = (post.comments || []).length > 0
-      ? 'Voir les ' + (post.comments || []).length + ' commentaire' + ((post.comments || []).length > 1 ? 's' : '')
+      ? ((post.comments || []).length > 1 ? 'Voir les ' + post.comments.length + ' commentaires' : 'Voir le commentaire')
       : 'Ajouter un commentaire…';
     var metaFooterBlock =
       '<div style="padding:' + (post.postBg ? '2px' : '0') + ' 16px 12px;">' +
-        '<button onclick="App.openComments(\'' + jsArg(post.id) + '\')" style="background:none;border:none;padding:0;font-size:13px;color:' + UI.faint + ';cursor:pointer;">' + commentsLinkLabel + '</button>' +
+        '<button onclick="App.openComments(\'' + jsArg(post.id) + '\')" style="background:none;border:none;padding:0;min-height:44px;font-size:13px;color:' + UI.faint + ';cursor:pointer;">' + commentsLinkLabel + '</button>' +
       '</div>';
 
     // Carte blanche détachée sur le fond gris de l'écran : c'est ce qui donne
@@ -935,7 +935,7 @@
             '</div>' +
           '</div>' +
         '</div>' +
-        '<button onclick="App.openOptions(\'' + jsArg(post.id) + '\')" style="background:var(--tile);border:none;width:44px;height:44px;border-radius:12px;margin:-6px -6px -6px 0;cursor:pointer;display:flex;align-items:center;justify-content:center;">' + SVG.dots + '</button>' +
+        '<button onclick="App.openOptions(\'' + jsArg(post.id) + '\')" aria-label="Options de la publication" style="background:var(--tile);border:none;width:44px;height:44px;border-radius:12px;margin:-6px -6px -6px 0;cursor:pointer;display:flex;align-items:center;justify-content:center;">' + SVG.dots + '</button>' +
       '</div>' +
       (function(){
         if (!post.aboutEventId) return '';
@@ -960,21 +960,22 @@
       // Actions row
       // Barre d'engagement : icône + compteur sur une seule ligne, séparée du
       // contenu par un filet. Le compteur de j'aime n'a plus sa propre ligne.
-      '<div style="display:flex;align-items:center;gap:18px;padding:11px 16px;border-top:0.5px solid ' + UI.line + ';color:' + UI.muted + ';font-size:13px;font-family:' + UI.fontMono + ';">' +
-        '<button id="likeBtn-'+post.id+'" onclick="App.like(\''+jsArg(post.id)+'\')" aria-pressed="' + (iLiked ? 'true' : 'false') + '" aria-label="J\'aime · ' + likeCount + '" style="background:none;border:none;padding:0;cursor:pointer;display:flex;align-items:center;gap:6px;color:inherit;font-size:inherit;transition:transform 0.1s;" onmousedown="this.style.transform=\'scale(0.9)\'" onmouseup="this.style.transform=\'scale(1)\'">' +
+      // Zones tactiles de 44 px (icônes inchangées à 18 px).
+      '<div style="display:flex;align-items:center;gap:4px;padding:0 10px;border-top:0.5px solid ' + UI.line + ';color:' + UI.muted + ';font-size:13px;font-family:' + UI.fontMono + ';">' +
+        '<button id="likeBtn-'+post.id+'" onclick="App.like(\''+jsArg(post.id)+'\')" aria-pressed="' + (iLiked ? 'true' : 'false') + '" aria-label="J\'aime · ' + likeCount + '" style="background:none;border:none;padding:0 6px;min-width:44px;min-height:44px;justify-content:center;cursor:pointer;display:flex;align-items:center;gap:6px;color:inherit;font-size:inherit;transition:transform 0.1s;" onmousedown="this.style.transform=\'scale(0.9)\'" onmouseup="this.style.transform=\'scale(1)\'">' +
           '<svg width="18" height="18" viewBox="0 0 24 24" fill="' + (iLiked ? UI.bad : 'none') + '" stroke="' + (iLiked ? UI.bad : UI.muted) + '" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>' +
           '<span id="likeCount-'+post.id+'" style="color:' + (iLiked ? UI.bad : UI.muted) + ';">' + likeCount + '</span>' +
         '</button>' +
-        '<button onclick="App.openComments(\''+jsArg(post.id)+'\')" aria-label="Commentaires · ' + (post.comments || []).length + '" style="background:none;border:none;padding:0;cursor:pointer;display:flex;align-items:center;gap:6px;color:inherit;font-size:inherit;">' +
+        '<button onclick="App.openComments(\''+jsArg(post.id)+'\')" aria-label="Commentaires · ' + (post.comments || []).length + '" style="background:none;border:none;padding:0 6px;min-width:44px;min-height:44px;justify-content:center;cursor:pointer;display:flex;align-items:center;gap:6px;color:inherit;font-size:inherit;">' +
           ico('message', 18, UI.muted) + '<span>' + (post.comments || []).length + '</span>' +
         '</button>' +
-        '<button onclick="App.openRepostModal(\''+jsArg(post.id)+'\')" aria-label="Repartager" style="background:none;border:none;padding:0;cursor:pointer;display:flex;align-items:center;color:inherit;">' +
+        '<button onclick="App.openRepostModal(\''+jsArg(post.id)+'\')" aria-label="Repartager" style="background:none;border:none;padding:0 6px;min-width:44px;min-height:44px;justify-content:center;cursor:pointer;display:flex;align-items:center;color:inherit;">' +
           '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="' + UI.muted + '" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>' +
         '</button>' +
-        '<button onclick="App.openViewers(\''+jsArg(post.id)+'\')" title="Vues" aria-label="Vues · ' + viewCount + '" style="background:none;border:none;padding:0;cursor:pointer;display:flex;align-items:center;gap:6px;color:inherit;font-size:inherit;">' +
+        '<button onclick="App.openViewers(\''+jsArg(post.id)+'\')" title="Vues" aria-label="Vues · ' + viewCount + '" style="background:none;border:none;padding:0 6px;min-width:44px;min-height:44px;justify-content:center;cursor:pointer;display:flex;align-items:center;gap:6px;color:inherit;font-size:inherit;">' +
           ico('eye', 18, UI.muted) + '<span id="viewCount-'+post.id+'">' + viewCount + '</span>' +
         '</button>' +
-        '<button id="saveBtn-'+post.id+'" onclick="App.save(\''+jsArg(post.id)+'\')" aria-pressed="' + (iSaved ? 'true' : 'false') + '" aria-label="Enregistrer" style="background:none;border:none;padding:0;cursor:pointer;display:flex;align-items:center;margin-left:auto;">' +
+        '<button id="saveBtn-'+post.id+'" onclick="App.save(\''+jsArg(post.id)+'\')" aria-pressed="' + (iSaved ? 'true' : 'false') + '" aria-label="Enregistrer" style="background:none;border:none;padding:0 6px;min-width:44px;min-height:44px;justify-content:center;cursor:pointer;display:flex;align-items:center;margin-left:auto;">' +
           '<svg width="18" height="18" viewBox="0 0 24 24" fill="' + (iSaved ? UI.ink : 'none') + '" stroke="' + (iSaved ? UI.ink : UI.muted) + '" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>' +
         '</button>' +
       '</div>' +

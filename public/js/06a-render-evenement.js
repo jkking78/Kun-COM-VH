@@ -126,7 +126,7 @@
         '<div style="border-top:0.5px solid var(--tile);">' +
           '<div id="replyingToBanner" style="display:' + (S.replyingToCommentId ? 'flex' : 'none') + ';align-items:center;justify-content:space-between;background:var(--accent-soft);padding:7px 14px;font-size:13px;color:var(--lien);border-top:1px solid var(--line2);">' +
             '<span>Réponse à <b>' + safeHtml(S.replyingToAuthor||'') + '</b></span>' +
-            '<button type="button" onclick="App.cancelReply()" style="background:none;border:none;color:var(--lien);font-size:13px;font-weight:800;cursor:pointer;padding:2px 6px;">✕</button>' +
+            '<button type="button" onclick="App.cancelReply()" aria-label="Annuler la réponse" style="background:none;border:none;color:var(--lien);font-size:13px;font-weight:800;cursor:pointer;min-width:44px;min-height:44px;margin:-10px -6px;">✕</button>' +
           '</div>' +
           '<div id="commentMentionSugg" style="display:none;flex-wrap:wrap;gap:6px;background:var(--accent-soft);border-top:1px solid var(--line2);padding:8px 14px;"></div>' +
           '<div id="commentImagePreview" style="padding:' + (S.pendingCommentImage ? '10px 14px 0' : '0') + ';">' +

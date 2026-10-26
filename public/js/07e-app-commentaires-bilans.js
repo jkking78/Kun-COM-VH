@@ -107,7 +107,7 @@
         sendNotificationToUser(parentComment.userId, {
           type: 'REPLY',
           title: 'Nouvelle réponse',
-          text: S.user.prenom + ' a répondu à ton commentaire : "' + (txt ? txt.slice(0, 40) : 'Photo') + '"',
+          text: 'a répondu à ton commentaire : "' + (txt ? txt.slice(0, 40) : 'Photo') + '"',
           targetId: post.id,
           // Sans cet identifiant, on retombait sur la publication et il fallait
           // retrouver soi-même le commentaire concerné dans toute la discussion.
@@ -117,7 +117,7 @@
         sendNotificationToUser(post.userId, {
           type: 'COMMENT',
           title: 'Nouveau commentaire',
-          text: S.user.prenom + ' : "' + (txt ? txt.slice(0, 40) : 'Photo') + '"',
+          text: 'a commenté : "' + (txt ? txt.slice(0, 40) : 'Photo') + '"',
           targetId: post.id,
           commentId: newC.id
         });
@@ -145,7 +145,7 @@
       // Update comment count on post card (outside modal)
       var ccBtn = document.querySelector('#post-'+S.commentPostId+' button[onclick*="openComments"]');
       if (ccBtn && ccBtn.textContent.indexOf('commentaire') !== -1) {
-        ccBtn.textContent = 'Voir les ' + post.comments.length + ' commentaire' + (post.comments.length>1?'s':'');
+        ccBtn.textContent = post.comments.length > 1 ? 'Voir les ' + post.comments.length + ' commentaires' : 'Voir le commentaire';
       }
       if (input) input.value = '';
       App.removeCommentImage();
@@ -378,8 +378,8 @@
       var avg = vals.length ? Math.round((vals.reduce(function(a,b){ return a+b; }, 0) / vals.length) * 10) / 10 : 0;
       var avgEl = document.getElementById('evalavg-' + secId);
       if (avgEl) {
-        avgEl.textContent = avg > 0 ? avg + '/5' : '—';
-        avgEl.style.color = avg >= 4 ? '#0E9F6E' : avg >= 2 ? '#D98A0B' : avg > 0 ? '#D92D20' : 'var(--line)';
+        avgEl.textContent = avg > 0 ? String(avg).replace('.', ',') + '/5' : '—';
+        avgEl.style.color = avg >= 4 ? 'var(--ok-ink)' : avg >= 2 ? 'var(--warn-ink)' : avg > 0 ? 'var(--bad-ink)' : 'var(--line)';
       }
       var subEl = document.getElementById('evalsub-' + secId);
       if (subEl) {

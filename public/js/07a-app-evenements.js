@@ -1083,7 +1083,7 @@
         sendNotificationToUser(ev.userId, {
           type: 'EVENT_PARTICIPATION',
           title: 'Nouvelle participation',
-          text: (S.user.prenom || 'Quelqu\'un') + ' participera à « ' + ((ev.metadata && ev.metadata.title) || ev.eventTitle || 'ton événement') + ' ».',
+          text: 'participera à « ' + ((ev.metadata && ev.metadata.title) || ev.eventTitle || 'ton événement') + ' ».',
           targetId: ev.id
         });
       }
@@ -1148,16 +1148,27 @@
         frais.reponsesConvocation = Object.assign({}, frais.reponsesConvocation || {});
         frais.reponsesConvocation[uid] = reponse;
       });
-      // L'organisateur est prévenu d'un désistement (une confirmation ne
-      // mérite pas de notification : elle se lit dans la fiche).
-      if (statut === 'decline' && ev.userId && ev.userId !== uid) {
-        sendNotificationToUser(ev.userId, {
-          type: 'CONVOCATION', title: 'Indisponible',
-          text: 'ne pourra pas être là pour « ' + (ev.eventTitle || 'l\'événement') + ' » : ' + motif,
-          targetId: ev.id
+      // L'organisateur ET les responsables du pôle de l'assignation sont
+      // prévenus d'un désistement (c'est souvent le responsable qui a convoqué).
+      // Une confirmation ne mérite pas de notification : elle se lit dans la fiche.
+      if (statut === 'decline') {
+        var monAssignation = (ev.assignments || []).find(function(a){ return a && a.userId === uid; }) || {};
+        var aPrevenir = {};
+        if (ev.userId && ev.userId !== uid) aPrevenir[ev.userId] = true;
+        if (monAssignation.sectionId) {
+          db(SK.USERS, []).forEach(function(m) {
+            if (m && m.id && m.id !== uid && m.role === 'RESP_SECTION' && getUserSections(m).indexOf(monAssignation.sectionId) !== -1) aPrevenir[m.id] = true;
+          });
+        }
+        Object.keys(aPrevenir).forEach(function(id) {
+          sendNotificationToUser(id, {
+            type: 'CONVOCATION', title: 'Indisponible',
+            text: 'ne pourra pas être là pour « ' + (ev.eventTitle || 'l\'événement') + ' » : ' + motif,
+            targetId: ev.id
+          });
         });
       }
-      toast(statut === 'confirme' ? 'Présence confirmée.' : 'Réponse envoyée à l\'organisateur.', 'success');
+      toast(statut === 'confirme' ? 'Présence confirmée.' : 'Réponse envoyée à l\'organisateur et aux responsables.', 'success');
     },
     // ---- Échange de service ----
     _majCleEvenement: function(eventId, champ, valeur) {
@@ -1223,8 +1234,8 @@
       render();
       App.ecrirePostFrais(eventId, remplacer);
       var titre = ev.eventTitle || 'le service';
-      sendNotificationToUser(repreneur, { type: 'EVENT_ASSIGNED', title: 'Échange validé', text: 'Tu remplaces ' + nomCourt(pour) + ' pour « ' + titre + ' ».', targetId: eventId });
-      sendNotificationToUser(pour, { type: 'ECHANGE', title: 'Échange validé', text: nomCourt(repreneur) + ' te remplace pour « ' + titre + ' ».', targetId: eventId });
+      sendNotificationToUser(repreneur, { type: 'EVENT_ASSIGNED', title: 'Échange validé', text: 'a validé l\'échange : tu remplaces ' + nomCourt(pour) + ' pour « ' + titre + ' ».', targetId: eventId });
+      sendNotificationToUser(pour, { type: 'ECHANGE', title: 'Échange validé', text: 'a validé l\'échange : ' + nomCourt(repreneur) + ' te remplace pour « ' + titre + ' ».', targetId: eventId });
       toast('Échange validé.', 'success');
     },
     annulerReponseConvocation: function(eventId) {
@@ -1302,7 +1313,7 @@
         sendNotificationToUser(ev.userId, {
           type: 'EVENT_PARTICIPATION',
           title: 'Nouvelle participation',
-          text: (S.user.prenom || 'Quelqu\'un') + ' participera à « ' + (ev.eventTitle || 'ton événement') + ' ».',
+          text: 'participera à « ' + (ev.eventTitle || 'ton événement') + ' ».',
           targetId: ev.id
         });
       }
