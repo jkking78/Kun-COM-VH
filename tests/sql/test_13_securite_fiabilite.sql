@@ -40,8 +40,10 @@ set role authenticated;
 select tst_en_tant_que('B');
 insert into kun_com_profiles (id, content) values (tst_qui('B'), '{"sections":["cadrage"],"welcomeStars":500}');
 select tst_verifier(tst_fiche('B') ->> 'welcomeStars' = '5', 'à la création, le bonus d''accueil est celui par défaut');
+-- Pôles retenus à la création (la migration 21 n'en laisse aucun à un compte déjà validé).
+select coalesce(tst_fiche('B') -> 'sections', 'null')::text as poles_b \gset
 update kun_com_profiles set content = content || '{"sections":["cadrage","regie"],"welcomeStars":99,"bio":"Salut"}' where id = tst_qui('B');
-select tst_verifier(tst_fiche('B') -> 'sections' = '["cadrage"]' and tst_fiche('B') ->> 'welcomeStars' = '5'
+select tst_verifier(coalesce(tst_fiche('B') -> 'sections', 'null') = :'poles_b'::jsonb and tst_fiche('B') ->> 'welcomeStars' = '5'
   and tst_fiche('B') ->> 'bio' = 'Salut', 'un membre validé ne change ni ses pôles ni son bonus, le reste oui');
 
 select tst_en_tant_que('P');
@@ -51,8 +53,9 @@ select tst_verifier(tst_fiche('P') -> 'sections' = '["web"]', 'une inscription e
 
 select tst_en_tant_que('R');
 insert into kun_com_profiles (id, content) values (tst_qui('R'), '{"sections":["cadrage"]}');
+select coalesce(tst_fiche('R') -> 'sections', 'null')::text as poles_r \gset
 update kun_com_profiles set content = content || '{"sections":["cadrage","regie"]}' where id = tst_qui('R');
-select tst_verifier(tst_fiche('R') -> 'sections' = '["cadrage"]', 'un Responsable ne s''ajoute pas un pôle');
+select tst_verifier(coalesce(tst_fiche('R') -> 'sections', 'null') = :'poles_r'::jsonb, 'un Responsable ne s''ajoute pas un pôle');
 select tst_refuse($$select kc_definir_poles(tst_qui('B'), '["regie"]')$$, 'seul l''Admin fixe les pôles d''un membre');
 
 select tst_en_tant_que('Z');

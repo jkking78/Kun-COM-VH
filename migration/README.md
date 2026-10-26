@@ -364,6 +364,23 @@ Storage ; cette migration retire les copies base64 déjà enregistrées.
 1. Déployer l'application (v188).
 2. Appliquer `20_publications_sans_photo_copiee.sql`.
 
+## Migration 21 — pôles à l'inscription, notifications signées, fichiers (v190)
+
+- À la création d'une fiche : 2 pôles au plus pour une inscription en
+  attente, aucun pour un compte déjà validé (hors Admin ; l'Admin attribue
+  les pôles par `kc_definir_poles`).
+- Notification déposée chez un autre membre : nom affiché tiré de la fiche de
+  l'expéditeur, type limité à la liste de l'application, photo seulement si
+  c'est une adresse hébergée, 150 notifications par heure et par membre.
+- Liste du stockage réservée aux membres validés (les adresses publiques
+  restent servies) ; types de fichiers limités aux photos et vidéos courantes
+  (plus de SVG).
+- `search_path` figé pour `kc_dms_avant_ecriture`.
+
+### Ordre de mise en production
+1. Appliquer `21_securite_poles_notifications.sql`.
+2. Déployer l'application (v190).
+
 ## Limites restantes (connues)
 - **Pas de CSP stricte** : les ~270 gestionnaires `onclick` en ligne
   l'empêchent ; seuls `frame-ancestors`, `object-src` et `base-uri` sont posés.
